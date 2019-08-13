@@ -10,11 +10,11 @@
 
 ## 2. 結論
 
-Python で 3DLUT を生成するサンプルコードを作成した。以下に ```main.py``` として置いてある。
+Python で 3DLUT を生成するサンプルコードを作成した。以下に [make_3dlut.py](https://github.com/toru-ver4/sample_code/blob/develop/2019/001_make_3dlut/make_3dlut.py) として置いてある。
 
-ここにURLを貼る。
+[make_3dlut](https://github.com/toru-ver4/sample_code/tree/develop/2019/001_make_3dlut)
 
-生成した HDR to SDR 変換の 3DLUT データを以下に示す。サイズが大きいためオリジナルは Github に「後でファイル名を決定」として置いた。
+生成した HDR to SDR 変換の 3DLUT データを以下に示す。サイズが大きいためオリジナルは Github に「[st2084_bt2020_to_gamma2.4_bt709.cube.zip](https://github.com/toru-ver4/sample_code/raw/develop/2019/001_make_3dlut/st2084_bt2020_to_gamma2.4_bt709.cube.zip)」として置いた。
 
 ```text
 # This 3DLUT data was created by TY-LUT creation tool
@@ -44,12 +44,12 @@ LUT_3D_SIZE 65
 1.0000000000e+00 1.0000000000e+00 1.0000000000e+00
 ```
 
-これだけだと直感的には理解しずらいため、以下2点の工夫を取り入れた csv ファイルを別に用意した。
+これだけだと直感的には理解しずらいため、以下2点の処理をした csv ファイルを別に用意した。
 
 * RGB の In と Out の関係を同じ行に表示
 * 浮動小数点表記ではなく 10bit整数型で表示
 
-結果を以下の 表1. に示す。サイズが大きいためオリジナルは Github に「後でファイル名を決定」として置いた。
+結果を以下の 表1. に示す。サイズが大きいためオリジナルは Github に「[3dlut_for_blog.csv.zip](https://github.com/toru-ver4/sample_code/raw/develop/2019/001_make_3dlut/3dlut_for_blog.csv.zip)」として置いた。
 
 |index | R_in | G_in | B_in | R_out | G_out | B_out|
 |:----:|----:|----:|----:|----:|----:|----:|
