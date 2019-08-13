@@ -19,13 +19,45 @@ import lut
 NOMINAL_WHITE_LUMINANCE = 100
 
 
+def save_3dlut_csv_with_10bit_depth(grid_num, rgb_in, rgb_out):
+    """
+    ブログ添付用に10bit精度のLUTのcsvファイルを作成する。
+
+    Parameters
+    ----------
+    grid_num : integer
+        A number of grid points.
+    rgb_in : ndarray
+        Grid point data.
+    rgb_out : ndarray
+        A 3dlut data.
+    """
+    filename = "./3dlut_for_blog.csv"
+    # 10bit整数型に変換
+    rgb_i = np.uint16(np.round(rgb_in * 1023))
+    rgb_o = np.uint16(np.round(rgb_out * 1023))
+    with open(filename, "w") as f:
+        # header
+        buf = "{}, {}, {}, {}, {}, {}, {}\n".format(
+            "index", "R_in", "G_in", "B_in", "R_out", "G_out", "B_out")
+        f.write(buf)
+
+        # body
+        for index in range(grid_num ** 3):
+            buf = "{}, {}, {}, {}, {}, {}, {}\n".format(
+                index,
+                rgb_i[0, index, 0], rgb_i[0, index, 1], rgb_i[0, index, 2],
+                rgb_o[index, 0], rgb_o[index, 1], rgb_o[index, 2])
+            f.write(buf)
+
+
 def make_3dlut_grid(grid_num=33):
     """
     3DLUTの格子点データを作成
 
     Parameters
     ----------
-    x : integer
+    grid_num : integer
         A number of grid points.
 
     Returns
@@ -111,7 +143,13 @@ def main(grid_num=65):
     lut.save_3dlut(
         lut=lut_for_save, grid_num=grid_num, filename=lut_fname)
 
+    save_3dlut_csv_with_10bit_depth(
+        grid_num=grid_num, rgb_in=x, rgb_out=lut_for_save)
+
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     main()
+    # x = make_3dlut_grid(16)
+    # y = np.uint32(np.round(x * 1023))
+    # print(y[:, :17, 0])
