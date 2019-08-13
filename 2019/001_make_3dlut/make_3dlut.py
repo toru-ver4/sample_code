@@ -129,7 +129,7 @@ def main(grid_num=65):
                               input_colourspace=BT2020_COLOURSPACE,
                               output_colourspace=BT709_COLOURSPACE)
 
-    # BT.709 の範囲外の値(linear < 0.0 と linear > 1.0 の領域)をクリップ
+    # BT.709 の範囲外の値(linear_bt709 < 0.0 と linear_bt709 > 1.0 の領域)をクリップ
     linear_bt709 = np.clip(linear_bt709, 0.0, 1.0)
 
     # BT.709 のガンマ(OETF)をかける

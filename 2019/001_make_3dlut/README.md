@@ -193,7 +193,7 @@ R, G, B の順にデータが増加していることが分かると思う。な
                               input_colourspace=BT2020_COLOURSPACE,
                               output_colourspace=BT709_COLOURSPACE)
 
-    # BT.709 の範囲外の値(linear < 0.0 と linear > 1.0 の領域)をクリップ
+    # BT.709 の範囲外の値(linear_bt709 < 0.0 と linear_bt709 > 1.0 の領域)をクリップ
     linear_bt709 = np.clip(linear_bt709, 0.0, 1.0)
 
     # BT.709 のガンマ(OETF)をかける
@@ -228,7 +228,7 @@ Cube 形式のファイルの中身は 2.結論 で示した通りである。
 
 ## 5. おことわり
 
-今回作成した 3DLUT は Tone Mapping や Gamut Mapping などの最適化処理は一切実施していない。単純な数値変換を行っただけである。そのため、実コンテンツに対して ST2084-BT2020-D65 to  Gamma2.4-BT709-D65 変換するのには全く適さない。あくまでも 3DLUT の一例として捉えて欲しい。
+今回作成した 3DLUT は Tone Mapping や Gamut Mapping などの最適化処理は一切実施していない。単純な数値変換を行っただけである。そのため、実コンテンツに対して ST2084, BT2020, D65 to  Gamma2.4, BT709, D65 変換すると白飛びなどのアーティファクトが多数発生してしまう。あくまでも 3DLUT の一例として捉えて欲しい。
 
 ## 6. 参考資料
 
