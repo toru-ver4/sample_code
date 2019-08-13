@@ -150,6 +150,3 @@ def main(grid_num=65):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     main()
-    # x = make_3dlut_grid(16)
-    # y = np.uint32(np.round(x * 1023))
-    # print(y[:, :17, 0])
