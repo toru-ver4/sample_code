@@ -65,9 +65,15 @@ def make_3dlut_grid(grid_num=33):
             [0.5, 1. , 1. ],
             [1. , 1. , 1. ]]])
     """
+    # np.meshgrid を使って 3次元の格子点座標を生成
     x = np.linspace(0, 1, grid_num)
     rgb_mesh_array = np.meshgrid(x, x, x)
+
+    # 後の処理を行いやすくするため shape を変える
     rgb_mesh_array = [x.reshape(1, grid_num ** 3, 1) for x in rgb_mesh_array]
+
+    # 格子点のデータ増加が R, G, B の順となるように配列を並べ替えてから
+    # np.dstack を使って結合する
     rgb_grid = np.dstack(
         (rgb_mesh_array[2], rgb_mesh_array[0], rgb_mesh_array[1]))
 
@@ -78,7 +84,8 @@ def main(grid_num=65):
     # R, G, B の grid point データを準備
     x = make_3dlut_grid(grid_num=grid_num)
 
-    # linear に戻す
+    # 3DLUT を適用する対象は ST2084 の OETF が掛かっているため、
+    # ST2084 の EOTF を掛けて linear に戻す
     linear_luminance = eotf_ST2084(x)
 
     # 単位が輝度(0～10000 nits)になっているので
@@ -99,7 +106,7 @@ def main(grid_num=65):
     # 自作の LUTライブラリのクソ仕様のため shape を変換する
     lut_for_save = non_linear_bt709.reshape((grid_num ** 3, 3))
 
-    # .cube の形式で保存
+    # 自作の LUTライブラリを使って .cube の形式で保存
     lut_fname = "./st2084_bt2020_to_gamma2.4_bt709.cube"
     lut.save_3dlut(
         lut=lut_for_save, grid_num=grid_num, filename=lut_fname)
