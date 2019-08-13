@@ -102,3 +102,8 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# vs code
+.vscode/
+
+2019/001_make_3dlut/**/*.tif
