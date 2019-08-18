@@ -68,8 +68,6 @@ Step2 では Tone Mapping, Gamut Mapping の2種類が登場するが、ここ�
 
 ここで言う **破綻** について具体例を使って説明する。2.結論の 図2 の2枚目、3枚目を改めて見て欲しい。2枚目 の Tone Mapping なし版では、白飛びが多数発生して破綻しているが、3枚目は Tone Mapping の効果により破綻が抑えられている。
 
-※4 Gamut Mapping については別資料を参照して頂きたい[4][5]。
-
 続いて Tone Mapping の具体的な処理内容を 図4 で説明する。図4 の緑線を見ると Tone Mapping では 1000cd/m2 付近までの輝度情報使って SDR の絵を再構成している。これにより破綻を抑えた SDRレンジへの変換が実現できている。一方で、Tone Mapping をしない橙線を見ると 100cd/m2 より上の輝度情報をバッサリとクリッピングしているのが分かる。これにより極端な絵の破綻が発生している。
 
 ![tone mapping](./figures/tone_mapping_characteristics.png)
@@ -77,6 +75,8 @@ Step2 では Tone Mapping, Gamut Mapping の2種類が登場するが、ここ�
 参考までに図2 に横線でマーキングした箇所の輝度情報を図5にプロットした。Tone Mapping を使った場合はディテールが消えずに残っていることが読み取れる。
 
 ![line](./figures/comparison_of_luminance.png)
+
+※4 Gamut Mapping については別資料を参照して頂きたい[4][5]。
 
 #### 4.1.3. Step3
 
