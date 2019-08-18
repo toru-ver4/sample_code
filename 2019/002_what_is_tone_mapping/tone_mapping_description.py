@@ -131,11 +131,11 @@ def plot_tone_mapping_characteristics():
     y_caption = [r"$10^{{{}}}$".format(x - 4) for x in range(9)]
     plt.yticks(y_val, y_caption)
     ax1.plot(x, src_luminance_line, label="src_hdr", color='#606060', lw=4)
-    ax1.plot(x, dst_with_tone_mapping_luminance_line, '--',
-             color=RGB_COLOUR_LIST[0],
-             label="dst_sdr_with_tone_mapping")
     ax1.plot(x, dst_without_tone_mapping_luminance_line, '--',
-             label="dst_sdr_without_tone_mapping", color=RGB_COLOUR_LIST[1])
+             label="dst_sdr_without_tone_mapping", color=RGB_COLOUR_LIST[0])
+    ax1.plot(x, dst_with_tone_mapping_luminance_line, '--',
+             color=RGB_COLOUR_LIST[1],
+             label="dst_sdr_with_tone_mapping")
     plt.legend(loc='upper left')
     plt.savefig("./figures/tone_mapping_characteristics.png",
                 bbox_inches='tight', pad_inches=0.1)
@@ -245,12 +245,87 @@ def plot_h_luminance_waveform(v_pos=594):
         minor_ytick_num=None)
     ax1.set_yscale('log', basey=10.0)
     ax1.plot(src_hdr.flatten(), label="src_hdr", color='k')
-    ax1.plot(dst_sdr_with_tm.flatten(), color=RGB_COLOUR_LIST[0],
-             label="dst_sdr_with_tone_mapping")
     ax1.plot(dst_sdr_without_tm.flatten(),
-             label="dst_sdr_without_tone_mapping", color=RGB_COLOUR_LIST[1])
+             label="dst_sdr_without_tone_mapping", color=RGB_COLOUR_LIST[0])
+    ax1.plot(dst_sdr_with_tm.flatten(), color=RGB_COLOUR_LIST[1],
+             label="dst_sdr_with_tone_mapping")
     plt.legend(loc='upper left')
     plt.savefig("./figures/comparison_of_luminance.png",
+                bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+
+
+def plot_st2084_oetf():
+    """
+    ST2084 の Code Value と Luminance の関係をプロット。
+    """
+    x = get_log10_x_scale(
+        sample_num=1024, ref_val=1.0, min_exposure=-4.0, max_exposure=4.0)
+    y = oetf_ST2084(x) * 1023
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 8),
+        graph_title="SMPTE ST2084(PQ Curve) OETF",
+        graph_title_size=None,
+        xlabel="Luminance [cd/m2]",
+        ylabel="Code Value (10bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=[x * 128 for x in range(8)] + [1023],
+        linewidth=2.5,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.set_xscale('log', basex=10.0)
+    x_val = [1.0 * (10 ** (x - 4)) for x in range(9)]
+    x_caption = [r"$10^{{{}}}$".format(x - 4) for x in range(9)]
+    plt.xticks(x_val, x_caption)
+    ax1.plot(x, y, color=RGB_COLOUR_LIST[0],
+             label="ST2084 OETF")
+    plt.legend(loc='upper left')
+    plt.savefig("./figures/ST2084_OETF.png",
+                bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+
+
+def plot_gamma24_oetf():
+    """
+    ST2084 の Code Value と Luminance の関係をプロット。
+    """
+    x = get_log10_x_scale(
+        sample_num=1024, ref_val=1.0, min_exposure=-4.0, max_exposure=4.0)
+
+    # x は 100cd/m2 を 1.0 に正規化してから計算する
+    y = ((x / NOMINAL_WHITE_LUMINANCE) ** (1/2.4)) * 1023
+    y = np.clip(y, 0.0, 1023)
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 8),
+        graph_title="Gamma 2.4 OETF",
+        graph_title_size=None,
+        xlabel="Luminance [cd/m2]",
+        ylabel="Code Value (10bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=[x * 128 for x in range(8)] + [1023],
+        linewidth=2.5,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.set_xscale('log', basex=10.0)
+    x_val = [1.0 * (10 ** (x - 4)) for x in range(9)]
+    x_caption = [r"$10^{{{}}}$".format(x - 4) for x in range(9)]
+    plt.xticks(x_val, x_caption)
+    ax1.plot(x, y, color=RGB_COLOUR_LIST[0],
+             label="Gamma 2.4 OETF")
+    plt.legend(loc='upper left')
+    plt.savefig("./figures/Gamma24_OETF.png",
                 bbox_inches='tight', pad_inches=0.1)
     plt.show()
 
@@ -263,7 +338,10 @@ def main():
     # 今回は既に変換済みのデータをコミットした。
     plot_tone_mapping_characteristics()
 
+    plot_st2084_oetf()
+
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    main()
+    # main()
+    plot_gamma24_oetf()
