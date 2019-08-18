@@ -1,10 +1,10 @@
-# 3DLUT を Python でサクッと作る
+# Python を利用した簡単な 3DLUT の作成
 
 ## 1. 目的
 
 3DLUTデータの作り方を簡単に解説する。例として HDR(※) のデータを SDR に変換する 3DLUT を作成する。
 
-なお、本記事は 3DLUT の作り方に特化した記事としたため基礎的な情報は省略している。3DLUT の基礎的な知識は [富士フィルムさんの資料](https://t.co/526Cc4wFYK)[1]を参照して欲しい。
+なお、本記事は 3DLUT の**作り方**に特化させたため原理などの基礎的な情報は省略している。3DLUT の基礎的な知識は [富士フィルムさんの資料](https://t.co/526Cc4wFYK)[1]を参照して欲しい。
 
 ※ここで言う **HDR のデータ** とは 伝達特性(Transfer Characteristics)、色域(Gamut)、白色点(White Point) がそれぞれ SMPTE ST2084, BT2020, D65 であるデータを意味する。
 
@@ -14,7 +14,7 @@ Python で 3DLUT を生成するサンプルコードを作成した。以下に
 
 [make_3dlut](https://github.com/toru-ver4/sample_code/tree/develop/2019/001_make_3dlut)
 
-生成した HDR to SDR 変換の 3DLUT データを以下に示す。サイズが大きいためオリジナルは Github に「[st2084_bt2020_to_gamma2.4_bt709.cube.zip](https://github.com/toru-ver4/sample_code/raw/develop/2019/001_make_3dlut/st2084_bt2020_to_gamma2.4_bt709.cube.zip)」として置いた。
+生成した HDR to SDR 変換の 3DLUT データを以下に示す。サイズが大きいためオリジナルは GitHub に [st2084_bt2020_to_gamma2.4_bt709.cube.zip](https://github.com/toru-ver4/sample_code/raw/develop/2019/001_make_3dlut/st2084_bt2020_to_gamma2.4_bt709.cube.zip) として置いた。
 
 ```text
 # This 3DLUT data was created by TY-LUT creation tool
@@ -44,12 +44,12 @@ LUT_3D_SIZE 65
 1.0000000000e+00 1.0000000000e+00 1.0000000000e+00
 ```
 
-これだけだと直感的には理解しずらいため、以下2点の処理をした csv ファイルを別に用意した。
+これだけだと直感的には理解しづらいため、以下2点の処理をした csv ファイルを別に用意した。
 
 * RGB の In と Out の関係を同じ行に表示
 * 浮動小数点表記ではなく 10bit整数型で表示
 
-結果を以下の 表1. に示す。サイズが大きいためオリジナルは Github に「[3dlut_for_blog.csv.zip](https://github.com/toru-ver4/sample_code/raw/develop/2019/001_make_3dlut/3dlut_for_blog.csv.zip)」として置いた。
+結果を以下の 表1. に示す。サイズが大きいためオリジナルは GitHub に [3dlut_for_blog.csv.zip](https://github.com/toru-ver4/sample_code/raw/develop/2019/001_make_3dlut/3dlut_for_blog.csv.zip) として置いた。
 
 |index | R_in | G_in | B_in | R_out | G_out | B_out|
 |:----:|----:|----:|----:|----:|----:|----:|
@@ -110,7 +110,7 @@ LUT_3D_SIZE 65
 
 ### 3.2. 格子点に相当する R, G, B データを作成
 
-格子点数が決定したら各格子点に相当する R, G, B のデータを作成する。この作業は 1.結論 の 表1. の ```R_in, G_in, B_in``` のデータを作ることに相当する。
+格子点数が決定したら各格子点に相当する R, G, B のデータを作成する。この作業は 2.結論 の 表1. の ```R_in, G_in, B_in``` のデータを作ることに相当する。
 
 ここからは先はプログラムを使わないと実現が難しいため Pythonコードを使って解説していく。まず筆者が作成したサンプルコードを示す。このコードを実行することで格子点データが作成できる。
 
@@ -131,11 +131,11 @@ def make_3dlut_grid(grid_num=65):
     return rgb_grid
 ```
 
-ポイントは以下の2点。
+ポイントは以下の3点。
 
 1. ```np.meshgrid``` を使って3次元の格子点を作成している[2]
 2. 格子点のデータが R, G, B の順に増加するようにしている
-3. 最大値が ```1.0``` となるように正規化している
+3. 最大値が ```1.0``` となるように正規化している（後の計算を行いやすくするため）
 
 念のため 2. について補足しておく。格子点数が 3x3x3 の場合の ```make_3dlut_grid``` の出力の実例を以下に示す。
 
@@ -170,13 +170,13 @@ array([[[ 0. ,  0. ,  0. ],
         [ 1. ,  1. ,  1. ]]])
 ```
 
-R, G, B の順にデータが増加していることが分かると思う。なお、行数の関係で格子点数を 3x3x3 としている。この順序にした理由は後述する 3DLUTフォーマットの1つである Cube 形式の増加順序に合わせたためである。
+R, G, B の順にデータが増加していることが分かると思う。なお、表示スペースの都合で格子点数を 3x3x3 としている。この順序にした理由は後述する 3DLUTフォーマットの1つである Cube 形式の仕様に合わせたためである。
 
 まとめると ```make_3dlut_grid(grid_num=65)``` を実行することで 65x65x65 点の 3DLUT の格子点データを作成できる。
 
 ### 3.3. R, G, B データに対して所望の処理を実行
 
-格子点の代表値のデータが準備できたら、R, G, B データに対して所望の処理(今回の例だと Gamma2.4-BT709-D65 への変換が該当)を実行する。これは 1.結論 の 表1. の ```R_out, G_out, B_out``` のデータを作ることに相当する。
+格子点の代表値のデータが準備できたら、R, G, B データに対して所望の処理(今回の例だと Gamma2.4-BT709-D65 への変換が該当)を実行する。これは 2.結論 の 表1. の ```R_out, G_out, B_out``` のデータを作ることに相当する。
 
 今回のサンプルでは以下の書き方となる。具体的な変換処理は外部ライブラリの Colour Science for Python[3] を利用した。
 
@@ -205,7 +205,7 @@ R, G, B の順にデータが増加していることが分かると思う。な
 
 ### 3.4. 変換後の R, G, B 値を LUTデータとしてテキストファイルに保存
 
-LUT値が計算できたら Davinci Resolve 等の各種ツールで読み込めるよう Adobe の Cube 形式[4]でファイルに保存する。Cube 形式を採用したのは広く使われているからである。例えば SONY の S-Log3/S-Gamut3 や キヤノンの CinemaGamut/CanonLog3 を変換する 3DLUT は Cube 形式て提供されている[5][6]。
+LUT値が計算できたら Davinci Resolve 等の各種ツールで読み込めるよう Adobe の Cube 形式[4]でファイルに保存する。今回のサンプルコードでは以下の箇所に該当する。
 
 ```python
     # 自作の LUTライブラリのクソ仕様のため shape を変換する
@@ -217,11 +217,11 @@ LUT値が計算できたら Davinci Resolve 等の各種ツールで読み込め
         lut=lut_for_save, grid_num=grid_num, filename=lut_fname)
 ```
 
-Cube 形式のファイルの中身は 2.結論 で示した通りである。
+Cube 形式を採用したのは広く使われているからである。例えば SONY の S-Log3/S-Gamut3 や キヤノンの CinemaGamut/CanonLog3 を変換する 3DLUT は Cube 形式て提供されている[5][6]。なお、Cube 形式のファイルの中身は 2.結論 で示した通りである。
 
 ## 4. 3DLUT をテストパターン画像に適用
 
-作成した 3DLUT を検証用テストパターンに適用した結果を示しておく。以下の図は 3DLUT を使って HDR のテストパターンを SDR に変換したものである。なお、3DLUT の適用には Davinci Resolve を使用した。
+作成した 3DLUT を検証用テストパターンに適用した結果を示しておく。以下の図1. は 3DLUT を使って HDR のテストパターンを SDR に変換したものである。なお、3DLUT の適用には Davinci Resolve を使用した。
 
 | ソース画像 | 3DLUT を使い変換した結果 |
 |:---------:|:---------:|
@@ -233,7 +233,11 @@ Cube 形式のファイルの中身は 2.結論 で示した通りである。
 
 今回作成した 3DLUT は Tone Mapping や Gamut Mapping などの最適化処理は一切実施していない。単純な数値変換を行っただけである。そのため、実コンテンツに対して ST2084, BT2020, D65 to  Gamma2.4, BT709, D65 変換すると白飛びなどのアーティファクトが多数発生してしまう。あくまでも 3DLUT の一例として捉えて欲しい。
 
-## 6. 参考資料
+## 6. 感想
+
+現在、ACES の RRT+ODT を実現する 3DLUT 作成のまとめ記事を書いている。その補足資料として本記事を書いたのだが、想定よりもだいぶ長くなってしまった。本編の記事の作成も引き続き頑張る。
+
+## 7. 参考資料
 
 [1] FUJIFILM, "3DLUT作成のサンプルコードの作成", http://fujifilm.jp/business/broadcastcinema/solution/color_management/is-mini/promotion/pack/pdf/news/20150122_jppa.pdf (2019/08/12 リンク切れを確認。Internet Archive → https://t.co/526Cc4wFYK)
 
