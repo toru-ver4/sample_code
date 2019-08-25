@@ -212,13 +212,13 @@ def save_3dlut(lut, grid_num, filename="./data/lut_sample/cube.cube",
 
     if ext == ".cube":
         save_3dlut_cube_format(lut, grid_num, filename=filename,
-                               title="cube_test", min=min, max=max)
+                               title=title, min=min, max=max)
     elif ext == ".3dl":
         save_3dlut_3dl_format(lut, grid_num, filename=filename,
-                              title="cube_test", min=min, max=max)
+                              title=title, min=min, max=max)
     elif ext == ".spi3d":
         save_3dlut_spi_format(lut, grid_num, filename=filename,
-                              title="spi3d_test", min=min, max=max)
+                              title=title, min=min, max=max)
     else:
         raise IOError('extension "{:s}" is not supported.'.format(ext))
 
