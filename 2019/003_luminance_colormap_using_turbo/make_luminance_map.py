@@ -16,9 +16,13 @@ from scipy import interpolate
 import turbo_colormap  # https://gist.github.com/mikhailov-work/ee72ba4191942acecc03fe6da94fc73f
 
 # 自作ライブラリのインポート
+import lut
 
 
 def preview_image(img, order='rgb', over_disp=False):
+    """
+    画像をプレビューする。何かキーを押すとウィンドウは消える。
+    """
     if order == 'rgb':
         cv2.imshow('preview', img[:, :, ::-1])
     elif order == 'bgr':
@@ -35,6 +39,8 @@ def preview_image(img, order='rgb', over_disp=False):
 def get_turbo_colormap():
     """
     Turbo の Colormap データを Numpy形式で取得する
+    以下のソースコードを利用。
+    https://gist.github.com/mikhailov-work/ee72ba4191942acecc03fe6da94fc73f
     """
     return np.array(turbo_colormap.turbo_colormap_data)
 
@@ -94,7 +100,9 @@ def log_y_to_turbo(log_y):
     輝度データを Turbo で色付けする。
     輝度データは Non-Linear かつ [0:1] の範囲とする。
 
-    scipy.interpolate.interp1d を使って、R, G, B の
+    Turbo は 256エントリ数の LUT として定義されているが、
+    log_y の値は浮動小数点であるため、補間計算が必要である。
+    今回は scipy.interpolate.interp1d を使って、R, G, B の
     各種値を線形補間して使う。
 
     Parameters
@@ -112,21 +120,28 @@ def log_y_to_turbo(log_y):
     if len(turbo.shape) != 2:
         print("warning: turbo shape is invalid.")
 
-    # scipy.interpolate.interp1d を使って補間する準備
+    # scipy.interpolate.interp1d を使って線形補間する準備
     x = np.linspace(0, 1, turbo.shape[0])
     func_rgb = [interpolate.interp1d(x, turbo[:, idx]) for idx in range(3)]
 
+    # 線形補間の実行
     out_rgb = [func(log_y) for func in func_rgb]
 
     return np.dstack(out_rgb)
 
 
 def get_output_filename(in_filename):
+    """
+    元のファイル名のお尻に **_turbo** をつけるだけ
+    """
     root, _ = os.path.splitext(in_filename)
     return root + "_turbo.tiff"
 
 
 def main_func(in_img_fname="./img/pq_bt2020_d65_tp.tiff"):
+    """
+    HDR10 相当の画像ファイルのY成分を Turbo を使ってマッピング。
+    """
     # HDR10 ファイルの Y成分を計算
     y = calc_luminance_from_hdr10_still_image(
         img_name=in_img_fname)
@@ -137,7 +152,7 @@ def main_func(in_img_fname="./img/pq_bt2020_d65_tp.tiff"):
     # Non-Linear 空間で Trubo 適用
     turbo_img = log_y_to_turbo(log_y=log_y)
 
-    # プロット
+    # プレビュー
     preview_image(turbo_img)
 
     # 保存
@@ -145,7 +160,38 @@ def main_func(in_img_fname="./img/pq_bt2020_d65_tp.tiff"):
     img_file_write(out_fname, turbo_img)
 
 
+def omake_func():
+    """
+    3DLUT を作ってみる。3DLUT の IN-OUT の
+    カラースペースは以下を想定。
+
+    * In: PQ, BT.2020, D65
+    * Out: sRGB, sRGB, D65
+
+    """
+    grid_num = 65
+    grid = lut.get_3d_grid_cube_format(grid_num)
+
+    # Y成分算出
+    rgb_linear = eotf_ST2084(grid)
+    y_linear = RGB_luminance(
+        RGB=rgb_linear, primaries=BT2020_COLOURSPACE.primaries,
+        whitepoint=BT2020_COLOURSPACE.whitepoint)
+
+    # PQ でエンコードしなおし。
+    log_y = oetf_ST2084(y_linear)
+
+    # Turbo 適用
+    turbo = log_y_to_turbo(log_y=log_y)
+
+    # 保存
+    lut_data = turbo.reshape((turbo.shape[1], turbo.shape[2]))
+    lut.save_3dlut(lut=lut_data, grid_num=grid_num,
+                   filename="./3dlut/PQ_BT2020_to_Turbo_sRGB.cube")
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    main_func(in_img_fname="./img/pq_bt2020_d65_tp.tiff")
-    main_func(in_img_fname="./img/sample_hdr_000.tif")
+    # main_func(in_img_fname="./img/pq_bt2020_d65_tp.tiff")
+    # main_func(in_img_fname="./img/sample_hdr_000.tif")
+    omake_func()
