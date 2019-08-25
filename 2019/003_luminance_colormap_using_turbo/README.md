@@ -30,13 +30,15 @@ Google AI Blog にて **Turbo** という Rainbow Colormap が発表された。
 
 詳細説明は省略する。ソースコード(```make_luminance_map.py```)は以下の場所に置いたので必要であれば参照して頂きたい。
 
+[ソースコードなど](https://github.com/toru-ver4/sample_code/tree/develop/2019/003_luminance_colormap_using_turbo)。
+
 ## 感想
 
 想像してたよりずっと良かった！
 
 ## おまけ
 
-3DLUT も作った。ココ に置いてある。Davinci Resolve で使ってみた様子を 図5 に示す。
+3DLUT も作った。[ココ](https://github.com/toru-ver4/sample_code/raw/develop/2019/003_luminance_colormap_using_turbo/3dlut/PQ_BT2020_to_Turbo_sRGB.zip) に置いてある。Davinci Resolve で使ってみた様子を 図5 に示す。
 
 ![zu5](./blog_img/apply_3dlut.png)
 
