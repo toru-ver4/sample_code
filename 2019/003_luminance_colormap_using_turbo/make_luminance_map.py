@@ -187,7 +187,8 @@ def omake_func():
     # 保存
     lut_data = turbo.reshape((turbo.shape[1], turbo.shape[2]))
     lut.save_3dlut(lut=lut_data, grid_num=grid_num,
-                   filename="./3dlut/PQ_BT2020_to_Turbo_sRGB.cube")
+                   filename="./3dlut/PQ_BT2020_to_Turbo_sRGB.cube",
+                   title="ST2084_BT2020_D65_to_sRGB")
 
 
 if __name__ == '__main__':
