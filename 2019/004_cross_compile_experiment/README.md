@@ -3,6 +3,10 @@
 
 ## 事前準備
 
+まず WSL 上に Ubuntu 18.04 を用意する。Windows Store から普通にインストールできる。
+
+続いて、必要と思われるパッケージを入れる（```build-essential``` は要らなかったかも😅）
+
 ```Shell
 sudo apt-get update
 sudo apt-get install build-essential mingw-w64 -y
