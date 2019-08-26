@@ -75,7 +75,7 @@ def update(frame_idx, ax1, ax2, x, img):
     x_caption = [r"$10^{{{}}}$".format(x - 3) for x in range(7)]
     ax1.set_xticks(x_val, x_caption)
 
-    peak_luminance = (frame_idx + 1) * 100
+    peak_luminance = (frame_idx + 1) * 10
     out_img = img / peak_luminance
     out_img = out_img.clip(0.0, 1.0)
     x2 = x / (peak_luminance / REF_WHITE_LUMINANCE)
@@ -100,8 +100,9 @@ def main_func():
 
     # plot の実行
     ani = animation.FuncAnimation(
-        fig, update, interval=100, frames=100, fargs=[ax1, ax2, x, img_linear])
-    plt.show()
+        fig, update, interval=100, frames=30, fargs=[ax1, ax2, x, img_linear])
+    # plt.show()
+    ani.save("hoge.mp4", writer='ffmpeg')
 
 
 if __name__ == '__main__':
