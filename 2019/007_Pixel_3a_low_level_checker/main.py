@@ -18,7 +18,8 @@ from PIL import ImageDraw
 from TyImageIO import TyWriter
 
 
-PQ_10BIT_CV_PAIR_LIST = [[0, 4], [0, 8], [0, 16], [0, 32], [0, 64], [0, 128]]
+PQ_10BIT_CV_PAIR_LIST = [[0, 4], [0, 8], [0, 16], [0, 32], [0, 64],
+                         [0, 96], [0, 128], [0, 160], [0, 192], [0, 224]]
 
 
 def preview_image(img, order='rgb', over_disp=False):
@@ -147,6 +148,54 @@ def merge_each_spec_text(img, pos, font_size, text_img_size, text):
     merge_text(img, txt_img, pos)
 
 
+def _make_tile_pattern_vdirection(
+        width=3840, height=2160, h_tile_num=32, v_tile_num=18,
+        low_level=[940, 940, 940], high_level=[1019, 1019, 1019],
+        color_list=[[1, 1, 1], [1, 0, 0], [0, 1, 0], [0, 0, 1]]):
+    """
+    make_tile_pattern_wwrgbmyc のサブルーチン。
+    縦方向に4色分のパターンを作成する。
+    """
+    img_buf = []
+    for v_idx, color in enumerate(color_list):
+        low_temp = [low_level[idx] * color[idx] for idx in range(3)]
+        high_temp = [high_level[idx] * color[idx] for idx in range(3)]
+        temp = make_tile_pattern(
+            width=width//2, height=height//4, h_tile_num=32, v_tile_num=9,
+            low_level=low_temp, high_level=high_temp)
+        temp = temp[:, ::-1, :] if v_idx % 2 != 0 else temp
+        img_buf.append(temp)
+
+    return np.vstack(img_buf)
+
+
+def make_tile_pattern_wwrgbmyc(
+        width=3840, height=2160, h_tile_num=32, v_tile_num=18,
+        low_level=[940, 940, 940], high_level=[1019, 1019, 1019]):
+    """
+    画面を8分割し、WWRGBMYC タイル状パターンを作る。
+    White が 2つあるのは隙間を埋めるため
+    """
+    # wrgb
+    color_list = [[1, 1, 1], [1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    wrgb_img = _make_tile_pattern_vdirection(
+        width=width, height=height,
+        h_tile_num=h_tile_num, v_tile_num=v_tile_num,
+        low_level=low_level, high_level=high_level,
+        color_list=color_list)
+
+    # wcmy
+    color_list = [[1, 1, 1], [1, 0, 1], [1, 1, 0], [0, 1, 1]]
+    wmyc_img = _make_tile_pattern_vdirection(
+        width=width, height=height,
+        h_tile_num=h_tile_num, v_tile_num=v_tile_num,
+        low_level=low_level, high_level=high_level,
+        color_list=color_list)
+
+    # preview_image(np.hstack([wrgb_img, wmyc_img])/1023)
+    return np.hstack([wrgb_img, wmyc_img])
+
+
 def main_func():
     """
     Pixel 3a 用のパターンを作成する。
@@ -160,8 +209,8 @@ def main_func():
         text = text_fmt.format(cv_pair[0], cv_pair[1])
         low_level = (cv_pair[0], cv_pair[0], cv_pair[0])
         high_level = (cv_pair[1], cv_pair[1], cv_pair[1])
-        img = make_tile_pattern(
-            width=width, height=height, h_tile_num=16, v_tile_num=9,
+        img = make_tile_pattern_wwrgbmyc(
+            width=width, height=height, h_tile_num=32, v_tile_num=18,
             low_level=low_level, high_level=high_level)
         merge_each_spec_text(img, pos=(50, 50), font_size=100,
                              text_img_size=(2000, 2000), text=text)
