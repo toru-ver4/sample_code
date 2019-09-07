@@ -8,7 +8,6 @@ Turbo を使ってHDR10信号の輝度マップを作成する
 # 外部ライブラリのインポート
 import os
 import numpy as np
-import math
 import cv2
 from PIL import Image
 from PIL import ImageFont
@@ -16,87 +15,14 @@ from PIL import ImageDraw
 
 # 自作ライブラリのインポート
 from TyImageIO import TyWriter
+import test_pattern_generator2 as tpg
 
 
-PQ_10BIT_CV_PAIR_LIST = [[0, 4], [0, 8], [0, 16], [0, 32], [0, 64],
-                         [0, 96], [0, 128], [0, 160], [0, 192], [0, 224]]
-
-
-def preview_image(img, order='rgb', over_disp=False):
-    """
-    画像をプレビューする。何かキーを押すとウィンドウは消える。
-    """
-    if order == 'rgb':
-        cv2.imshow('preview', img[:, :, ::-1])
-    elif order == 'bgr':
-        cv2.imshow('preview', img)
-    else:
-        raise ValueError("order parameter is invalid")
-
-    if over_disp:
-        cv2.resizeWindow('preview', )
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
-def equal_devision(length, div_num):
-    """
-    # 概要
-    length を div_num で分割する。
-    端数が出た場合は誤差拡散法を使って上手い具合に分散させる。
-    """
-    base = length / div_num
-    ret_array = [base for x in range(div_num)]
-
-    # 誤差拡散法を使った辻褄合わせを適用
-    # -------------------------------------------
-    diff = 0
-    for idx in range(div_num):
-        diff += math.modf(ret_array[idx])[0]
-        if diff >= 1.0:
-            diff -= 1.0
-            ret_array[idx] = int(math.floor(ret_array[idx]) + 1)
-        else:
-            ret_array[idx] = int(math.floor(ret_array[idx]))
-
-    # 計算誤差により最終点が +1 されない場合への対処
-    # -------------------------------------------
-    diff = length - sum(ret_array)
-    if diff != 0:
-        ret_array[-1] += diff
-
-    # 最終確認
-    # -------------------------------------------
-    if length != sum(ret_array):
-        raise ValueError("the output of equal_division() is abnormal.")
-
-    return ret_array
-
-
-def make_tile_pattern(width=480, height=960, h_tile_num=4,
-                      v_tile_num=4, low_level=(940, 940, 940),
-                      high_level=(1023, 1023, 1023)):
-    """
-    タイル状の縞々パターンを作る
-    """
-    width_array = equal_devision(width, h_tile_num)
-    height_array = equal_devision(height, v_tile_num)
-    high_level = np.array(high_level, dtype=np.uint16)
-    low_level = np.array(low_level, dtype=np.uint16)
-
-    v_buf = []
-
-    for v_idx, height in enumerate(height_array):
-        h_buf = []
-        for h_idx, width in enumerate(width_array):
-            tile_judge = (h_idx + v_idx) % 2 == 0
-            h_temp = np.zeros((height, width, 3), dtype=np.uint16)
-            h_temp[:, :] = high_level if tile_judge else low_level
-            h_buf.append(h_temp)
-
-        v_buf.append(np.hstack(h_buf))
-    img = np.vstack(v_buf)
-    return img
+PQ_10BIT_LOW_CV_PAIR_LIST = [[0, 4], [0, 8], [0, 16], [0, 32], [0, 64],
+                             [0, 96], [0, 128], [0, 160], [0, 192], [0, 224]]
+PQ_10BIT_HIGH_CV_PAIR_LIST = [[1023, 688], [1023, 704], [1023, 720],
+                              [1023, 736], [1023, 752], [1023, 768],
+                              [1023, 848], [1023, 928]]
 
 
 def convert_from_pillow_to_numpy(img):
@@ -154,13 +80,13 @@ def _make_tile_pattern_vdirection(
         color_list=[[1, 1, 1], [1, 0, 0], [0, 1, 0], [0, 0, 1]]):
     """
     make_tile_pattern_wwrgbmyc のサブルーチン。
-    縦方向に4色分のパターンを作成する。
+    縦方向に(W, R, G, B) or (W, M, Y, C) の 4色分のパターンを作成する。
     """
     img_buf = []
     for v_idx, color in enumerate(color_list):
         low_temp = [low_level[idx] * color[idx] for idx in range(3)]
         high_temp = [high_level[idx] * color[idx] for idx in range(3)]
-        temp = make_tile_pattern(
+        temp = tpg.make_tile_pattern(
             width=width//2, height=height//4, h_tile_num=32, v_tile_num=9,
             low_level=low_temp, high_level=high_temp)
         temp = temp[:, ::-1, :] if v_idx % 2 != 0 else temp
@@ -192,15 +118,11 @@ def make_tile_pattern_wwrgbmyc(
         low_level=low_level, high_level=high_level,
         color_list=color_list)
 
-    # preview_image(np.hstack([wrgb_img, wmyc_img])/1023)
+    # tpg.preview_image(np.hstack([wrgb_img, wmyc_img])/1023)
     return np.hstack([wrgb_img, wmyc_img])
 
 
-def main_func():
-    """
-    Pixel 3a 用のパターンを作成する。
-    """
-    cv_pair_list = PQ_10BIT_CV_PAIR_LIST
+def make_tile_pattern_sequence(cv_pair_list=PQ_10BIT_LOW_CV_PAIR_LIST):
     width = 3840
     height = 2160
     text_fmt = "low = ( {} / 1023 )\nhigh = ( {} / 1023 )"
@@ -218,6 +140,16 @@ def main_func():
         attr = {"oiio:BitsPerSample": 10}
         writer = TyWriter(img=img/0x3FF, fname=out_name, attr=attr)
         writer.write()
+
+
+def main_func():
+    """
+    Pixel 3a 用のパターンを作成する。
+    """
+    # low level, hight level checker
+    # make_tile_pattern_sequence(PQ_10BIT_LOW_CV_PAIR_LIST)
+    # make_tile_pattern_sequence(PQ_10BIT_HIGH_CV_PAIR_LIST)
+
 
 
 if __name__ == '__main__':
