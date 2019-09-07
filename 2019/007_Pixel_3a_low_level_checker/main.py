@@ -12,6 +12,7 @@ import cv2
 from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
+from colour.models import eotf_ST2084
 
 # 自作ライブラリのインポート
 from TyImageIO import TyWriter
@@ -20,9 +21,9 @@ import test_pattern_generator2 as tpg
 
 PQ_10BIT_LOW_CV_PAIR_LIST = [[0, 4], [0, 8], [0, 16], [0, 32], [0, 64],
                              [0, 96], [0, 128], [0, 160], [0, 192], [0, 224]]
-PQ_10BIT_HIGH_CV_PAIR_LIST = [[1023, 688], [1023, 704], [1023, 720],
-                              [1023, 736], [1023, 752], [1023, 768],
-                              [1023, 848], [1023, 928]]
+PQ_10BIT_HIGH_CV_PAIR_LIST = [[688, 1023], [704, 1023], [720, 1023],
+                              [736, 1023], [752, 1023], [768, 1023],
+                              [848, 1023], [928, 1023]]
 
 
 def convert_from_pillow_to_numpy(img):
@@ -125,17 +126,30 @@ def make_tile_pattern_wwrgbmyc(
 def make_tile_pattern_sequence(cv_pair_list=PQ_10BIT_LOW_CV_PAIR_LIST):
     width = 3840
     height = 2160
-    text_fmt = "low = ( {} / 1023 )\nhigh = ( {} / 1023 )"
+    code_value_text_fmt = "low: ( {} / 1023 )\nhigh: ( {} / 1023 )"
+    luminance_text_fmt = "low: {:.4g} nits\nhigh: {:.5g} nits"
     out_name_fmt = "./out_img/low_{}_high_{}.dpx"
     for cv_pair in cv_pair_list:
-        text = text_fmt.format(cv_pair[0], cv_pair[1])
+        # 画像作成
         low_level = (cv_pair[0], cv_pair[0], cv_pair[0])
         high_level = (cv_pair[1], cv_pair[1], cv_pair[1])
         img = make_tile_pattern_wwrgbmyc(
             width=width, height=height, h_tile_num=32, v_tile_num=18,
             low_level=low_level, high_level=high_level)
+
+        # Code Value値をテキストとして付与
+        text = code_value_text_fmt.format(cv_pair[0], cv_pair[1])
         merge_each_spec_text(img, pos=(50, 50), font_size=100,
-                             text_img_size=(2000, 2000), text=text)
+                             text_img_size=(2000, 1920), text=text)
+
+        # 絶対輝度値をテキストとして付与
+        low_luminance = eotf_ST2084(cv_pair[0] / 1023)
+        high_luminance = eotf_ST2084(cv_pair[1] / 1023)
+        text = luminance_text_fmt.format(low_luminance, high_luminance)
+        merge_each_spec_text(img, pos=(1920 + 50, 50), font_size=100,
+                             text_img_size=(1870, 2000), text=text)
+
+        # ファイル書き出し
         out_name = out_name_fmt.format(cv_pair[0], cv_pair[1])
         attr = {"oiio:BitsPerSample": 10}
         writer = TyWriter(img=img/0x3FF, fname=out_name, attr=attr)
@@ -147,9 +161,8 @@ def main_func():
     Pixel 3a 用のパターンを作成する。
     """
     # low level, hight level checker
-    # make_tile_pattern_sequence(PQ_10BIT_LOW_CV_PAIR_LIST)
-    # make_tile_pattern_sequence(PQ_10BIT_HIGH_CV_PAIR_LIST)
-
+    make_tile_pattern_sequence(PQ_10BIT_LOW_CV_PAIR_LIST)
+    make_tile_pattern_sequence(PQ_10BIT_HIGH_CV_PAIR_LIST)
 
 
 if __name__ == '__main__':
