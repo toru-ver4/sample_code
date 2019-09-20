@@ -12,11 +12,13 @@ import cv2
 from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
-from colour.models import eotf_ST2084
+from colour.models import eotf_ST2084, oetf_ST2084, RGB_to_RGB,\
+    RGB_COLOURSPACES
 
 # 自作ライブラリのインポート
 from TyImageIO import TyWriter
 import test_pattern_generator2 as tpg
+import color_space as cs
 
 
 PQ_10BIT_LOW_CV_PAIR_LIST = [[0, 4], [0, 8], [0, 16], [0, 32], [0, 64],
@@ -25,11 +27,17 @@ PQ_10BIT_HIGH_CV_PAIR_LIST = [[688, 1023], [704, 1023], [720, 1023],
                               [736, 1023], [752, 1023], [768, 1023],
                               [848, 1023], [928, 1023]]
 
+PQ_REF_WHITE_NITS = 203  # Report ITU-R BT.2408-2
+
 
 def convert_from_pillow_to_numpy(img):
     img = np.uint16(np.asarray(img)) * 2 ** (10 - 8)
 
     return img
+
+
+def convert_from_float_to_int_10bit(x):
+    return np.uint16(np.round(x * 1023))
 
 
 def merge_text(img, txt_img, pos):
@@ -126,8 +134,8 @@ def make_tile_pattern_wwrgbmyc(
 def make_tile_pattern_sequence(cv_pair_list=PQ_10BIT_LOW_CV_PAIR_LIST):
     width = 3840
     height = 2160
-    code_value_text_fmt = "low: ( {} / 1023 )\nhigh: ( {} / 1023 )"
-    luminance_text_fmt = "low: {:.4g} nits\nhigh: {:.5g} nits"
+    code_value_text_fmt = "low : ( {} / 1023 )\nhigh: ( {} / 1023 )"
+    luminance_text_fmt = "low : {:.4g} nits\nhigh: {:.5g} nits"
     out_name_fmt = "./out_img/low_{}_high_{}.dpx"
     for cv_pair in cv_pair_list:
         # 画像作成
@@ -156,13 +164,92 @@ def make_tile_pattern_sequence(cv_pair_list=PQ_10BIT_LOW_CV_PAIR_LIST):
         writer.write()
 
 
+def make_primary_color_code_value_on_bt2020(color_space=cs.BT709):
+    """
+    任意の色域の RGB の Primary Colors が BT.2020 の
+    Code Value値(10bit) を算出する。
+
+    Returns
+    -------
+    array_like
+        10bit code value array of the primary colors.
+
+    Examples
+    --------
+    >>> make_primary_color_code_value_on_bt2020('ITU-R BT.709')
+    array([  1.58232402e-13   1.00000000e+00])
+    """
+    primaries = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    in_cs = RGB_COLOURSPACES[color_space]
+    out_cs = RGB_COLOURSPACES[cs.BT2020]
+    primaries_on_bt2020 = RGB_to_RGB(
+        RGB=primaries, input_colourspace=in_cs, output_colourspace=out_cs)
+
+    # 範囲外はハードクリップ
+    primaries_on_bt2020 = np.clip(primaries_on_bt2020, 0.0, 1.0)
+
+    # PQ の Ref White(203nits) に正規化しつつ、PQ の OETF を適用
+    primaries_on_bt2020 = primaries_on_bt2020 * PQ_REF_WHITE_NITS
+    primaries_on_bt2020 = oetf_ST2084(primaries_on_bt2020)
+
+    return convert_from_float_to_int_10bit(primaries_on_bt2020)
+
+
+def make_primaries_tile_pattern_on_bt2020_half(
+        inner_cs=cs.BT709, outer_cs=cs.P3_D65,
+        width=1920, height=2160):
+    """
+    make_primaries_tile_pattern_on_bt2020 のサブルーチン。
+    make_primaries_tile_pattern_on_bt2020 は画面の左右で
+    色域を変えるため、この関数では画面の半分を作る。
+    """
+    inner_primaries = make_primary_color_code_value_on_bt2020(inner_cs)
+    outer_primaries = make_primary_color_code_value_on_bt2020(outer_cs)
+    img_buf = []
+    for in_val, out_val in zip(inner_primaries, outer_primaries):
+        temp = tpg.make_tile_pattern(
+            width=width, height=height//3, h_tile_num=32, v_tile_num=12,
+            low_level=in_val, high_level=out_val)
+        img_buf.append(temp)
+
+    img = np.vstack(img_buf)
+    text = "chroma_low : {}\nchroma_high: {}".format(inner_cs, outer_cs)
+    merge_each_spec_text(img, pos=(50, 50), font_size=100,
+                         text_img_size=(1870, 1870), text=text)
+
+    # tpg.preview_image(img / 1023)
+
+    return img
+
+
+def make_primaries_tile_pattern_on_bt2020(width=3840, height=2160):
+    """
+    2つの異なる Primary Colors に対するタイルパターンを作る。
+    Primary Colors は **BT.2020** の Gamut にマッピングする。
+    """
+    left_img = make_primaries_tile_pattern_on_bt2020_half(
+        inner_cs=cs.BT709, outer_cs=cs.P3_D65, width=width//2, height=height)
+    right_img = make_primaries_tile_pattern_on_bt2020_half(
+        inner_cs=cs.P3_D65, outer_cs=cs.BT2020, width=width//2, height=height)
+    img = np.hstack([left_img, right_img])
+
+    # tpg.preview_image(img / 1023)
+
+    # ファイル書き出し
+    out_name = "./out_img/chroma_tile_checker.dpx"
+    attr = {"oiio:BitsPerSample": 10}
+    writer = TyWriter(img=img/0x3FF, fname=out_name, attr=attr)
+    writer.write()
+
+
 def main_func():
     """
     Pixel 3a 用のパターンを作成する。
     """
     # low level, hight level checker
-    make_tile_pattern_sequence(PQ_10BIT_LOW_CV_PAIR_LIST)
-    make_tile_pattern_sequence(PQ_10BIT_HIGH_CV_PAIR_LIST)
+    # make_tile_pattern_sequence(PQ_10BIT_LOW_CV_PAIR_LIST)
+    # make_tile_pattern_sequence(PQ_10BIT_HIGH_CV_PAIR_LIST)
+    make_primaries_tile_pattern_on_bt2020(width=3840, height=2160)
 
 
 if __name__ == '__main__':
