@@ -14,12 +14,18 @@ static char *get_char_from_stdin(char *s, int n);
 
 static char *get_char_from_stdin(char *s, int n)
 {
-   if (fgets(s, n, stdin) == NULL) return NULL;
+   // get all strings.
+   if(fgets(s, n, stdin) == NULL) return NULL;
+   // get linefeed code
    char *ln = strchr(s, '\n');
-   if (ln) *ln = '\0';
-   else while (1) {
-      int c = getchar();
-      if (c == '\n' || c == EOF) break;
+   // replace linefeed code to tarmination character.
+   if(ln){
+       *ln = '\0';
+   }
+   else{
+       printf("invalid stdin strings...\n");
+       printf("linefeed code was not found.\n");
+       exit(1);
    }
    return s;
 }
@@ -55,11 +61,6 @@ int device_control_main(void)
         save_log(filename, buf);
         counter += 1;
     }
-    // for(ii=0; ii<5; ii++){
-    //     sprintf(filename, "file_%d.txt", ii);
-    //     // printf("%s\n", filename);
-    //     save_log(filename, filename);
-    // }
 
     printf("exit while loop\n");
     
