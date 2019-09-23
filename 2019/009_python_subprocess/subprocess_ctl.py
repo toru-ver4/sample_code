@@ -41,18 +41,6 @@ class SubprocessCtrl():
         self.proc.stdin.flush()
 
 
-def check_communication_exe_files():
-    args = ["./bin/subprocess.exe"]
-    p = Popen(args, stdin=PIPE, stdout=PIPE)
-    stdout_thread = Thread(target=print_stdout, args=(p,))
-    stdout_thread.start()
-    p.stdin.write(b"omaehadareda\n")
-    p.stdin.flush()
-    p.stdin.write(b"EOFEOF\n")
-    p.stdin.flush()
-    stdout_thread.join(timeout=STDOUT_THREAD_TIMEOUT_SEC)
-
-
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # check_communication_exe_files()
