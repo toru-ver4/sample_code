@@ -21,6 +21,19 @@ import lut
 
 
 SRC_IMG = "./src_img/Gamma 2.4_ITU-R BT.2020_D65_1920x1080_rev03_type1.exr"
+DST_FILE_NAME_PREFIX = "./dst_img/"
+
+
+def tiff_file_write(filename, img):
+    """
+    OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
+    """
+    cv2.imwrite(filename, img[:, :, ::-1])
+
+
+def exr_file_read(fname):
+    reader = tyio.TyReader(fname)
+    return reader.read()
 
 
 def get_log2_x_scale(
@@ -119,31 +132,57 @@ def make_simple_bt2020_to_bt709_3dlut(grid_num=65):
 
 def make_shaper_plus_bt2020_to_bt709_3dlut(grid_num=65, sample_num_1d=1024):
     mid_gray = 0.18
-    min_exposure = -5.0
-    max_exposure = 5.0
+    min_exposure = -20.0
+    max_exposure = 3
+
+    # make shaper 1dlut
     x_shaper = np.linspace(0, 1, sample_num_1d)
-    y_shaper = shaper_func_linear_to_log2(
+    y_shaper = shaper_func_log2_to_linear(
         x=x_shaper, mid_gray=mid_gray,
         min_exposure=min_exposure, max_exposure=max_exposure)
+    lut_1d_fname = "./luts/linear_bt2020_to_gamma2.4_bt709_shaper.spi1d"
+    lut.save_1dlut(lut=y_shaper, filename=lut_1d_fname)
+
+    # make 3dlut with shaper
+    x_3d = lut.make_3dlut_grid(grid_num)
+    temp_3d = shaper_func_log2_to_linear(
+        x=x_3d, mid_gray=mid_gray,
+        min_exposure=min_exposure, max_exposure=max_exposure)
+    temp_3d = RGB_to_RGB(temp_3d, BT2020_COLOURSPACE, BT709_COLOURSPACE)
+    temp_3d = np.clip(temp_3d, 0.0, 1.0)
+    y_3d = temp_3d ** (1/2.4)
+    lut_fname = "./luts/linear_bt2020_to_gamma2.4_bt709_with_shaper.spi3d"
+    lut.save_3dlut(
+        lut=y_3d, grid_num=grid_num, filename=lut_fname)
 
 
 def convert_from_bt2020_to_bt709_using_formula():
     """
     数式を使用した色域変換を実行する。
     入力：Linear
-    出力：Linear
+    出力：2.4
     """
-    pass
+    src_img = exr_file_read(SRC_IMG)
+    temp_img = RGB_to_RGB(src_img, BT2020_COLOURSPACE, BT709_COLOURSPACE)
+    temp_img = np.clip(temp_img, 0.0, 1.0)
+    dst_img = np.uint16(np.round((temp_img ** (1/2.4)) * 0xFFFF))
+    dst_img_fname = DST_FILE_NAME_PREFIX + "formula.tiff"
+    tiff_file_write(filename=dst_img_fname, img=dst_img)
 
 
 def main_func():
     # 単純な 3DLUT 作成
-    make_simple_bt2020_to_bt709_3dlut()
+    grid_num = 65
+    shaper_lut_sample_num = 1024
+    make_simple_bt2020_to_bt709_3dlut(grid_num=grid_num)
+    make_shaper_plus_bt2020_to_bt709_3dlut(
+        grid_num=grid_num, sample_num_1d=shaper_lut_sample_num)
+    convert_from_bt2020_to_bt709_using_formula()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     main_func()
-    print(eotf_ST2084(1.0/1023) / 100.0)
-    a = shaper_func_log2_to_linear(0.0, mid_gray=0.18, min_exposure=-20, max_exposure=4)
+    print((1/1023) ** 2.4)
+    a = shaper_func_log2_to_linear(0.0, mid_gray=0.18, min_exposure=-20, max_exposure=3)
     print(a)
