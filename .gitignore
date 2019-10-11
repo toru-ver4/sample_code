@@ -110,3 +110,7 @@ venv.bak/
 2019/005_make_animation_using_matplotlib/*.mp4
 2019/008_necessity_shaper_lut/src_img/*.exr
 2019/008_necessity_shaper_lut/luts/*.spi3d
+2019/008_necessity_shaper_lut/luts/*.spi1d
+2019/008_necessity_shaper_lut/**/*.tiff
+2019/008_necessity_shaper_lut/**/*.tif
+2019/008_necessity_shaper_lut/**/*.png
