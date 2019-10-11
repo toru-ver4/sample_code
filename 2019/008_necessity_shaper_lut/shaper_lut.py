@@ -10,6 +10,7 @@ import os
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import plot_utility as pu
 from colour import RGB_to_RGB
 from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
 from colour.models import eotf_ST2084
@@ -22,13 +23,25 @@ import lut
 
 SRC_IMG = "./src_img/Gamma 2.4_ITU-R BT.2020_D65_1920x1080_rev03_type1.exr"
 DST_FILE_NAME_PREFIX = "./dst_img/"
-
+COLOUR_LIST = ["#FF4800", "#03AF7A", "#005AFF"]
 
 def tiff_file_write(filename, img):
     """
     OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
     """
     cv2.imwrite(filename, img[:, :, ::-1])
+
+
+def tiff_file_read(filename):
+    """
+    OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
+    """
+    img = cv2.imread(filename, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)
+
+    if img is not None:
+        return img[:, :, ::-1] / 0xFFFF
+    else:
+        return img
 
 
 def exr_file_read(fname):
@@ -133,7 +146,7 @@ def make_simple_bt2020_to_bt709_3dlut(grid_num=65):
 def make_shaper_plus_bt2020_to_bt709_3dlut(grid_num=65, sample_num_1d=1024):
     mid_gray = 0.18
     min_exposure = -20.0
-    max_exposure = 3
+    max_exposure = 10
 
     # make shaper 1dlut
     x_shaper = np.linspace(0, 1, sample_num_1d)
@@ -170,6 +183,49 @@ def convert_from_bt2020_to_bt709_using_formula():
     tiff_file_write(filename=dst_img_fname, img=dst_img)
 
 
+def plot_shaper_w_wo_data():
+    """
+    shaperありなしのデータをプロットする。
+    """
+    h_st = 57
+    v_st = 262
+    x_len = 1024
+
+    ref = tiff_file_read("./dst_img/formula.tiff")
+    w_shaper = tiff_file_read("./dst_img/with_shaper.tiff")
+    wo_shaper = tiff_file_read("./dst_img/without_shaper.tiff")
+
+    x = np.arange(x_len)
+    ref_y = ref[v_st, h_st:h_st+x_len, 1]
+    w_shaper_y = w_shaper[v_st, h_st:h_st+x_len, 1]
+    wo_shaper_y = wo_shaper[v_st, h_st:h_st+x_len, 1]
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="Title",
+        graph_title_size=None,
+        xlabel="Horizontal Index",
+        ylabel="Output Code Value (10bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=[x * 128 for x in range(9)],
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, ref_y, color=COLOUR_LIST[0], label='ref')
+    ax1.plot(
+        x, w_shaper_y, '--', color=COLOUR_LIST[1], label='with_shaper')
+    ax1.plot(
+        x, wo_shaper_y, '--', color=COLOUR_LIST[2], label='tetrahedral interpolation')
+    plt.legend(loc='upper left')
+    plt.show()
+
+
 def main_func():
     # 単純な 3DLUT 作成
     grid_num = 65
@@ -178,11 +234,9 @@ def main_func():
     make_shaper_plus_bt2020_to_bt709_3dlut(
         grid_num=grid_num, sample_num_1d=shaper_lut_sample_num)
     convert_from_bt2020_to_bt709_using_formula()
+    plot_shaper_w_wo_data()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     main_func()
-    print((1/1023) ** 2.4)
-    a = shaper_func_log2_to_linear(0.0, mid_gray=0.18, min_exposure=-20, max_exposure=3)
-    print(a)
