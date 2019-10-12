@@ -41,10 +41,12 @@ class GamutEdgeChecker:
     ```
     def make(self):
         base_param = self.make_base_param()
-        calc_param = CalcParameters()
+        self.draw_base_layer()  // 大元の背景画像を準備
+
+        calc_param = CalcParameters(base_param)
         draw_param = calc_param.calc_parameters()
 
-        draw_pattern = DrawPattern(draw_param, self.img)
+        draw_pattern = DrawGamutPattern(draw_param, self.img)
         draw_pattern.draw_gamut_tile_pattern()
 
         draw_diagram = DrawChromaticityDiagram(draw_param, self.img)
@@ -59,10 +61,13 @@ class GamutEdgeChecker:
 
     ```
     typedef struct{
-        double inner_primaries[3][2];  // 内側のxy色度座標
-        double outer_primaries[3][2];  // 外側のxy色度座標
         int inner_sample_num;  // 内側の描画点の数
         int outer_sample_num;  // 外側の描画点の数
+        int hue_devide_num;  // 色相方向の分割数。基本2固定。
+        double inner_primaries[3][2];  // 内側のxy色度座標
+        double outer_primaries[3][2];  // 外側のxy色度座標
+        char *transfer_function;  // OETF の指定
+        int reference_white;  // ref white の設定。単位は [cd/m2]。
     }base_param;
     ```
 
@@ -75,19 +80,27 @@ class GamutEdgeChecker:
         char *inner_gamut_name;  // 内側の Gamut名
         double inner_primaries[3][2];  // 内側のxy色度座標
         double outer_primaries[3][2];  // 外側のxy色度座標
+        char *transfer_function;  // OETF の指定
+        int reference_white;  // ref white の設定。単位は [cd/m2]。
     }text_info;
     ```
 
     ## calc_param.calc_parameters() の吐き出す値
 
     typedef struct{
-        inter
-    }draw_param[12]  // 12 は RGBMYC とその中間点の意味。
-
+        double inner_xy[inner_sample_num][2];
+        double outer_xy[outer_sample_num][2];
+        double ref_xy[2];  // 基準のxy
+        double min_large_y;  // inner_xy, outer_xy の largeY最小値。
+                             // これに合わせて xyY to RGB 変換を行う
+        char *transfer_function;  // OETF の指定
+        int reference_white;  // ref white の設定。単位は [cd/m2]。
+    }calc_param[12]  // 12 は 6(RGBMYC) * 2(hue_devide_num) から算出
     """
-
-
+    def __init__(self):
+        pass
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    gamut_edge_checker = GamutEdgeChecker()
