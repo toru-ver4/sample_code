@@ -20,19 +20,22 @@ from TyImageIO import TyWriter
 import test_pattern_generator2 as tpg
 import color_space as cs
 import transfer_functions as tf
+from DrawGamutPattern import DrawGamutPattern
 
 
 BASE_PARAM = {
     'inner_sample_num': 4,
     'outer_sample_num': 5,
     'hue_devide_num': 2,
-    'img_width': 3840,
-    'img_height': 2160,
+    'img_width': 1920,
+    'img_height': 1080,
+    'pattern_space_rate': 0.7,
     'inner_gamut_name': 'DCI-P3',
     'outer_gamut_name': 'ITU-R BT.2020',
     'inner_primaries': np.array(tpg.get_primaries(cs.P3_D65)[0])[:3],
     'outer_primaries': np.array(tpg.get_primaries(cs.BT2020)[0])[:3],
     'transfer_function': tf.SRGB,
+    'background_luminance': 5,
     'reference_white': 100
 }
 
@@ -46,7 +49,7 @@ class GamutEdgeChecker:
     ## 全体の処理の概要
 
     ```
-    gamut_edge_checker = GamutEdgeChecker(basic_param)
+    gamut_edge_checker = GamutEdgeChecker(base_param)
     gamut_edge_checker.make()
     gamut_edge_checker.preview()
     gamut_edge_checker.save()
@@ -118,27 +121,40 @@ class GamutEdgeChecker:
         int reference_white;  // ref white の設定。単位は [cd/m2]。
     }draw_param[12]  // 12 は 6(RGBMYC) * 2(hue_devide_num) から算出
     """
-    def __init__(self, basic_param=BASE_PARAM):
-        self.basic_param = basic_param
+    def __init__(self, base_param=BASE_PARAM):
+        self.base_param = base_param
 
     def make(self):
         """
         画像生成
         """
         self.make_base_layer()
-        self.img[:400, :400, :] = np.ones((400, 400, 3)) * 20
+        draw_param = None
+        draw_pattern = DrawGamutPattern(self.base_param, draw_param, self.img)
+        draw_pattern.draw_gamut_tile_pattern()
         self.apply_oetf()
+
+    def int(self, x):
+        return int(x + 0.5)
 
     def make_base_layer(self):
         """
         ベースとなる背景画像を生成。
         """
-        width = self.basic_param['img_width']
-        height = self.basic_param['img_height']
+        # 大枠準備
+        width = self.base_param['img_width']
+        height = self.base_param['img_height']
         self.img = np.zeros((height, width, 3))
 
+        # Gamut パターン配置場所のBG Colorを設定
+        pattern_space_rate = self.base_param['pattern_space_rate']
+        background_luminance = self.base_param['background_luminance']
+        gamut_area_width = int(width * pattern_space_rate)
+        bg_img = np.ones((height, gamut_area_width, 3)) * background_luminance
+        self.img[:, :gamut_area_width, :] = bg_img
+
     def apply_oetf(self):
-        oetf_name = self.basic_param['transfer_function']
+        oetf_name = self.base_param['transfer_function']
         self.img = tf.oetf_from_luminance(self.img, oetf_name)
         if np.sum(self.img > 1.0) > 0:
             print("warning. over flow")
@@ -152,7 +168,7 @@ class GamutEdgeChecker:
 
 
 def main_func():
-    gamut_edge_checker = GamutEdgeChecker(basic_param=BASE_PARAM)
+    gamut_edge_checker = GamutEdgeChecker(base_param=BASE_PARAM)
     gamut_edge_checker.make()
     gamut_edge_checker.preview()
 
