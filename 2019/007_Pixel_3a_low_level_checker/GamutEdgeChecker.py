@@ -19,6 +19,22 @@ from colour.models import eotf_ST2084, oetf_ST2084, RGB_to_RGB,\
 from TyImageIO import TyWriter
 import test_pattern_generator2 as tpg
 import color_space as cs
+import transfer_functions as tf
+
+
+BASE_PARAM = {
+    'inner_sample_num': 4,
+    'outer_sample_num': 5,
+    'hue_devide_num': 2,
+    'img_width': 3840,
+    'img_height': 2160,
+    'inner_gamut_name': 'DCI-P3',
+    'outer_gamut_name': 'ITU-R BT.2020',
+    'inner_primaries': np.array(tpg.get_primaries(cs.P3_D65)[0])[:3],
+    'outer_primaries': np.array(tpg.get_primaries(cs.BT2020)[0])[:3],
+    'transfer_function': tf.SRGB,
+    'reference_white': 100
+}
 
 
 class GamutEdgeChecker:
@@ -30,7 +46,7 @@ class GamutEdgeChecker:
     ## 全体の処理の概要
 
     ```
-    gamut_edge_checker = GamutEdgeChecker()
+    gamut_edge_checker = GamutEdgeChecker(basic_param)
     gamut_edge_checker.make()
     gamut_edge_checker.preview()
     gamut_edge_checker.save()
@@ -40,10 +56,9 @@ class GamutEdgeChecker:
 
     ```
     def make(self):
-        base_param = self.make_base_param()
-        self.draw_base_layer()  // 大元の背景画像を準備
+        self.make_base_layer()  // 大元の背景画像を準備
 
-        calc_param = CalcParameters(base_param)
+        calc_param = CalcParameters(self.base_param)
         draw_param = calc_param.calc_parameters()
 
         draw_pattern = DrawGamutPattern(draw_param, self.img)
@@ -55,6 +70,8 @@ class GamutEdgeChecker:
         text_info = self.make_text_information()
         draw_information = DrawInformation(text_imfo, self.img)
         draw_information.draw_information()
+
+        self.apply_oetf()
     ```
 
     ## self.make_base_param() の吐き出す値
@@ -63,7 +80,11 @@ class GamutEdgeChecker:
     typedef struct{
         int inner_sample_num;  // 内側の描画点の数
         int outer_sample_num;  // 外側の描画点の数
-        int hue_devide_num;  // 色相方向の分割数。基本2固定。
+        int hue_devide_num;  // 色相方向の分割数。原則2固定。
+        int img_width;
+        int img_height;
+        char *inner_gamut_name;  // 内側の Gamut名
+        char *outer_gamut_name;  // 外側の Gamut名
         double inner_primaries[3][2];  // 内側のxy色度座標
         double outer_primaries[3][2];  // 外側のxy色度座標
         char *transfer_function;  // OETF の指定
@@ -76,8 +97,8 @@ class GamutEdgeChecker:
     ```
     typedef struct{
         int revision;
-        char *outer_gamut_name;  // 外側の Gamut名
         char *inner_gamut_name;  // 内側の Gamut名
+        char *outer_gamut_name;  // 外側の Gamut名
         double inner_primaries[3][2];  // 内側のxy色度座標
         double outer_primaries[3][2];  // 外側のxy色度座標
         char *transfer_function;  // OETF の指定
@@ -85,7 +106,7 @@ class GamutEdgeChecker:
     }text_info;
     ```
 
-    ## calc_param.calc_parameters() の吐き出す値
+    ## calc_param.calc_parameters() の吐き出す draw_param 値
 
     typedef struct{
         double inner_xy[inner_sample_num][2];
@@ -95,12 +116,47 @@ class GamutEdgeChecker:
                              // これに合わせて xyY to RGB 変換を行う
         char *transfer_function;  // OETF の指定
         int reference_white;  // ref white の設定。単位は [cd/m2]。
-    }calc_param[12]  // 12 は 6(RGBMYC) * 2(hue_devide_num) から算出
+    }draw_param[12]  // 12 は 6(RGBMYC) * 2(hue_devide_num) から算出
     """
-    def __init__(self):
-        pass
+    def __init__(self, basic_param=BASE_PARAM):
+        self.basic_param = basic_param
+
+    def make(self):
+        """
+        画像生成
+        """
+        self.make_base_layer()
+        self.img[:400, :400, :] = np.ones((400, 400, 3)) * 20
+        self.apply_oetf()
+
+    def make_base_layer(self):
+        """
+        ベースとなる背景画像を生成。
+        """
+        width = self.basic_param['img_width']
+        height = self.basic_param['img_height']
+        self.img = np.zeros((height, width, 3))
+
+    def apply_oetf(self):
+        oetf_name = self.basic_param['transfer_function']
+        self.img = tf.oetf_from_luminance(self.img, oetf_name)
+        if np.sum(self.img > 1.0) > 0:
+            print("warning. over flow")
+        elif np.sum(self.img < 0.0) > 0:
+            print("warning. under flow")
+        self.img = np.clip(self.img, 0, 1)
+        self.img = np.uint16(np.round(self.img * 0xFFFF))
+
+    def preview(self):
+        tpg.preview_image(self.img)
+
+
+def main_func():
+    gamut_edge_checker = GamutEdgeChecker(basic_param=BASE_PARAM)
+    gamut_edge_checker.make()
+    gamut_edge_checker.preview()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    gamut_edge_checker = GamutEdgeChecker()
+    main_func()
