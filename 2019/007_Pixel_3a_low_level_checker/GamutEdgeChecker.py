@@ -9,6 +9,7 @@ Gamut の境界を検出するパターンを作成する。
 # 外部ライブラリのインポート
 import os
 import numpy as np
+import cv2
 from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
@@ -21,9 +22,12 @@ import test_pattern_generator2 as tpg
 import color_space as cs
 import transfer_functions as tf
 from DrawGamutPattern import DrawGamutPattern
+from DrawChromaticityDiagram import DrawChromaticityDiagram
+from DrawInformation import DrawInformation
 
 
 BASE_PARAM = {
+    'revision': 0,
     'inner_sample_num': 4,
     'outer_sample_num': 5,
     'hue_devide_num': 2,
@@ -81,6 +85,7 @@ class GamutEdgeChecker:
 
     ```
     typedef struct{
+        int revision;
         int inner_sample_num;  // 内側の描画点の数
         int outer_sample_num;  // 外側の描画点の数
         int hue_devide_num;  // 色相方向の分割数。原則2固定。
@@ -99,13 +104,8 @@ class GamutEdgeChecker:
 
     ```
     typedef struct{
-        int revision;
-        char *inner_gamut_name;  // 内側の Gamut名
-        char *outer_gamut_name;  // 外側の Gamut名
-        double inner_primaries[3][2];  // 内側のxy色度座標
-        double outer_primaries[3][2];  // 外側のxy色度座標
-        char *transfer_function;  // OETF の指定
-        int reference_white;  // ref white の設定。単位は [cd/m2]。
+        int diagram_width;
+        int diagram_height;
     }text_info;
     ```
 
@@ -132,6 +132,15 @@ class GamutEdgeChecker:
         draw_param = None
         draw_pattern = DrawGamutPattern(self.base_param, draw_param, self.img)
         draw_pattern.draw_gamut_tile_pattern()
+        draw_diagram = DrawChromaticityDiagram(
+            self.base_param, draw_param, self.img)
+        draw_diagram.draw_chromaticity_diagram()
+        diagram_width, diagram_height =\
+            draw_diagram.get_diagram_widgh_height()
+        draw_information = DrawInformation(
+            self.base_param, draw_param, self.img,
+            diagram_width, diagram_height)
+        draw_information.draw_information()
         self.apply_oetf()
 
     def int(self, x):
@@ -166,11 +175,15 @@ class GamutEdgeChecker:
     def preview(self):
         tpg.preview_image(self.img)
 
+    def save(self):
+        cv2.imwrite("test.tiff", self.img[:, :, ::-1])
+
 
 def main_func():
     gamut_edge_checker = GamutEdgeChecker(base_param=BASE_PARAM)
     gamut_edge_checker.make()
     gamut_edge_checker.preview()
+    gamut_edge_checker.save()
 
 
 if __name__ == '__main__':

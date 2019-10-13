@@ -54,6 +54,9 @@ def _set_common_parameters(fontsize, **kwargs):
         font_name = fm.FontProperties(fname=font).get_name()
         if font_name == 'Noto Sans CJK JP':
             plt.rcParams['font.family'] = font_name
+            plt.rcParams["font.weight"] = 'regular'
+            plt.rcParams["axes.labelweight"] = "regular"
+            plt.rcParams["axes.titleweight"] = "regular"
             print("{:s} is found".format(font_name))
             break
         # if font_name == 'Noto Sans Mono CJK JP':

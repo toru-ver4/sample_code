@@ -385,6 +385,7 @@ def get_chromaticity_image(samples=1024, antialiasing=True, bg_color=0.9,
     illuminant_RGB = color_space.whitepoint
     chromatic_adaptation_transform = 'XYZ Scaling'
     large_xyz_to_rgb_matrix = color_space.XYZ_to_RGB_matrix
+    xy[xy == 0.0] = 1.0  # ゼロ割対策
     large_xyz = xy_to_XYZ(xy)
     rgb = XYZ_to_RGB(large_xyz, illuminant_XYZ, illuminant_RGB,
                      large_xyz_to_rgb_matrix,
@@ -394,6 +395,7 @@ def get_chromaticity_image(samples=1024, antialiasing=True, bg_color=0.9,
     そのままだとビデオレベルが低かったりするので、
     各ドット毎にRGB値を正規化＆最大化する。
     """
+    rgb[rgb == 0] = 1.0  # ゼロ割対策
     rgb = normalise_maximum(rgb, axis=-1)
 
     # mask 適用
