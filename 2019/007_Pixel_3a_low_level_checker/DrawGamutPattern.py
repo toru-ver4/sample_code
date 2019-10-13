@@ -122,7 +122,7 @@ class DrawGamutPattern:
         """
         色相方向のサンプル数を取得する。
         """
-        return 6 * self.base_param['hue_devide_num']
+        return 3 * self.base_param['hue_devide_num']
 
     def get_sat_idx_num(self):
         """

@@ -24,20 +24,21 @@ import transfer_functions as tf
 from DrawGamutPattern import DrawGamutPattern
 from DrawChromaticityDiagram import DrawChromaticityDiagram
 from DrawInformation import DrawInformation
+from CalcParameters import CalcParameters
 
 
 BASE_PARAM = {
     'revision': 0,
     'inner_sample_num': 4,
     'outer_sample_num': 5,
-    'hue_devide_num': 2,
+    'hue_devide_num': 4,
     'img_width': 1920,
     'img_height': 1080,
     'pattern_space_rate': 0.7,
     'inner_gamut_name': 'DCI-P3',
     'outer_gamut_name': 'ITU-R BT.2020',
-    'inner_primaries': np.array(tpg.get_primaries(cs.P3_D65)[0])[:3],
-    'outer_primaries': np.array(tpg.get_primaries(cs.BT2020)[0])[:3],
+    'inner_primaries': np.array(tpg.get_primaries(cs.P3_D65)[0]),
+    'outer_primaries': np.array(tpg.get_primaries(cs.BT2020)[0]),
     'transfer_function': tf.SRGB,
     'background_luminance': 5,
     'reference_white': 100
@@ -88,13 +89,13 @@ class GamutEdgeChecker:
         int revision;
         int inner_sample_num;  // 内側の描画点の数
         int outer_sample_num;  // 外側の描画点の数
-        int hue_devide_num;  // 色相方向の分割数。原則2固定。
+        int hue_devide_num;  // 色相方向の分割数。原則4固定。
         int img_width;
         int img_height;
         char *inner_gamut_name;  // 内側の Gamut名
         char *outer_gamut_name;  // 外側の Gamut名
-        double inner_primaries[3][2];  // 内側のxy色度座標
-        double outer_primaries[3][2];  // 外側のxy色度座標
+        double inner_primaries[3][3];  // 内側のxy色度座標
+        double outer_primaries[3][3];  // 外側のxy色度座標
         char *transfer_function;  // OETF の指定
         int reference_white;  // ref white の設定。単位は [cd/m2]。
     }base_param;
@@ -119,7 +120,7 @@ class GamutEdgeChecker:
                              // これに合わせて xyY to RGB 変換を行う
         char *transfer_function;  // OETF の指定
         int reference_white;  // ref white の設定。単位は [cd/m2]。
-    }draw_param[12]  // 12 は 6(RGBMYC) * 2(hue_devide_num) から算出
+    }draw_param[12]  // 12 は 3(RGB) * 4(hue_devide_num) から算出
     """
     def __init__(self, base_param=BASE_PARAM):
         self.base_param = base_param
@@ -129,6 +130,8 @@ class GamutEdgeChecker:
         画像生成
         """
         self.make_base_layer()
+        calc_param = CalcParameters(self.base_param)
+        draw_param = calc_param.calc_parameters()
         draw_param = None
         draw_pattern = DrawGamutPattern(self.base_param, draw_param, self.img)
         draw_pattern.draw_gamut_tile_pattern()
