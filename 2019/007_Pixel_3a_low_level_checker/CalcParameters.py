@@ -12,9 +12,12 @@ import numpy as np
 import test_pattern_generator2 as tpg
 import transfer_functions as tf
 from sympy import Point, Segment, Line, intersection
+from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_xyY
+from colour.models import BT2020_COLOURSPACE
 
 # define
 D65 = tpg.D65_WHITE
+
 
 class CalcParameters:
     """
@@ -34,15 +37,42 @@ class CalcParameters:
         self.calc_inner_edge()
         self.calc_inner_xy()
         self.calc_outer_xy()
+        self.calc_large_y()
 
         ret_dict = {
             'inner_xy': self.inner_xy,
             'outer_xy': self.outer_xy,
             'ref_xy': None,
-            'min_large_y': None
+            'min_large_y': self.min_large_y
         }
 
         return ret_dict
+
+    def calc_ref_xy(self):
+        """
+        正方形のタイルの模様の基準のxy値。
+        とりあえず現状は inner_edge と同一で良いでしょ(適当)。
+        """
+        self.ref_xy = self.inner_edge.copy()
+
+    def calc_large_y(self):
+        """
+        各 hue ごとの Y値を求める。
+        一度、RGBに戻して、正規化して、またXYZに変換して、
+        そのY値を抽出。
+        """
+        xyz_to_rgb_matrix = BT2020_COLOURSPACE.XYZ_to_RGB_matrix
+        rgb_to_xyz_matrix = BT2020_COLOURSPACE.RGB_to_XYZ_matrix
+        buf = []
+        for edge_xy in self.outer_edge:
+            large_xyz = xyY_to_XYZ(xy_to_xyY(edge_xy))
+            rgb = XYZ_to_RGB(large_xyz, D65, D65, xyz_to_rgb_matrix)
+            normalized_rgb = rgb / np.max(rgb)
+            normalized_rgb[normalized_rgb < (10 ** -14)] = 0.0
+            large_xyz = RGB_to_XYZ(normalized_rgb, D65, D65, rgb_to_xyz_matrix)
+            xyY = XYZ_to_xyY(large_xyz)
+            buf.append(xyY[2])
+        self.min_large_y = np.array(buf)
 
     def calc_inner_xy(self):
         """
