@@ -30,12 +30,12 @@ mini_primaries = [[0.45, 0.25], [0.30, 0.45], [0.25, 0.20], [0.45, 0.25]]
 
 BASE_PARAM = {
     'revision': 0,
-    'inner_sample_num': 3,
-    'outer_sample_num': 3,
+    'inner_sample_num': 4,
+    'outer_sample_num': 4,
     'hue_devide_num': 4,
     'img_width': 1920,
     'img_height': 1080,
-    'pattern_space_rate': 0.7,
+    'pattern_space_rate': 0.71,
     'inner_gamut_name': 'ITU-R BT.709',
     'outer_gamut_name': 'ITU-R BT.2020',
     'inner_primaries': np.array(tpg.get_primaries(cs.BT709)[0]),

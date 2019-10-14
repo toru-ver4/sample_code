@@ -38,11 +38,12 @@ class CalcParameters:
         self.calc_inner_xy()
         self.calc_outer_xy()
         self.calc_large_y()
+        self.calc_ref_xy()
 
         ret_dict = {
             'inner_xy': self.inner_xy,
             'outer_xy': self.outer_xy,
-            'ref_xy': None,
+            'ref_xy': self.ref_xy,
             'min_large_y': self.min_large_y
         }
 

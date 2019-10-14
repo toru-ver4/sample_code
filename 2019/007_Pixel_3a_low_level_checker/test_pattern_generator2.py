@@ -906,6 +906,33 @@ def make_tile_pattern(width=480, height=960, h_tile_num=4,
     return img
 
 
+def make_tile_pattern2(width=480, height=960, h_tile_num=4,
+                       v_tile_num=4, low_level=(0.9, 0.9, 0.9),
+                       high_level=(1.0, 1.0, 1.0)):
+    """
+    タイル状の縞々パターンを作る。Int型に制限してない。
+    """
+    width_array = equal_devision(width, h_tile_num)
+    height_array = equal_devision(height, v_tile_num)
+    high_level = np.array(high_level)
+    low_level = np.array(low_level)
+
+    v_buf = []
+
+    for v_idx, height in enumerate(height_array):
+        h_buf = []
+        for h_idx, width in enumerate(width_array):
+            tile_judge = (h_idx + v_idx) % 2 == 0
+            h_temp = np.zeros((height, width, 3))
+            h_temp[:, :] = high_level if tile_judge else low_level
+            h_buf.append(h_temp)
+
+        v_buf.append(np.hstack(h_buf))
+    img = np.vstack(v_buf)
+    # preview_image(img/1024.0)
+    return img
+
+
 def get_marker_idx(img, marker_value):
     return np.all(img == marker_value, axis=-1)
 
