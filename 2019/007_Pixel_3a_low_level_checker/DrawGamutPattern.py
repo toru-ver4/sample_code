@@ -12,7 +12,8 @@ from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
 from colour.models import eotf_ST2084, oetf_ST2084, RGB_to_RGB,\
-    BT2020_COLOURSPACE, xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB
+    BT2020_COLOURSPACE, xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_RGB,\
+    BT709_COLOURSPACE
 
 # 自作ライブラリのインポート
 import test_pattern_generator2 as tpg
@@ -71,6 +72,19 @@ class DrawGamutPattern:
                                   axis=1)
         self.calc_plot_parameters()
 
+        # debug area
+        idx = 8
+        large_y = self.draw_param['min_large_y'][idx]
+        large_xyz = xyY_to_XYZ(xy_to_xyY(self.xy_array[idx], large_y))
+        xyz_to_rgb_matrix = BT2020_COLOURSPACE.XYZ_to_RGB_matrix
+        src_rgb = XYZ_to_RGB(large_xyz, D65, D65, xyz_to_rgb_matrix)
+        dst_rgb = RGB_to_RGB(src_rgb, BT2020_COLOURSPACE, BT709_COLOURSPACE)
+        # print(src_rgb * 100)
+        print(dst_rgb)
+        for idx in range(8):
+            print(dst_rgb[idx] / np.max(dst_rgb, axis=-1)[idx])
+        # end of debug area
+
     def int(self, x):
         return int(x + 0.5)
 
@@ -87,7 +101,7 @@ class DrawGamutPattern:
             ref_xy = self.draw_param['ref_xy']
             ref_rgb = self.calc_rgb(ref_xy[hue_idx], hue_idx)
             rgb_array = self.calc_rgb(self.xy_array[hue_idx], hue_idx)
-            
+
             for sat_idx in reversed(range(self.get_sat_idx_num())):
                 temp_img = tpg.make_tile_pattern2(
                     width=self.rect_width, height=self.rect_height,
