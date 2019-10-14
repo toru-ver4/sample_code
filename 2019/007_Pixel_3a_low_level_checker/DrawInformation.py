@@ -60,7 +60,7 @@ class DrawInformation:
         reference_white =\
             "■Reference White:\n  {} nits".format(reference_white_name)
 
-        return "\n".join([revision, outer_gamut, inner_gamut,
+        return "\n".join([revision, inner_gamut, outer_gamut,
                           transfer_function, reference_white])
 
     # def make_primariey_info_text(self, prefix, name, primaries):

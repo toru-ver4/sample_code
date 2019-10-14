@@ -24,7 +24,8 @@ dpi = 96
 
 # define
 png_file_name = './intermediate/diagram.png'
-
+UNIVERSAL_COLOR_LIST = ["#F6AA00", "#FFF100", "#03AF7A",
+                        "#005AFF", "#4DC4FF", "#804000"]
 
 class DrawChromaticityDiagram:
     """
@@ -98,6 +99,14 @@ class DrawChromaticityDiagram:
         figsize_v = figsize_h / 9 * 8
         rate = (self.get_img_height() / 1080)
 
+        # gamut の用意
+        outer_gamut = self.base_param['outer_primaries']
+        inner_gamut = self.base_param['inner_primaries']
+        outer_name = self.base_param['outer_gamut_name']
+        inner_name = self.base_param['inner_gamut_name']
+        outer_xy = self.draw_param['outer_xy']
+        inner_xy = self.draw_param['inner_xy']
+
         ax1 = pu.plot_1_graph(fontsize=20 * rate,
                               dpi=dpi,
                               figsize=(figsize_h,
@@ -120,6 +129,16 @@ class DrawChromaticityDiagram:
         ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=3.5*rate, label=None)
         ax1.plot((cmf_xy[-1, 0], cmf_xy[0, 0]), (cmf_xy[-1, 1], cmf_xy[0, 1]),
                  '-k', lw=3.5*rate, label=None)
+        ax1.plot(inner_gamut[:, 0], inner_gamut[:, 1],
+                 c=UNIVERSAL_COLOR_LIST[0], label=inner_name, lw=2.75*rate)
+        ax1.plot(outer_gamut[:, 0], outer_gamut[:, 1],
+                 c=UNIVERSAL_COLOR_LIST[3], label=outer_name, lw=2.75*rate)
+        ax1.plot(tpg.D65_WHITE[0], tpg.D65_WHITE[1], marker='x', c='k',
+                 lw=2.75*rate, label='D65', ms=10*rate, mew=2.75*rate)
+        ax1.plot(inner_xy[..., 0], inner_xy[..., 1], ls='', marker='s',
+                 c='#606060')
+        ax1.plot(outer_xy[..., 0], outer_xy[..., 1], ls='', marker='s',
+                 c='#202020')
         ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax))
         plt.legend(loc='upper right')
         plt.savefig(png_file_name, bbox_inches='tight', dpi=dpi)

@@ -32,7 +32,52 @@ class CalcParameters:
     def calc_parameters(self):
         self.calc_outer_edge()
         self.calc_inner_edge()
-        print(self.inner_edge)
+        self.calc_inner_xy()
+        self.calc_outer_xy()
+
+        ret_dict = {
+            'inner_xy': self.inner_xy,
+            'outer_xy': self.outer_xy,
+            'ref_xy': None,
+            'min_large_y': None
+        }
+
+        return ret_dict
+
+    def calc_inner_xy(self):
+        """
+        D65(中心)から inner_edge への xy値を求める
+        """
+        sample_num = self.base_param['inner_sample_num']
+        src = D65
+        buf = []
+        for dst in self.inner_edge:
+            temp = self.linear_interpolation(src, dst, sample_num + 1)[1:]
+            buf.append(temp)
+
+        self.inner_xy = np.array(buf)
+
+    def calc_outer_xy(self):
+        """
+        inner_edge から outer_edge への xy値を求める
+        """
+        sample_num = self.base_param['outer_sample_num']
+        buf = []
+        for hue_idx, dst in enumerate(self.outer_edge):
+            src = self.inner_edge[hue_idx]
+            temp = self.linear_interpolation(src, dst, sample_num + 1)[1:]
+            buf.append(temp)
+
+        self.outer_xy = np.array(buf)
+
+    def linear_interpolation(self, st_xy, ed_xy, sample_num):
+        """
+        xy座標の単純な線形補間を実施。
+        """
+        x = np.linspace(st_xy[0], ed_xy[0], sample_num)
+        y = np.linspace(st_xy[1], ed_xy[1], sample_num)
+        ret_value = np.dstack((x, y)).reshape((sample_num, 2))
+        return ret_value
 
     def calc_inner_edge(self):
         """
@@ -59,7 +104,7 @@ class CalcParameters:
                         [cross_point[0], cross_point[1]], dtype=np.float)
                     break
             if temp is None:
-                print("error, intersection wa not found.")
+                print("error, intersection was not found.")
             buf.append(temp)
         self.inner_edge = buf
 

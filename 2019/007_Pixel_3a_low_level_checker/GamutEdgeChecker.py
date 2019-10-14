@@ -26,18 +26,19 @@ from DrawChromaticityDiagram import DrawChromaticityDiagram
 from DrawInformation import DrawInformation
 from CalcParameters import CalcParameters
 
+mini_primaries = [[0.45, 0.25], [0.30, 0.45], [0.25, 0.20], [0.45, 0.25]]
 
 BASE_PARAM = {
     'revision': 0,
-    'inner_sample_num': 4,
-    'outer_sample_num': 5,
+    'inner_sample_num': 3,
+    'outer_sample_num': 3,
     'hue_devide_num': 4,
     'img_width': 1920,
     'img_height': 1080,
     'pattern_space_rate': 0.7,
-    'inner_gamut_name': 'DCI-P3',
+    'inner_gamut_name': 'ITU-R BT.709',
     'outer_gamut_name': 'ITU-R BT.2020',
-    'inner_primaries': np.array(tpg.get_primaries(cs.P3_D65)[0]),
+    'inner_primaries': np.array(tpg.get_primaries(cs.BT709)[0]),
     'outer_primaries': np.array(tpg.get_primaries(cs.BT2020)[0]),
     'transfer_function': tf.SRGB,
     'background_luminance': 5,
@@ -118,8 +119,6 @@ class GamutEdgeChecker:
         double ref_xy[2];  // 基準のxy
         double min_large_y;  // inner_xy, outer_xy の largeY最小値。
                              // これに合わせて xyY to RGB 変換を行う
-        char *transfer_function;  // OETF の指定
-        int reference_white;  // ref white の設定。単位は [cd/m2]。
     }draw_param[12]  // 12 は 3(RGB) * 4(hue_devide_num) から算出
     """
     def __init__(self, base_param=BASE_PARAM):
@@ -132,7 +131,6 @@ class GamutEdgeChecker:
         self.make_base_layer()
         calc_param = CalcParameters(self.base_param)
         draw_param = calc_param.calc_parameters()
-        draw_param = None
         draw_pattern = DrawGamutPattern(self.base_param, draw_param, self.img)
         draw_pattern.draw_gamut_tile_pattern()
         draw_diagram = DrawChromaticityDiagram(
