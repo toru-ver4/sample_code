@@ -7,13 +7,14 @@ Gamutパターン作成に必要なxy座標の計算を行う。
 
 # 外部ライブラリのインポート
 import numpy as np
+from scipy import linalg
 
 # 自作ライブラリのインポート
 import test_pattern_generator2 as tpg
-import transfer_functions as tf
-from sympy import Point, Segment, Line, intersection
+from sympy import Point, Segment, intersection
 from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_xyY
-from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
+from colour.models import BT2020_COLOURSPACE
+import color_space as cs
 
 # define
 D65 = tpg.D65_WHITE
@@ -39,15 +40,86 @@ class CalcParameters:
         self.calc_outer_xy()
         self.calc_large_y()
         self.calc_ref_xy()
+        self.calc_inner_outer_xyY()
+        self.calc_inner_ref_xyY()
+        self.calc_outer_ref_xyY()
 
         ret_dict = {
-            'inner_xy': self.inner_xy,
-            'outer_xy': self.outer_xy,
-            'ref_xy': self.ref_xy,
-            'min_large_y': self.min_large_y
+            'inner_xyY': self.inner_xyY,
+            'outer_xyY': self.outer_xyY,
+            'inner_ref_xyY': self.inner_ref_xyY,
+            'outer_ref_xyY': self.outer_ref_xyY,
+            # 'ref_xy': self.ref_xy,
+            # 'min_large_y': self.min_large_y
         }
 
         return ret_dict
+
+    def calc_outer_ref_xyY(self):
+        """
+        外側領域のrefとなるxyY値を求める。
+        """
+        # outer_gamut --> inter_gamut の色域変換を実施して
+        # 無理やり inner_gamut に貼り付けさせる
+        src_primaries = self.base_param['outer_primaries'][:3]
+        dst_primaries = self.base_param['inner_primaries'][:3]
+
+        # 各種 Matrix を計算
+        white = xyY_to_XYZ(xy_to_xyY(D65))
+        xyz_to_rgb_matrix_2020 = BT2020_COLOURSPACE.XYZ_to_RGB_matrix
+        rgb_to_xyz_matrix_2020 = BT2020_COLOURSPACE.RGB_to_XYZ_matrix
+        outer_rgb_to_inner_rgb_mtx = self.calc_rgb_to_rgb_matrix(
+            src_primaries, dst_primaries, white)
+        inner_rgb_to_outer_rgb_mtx = self.calc_rgb_to_rgb_matrix(
+            dst_primaries, src_primaries, white)
+
+        # BT.2020 空間でRGBに戻す
+        rgb_2020 = XYZ_to_RGB(
+                xyY_to_XYZ(self.outer_xyY), D65, D65, xyz_to_rgb_matrix_2020)
+
+        # BT.709 の RGB に変換してクリップする
+        rgb_inner = cs.color_cvt(rgb_2020, outer_rgb_to_inner_rgb_mtx)
+        rgb_inner_cliped = np.clip(rgb_inner, 0.0, 1.0)
+
+        # クリップ後の値を BT.2020 空間での xyY 値に変換する
+        rgb_2020_2 = cs.color_cvt(rgb_inner_cliped, inner_rgb_to_outer_rgb_mtx)
+        large_xyz_inner = RGB_to_XYZ(
+            rgb_2020_2, D65, D65, rgb_to_xyz_matrix_2020)
+        self.outer_ref_xyY = XYZ_to_xyY(large_xyz_inner)
+
+    def calc_rgb_to_rgb_matrix(self, src_primaries, dst_primaries, white):
+        """
+        色域変換のMatrixを計算。
+        なお、白色点はD65固定とする。
+        """
+        rgb_to_xyz_matrix_src = cs.calc_rgb_to_xyz_matrix(src_primaries, white)
+        rgb_to_xyz_matrix_dst = cs.calc_rgb_to_xyz_matrix(dst_primaries, white)
+        xyz_to_rgb_matrix_dst = linalg.inv(rgb_to_xyz_matrix_dst)
+        return xyz_to_rgb_matrix_dst.dot(rgb_to_xyz_matrix_src)
+
+    def calc_inner_ref_xyY(self):
+        self.calc_inner_ref_xyY = None
+        inner_ref_xy = np.ones_like(self.inner_xy)\
+            * self.ref_xy[:, np.newaxis, :]
+        buf = []
+        for hue_idx, xy in enumerate(inner_ref_xy):
+            temp = xy_to_xyY(xy, self.min_large_y[hue_idx])
+            buf.append(temp)
+        self.inner_ref_xyY = np.array(buf)
+
+    def calc_inner_outer_xyY(self):
+        self.inner_xyY = self.calc_xyY(self.inner_xy)
+        self.outer_xyY = self.calc_xyY(self.outer_xy)
+
+    def calc_xyY(self, xy_array):
+        """
+        外側領域の xyY を求める。
+        """
+        buf = []
+        for hue_idx, xy in enumerate(xy_array):
+            temp = xy_to_xyY(xy, self.min_large_y[hue_idx])
+            buf.append(temp)
+        return np.array(buf)
 
     def calc_ref_xy(self):
         """
@@ -137,7 +209,7 @@ class CalcParameters:
             if temp is None:
                 print("error, intersection was not found.")
             buf.append(temp)
-        self.inner_edge = buf
+        self.inner_edge = np.array(buf)
 
     def calc_outer_edge(self):
         """

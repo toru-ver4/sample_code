@@ -6,18 +6,11 @@ GamutPattern の描画を担当
 """
 
 # 外部ライブラリのインポート
-import os
 import numpy as np
-from PIL import Image
-from PIL import ImageFont
-from PIL import ImageDraw
-from colour.models import eotf_ST2084, oetf_ST2084, RGB_to_RGB,\
-    BT2020_COLOURSPACE, xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_RGB,\
-    BT709_COLOURSPACE
+from colour.models import BT2020_COLOURSPACE, xyY_to_XYZ, XYZ_to_RGB
 
 # 自作ライブラリのインポート
 import test_pattern_generator2 as tpg
-import color_space as cs
 
 # 位置パラメータ。原則、width に乗算してピクセル値に変換する
 global_tb_margin = 0.05
@@ -67,23 +60,13 @@ class DrawGamutPattern:
         self.img = img
         self.img_width = self.get_img_width()
         self.img_height = self.get_img_height()
-        self.xy_array = np.append(self.draw_param['inner_xy'],
-                                  self.draw_param['outer_xy'],
-                                  axis=1)
+        self.xyY_array = np.append(self.draw_param['inner_xyY'],
+                                   self.draw_param['outer_xyY'],
+                                   axis=1)
+        self.ref_xyY_array = np.append(self.draw_param['inner_ref_xyY'],
+                                       self.draw_param['outer_ref_xyY'],
+                                       axis=1)
         self.calc_plot_parameters()
-
-        # debug area
-        idx = 8
-        large_y = self.draw_param['min_large_y'][idx]
-        large_xyz = xyY_to_XYZ(xy_to_xyY(self.xy_array[idx], large_y))
-        xyz_to_rgb_matrix = BT2020_COLOURSPACE.XYZ_to_RGB_matrix
-        src_rgb = XYZ_to_RGB(large_xyz, D65, D65, xyz_to_rgb_matrix)
-        dst_rgb = RGB_to_RGB(src_rgb, BT2020_COLOURSPACE, BT709_COLOURSPACE)
-        # print(src_rgb * 100)
-        print(dst_rgb)
-        for idx in range(8):
-            print(dst_rgb[idx] / np.max(dst_rgb, axis=-1)[idx])
-        # end of debug area
 
     def int(self, x):
         return int(x + 0.5)
@@ -98,23 +81,22 @@ class DrawGamutPattern:
         print("sample implement.")
         luminance = self.base_param['reference_white']
         for hue_idx in range(self.get_hue_idx_num()):
-            ref_xy = self.draw_param['ref_xy']
-            ref_rgb = self.calc_rgb(ref_xy[hue_idx], hue_idx)
-            rgb_array = self.calc_rgb(self.xy_array[hue_idx], hue_idx)
+            # ref_xy = self.draw_param['ref_xy']
+            ref_rgb_array = self.calc_rgb(self.ref_xyY_array[hue_idx])
+            rgb_array = self.calc_rgb(self.xyY_array[hue_idx])
 
             for sat_idx in reversed(range(self.get_sat_idx_num())):
                 temp_img = tpg.make_tile_pattern2(
                     width=self.rect_width, height=self.rect_height,
                     h_tile_num=tile_num, v_tile_num=tile_num,
-                    low_level=ref_rgb * luminance,
+                    low_level=ref_rgb_array[sat_idx] * luminance,
                     high_level=rgb_array[sat_idx] * luminance)
                 tpg.merge(self.img, temp_img,
                           self.rect_pos_list[hue_idx, sat_idx])
 
-    def calc_rgb(self, xy, hue_idx):
+    def calc_rgb(self, xyY):
         xyz_to_rgb_matrix = BT2020_COLOURSPACE.XYZ_to_RGB_matrix
-        min_large_y = self.draw_param['min_large_y'][hue_idx]
-        large_xyz = xyY_to_XYZ(xy_to_xyY(xy, min_large_y))
+        large_xyz = xyY_to_XYZ(xyY)
         ref_rgb = XYZ_to_RGB(large_xyz, D65, D65, xyz_to_rgb_matrix)
         return ref_rgb
 

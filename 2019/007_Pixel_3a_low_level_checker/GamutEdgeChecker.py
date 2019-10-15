@@ -10,14 +10,8 @@ Gamut の境界を検出するパターンを作成する。
 import os
 import numpy as np
 import cv2
-from PIL import Image
-from PIL import ImageFont
-from PIL import ImageDraw
-from colour.models import eotf_ST2084, oetf_ST2084, RGB_to_RGB,\
-    RGB_COLOURSPACES
 
 # 自作ライブラリのインポート
-from TyImageIO import TyWriter
 import test_pattern_generator2 as tpg
 import color_space as cs
 import transfer_functions as tf
@@ -29,7 +23,7 @@ from CalcParameters import CalcParameters
 mini_primaries = [[0.45, 0.25], [0.30, 0.45], [0.25, 0.20], [0.45, 0.25]]
 
 BASE_PARAM = {
-    'revision': 0,
+    'revision': 1,
     'inner_sample_num': 4,
     'outer_sample_num': 4,
     'hue_devide_num': 4,
@@ -41,7 +35,7 @@ BASE_PARAM = {
     'inner_primaries': np.array(tpg.get_primaries(cs.BT709)[0]),
     'outer_primaries': np.array(tpg.get_primaries(cs.BT2020)[0]),
     'transfer_function': tf.SRGB,
-    'background_luminance': 5,
+    'background_luminance': 2,
     'reference_white': 100
 }
 
@@ -114,12 +108,13 @@ class GamutEdgeChecker:
     ## calc_param.calc_parameters() の吐き出す draw_param 値
 
     typedef struct{
-        double inner_xy[inner_sample_num][2];
-        double outer_xy[outer_sample_num][2];
-        double ref_xy[2];  // 基準のxy
-        double min_large_y;  // inner_xy, outer_xy の largeY最小値。
-                             // これに合わせて xyY to RGB 変換を行う
-    }draw_param[12]  // 12 は 3(RGB) * 4(hue_devide_num) から算出
+        double inner_xyY[12][inner_sample_num][3];
+        double outer_xyY[12][outer_sample_num][3];
+        double innnr_ref_xyY[12][inner_sample_num][3];
+        double outer_ref_xyY[12][inner_sample_num][3];
+        double min_large_y[12];  // inner_xy, outer_xy の largeY最小値。
+                                 // これに合わせて xyY to RGB 変換を行う
+    }draw_param // 12 は 3(RGB) * 4(hue_devide_num) から算出
     """
     def __init__(self, base_param=BASE_PARAM):
         self.base_param = base_param

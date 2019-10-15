@@ -174,6 +174,24 @@ def ocio_matrix_transform_mtx(src_name, dst_name):
     return mtx44.flatten().tolist()
 
 
+def color_cvt(img, mtx):
+    """
+    # 概要
+    img に対して mtx を適用する。
+    # 注意事項
+    例によって、RGBの並びを考えている。BGRの並びの場合は
+    img[:, :, ::-1] してから関数をコールすること。
+    """
+    r, g, b = np.dsplit(img, 3)
+    ro = r * mtx[0][0] + g * mtx[0][1] + b * mtx[0][2]
+    go = r * mtx[1][0] + g * mtx[1][1] + b * mtx[1][2]
+    bo = r * mtx[2][0] + g * mtx[2][1] + b * mtx[2][2]
+
+    out_img = np.dstack((ro, go, bo))
+
+    return out_img
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(rgb2rgb_mtx(DCI_P3, ACES_AP0))

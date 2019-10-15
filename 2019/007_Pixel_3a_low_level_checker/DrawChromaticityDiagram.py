@@ -7,7 +7,6 @@ Chromaticity Diagram の描画を担当
 
 # 外部ライブラリのインポート
 import cv2
-import numpy as np
 import matplotlib.pyplot as plt
 from colour import RGB_to_RGB
 from colour.models import BT2020_COLOURSPACE, sRGB_COLOURSPACE
@@ -26,6 +25,7 @@ dpi = 96
 png_file_name = './intermediate/diagram.png'
 UNIVERSAL_COLOR_LIST = ["#F6AA00", "#FFF100", "#03AF7A",
                         "#005AFF", "#4DC4FF", "#804000"]
+
 
 class DrawChromaticityDiagram:
     """
@@ -104,8 +104,8 @@ class DrawChromaticityDiagram:
         inner_gamut = self.base_param['inner_primaries']
         outer_name = self.base_param['outer_gamut_name']
         inner_name = self.base_param['inner_gamut_name']
-        outer_xy = self.draw_param['outer_xy']
-        inner_xy = self.draw_param['inner_xy']
+        outer_xy = self.draw_param['outer_xyY']
+        inner_xy = self.draw_param['inner_xyY']
 
         ax1 = pu.plot_1_graph(fontsize=20 * rate,
                               dpi=dpi,
