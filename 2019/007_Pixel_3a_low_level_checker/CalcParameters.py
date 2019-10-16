@@ -79,7 +79,8 @@ class CalcParameters:
 
         # BT.709 の RGB に変換してクリップする
         rgb_inner = cs.color_cvt(rgb_2020, outer_rgb_to_inner_rgb_mtx)
-        rgb_inner_cliped = np.clip(rgb_inner, 0.0, 1.0)
+        clip_max_value = self.base_param['reference_white'] / 100.0
+        rgb_inner_cliped = np.clip(rgb_inner, 0.0, clip_max_value)
 
         # クリップ後の値を BT.2020 空間での xyY 値に変換する
         rgb_2020_2 = cs.color_cvt(rgb_inner_cliped, inner_rgb_to_outer_rgb_mtx)
