@@ -8,13 +8,14 @@ Gamutパターン作成に必要なxy座標の計算を行う。
 # 外部ライブラリのインポート
 import numpy as np
 from scipy import linalg
-
-# 自作ライブラリのインポート
-import test_pattern_generator2 as tpg
 from sympy import Point, Segment, intersection
 from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_xyY
 from colour.models import BT2020_COLOURSPACE
+
+# 自作ライブラリのインポート
+import test_pattern_generator2 as tpg
 import color_space as cs
+import transfer_functions as tf
 
 # define
 D65 = tpg.D65_WHITE
@@ -79,7 +80,8 @@ class CalcParameters:
 
         # BT.709 の RGB に変換してクリップする
         rgb_inner = cs.color_cvt(rgb_2020, outer_rgb_to_inner_rgb_mtx)
-        clip_max_value = self.base_param['reference_white'] / 100.0
+        max_luminance = tf.PEAK_LUMINANCE[self.base_param['transfer_function']]
+        clip_max_value = max_luminance / 100.0
         rgb_inner_cliped = np.clip(rgb_inner, 0.0, clip_max_value)
 
         # クリップ後の値を BT.2020 空間での xyY 値に変換する
