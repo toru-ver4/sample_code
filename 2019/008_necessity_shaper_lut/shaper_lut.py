@@ -146,7 +146,7 @@ def make_simple_bt2020_to_bt709_3dlut(grid_num=65):
 def make_shaper_plus_bt2020_to_bt709_3dlut(grid_num=65, sample_num_1d=1024):
     mid_gray = 0.18
     min_exposure = -20.0
-    max_exposure = 10
+    max_exposure = 3
 
     # make shaper 1dlut
     x_shaper = np.linspace(0, 1, sample_num_1d)
@@ -162,7 +162,8 @@ def make_shaper_plus_bt2020_to_bt709_3dlut(grid_num=65, sample_num_1d=1024):
         x=x_3d, mid_gray=mid_gray,
         min_exposure=min_exposure, max_exposure=max_exposure)
     temp_3d = RGB_to_RGB(temp_3d, BT2020_COLOURSPACE, BT709_COLOURSPACE)
-    temp_3d = np.clip(temp_3d, 0.0, 1.0)
+    # temp_3d = np.clip(temp_3d, 0.0, 1.0)
+    temp_3d[temp_3d < 0.0] = 0.0
     y_3d = temp_3d ** (1/2.4)
     lut_fname = "./luts/linear_bt2020_to_gamma2.4_bt709_with_shaper.spi3d"
     lut.save_3dlut(
@@ -226,15 +227,83 @@ def plot_shaper_w_wo_data():
     plt.show()
 
 
+def plot_interpolation_image():
+    grid_num = 11
+    shaper_lut_sample_num = 1024
+    mid_gray = 0.5
+    min_exposure = -8.0
+    max_exposure = 1
+
+    x = np.linspace(0, 1, shaper_lut_sample_num)
+    y = x ** (1/2.4)
+    x_3dlut = np.linspace(0, 1, grid_num)
+    y_3dlut = x_3dlut ** (1/2.4)
+    x_shaper = shaper_func_log2_to_linear(
+        x=x_3dlut, mid_gray=mid_gray,
+        min_exposure=min_exposure, max_exposure=max_exposure)
+    y_shaper = x_shaper ** (1/2.4)
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="3DLUT Only",
+        graph_title_size=None,
+        xlabel="Linear",
+        ylabel="Gamma Corrected Value",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=[x * 0.1 for x in range(16)],
+        ytick=[x * 0.1 for x in range(13)],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, y, color=COLOUR_LIST[0], lw=5, label='reference')
+    ax1.plot(x_3dlut, y_3dlut, '-+', color=COLOUR_LIST[1], ms=15, mew=3, lw=2,
+             label='3DLUT Only')
+    plt.legend(loc='upper left')
+    plt.savefig("./blog_img/graph_3dlut_only.png",
+                bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="3DLUT + Shaper 1DLUT",
+        graph_title_size=None,
+        xlabel="Linear",
+        ylabel="Gamma Corrected Value",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=[x * 0.1 for x in range(16)],
+        ytick=[x * 0.1 for x in range(13)],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, y, color=COLOUR_LIST[0], lw=5, label='reference')
+    ax1.plot(x_shaper, y_shaper, '-x', color=COLOUR_LIST[2],
+             ms=12, mew=3, lw=2, label='3DLUT + Shaper 1DLUT')
+    plt.legend(loc='upper left')
+    plt.savefig("./blog_img/graph_3dlut_w_shaper_1dlut.png",
+                bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+
+
 def main_func():
     # 単純な 3DLUT 作成
     grid_num = 65
     shaper_lut_sample_num = 1024
-    make_simple_bt2020_to_bt709_3dlut(grid_num=grid_num)
-    make_shaper_plus_bt2020_to_bt709_3dlut(
-        grid_num=grid_num, sample_num_1d=shaper_lut_sample_num)
-    convert_from_bt2020_to_bt709_using_formula()
-    plot_shaper_w_wo_data()
+    # make_simple_bt2020_to_bt709_3dlut(grid_num=grid_num)
+    # make_shaper_plus_bt2020_to_bt709_3dlut(
+    #     grid_num=grid_num, sample_num_1d=shaper_lut_sample_num)
+    # convert_from_bt2020_to_bt709_using_formula()
+    # plot_shaper_w_wo_data()
+    plot_interpolation_image()
 
 
 if __name__ == '__main__':
