@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 import plot_utility as pu
 from colour import RGB_to_RGB
 from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
-from colour.models import eotf_ST2084
 
 
 # 自作ライブラリのインポート
@@ -24,6 +23,7 @@ import lut
 SRC_IMG = "./src_img/Gamma 2.4_ITU-R BT.2020_D65_1920x1080_rev03_type1.exr"
 DST_FILE_NAME_PREFIX = "./dst_img/"
 COLOUR_LIST = ["#FF4800", "#03AF7A", "#005AFF"]
+
 
 def tiff_file_write(filename, img):
     """
@@ -295,14 +295,18 @@ def plot_interpolation_image():
 
 
 def main_func():
-    # 単純な 3DLUT 作成
+    # Reference 画像と NUKE に食わせる 1DLUT, 3DLUT を作成
     grid_num = 65
     shaper_lut_sample_num = 1024
-    # make_simple_bt2020_to_bt709_3dlut(grid_num=grid_num)
-    # make_shaper_plus_bt2020_to_bt709_3dlut(
-    #     grid_num=grid_num, sample_num_1d=shaper_lut_sample_num)
-    # convert_from_bt2020_to_bt709_using_formula()
-    # plot_shaper_w_wo_data()
+    make_simple_bt2020_to_bt709_3dlut(grid_num=grid_num)
+    make_shaper_plus_bt2020_to_bt709_3dlut(
+        grid_num=grid_num, sample_num_1d=shaper_lut_sample_num)
+    convert_from_bt2020_to_bt709_using_formula()
+
+    # 以下のプロットをする場合は事前に NUKE を使った別処が必要。注意！
+    plot_shaper_w_wo_data()
+
+    # ブログ用の図を作成
     plot_interpolation_image()
 
 
