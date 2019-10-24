@@ -7,7 +7,6 @@
 import os
 import numpy as np
 import cv2
-from colour.models import oetf_ST2084
 
 
 class DrawPatch:
@@ -22,7 +21,7 @@ class DrawPatch:
         self.v_num = draw_param['v_num']
         self.h_num = draw_param['h_num']
 
-        self.name_base = "./base_frame/frame_{:03d}_grid_{:02d}.tiff"
+        self.name_base = base_param['patch_file_name']
 
     def preview_image(self, img, order='rgb', over_disp=False):
         if order == 'rgb':
