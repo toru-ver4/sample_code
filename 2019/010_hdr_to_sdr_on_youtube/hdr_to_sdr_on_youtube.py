@@ -15,7 +15,7 @@ from MovieControl import MovieControl
 base_param = {
     "img_width": 3840,
     "img_height": 2160,
-    "patch_size": 32,
+    "patch_size": 64,
     'grid_num': 65,
     'patch_file_name': "./base_frame/frame_{:03d}_grid_{:02d}.tiff"
 }
@@ -78,10 +78,11 @@ typedef struct{
 def main_func():
     calc_parameters = CalcParameters(base_param)
     ctrl_param = calc_parameters.calc()
-    # draw_patch = DrawPatch(base_param, ctrl_param)
-    # draw_patch.draw()
+    draw_patch = DrawPatch(base_param, ctrl_param)
+    draw_patch.draw()
     movie_ctrl = MovieControl(base_param, ctrl_param)
     movie_ctrl.make_sequence()
+    # movie_ctrl.parse_sequence()
 
 
 if __name__ == '__main__':
