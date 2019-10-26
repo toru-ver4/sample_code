@@ -9,6 +9,7 @@ import cv2
 from CalcParameters import CalcParameters
 from DrawPatch import DrawPatch
 from MovieControl import MovieControl
+import lut
 
 
 # definition
@@ -17,8 +18,12 @@ base_param = {
     "img_height": 2160,
     "patch_size": 64,
     'grid_num': 65,
-    'patch_file_name': "./base_frame/frame_{:03d}_grid_{:02d}.tiff"
+    'patch_file_name': "./base_frame/frame_{:03d}_grid_{:02d}.tiff",
+    'patch_after_name': "./after_frame/frame_{:03d}_grid_{:02d}.png",
+    'patch_after_name2': "./after_frame/frame_%3d_grid_{:02d}.png"
 }
+
+lut_file_name = "./luts/HDR10_to_BT709_YouTube_Rev02.cube"
 
 """
 # 設計
@@ -42,8 +47,9 @@ movie_ctrl.make_sequence()  # 指定の fps に合わせて基準フレームを
 # スクショを保存
 
 movie_ctrl.parse_sequence(base_param)  # データから基準フレームを復元
+sdr_rgb = draw_patch.restore()
 
-lut_ctrl = LutControl()
+lut_ctrl = LutControl(base_param, sdr_rgb)
 lut_ctrl.make()  # 基準フレームから3DLUTを生成
 ```
 
@@ -79,10 +85,13 @@ def main_func():
     calc_parameters = CalcParameters(base_param)
     ctrl_param = calc_parameters.calc()
     draw_patch = DrawPatch(base_param, ctrl_param)
-    draw_patch.draw()
+    # draw_patch.draw()
     movie_ctrl = MovieControl(base_param, ctrl_param)
-    movie_ctrl.make_sequence()
-    # movie_ctrl.parse_sequence()
+    # movie_ctrl.make_sequence()
+    movie_ctrl.parse_sequence()
+    sdr_rgb = draw_patch.restore()
+    lut.save_3dlut(
+        lut=sdr_rgb, grid_num=base_param['grid_num'], filename=lut_file_name)
 
 
 if __name__ == '__main__':
