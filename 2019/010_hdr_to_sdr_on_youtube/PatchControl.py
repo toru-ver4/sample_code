@@ -9,7 +9,7 @@ import numpy as np
 import cv2
 
 
-class DrawPatch:
+class PatchControl:
     def __init__(self, base_param, draw_param):
         self.img_width = base_param['img_width']
         self.img_height = base_param['img_height']

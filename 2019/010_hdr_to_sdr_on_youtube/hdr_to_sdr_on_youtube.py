@@ -7,7 +7,7 @@ import cv2
 
 # 自作ライブラリ
 from CalcParameters import CalcParameters
-from DrawPatch import DrawPatch
+from PatchControl import PatchControl
 from MovieControl import MovieControl
 import lut
 
@@ -23,7 +23,13 @@ base_param = {
     'patch_after_name2': "./after_frame/frame_%3d_grid_{:02d}.png"
 }
 
-lut_file_name = "./luts/HDR10_to_BT709_YouTube_Rev02.cube"
+"""
+各 Revision の意味は以下の通り。
+* Rev 01: 失敗。なんか全体的に Gain 低い
+* Rev 02: 成功。初版。
+* Rev 03: ソースコードリファクタリング後。中身は Rev 02 と同じ。
+"""
+lut_file_name = "./luts/HDR10_to_BT709_YouTube_Rev03.cube"
 
 """
 # 設計
@@ -31,26 +37,23 @@ lut_file_name = "./luts/HDR10_to_BT709_YouTube_Rev02.cube"
 ## 動作イメージ
 
 ```
-img = np.zeros((2160, 3840, 3), dtype=np.float32)
-
 calc_parameters = CalcParameters(base_param)
 ctrl_param = calc_parameters.calc()
 
-draw_patch = DrawPatch(img, ctrl_param)
-draw_patch.draw()  # もりもりパッチ画像作成。10bit DPX で保存
+patch_control = PatchControl(base_param, ctrl_param)
+patch_control.draw()  # もりもりパッチ画像作成。10bit DPX で保存
 
-movie_ctrl = MovieControl(base_param)
+movie_ctrl = MovieControl(base_param, ctrl_param)
 movie_ctrl.make_sequence()  # 指定の fps に合わせて基準フレームをコピー
 
 # Davinci Resolve でエンコード
 # YouTube にアップロード
 # スクショを保存
 
-movie_ctrl.parse_sequence(base_param)  # データから基準フレームを復元
-sdr_rgb = draw_patch.restore()
+movie_ctrl.parse_sequence()  # データから基準フレームを復元
+sdr_rgb = patch_control.restore()
 
-lut_ctrl = LutControl(base_param, sdr_rgb)
-lut_ctrl.make()  # 基準フレームから3DLUTを生成
+lut.save_3dlut(sdr_rgb)  # 3DLUT として保存
 ```
 
 ## base_param
@@ -61,9 +64,9 @@ typedef struct{
     int img_height; // 2160
     int patch_size;  // 32 [pixel]
     int grid_num;  // 65 [grid]
-    str *patch_file_name;
+    str *patch_file_name;  // for DrawPatch
+    str *patch_file_name2;  // for ffmpeg
 }base_param;
-
 ```
 
 ## ctrl_param
@@ -84,14 +87,22 @@ typedef struct{
 def main_func():
     calc_parameters = CalcParameters(base_param)
     ctrl_param = calc_parameters.calc()
-    draw_patch = DrawPatch(base_param, ctrl_param)
-    # draw_patch.draw()
+    patch_control = PatchControl(base_param, ctrl_param)
+    # patch_control.draw()
     movie_ctrl = MovieControl(base_param, ctrl_param)
     # movie_ctrl.make_sequence()
+
+    """
+    注意。ここから先の処理は以下の処理が終わってから実施すること。
+    * Davinci Resolve でのエンコード
+    * YouTube へのアップロード
+    * YouTube から静止画のスクショ作成
+    """
     movie_ctrl.parse_sequence()
-    sdr_rgb = draw_patch.restore()
+    sdr_rgb = patch_control.restore()
     lut.save_3dlut(
-        lut=sdr_rgb, grid_num=base_param['grid_num'], filename=lut_file_name)
+        lut=sdr_rgb, grid_num=base_param['grid_num'], filename=lut_file_name,
+        title="YouTube HDR to SDR conversion emulation")
 
 
 if __name__ == '__main__':
