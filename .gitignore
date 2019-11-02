@@ -106,6 +106,7 @@ venv.bak/
 # vs code
 .vscode/
 
+2019/009_python_subprocess/bin/*
 2019/001_make_3dlut/**/*.tif
 2019/005_make_animation_using_matplotlib/*.mp4
 2019/007_Pixel_3a_low_level_checker/out_img/**
@@ -115,3 +116,9 @@ venv.bak/
 2019/008_necessity_shaper_lut/**/*.tiff
 2019/008_necessity_shaper_lut/**/*.tif
 2019/008_necessity_shaper_lut/**/*.png
+2019/010_hdr_to_sdr_on_youtube/sequence/**
+2019/010_hdr_to_sdr_on_youtube/base_frame/**
+2019/010_hdr_to_sdr_on_youtube/after_frame/**
+2019/010_hdr_to_sdr_on_youtube/bin/**
+2019/010_hdr_to_sdr_on_youtube/**/*.cube
+2019/010_hdr_to_sdr_on_youtube/**/*.mkv
