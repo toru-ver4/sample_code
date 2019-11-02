@@ -4,6 +4,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
 
 # 自作ライブラリのインポート
 import TyImageIO as tyio
@@ -59,8 +60,7 @@ def check_after_3dlut_exr():
     dump_img_info(img)
 
 
-def plot_eetf(eetf, a18=0.735637509393, b18=0.0139687618866,
-              a100=0.74, b100=0.0117522745451):
+def plot_eetf(eetf):
     """
     EETF のプロット
     """
@@ -72,8 +72,8 @@ def plot_eetf(eetf, a18=0.735637509393, b18=0.0139687618866,
         figsize=(12, 10),
         graph_title="Tone mapping characteristics",
         graph_title_size=None,
-        xlabel="Luminance [cd/m2]",
-        ylabel="Luminance [cd/m2]",
+        xlabel="ST2084 Code Value",
+        ylabel="ST2084 Code Value",
         axis_label_size=None,
         legend_size=17,
         xlim=None,
@@ -96,7 +96,54 @@ def plot_eetf(eetf, a18=0.735637509393, b18=0.0139687618866,
     # y_val = [1.0 * (10 ** (x - 4)) for x in range(9)]
     # plt.yticks(y_val, y_caption)
     plt.legend(loc='upper left')
-    plt.savefig("./blog_img/eetf.png", bbox_inches='tight', pad_inches=0.1)
+    plt.savefig(
+        "./blog_img/eetf_codevalue.png", bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+
+
+def plot_eetf_luminance(eetf):
+    """
+    EETF のプロットを輝度値ベースで
+    """
+    img = cv2.imread("./img/youtubed_sdr_tp.png")
+    y_ref = ((img[3, :, 1] / 255.0) ** 2.4) * 100
+    x = np.linspace(0, 1, h_sample)
+    y_simulation = youtube_tonemapping(x, 400, 1000)
+    y = eetf[st_pos_v, st_pos_h:st_pos_h+h_sample, 1]
+    y_sim_luminance = tf.eotf_to_luminance(y_simulation, tf.ST2084)
+    y_luminance = tf.eotf_to_luminance(y, tf.ST2084)
+    x_luminance = tf.eotf_to_luminance(x, tf.ST2084)
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 10),
+        graph_title="Tone mapping characteristics",
+        graph_title_size=None,
+        xlabel="Luminance [cd/m2]",
+        ylabel="Luminance [cd/m2]",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=(-75, 1200),
+        ylim=(-5, 105),
+        xtick=[x * 100 for x in range(13)],
+        ytick=[x * 10 for x in range(11)],
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    # ax1.set_xscale('log', basex=10.0)
+    # ax1.set_yscale('log', basey=10.0)
+    # ax1.plot(x_luminance, y_luminance, 'o', label="YouTube HDR to SDR EETF")
+    ax1.plot(x_luminance, y_luminance, 'o', label="YouTube HDR to SDR EETF")
+    ax1.plot(x_luminance, y_sim_luminance, '-', label="approximation")
+    ax1.plot(x_luminance, y_ref, 'o', label="youtube")
+    # x_val = [1.0 * (10 ** (x - 4)) for x in range(9)]
+    # x_caption = [r"$10^{{{}}}$".format(x - 4) for x in range(9)]
+    # plt.xticks(x_val, x_caption)
+    # y_caption = [r"$10^{{{}}}$".format(x - 4) for x in range(9)]
+    # y_val = [1.0 * (10 ** (x - 4)) for x in range(9)]
+    # plt.yticks(y_val, y_caption)
+    plt.legend(loc='upper left')
+    plt.savefig(
+        "./blog_img/eetf_luminance.png", bbox_inches='tight', pad_inches=0.1)
     plt.show()
 
 
@@ -136,8 +183,9 @@ def analyze_eetf():
     img_after_sdr_eotf = img ** 2.4
     img_after_pq_oetf = tf.oetf(img_after_sdr_eotf / 100, tf.ST2084)
     eetf = img_after_pq_oetf
-    dump_eetf_info(eetf)
+    # dump_eetf_info(eetf)
     plot_eetf(eetf)
+    plot_eetf_luminance(eetf)
 
 
 def spline_example():
@@ -261,10 +309,15 @@ def test_plot_youtube_tonemapping(ks_luminance=400, ke_luminance=1000):
     plt.show()
 
 
+def analyze_gamut_mapping():
+    pass
+
+
 def main_func():
     # correct_pq_exr_gain()
     # check_after_3dlut_exr()
     analyze_eetf()
+    analyze_gamut_mapping()
     # spline_example()
     # test_plot_youtube_tonemapping()
 
