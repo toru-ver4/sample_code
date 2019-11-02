@@ -65,11 +65,8 @@ def plot_eetf(eetf, a18=0.735637509393, b18=0.0139687618866,
     EETF のプロット
     """
     x = np.linspace(0, 1, h_sample)
+    y_simulation = youtube_tonemapping(x, 400, 1000)
     y = eetf[st_pos_v, st_pos_h:st_pos_h+h_sample, 1]
-    x_luminance = tf.eotf_to_luminance(x, tf.ST2084)
-    y_luminance = tf.eotf_to_luminance(y, tf.ST2084)
-    y_18 = x * a18 + b18
-    y_100 = x * a100 + b100
     ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(12, 10),
@@ -91,7 +88,7 @@ def plot_eetf(eetf, a18=0.735637509393, b18=0.0139687618866,
     # ax1.plot(x_luminance, y_luminance, 'o', label="YouTube HDR to SDR EETF")
     ax1.plot(x, y, 'o', label="YouTube HDR to SDR EETF")
     # ax1.plot(x, y_18, '-', label="18% gray to 100% white")
-    ax1.plot(x, y_100, '-', label="Original")
+    ax1.plot(x, y_simulation, '-', label="emulation")
     # x_val = [1.0 * (10 ** (x - 4)) for x in range(9)]
     # x_caption = [r"$10^{{{}}}$".format(x - 4) for x in range(9)]
     # plt.xticks(x_val, x_caption)
@@ -204,23 +201,72 @@ def get_top_side_bezier(param=[[0.6, 0.7], [0.8, 1.0], [1.0, 1.0]]):
     # パラメータ u と事前に求めた t で置き換える
     # -------------------------------------------
     y = y.subs({p: p_val, q: q_val, r: r_val, u: t})
-    print(y)
 
     func = lambdify(x, y, 'numpy')
 
     return func
 
 
-def youtube_tonemapping():
-    pass
+def youtube_linear(x):
+    return 0.74 * x + 0.01175
+
+
+def youtube_tonemapping(x, ks_luminance=400, ke_luminance=1000):
+    """
+    YouTube の HDR to SDR のトーンマップを模倣してみる。
+    中間階調までは直線で、高階調部だけ2次ベジェ曲線で丸める。
+
+    直線の数式は $y = 0.74x + 0.01175$。
+    y軸の最大値は 0.508078421517 (100nits)。
+    この時の x は $x = (0.508078421517 - 0.01175) / 0.74$ より
+    0.6707140831310812 。ちなみに、リニアなら 473.5 nits。
+
+    ks は knee start の略。ke は knee end.
+    """
+    ks_x = tf.oetf_from_luminance(ks_luminance, tf.ST2084)
+    ks_y = youtube_linear(ks_x)
+    ke_x = tf.oetf_from_luminance(ke_luminance, tf.ST2084)
+    ke_y = tf.oetf_from_luminance(100, tf.ST2084)
+    mid_x = 0.6707140831310812
+    mid_y = ke_y
+    bezie = get_top_side_bezier([[ks_x, ks_y], [mid_x, mid_y], [ke_x, ke_y]])
+    y = np.select(
+        (x < ks_x, x <= ke_x, x > ke_x),
+        (youtube_linear(x), bezie(x), ke_y))
+
+    return y
+
+
+def test_plot_youtube_tonemapping(ks_luminance=400, ke_luminance=1000):
+    x = np.linspace(0, 1, 1024)
+    y = youtube_tonemapping(x, ks_luminance, ke_luminance)
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 10),
+        graph_title="Tone mapping characteristics",
+        graph_title_size=None,
+        xlabel="ST2084 Code Value",
+        ylabel="ST2084 Code Value",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, y, 'o', label="emulation")
+    plt.legend(loc='upper left')
+    plt.show()
 
 
 def main_func():
     # correct_pq_exr_gain()
     # check_after_3dlut_exr()
-    # analyze_eetf()
-    spline_example()
-    youtube_tonemapping()
+    analyze_eetf()
+    # spline_example()
+    # test_plot_youtube_tonemapping()
 
 
 if __name__ == '__main__':
