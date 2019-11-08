@@ -5,21 +5,30 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
+from sympy import symbols, solve
+from sympy.utilities.lambdify import lambdify
+from colour import xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_xyY, RGB_to_RGB
+from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
+import OpenImageIO as oiio
+from colour.colorimetry import CMFS, ILLUMINANTS
+
 
 # 自作ライブラリのインポート
 import TyImageIO as tyio
-import OpenImageIO as oiio
 import transfer_functions as tf
 import plot_utility as pu
-from scipy.interpolate import interp1d, splrep
-from sympy import symbols, solve
-from sympy.utilities.lambdify import lambdify
+import test_pattern_generator2 as tpg
+import color_space as cs
 
 src_exr = "./img/SMPTE ST2084_ITU-R BT.2020_D65_1920x1080_rev03_type1.exr"
 dst_exr = "./img/SMPTE ST2084_ITU-R BT.2020_D65_1920x1080_rev03_type1_c.exr"
 after_3dlut_exr = "./img/after_3dlut_with_pq_oetf.exr"
 sdr_eotf = tf.SRGB
 
+CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
+D65_WHITE = ILLUMINANTS[CMFS_NAME]['D65']
+UNIVERSAL_COLOR_LIST = ["#F6AA00", "#FFF100", "#03AF7A",
+                        "#005AFF", "#4DC4FF", "#804000"]
 st_pos_h = 57
 st_pos_v = 289
 h_sample = 1024
@@ -69,26 +78,29 @@ def plot_eetf(eetf):
     y = eetf[st_pos_v, st_pos_h:st_pos_h+h_sample, 1]
     ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(12, 10),
-        graph_title="Tone mapping characteristics",
+        figsize=(10, 8),
+        graph_title="Tone Mapping Characteristics",
         graph_title_size=None,
         xlabel="ST2084 Code Value",
         ylabel="ST2084 Code Value",
         axis_label_size=None,
         legend_size=17,
+        xtick_size=19,
+        ytick_size=19,
         xlim=None,
         ylim=None,
-        xtick=None,
-        ytick=None,
-        linewidth=3,
+        xtick=[0.1 * x for x in range(11)],
+        ytick=[0.05 * x for x in range(11)],
+        linewidth=8,
         minor_xtick_num=None,
         minor_ytick_num=None)
     # ax1.set_xscale('log', basex=10.0)
     # ax1.set_yscale('log', basey=10.0)
     # ax1.plot(x_luminance, y_luminance, 'o', label="YouTube HDR to SDR EETF")
-    ax1.plot(x, y, 'o', label="YouTube HDR to SDR EETF")
+    ax1.plot(x, y, '-', label="Estimated EETF")
     # ax1.plot(x, y_18, '-', label="18% gray to 100% white")
-    ax1.plot(x, y_simulation, '-', label="emulation")
+    ax1.plot(x, y_simulation, '-', label="Estimated Formula",
+             lw=3.5)
     # x_val = [1.0 * (10 ** (x - 4)) for x in range(9)]
     # x_caption = [r"$10^{{{}}}$".format(x - 4) for x in range(9)]
     # plt.xticks(x_val, x_caption)
@@ -97,7 +109,8 @@ def plot_eetf(eetf):
     # plt.yticks(y_val, y_caption)
     plt.legend(loc='upper left')
     plt.savefig(
-        "./blog_img/eetf_codevalue.png", bbox_inches='tight', pad_inches=0.1)
+        "./blog_img/eetf_codevalue_with_approximation.png",
+        bbox_inches='tight', pad_inches=0.1)
     plt.show()
 
 
@@ -115,26 +128,29 @@ def plot_eetf_luminance(eetf):
     x_luminance = tf.eotf_to_luminance(x, tf.ST2084)
     ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(12, 10),
-        graph_title="Tone mapping characteristics",
+        figsize=(10, 8),
+        graph_title="Tone Mapping Characteristics",
         graph_title_size=None,
         xlabel="Luminance [cd/m2]",
         ylabel="Luminance [cd/m2]",
         axis_label_size=None,
         legend_size=17,
+        xtick_size=19,
+        ytick_size=19,
         xlim=(-75, 1200),
         ylim=(-5, 105),
         xtick=[x * 100 for x in range(13)],
         ytick=[x * 10 for x in range(11)],
-        linewidth=3,
+        linewidth=8,
         minor_xtick_num=None,
         minor_ytick_num=None)
     # ax1.set_xscale('log', basex=10.0)
     # ax1.set_yscale('log', basey=10.0)
     # ax1.plot(x_luminance, y_luminance, 'o', label="YouTube HDR to SDR EETF")
-    ax1.plot(x_luminance, y_luminance, 'o', label="YouTube HDR to SDR EETF")
-    ax1.plot(x_luminance, y_sim_luminance, '-', label="approximation")
-    ax1.plot(x_luminance, y_ref, 'o', label="youtube")
+    ax1.plot(x_luminance, y_luminance, '-', label="Estimated EETF")
+    ax1.plot(x_luminance, y_sim_luminance, '-', label="Estimated Formula",
+             lw=3.5)
+    # ax1.plot(x_luminance, y_ref, 'o', label="youtube")
     # x_val = [1.0 * (10 ** (x - 4)) for x in range(9)]
     # x_caption = [r"$10^{{{}}}$".format(x - 4) for x in range(9)]
     # plt.xticks(x_val, x_caption)
@@ -143,7 +159,8 @@ def plot_eetf_luminance(eetf):
     # plt.yticks(y_val, y_caption)
     plt.legend(loc='upper left')
     plt.savefig(
-        "./blog_img/eetf_luminance.png", bbox_inches='tight', pad_inches=0.1)
+        "./blog_img/eetf_luminance_with_approximation.png",
+        bbox_inches='tight', pad_inches=0.1)
     plt.show()
 
 
@@ -309,17 +326,214 @@ def test_plot_youtube_tonemapping(ks_luminance=400, ke_luminance=1000):
     plt.show()
 
 
+def get_xyY_from_csv(fname="./data/bt2020_xyY_data.csv"):
+    data_all = np.loadtxt(fname, delimiter=",", skiprows=1).T
+    hue_num = len(data_all[1:]) // 3  # 3 is r, g, b.
+    data = data_all[1:]
+    xyY_all = []
+    for h_idx in range(hue_num):
+        xyY = np.dstack((data[h_idx*3], data[h_idx*3+1], data[h_idx*3+2]))
+        xyY_all.append(xyY)
+
+    xyY_all = np.array(xyY_all)
+
+    return xyY_all
+
+
+def make_src_test_pattern(xyY, pixel_num):
+    large_xyz = xyY_to_XYZ(xyY)
+    xyz_to_rgb_mtx = BT2020_COLOURSPACE.XYZ_to_RGB_matrix
+    rgb_linear = XYZ_to_RGB(large_xyz, D65_WHITE, D65_WHITE, xyz_to_rgb_mtx)
+    rgb_linear[rgb_linear < 0] = 0.0
+    rgb_pq = tf.oetf_from_luminance(rgb_linear * 100, tf.ST2084)
+    rgb_seq = rgb_pq.reshape((1, pixel_num, 3))
+    img = np.zeros((1080, 1920, 3), dtype=np.uint16)
+    rgb_seq_16bit = np.uint16(np.round(rgb_seq * 0xFFFF))
+    img[0, :pixel_num, :] = rgb_seq_16bit
+    cv2.imwrite("./img/gamut_check_src.tiff", img[:, :, ::-1])
+
+
+def restore_dst_test_pattern(fname, pixel_num):
+    img = cv2.imread(fname, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)[:, :, ::-1]
+    rgb_pq = img[0, :pixel_num, :] / 0xFFFF
+    rgb_linear = tf.eotf(rgb_pq, tf.GAMMA24)
+    rgb_to_xyz_mtx = BT709_COLOURSPACE.RGB_to_XYZ_matrix
+    large_xyz = RGB_to_XYZ(rgb_linear, D65_WHITE, D65_WHITE, rgb_to_xyz_mtx)
+    xyY = XYZ_to_xyY(large_xyz)
+    return xyY
+
+
 def analyze_gamut_mapping():
-    pass
+    hdr_xyY = get_xyY_from_csv(fname="./data/bt2020_xyY_data.csv")
+    pixel_num = hdr_xyY.shape[0] * hdr_xyY.shape[1] * hdr_xyY.shape[2]
+    make_src_test_pattern(hdr_xyY, pixel_num)
+    sdr_xyY = restore_dst_test_pattern(
+        fname="./img/gamut_check_dst.tif", pixel_num=pixel_num)
+    plot_xy_move(hdr_xyY.reshape((pixel_num, 3)), sdr_xyY)
+    plot_simple_xy_move(hdr_xyY.reshape((pixel_num, 3)), sdr_xyY)
+
+
+def plot_xy_move(src_xyY, dst_xyY, xmin=0.0, xmax=0.8, ymin=0.0, ymax=0.9):
+    """
+    src は HDR時の xyY, dst は SDR変換後 の xyY.
+    """
+    xy_image = tpg.get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+    cmf_xy = tpg._get_cmfs_xy()
+    xlim = (min(0, xmin), max(0.8, xmax))
+    ylim = (min(0, ymin), max(0.9, ymax))
+    figsize_h = 8 * 1.0
+    figsize_v = 9 * 1.0
+    rate = 1.3
+    # gamut の用意
+    outer_gamut = np.array(tpg.get_primaries(cs.BT2020)[0])
+    inner_gamut = np.array(tpg.get_primaries(cs.BT709)[0])
+    outer_name = 'ITR-R BT.2020'
+    inner_name = 'ITR-R BT.709'
+    ax1 = pu.plot_1_graph(fontsize=20 * rate,
+                          figsize=(figsize_h, figsize_v),
+                          graph_title="CIE1931 Chromaticity Diagram",
+                          xlabel=None, ylabel=None,
+                          legend_size=18 * rate,
+                          xlim=xlim, ylim=ylim,
+                          xtick=[x * 0.1 + xmin for x in
+                                 range(int((xlim[1] - xlim[0])/0.1) + 1)],
+                          ytick=[x * 0.1 + ymin for x in
+                                 range(int((ylim[1] - ylim[0])/0.1) + 1)],
+                          xtick_size=17 * rate,
+                          ytick_size=17 * rate,
+                          linewidth=4 * rate,
+                          minor_xtick_num=2, minor_ytick_num=2)
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=3.5*rate, label=None)
+    ax1.plot((cmf_xy[-1, 0], cmf_xy[0, 0]), (cmf_xy[-1, 1], cmf_xy[0, 1]),
+             '-k', lw=3.5*rate, label=None)
+    ax1.plot(inner_gamut[:, 0], inner_gamut[:, 1],
+             c=UNIVERSAL_COLOR_LIST[0], label=inner_name, lw=2.75*rate)
+    ax1.plot(outer_gamut[:, 0], outer_gamut[:, 1],
+             c=UNIVERSAL_COLOR_LIST[3], label=outer_name, lw=2.75*rate)
+    ax1.plot(tpg.D65_WHITE[0], tpg.D65_WHITE[1], marker='x', c='k',
+             lw=2.75*rate, label='D65', ms=10*rate, mew=2.75*rate)
+    ax1.plot(src_xyY[..., 0], src_xyY[..., 1], ls='', marker='o',
+             c='#000000', ms=5.5*rate, label="Before")
+    ax1.plot(dst_xyY[..., 0], dst_xyY[..., 1], ls='', marker='+',
+             c='#808080', ms=10*rate, mew=2.0*rate,
+             label="After")
+    # annotation
+    arrowprops = dict(
+        facecolor='#333333', shrink=0.0, headwidth=6, headlength=8,
+        width=1)
+    src_xyY = src_xyY.reshape((18, 8, 3))
+    dst_xyY = dst_xyY.reshape((18, 8, 3))
+    for h_idx in range(18):
+        for s_idx in range(8):
+            if s_idx < 4:
+                continue
+            ed_pos = (dst_xyY[h_idx][s_idx][0],
+                      dst_xyY[h_idx][s_idx][1])
+            st_pos = (src_xyY[h_idx][s_idx][0],
+                      src_xyY[h_idx][s_idx][1])
+            ax1.annotate("", xy=ed_pos, xytext=st_pos, xycoords='data',
+                         textcoords='data', ha='left', va='bottom',
+                         arrowprops=arrowprops)
+
+    # for s_idx in range(src_xyY.shape[0]):
+    #     ed_pos = (dst_xyY[s_idx][0],
+    #               dst_xyY[s_idx][1])
+    #     st_pos = (src_xyY[s_idx][0],
+    #               src_xyY[s_idx][1])
+    #     ax1.annotate("", xy=ed_pos, xytext=st_pos, xycoords='data',
+    #                  textcoords='data', ha='left', va='bottom',
+    #                  arrowprops=arrowprops)
+
+    ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax))
+    plt.legend(loc='upper right', fontsize=14 * rate)
+    png_file_name = "./blog_img/xyY_plot_hdr_to_sdr.png"
+    plt.savefig(png_file_name, bbox_inches='tight')
+    plt.show()
+
+
+def plot_simple_xy_move(
+        src_xyY, dst_xyY, xmin=0.0, xmax=0.8, ymin=0.0, ymax=0.9):
+    """
+    3x3 の Matrix で単純な色域変換をした場合の xy平面でのズレのプロット。
+    """
+    rgb_2020 = XYZ_to_RGB(xyY_to_XYZ(src_xyY), D65_WHITE, D65_WHITE,
+                          BT2020_COLOURSPACE.XYZ_to_RGB_matrix)
+    rgb_709 = RGB_to_RGB(rgb_2020, BT2020_COLOURSPACE, BT709_COLOURSPACE)
+    rgb_709 = np.clip(rgb_709, 0.0, 1.0)
+    dst_xyY = XYZ_to_xyY(RGB_to_XYZ(rgb_709, D65_WHITE, D65_WHITE,
+                                    BT709_COLOURSPACE.RGB_to_XYZ_matrix))
+    xy_image = tpg.get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+    cmf_xy = tpg._get_cmfs_xy()
+    xlim = (min(0, xmin), max(0.8, xmax))
+    ylim = (min(0, ymin), max(0.9, ymax))
+    figsize_h = 8 * 1.0
+    figsize_v = 9 * 1.0
+    rate = 1.3
+    # gamut の用意
+    outer_gamut = np.array(tpg.get_primaries(cs.BT2020)[0])
+    inner_gamut = np.array(tpg.get_primaries(cs.BT709)[0])
+    outer_name = 'ITR-R BT.2020'
+    inner_name = 'ITR-R BT.709'
+    ax1 = pu.plot_1_graph(fontsize=20 * rate,
+                          figsize=(figsize_h, figsize_v),
+                          graph_title="CIE1931 Chromaticity Diagram",
+                          xlabel=None, ylabel=None,
+                          legend_size=18 * rate,
+                          xlim=xlim, ylim=ylim,
+                          xtick=[x * 0.1 + xmin for x in
+                                 range(int((xlim[1] - xlim[0])/0.1) + 1)],
+                          ytick=[x * 0.1 + ymin for x in
+                                 range(int((ylim[1] - ylim[0])/0.1) + 1)],
+                          xtick_size=17 * rate,
+                          ytick_size=17 * rate,
+                          linewidth=4 * rate,
+                          minor_xtick_num=2, minor_ytick_num=2)
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=3.5*rate, label=None)
+    ax1.plot((cmf_xy[-1, 0], cmf_xy[0, 0]), (cmf_xy[-1, 1], cmf_xy[0, 1]),
+             '-k', lw=3.5*rate, label=None)
+    ax1.plot(inner_gamut[:, 0], inner_gamut[:, 1],
+             c=UNIVERSAL_COLOR_LIST[0], label=inner_name, lw=2.75*rate)
+    ax1.plot(outer_gamut[:, 0], outer_gamut[:, 1],
+             c=UNIVERSAL_COLOR_LIST[3], label=outer_name, lw=2.75*rate)
+    ax1.plot(tpg.D65_WHITE[0], tpg.D65_WHITE[1], marker='x', c='k',
+             lw=2.75*rate, label='D65', ms=10*rate, mew=2.75*rate)
+    ax1.plot(src_xyY[..., 0], src_xyY[..., 1], ls='', marker='o',
+             c='#000000', ms=5.5*rate, label="Before")
+    ax1.plot(dst_xyY[..., 0], dst_xyY[..., 1], ls='', marker='+',
+             c='#808080', ms=10*rate, mew=2.0*rate,
+             label="After")
+    # annotation
+    arrowprops = dict(
+        facecolor='#333333', shrink=0.0, headwidth=6, headlength=8,
+        width=1)
+    src_xyY = src_xyY.reshape((18, 8, 3))
+    dst_xyY = dst_xyY.reshape((18, 8, 3))
+    for h_idx in range(18):
+        for s_idx in range(8):
+            if s_idx < 3:
+                continue
+            ed_pos = (dst_xyY[h_idx][s_idx][0],
+                      dst_xyY[h_idx][s_idx][1])
+            st_pos = (src_xyY[h_idx][s_idx][0],
+                      src_xyY[h_idx][s_idx][1])
+            ax1.annotate("", xy=ed_pos, xytext=st_pos, xycoords='data',
+                         textcoords='data', ha='left', va='bottom',
+                         arrowprops=arrowprops)
+
+    ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax))
+    plt.legend(loc='upper right', fontsize=14 * rate)
+    png_file_name = "./blog_img/xyY_plot_simple_mtx_conv.png"
+    plt.savefig(png_file_name, bbox_inches='tight')
+    plt.show()
 
 
 def main_func():
     # correct_pq_exr_gain()
     # check_after_3dlut_exr()
     analyze_eetf()
-    analyze_gamut_mapping()
-    # spline_example()
-    # test_plot_youtube_tonemapping()
+    # analyze_gamut_mapping()
 
 
 if __name__ == '__main__':
