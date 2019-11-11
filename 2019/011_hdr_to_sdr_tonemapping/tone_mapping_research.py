@@ -193,16 +193,38 @@ def dump_eetf_info(eetf):
     print(tf.eotf_to_luminance(0.3877303064680016, tf.ST2084))
 
 
+def conv_hdr10_to_sdr_using_formula(
+        in_name="./img/test_src_for_youtube_upload_riku.tif"):
+    out_name_body = os.path.basename(os.path.splitext(in_name)[0])
+    out_name = "./blog_img/{}.png".format(out_name_body)
+    img = cv2.imread(
+        in_name, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)[:, :, ::-1] / 0xFFFF
+
+    img = youtube_tonemapping(img)
+    img_linear = tf.eotf_to_luminance(img, tf.ST2084) / 100
+    img_linear = RGB_to_RGB(img_linear, BT2020_COLOURSPACE, BT709_COLOURSPACE)
+    img_linear = np.clip(img_linear, 0.0, 1.0)
+    img = tf.oetf(img_linear, tf.GAMMA24)
+    img = np.uint8(np.round(img * 0xFF))
+    cv2.imwrite(out_name, img[:, :, ::-1])
+
+
 def analyze_eetf():
     reader = tyio.TyReader(after_3dlut_exr)
     img = reader.read()
     # img_after_sdr_eotf = tf.eotf(img, sdr_eotf)
     img_after_sdr_eotf = img ** 2.4
     img_after_pq_oetf = tf.oetf(img_after_sdr_eotf / 100, tf.ST2084)
-    eetf = img_after_pq_oetf
+    # eetf = img_after_pq_oetf
     # dump_eetf_info(eetf)
-    plot_eetf(eetf)
-    plot_eetf_luminance(eetf)
+    # plot_eetf(eetf)
+    # plot_eetf_luminance(eetf)
+    # plot_apply_eetf_luminance()
+    # plot_apply_eetf_code_value()
+    conv_hdr10_to_sdr_using_formula(
+        in_name="./img/test_src_for_youtube_upload_riku.tif")
+    conv_hdr10_to_sdr_using_formula(
+        in_name="./img/test_src_for_youtube_upload_umi.tif")
 
 
 def spline_example():
@@ -345,7 +367,7 @@ def make_src_test_pattern(xyY, pixel_num):
     xyz_to_rgb_mtx = BT2020_COLOURSPACE.XYZ_to_RGB_matrix
     rgb_linear = XYZ_to_RGB(large_xyz, D65_WHITE, D65_WHITE, xyz_to_rgb_mtx)
     rgb_linear[rgb_linear < 0] = 0.0
-    rgb_pq = tf.oetf_from_luminance(rgb_linear * 100, tf.ST2084)
+    rgb_pq = tf.oetf_from_luminance(rgb_linear * 1000, tf.ST2084)
     rgb_seq = rgb_pq.reshape((1, pixel_num, 3))
     img = np.zeros((1080, 1920, 3), dtype=np.uint16)
     rgb_seq_16bit = np.uint16(np.round(rgb_seq * 0xFFFF))
@@ -370,7 +392,7 @@ def analyze_gamut_mapping():
     sdr_xyY = restore_dst_test_pattern(
         fname="./img/gamut_check_dst.tif", pixel_num=pixel_num)
     plot_xy_move(hdr_xyY.reshape((pixel_num, 3)), sdr_xyY)
-    plot_simple_xy_move(hdr_xyY.reshape((pixel_num, 3)), sdr_xyY)
+    plot_simple_xy_move(hdr_xyY.reshape((pixel_num, 3)), None)
 
 
 def plot_xy_move(src_xyY, dst_xyY, xmin=0.0, xmax=0.8, ymin=0.0, ymax=0.9):
@@ -411,7 +433,7 @@ def plot_xy_move(src_xyY, dst_xyY, xmin=0.0, xmax=0.8, ymin=0.0, ymax=0.9):
              c=UNIVERSAL_COLOR_LIST[0], label=inner_name, lw=2.75*rate)
     ax1.plot(outer_gamut[:, 0], outer_gamut[:, 1],
              c=UNIVERSAL_COLOR_LIST[3], label=outer_name, lw=2.75*rate)
-    ax1.plot(tpg.D65_WHITE[0], tpg.D65_WHITE[1], marker='x', c='k',
+    ax1.plot(tpg.D65_WHITE[0], tpg.D65_WHITE[1], 'x', c='k',
              lw=2.75*rate, label='D65', ms=10*rate, mew=2.75*rate)
     ax1.plot(src_xyY[..., 0], src_xyY[..., 1], ls='', marker='o',
              c='#000000', ms=5.5*rate, label="Before")
@@ -459,6 +481,10 @@ def plot_simple_xy_move(
     """
     rgb_2020 = XYZ_to_RGB(xyY_to_XYZ(src_xyY), D65_WHITE, D65_WHITE,
                           BT2020_COLOURSPACE.XYZ_to_RGB_matrix)
+    rgb_2020[rgb_2020 < 0] = 0
+    rgb_pq = tf.oetf(rgb_2020 * 0.1, tf.ST2084)
+    rgb_pq = youtube_tonemapping(rgb_pq)
+    rgb_2020 = tf.eotf(rgb_pq, tf.ST2084)
     rgb_709 = RGB_to_RGB(rgb_2020, BT2020_COLOURSPACE, BT709_COLOURSPACE)
     rgb_709 = np.clip(rgb_709, 0.0, 1.0)
     dst_xyY = XYZ_to_xyY(RGB_to_XYZ(rgb_709, D65_WHITE, D65_WHITE,
@@ -497,7 +523,7 @@ def plot_simple_xy_move(
              c=UNIVERSAL_COLOR_LIST[0], label=inner_name, lw=2.75*rate)
     ax1.plot(outer_gamut[:, 0], outer_gamut[:, 1],
              c=UNIVERSAL_COLOR_LIST[3], label=outer_name, lw=2.75*rate)
-    ax1.plot(tpg.D65_WHITE[0], tpg.D65_WHITE[1], marker='x', c='k',
+    ax1.plot(tpg.D65_WHITE[0], tpg.D65_WHITE[1], 'x', c='k',
              lw=2.75*rate, label='D65', ms=10*rate, mew=2.75*rate)
     ax1.plot(src_xyY[..., 0], src_xyY[..., 1], ls='', marker='o',
              c='#000000', ms=5.5*rate, label="Before")
@@ -529,11 +555,98 @@ def plot_simple_xy_move(
     plt.show()
 
 
+def plot_apply_eetf_code_value():
+    """
+    推測したEETFを実際に適用して合っているか確認する。
+    """
+    st_h = 115
+    st_v = 563
+    ed_h = st_h + 2048
+
+    img_youtube = cv2.imread("./img/youtubed_sdr_tp_all.png")
+    img_src = cv2.imread("./img/youtubed_sdr_src.tiff",
+                         cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)[:, :, ::-1]
+    x = np.arange(2048) / 2.0 / 1023.0
+    x_src = img_src[st_v, st_h:ed_h, 1] / 65535.0
+    y_ref = tf.oetf_from_luminance(
+        ((img_youtube[st_v, st_h:ed_h, 1] / 255.0) ** 2.4) * 100, tf.ST2084)
+    y_formula = youtube_tonemapping(x_src)
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="Tone Mapping Characteristics",
+        graph_title_size=None,
+        xlabel="ST2084 Code Value",
+        ylabel="Luminance [cd/m2]",
+        axis_label_size=None,
+        legend_size=17,
+        xtick_size=19,
+        ytick_size=19,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        linewidth=8,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, y_ref, label='ref')
+    ax1.plot(x, y_formula, label='formula')
+    plt.legend(loc='upper left')
+    plt.savefig(
+        "./blog_img/check_estimated_formula_code_value.png",
+        bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+
+
+def plot_apply_eetf_luminance():
+    """
+    推測したEETFを実際に適用して合っているか確認する。
+    """
+    st_h = 115
+    st_v = 563
+    ed_h = st_h + 2048
+
+    img_youtube = cv2.imread("./img/youtubed_sdr_tp_all.png")
+    img_src = cv2.imread("./img/youtubed_sdr_src.tiff",
+                         cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)[:, :, ::-1]
+    x = np.arange(2048) / 2.0
+    x_src = img_src[st_v, st_h:ed_h, 1] / 65535.0
+    y_ref = img_youtube[st_v, st_h:ed_h, 1] / 255.0
+    y_eetf = youtube_tonemapping(x_src)
+    y_formula = tf.oetf_from_luminance(
+        tf.eotf_to_luminance(y_eetf, tf.ST2084), tf.GAMMA24)
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="Tone Mapping Characteristics",
+        graph_title_size=None,
+        xlabel="Luminance [cd/m2]",
+        ylabel="Luminance [cd/m2]",
+        axis_label_size=None,
+        legend_size=17,
+        xtick_size=19,
+        ytick_size=19,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        linewidth=8,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, y_ref, label='ref')
+    ax1.plot(x, y_formula, label='formula')
+    plt.legend(loc='upper left')
+    plt.savefig(
+        "./blog_img/check_estimated_formula_luinance.png",
+        bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+
+
 def main_func():
     # correct_pq_exr_gain()
     # check_after_3dlut_exr()
-    analyze_eetf()
-    # analyze_gamut_mapping()
+    # analyze_eetf()
+    analyze_gamut_mapping()
 
 
 if __name__ == '__main__':
