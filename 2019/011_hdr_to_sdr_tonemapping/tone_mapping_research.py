@@ -225,6 +225,8 @@ def analyze_eetf():
         in_name="./img/test_src_for_youtube_upload_riku.tif")
     conv_hdr10_to_sdr_using_formula(
         in_name="./img/test_src_for_youtube_upload_umi.tif")
+    conv_hdr10_to_sdr_using_formula(
+        in_name="./img/test_tp_image_hdr10_tp.tif")
 
 
 def spline_example():
@@ -645,8 +647,8 @@ def plot_apply_eetf_luminance():
 def main_func():
     # correct_pq_exr_gain()
     # check_after_3dlut_exr()
-    # analyze_eetf()
-    analyze_gamut_mapping()
+    analyze_eetf()
+    # analyze_gamut_mapping()
 
 
 if __name__ == '__main__':
