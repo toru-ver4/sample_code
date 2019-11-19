@@ -11,6 +11,7 @@ from colour import xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_xyY, RGB_to_RGB
 from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
 import OpenImageIO as oiio
 from colour.colorimetry import CMFS, ILLUMINANTS
+from colour.models import eotf_BT1886
 
 
 # 自作ライブラリのインポート
@@ -214,8 +215,9 @@ def analyze_eetf():
     img = reader.read()
     # img_after_sdr_eotf = tf.eotf(img, sdr_eotf)
     img_after_sdr_eotf = img ** 2.4
+    # img_after_sdr_eotf = eotf_BT1886(img, L_B=1/2000)
     img_after_pq_oetf = tf.oetf(img_after_sdr_eotf / 100, tf.ST2084)
-    # eetf = img_after_pq_oetf
+    eetf = img_after_pq_oetf
     # dump_eetf_info(eetf)
     # plot_eetf(eetf)
     # plot_eetf_luminance(eetf)
@@ -227,6 +229,8 @@ def analyze_eetf():
         in_name="./img/test_src_for_youtube_upload_umi.tif")
     conv_hdr10_to_sdr_using_formula(
         in_name="./img/test_tp_image_hdr10_tp.tif")
+    conv_hdr10_to_sdr_using_formula(
+        in_name="./img/test_gamut_tp_1000nits.tif")
 
 
 def spline_example():
@@ -649,6 +653,10 @@ def main_func():
     # check_after_3dlut_exr()
     analyze_eetf()
     # analyze_gamut_mapping()
+    # x = np.linspace(0, 1, 1024)
+    # plt.plot(x, eotf_BT1886(x, L_B=0.0), label="zero")
+    # plt.plot(x, eotf_BT1886(x, L_B=1/1000), label="1/1000")
+    # plt.show()
 
 
 if __name__ == '__main__':
