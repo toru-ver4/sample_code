@@ -26,7 +26,7 @@ BASE_PARAM = {
     'revision': 1,
     'inner_sample_num': 4,
     'outer_sample_num': 4,
-    'hue_devide_num': 4,
+    'hue_devide_num': 6,
     'img_width': 1920,
     'img_height': 1080,
     'pattern_space_rate': 0.71,
@@ -174,12 +174,47 @@ class GamutEdgeChecker:
     def save(self):
         cv2.imwrite("test.tiff", self.img[:, :, ::-1])
 
+    def print_output_xyY_header(self):
+        h_num = self.base_param['hue_devide_num'] * 3
+        strings = "No" + ",x,y,Y" * h_num
+        print(strings)
+
+    def output_xyY(self):
+        """
+        デバッグとか他のプロジェクトでの流用とかを見越して
+        xyY 情報を出力する。
+        """
+        calc_param = CalcParameters(self.base_param)
+        draw_param = calc_param.calc_parameters()
+        self.print_output_xyY_header()
+        s = ",{:.6f},{:.6f},{:.6f}"
+        counter = 0
+        for idx in range(self.base_param['inner_sample_num']):
+            print(counter, end="")
+            for h_idx in range(self.base_param['hue_devide_num'] * 3):
+                print(s.format(draw_param['inner_xyY'][h_idx][idx][0],
+                               draw_param['inner_xyY'][h_idx][idx][1],
+                               draw_param['inner_xyY'][h_idx][idx][2]),
+                      end="")
+            print("")
+            counter += 1
+        for idx in range(self.base_param['outer_sample_num']):
+            print(counter, end="")
+            for h_idx in range(self.base_param['hue_devide_num'] * 3):
+                print(s.format(draw_param['outer_xyY'][h_idx][idx][0],
+                               draw_param['outer_xyY'][h_idx][idx][1],
+                               draw_param['outer_xyY'][h_idx][idx][2]),
+                      end="")
+            print("")
+            counter += 1
+
 
 def main_func():
     gamut_edge_checker = GamutEdgeChecker(base_param=BASE_PARAM)
-    gamut_edge_checker.make()
-    gamut_edge_checker.preview()
-    gamut_edge_checker.save()
+    # gamut_edge_checker.make()
+    # gamut_edge_checker.preview()
+    # gamut_edge_checker.save()
+    gamut_edge_checker.output_xyY()
 
 
 if __name__ == '__main__':
