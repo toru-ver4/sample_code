@@ -3,7 +3,7 @@
 Check Image-Data module of colour-science.
 ==========================================
 
-Check the behavior of the follwing functions.
+Check the behavior of the following items.
 
 * write/read 8bit png files.
 * write/read 16bit png files.
