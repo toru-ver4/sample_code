@@ -10,16 +10,12 @@ Colour Science for Python の 3DLUT モジュールを使う
 * write/read the 1dlut files(.cube, .spi1d)
   * 負の値、極端に小さい値、1.0を超える値の Write/Read も確認
 * apply 3DLUT to image data
-  * 負の入力値のクリップ確認
-  * 負のLUT値の出力値確認
-  * 1.0を超える入力値のクリップ確認
-  * 1.0を超えるLUT値の出力確認
+  * 0.0～1.0 の範囲外の入力値のクリップ確認
+  * 0.0～1.0 の範囲外のLUT値を通った後の出力値確認
 * apply 1DLUT to image data
-  * 負の入力値のクリップ確認
-  * 負のLUT値の出力値確認
-  * 1.0を超える入力値のクリップ確認
-  * 1.0を超えるLUT値の出力確認
-
+  * 0.0～1.0 の範囲外の入力値のクリップ確認
+  * 0.0～1.0 の範囲外のLUT値を通った後の出力値確認
+* apply 1DLUT の逆変換
 """
 
 # import standard libraries
@@ -28,8 +24,9 @@ import linecache
 
 # import third-party libraries
 import numpy as np
-from colour import read_LUT, write_LUT, write_image, read_image
+from colour import read_LUT, write_LUT
 from colour import LUT1D, LUT3D
+from colour.algebra import LinearInterpolator
 
 # import my libraries
 
@@ -221,6 +218,96 @@ def write_read_over_range_1dlut_value():
     np.testing.assert_allclose(lut1d_spi1d, lut, rtol=1e-07)
 
 
+def over_range_input_for_3dlut():
+    """
+    3DLUT への入力が 0.0～1.0 の範囲外だった場合のクリッピングの挙動確認。
+    """
+    # linear な特性の 3DLUT を作成
+    lut = LUT3D.linear_table(size=5)
+    lut3d = LUT3D(lut, name="over_range_input_test")
+
+    # ソース画像＆理想の画像用意
+    src_img = np.ones((256, 256, 3))
+    mono_line = np.linspace(0, 1, 256) * 4 - 2
+    color_line = np.dstack((mono_line, mono_line, np.zeros_like(mono_line)))
+    src_img = src_img * color_line
+    ideal_img = np.clip(src_img, 0.0, 1.0)
+
+    # 3DLUT適用
+    dst_img = lut3d.apply(src_img)
+
+    # 確認
+    np.testing.assert_allclose(dst_img, ideal_img, rtol=1e-07)
+
+
+def over_range_output_for_3dlut():
+    """
+    3DLUT の出力が 0.0～1.0 の範囲外だった場合に出力値が
+    正しく 0.0～1.0 の範囲外の値を持っていることを確認。
+    """
+    # over range な 3DLUT を作成
+    lut = LUT3D.linear_table(size=5) * 4.0 - 2.0
+    lut3d = LUT3D(lut, name="over_range_output_test")
+
+    # ソース画像＆理想の画像用意
+    src_img = np.ones((256, 256, 3))
+    mono_line = np.linspace(0, 1, 256)
+    color_line = np.dstack((mono_line, mono_line, np.zeros_like(mono_line)))
+    src_img = src_img * color_line
+    ideal_img = src_img * 4.0 - 2.0
+
+    # 3DLUT適用
+    dst_img = lut3d.apply(src_img)
+
+    # 確認
+    np.testing.assert_allclose(dst_img, ideal_img, rtol=1e-07)
+
+
+def over_range_input_for_1dlut():
+    """
+    1DLUT への入力が 0.0～1.0 の範囲外だった場合のクリッピングの挙動確認。
+    """
+    # linear な特性の 3DLUT を作成
+    lut = LUT1D.linear_table(size=16)
+    lut1d = LUT1D(lut, name="over_range_input_test")
+
+    # ソース画像＆理想の画像用意
+    src_img = np.ones((256, 256, 3))
+    mono_line = np.linspace(0, 1, 256) * 4 - 2
+    color_line = np.dstack((mono_line, mono_line, np.zeros_like(mono_line)))
+    src_img = src_img * color_line
+    ideal_img = np.clip(src_img, 0.0, 1.0)
+
+    # 3DLUT適用
+    dst_img = lut1d.apply(src_img)
+
+    # 確認
+    np.testing.assert_allclose(dst_img, ideal_img, rtol=1e-07)
+
+
+def over_range_output_for_1dlut():
+    """
+    1DLUT の出力が 0.0～1.0 の範囲外だった場合に出力値が
+    正しく 0.0～1.0 の範囲外の値を持っていることを確認。
+    """
+    # over range な 1DLUT を作成
+    lut = LUT1D.linear_table(size=16) * 4.0 - 2.0
+    lut1d = LUT1D(lut, name="over_range_output_test")
+
+    # ソース画像＆理想の画像用意
+    src_img = np.ones((256, 256, 3))
+    mono_line = np.linspace(0, 1, 256)
+    color_line = np.dstack((mono_line, mono_line, np.zeros_like(mono_line)))
+    src_img = src_img * color_line
+    ideal_img = src_img * 4.0 - 2.0
+
+    # 1DLUT適用
+    dst_img = lut1d.apply(src_img)
+
+    # 確認
+    np.testing.assert_allclose(dst_img, ideal_img, rtol=1e-07)
+
+
 def main_func():
     write_read_nagative_3dlut_value()
     write_read_nagative_1dlut_value()
@@ -229,7 +316,13 @@ def main_func():
     write_read_over_range_3dlut_value()
     write_read_over_range_1dlut_value()
 
+    over_range_input_for_3dlut()
+    over_range_output_for_3dlut()
+    # over_range_input_for_1dlut()
+    over_range_output_for_1dlut()
+
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    main_func()
+    # main_func()
+    print(dir(LinearInterpolator))
