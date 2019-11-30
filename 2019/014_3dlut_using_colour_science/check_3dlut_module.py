@@ -15,7 +15,9 @@ Colour Science for Python の 3DLUT モジュールを使う
 * apply 1DLUT to image data
   * 0.0～1.0 の範囲外の入力値のクリップ確認
   * 0.0～1.0 の範囲外のLUT値を通った後の出力値確認
-* apply 1DLUT の逆変換
+* apply 1DLUT の逆変換 ← 無理だった
+* 3DLUT の精度？確認
+
 """
 
 # import standard libraries
@@ -26,9 +28,11 @@ import linecache
 import numpy as np
 from colour import read_LUT, write_LUT
 from colour import LUT1D, LUT3D
-from colour.algebra import LinearInterpolator
+from colour import write_image, read_image
+import matplotlib.pyplot as plt
 
 # import my libraries
+import plot_utility as pu
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -308,21 +312,91 @@ def over_range_output_for_1dlut():
     np.testing.assert_allclose(dst_img, ideal_img, rtol=1e-07)
 
 
-def main_func():
-    write_read_nagative_3dlut_value()
-    write_read_nagative_1dlut_value()
-    write_read_minimum_3dlut_value()
-    write_read_minimum_1dlut_value()
-    write_read_over_range_3dlut_value()
-    write_read_over_range_1dlut_value()
+def plot_sample(filename, sample=256):
+    img = read_image(filename)
+    caption, _ = os.path.splitext(os.path.basename(filename))
+    data = img.flatten()[:sample]
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(20, 8),
+        graph_title=caption,
+        graph_title_size=None,
+        xlabel="X Axis Label", ylabel="Y Axis Label",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3)
+    ax1.plot(data, '-o', label=caption)
+    plt.legend(loc='upper left')
+    plt.savefig("./blog_img/" + caption + ".png",
+                bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
 
-    over_range_input_for_3dlut()
-    over_range_output_for_3dlut()
-    # over_range_input_for_1dlut()
-    over_range_output_for_1dlut()
+
+def check_3dlut_using_ramdom_data():
+    """
+    入力値、LUT値の双方をランダム値とした場合に、
+    Reference 環境(Resolve？)との差分を確認
+    """
+    width = 1920
+    height = 1080
+    grid_num = 65
+    in_file = "./img/3dlut_input.exr"
+    lut_file = "./luts/random_3dlut.cube"
+    out_file_resolve = "./img/3dlut_output_resolve.exr"
+    out_file_nuke = "./img/3dlut_output_nuke.exr"
+    out_file_colour = "./img/3dlut_output_colour.exr"
+
+    # plot_sample(in_file)
+    # plot_sample(out_file_colour)
+    # plot_sample(out_file_resolve)
+    # plot_sample(out_file_nuke)
+
+    # 入力値作成
+    np.random.seed(1)
+    src_data = np.random.rand(height, width, 3).astype(np.float32) * 10 - 5
+    write_image(src_data, in_file, bit_depth='float32')
+
+    # LUT値作成
+    np.random.seed(2)
+    lut = np.random.rand(grid_num, grid_num, grid_num, 3).astype(np.float32)
+    lut = lut * 10 - 5
+    lut3d = LUT3D(lut, size=grid_num, name="random_value")
+    write_LUT(lut3d, lut_file)
+
+    # LUT適用
+    after_img_colour = lut3d.apply(read_image(in_file, bit_depth='float32'))
+    write_image(after_img_colour, out_file_colour)
+
+    # # 差分比較
+    after_img_resolve = read_image(out_file_resolve, bit_depth='float32')
+    after_img_nuke = read_image(out_file_nuke, bit_depth='float32')
+    diff_resolve = (after_img_colour - after_img_resolve).flatten()
+    diff_nuke = (after_img_colour - after_img_nuke).flatten()
+    print(np.max(np.abs(diff_resolve)))
+    print(np.max(np.abs(diff_nuke)))
+
+
+def main_func():
+    # write_read_nagative_3dlut_value()
+    # write_read_nagative_1dlut_value()
+    # write_read_minimum_3dlut_value()
+    # write_read_minimum_1dlut_value()
+    # write_read_over_range_3dlut_value()
+    # write_read_over_range_1dlut_value()
+
+    # over_range_input_for_3dlut()
+    # over_range_output_for_3dlut()
+    # # over_range_input_for_1dlut()
+    # over_range_output_for_1dlut()
+
+    check_3dlut_using_ramdom_data()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # main_func()
-    print(dir(LinearInterpolator))
+    main_func()
