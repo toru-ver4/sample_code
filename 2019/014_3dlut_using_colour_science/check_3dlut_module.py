@@ -16,7 +16,7 @@ Colour Science for Python の 3DLUT モジュールを使う
   * 0.0～1.0 の範囲外の入力値のクリップ確認
   * 0.0～1.0 の範囲外のLUT値を通った後の出力値確認
 * apply 1DLUT の逆変換 ← 無理だった
-* 3DLUT の精度？確認
+* 3DLUT の精度確認
 
 """
 
@@ -334,7 +334,7 @@ def plot_sample(filename, sample=256):
     plt.legend(loc='upper left')
     plt.savefig("./blog_img/" + caption + ".png",
                 bbox_inches='tight', pad_inches=0.1)
-    # plt.show()
+    plt.show()
 
 
 def check_3dlut_using_ramdom_data():
@@ -351,20 +351,14 @@ def check_3dlut_using_ramdom_data():
     out_file_nuke = "./img/3dlut_output_nuke.exr"
     out_file_colour = "./img/3dlut_output_colour.exr"
 
-    # plot_sample(in_file)
-    # plot_sample(out_file_colour)
-    # plot_sample(out_file_resolve)
-    # plot_sample(out_file_nuke)
-
     # 入力値作成
     np.random.seed(1)
-    src_data = np.random.rand(height, width, 3).astype(np.float32) * 10 - 5
+    src_data = np.random.rand(height, width, 3).astype(np.float32)
     write_image(src_data, in_file, bit_depth='float32')
 
     # LUT値作成
     np.random.seed(2)
     lut = np.random.rand(grid_num, grid_num, grid_num, 3).astype(np.float32)
-    lut = lut * 10 - 5
     lut3d = LUT3D(lut, size=grid_num, name="random_value")
     write_LUT(lut3d, lut_file)
 
@@ -372,29 +366,82 @@ def check_3dlut_using_ramdom_data():
     after_img_colour = lut3d.apply(read_image(in_file, bit_depth='float32'))
     write_image(after_img_colour, out_file_colour)
 
-    # # 差分比較
+    # 差分比較
+    """
+    注意：以下のコードを実行する前に、Resolve と Nuke で3DLUTを適用した
+          画像ファイルを準備しておくこと。
+    """
     after_img_resolve = read_image(out_file_resolve, bit_depth='float32')
     after_img_nuke = read_image(out_file_nuke, bit_depth='float32')
     diff_resolve = (after_img_colour - after_img_resolve).flatten()
     diff_nuke = (after_img_colour - after_img_nuke).flatten()
-    print(np.max(np.abs(diff_resolve)))
-    print(np.max(np.abs(diff_nuke)))
+    print("resolve max diff = ", np.max(np.abs(diff_resolve)))
+    print("resolve min diff = ", np.min(np.abs(diff_resolve)))
+    print("resolve std      = ", np.std(diff_resolve))
+    print("nuke    max diff = ", np.max(np.abs(diff_nuke)))
+    plot_error_histogram(diff_resolve)
+
+    # 3DLUT適用後の生データの冒頭256点くらいをプロット
+    # plot_sample(in_file)
+    # plot_sample(out_file_colour)
+    # plot_sample(out_file_resolve)
+    # plot_sample(out_file_nuke)
+
+
+def plot_error_histogram(data):
+    caption = "Error Histogram"
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(16, 8),
+        graph_title=caption,
+        graph_title_size=None,
+        xlabel="Error",
+        ylabel=None,
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=[x * 0.001 - 0.006 for x in range(13)],
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3)
+    ax1.hist(data, bins=128, range=(-0.006, 0.006))
+    plt.savefig("./blog_img/" + caption + ".png",
+                bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+
+
+def apply_hdr10_to_turbo_3dlut():
+    """
+    HDR10の静止画に3DLUTを適用してsRGB の輝度マップを作る。
+    """
+    hdr_img = read_image("./img/test_src_for_youtube_upload_riku.tif")
+    lut3d = read_LUT("./luts/PQ_BT2020_to_Turbo_sRGB.cube")
+    luminance_map_img = lut3d.apply(hdr_img)
+    write_image(luminance_map_img, "./blog_img/3dlut_sample_turbo.png",
+                bit_depth='uint8')
 
 
 def main_func():
-    # write_read_nagative_3dlut_value()
-    # write_read_nagative_1dlut_value()
-    # write_read_minimum_3dlut_value()
-    # write_read_minimum_1dlut_value()
-    # write_read_over_range_3dlut_value()
-    # write_read_over_range_1dlut_value()
+    # 1DLUT/3DLUT ファイルの Write/Read 確認
+    write_read_nagative_3dlut_value()
+    write_read_nagative_1dlut_value()
+    write_read_minimum_3dlut_value()
+    write_read_minimum_1dlut_value()
+    write_read_over_range_3dlut_value()
+    write_read_over_range_1dlut_value()
 
-    # over_range_input_for_3dlut()
-    # over_range_output_for_3dlut()
-    # # over_range_input_for_1dlut()
-    # over_range_output_for_1dlut()
+    # 1DLUT/3DLUT ファイルの適用の確認
+    over_range_input_for_3dlut()
+    over_range_output_for_3dlut()
+    # over_range_input_for_1dlut()  # <-- パスしなかったorz
+    over_range_output_for_1dlut()
 
+    # 3DLUT の精度確認
     check_3dlut_using_ramdom_data()
+
+    # ブログに掲載のサンプルコード
+    apply_hdr10_to_turbo_3dlut()
 
 
 if __name__ == '__main__':
