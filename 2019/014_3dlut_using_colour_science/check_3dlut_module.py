@@ -213,7 +213,7 @@ def write_read_over_range_1dlut_value():
     np.testing.assert_approx_equal(
         float(line_1st_spi1d.rstrip()), 10000, significant=7)
 
-    # ライブラリを使って極小値を読み込み
+    # ライブラリを使って1.0を超える値を読み込み
     """cube は 1x3 に拡張されてるので 0列目だけ抽出して比較"""
     lut1d_cube = read_LUT(fname_cube).table[..., 0]
 
