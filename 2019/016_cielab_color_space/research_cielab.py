@@ -14,7 +14,8 @@ import os
 
 # import third-party libraries
 import numpy as np
-from sympy import symbols, solve, plotting, sin, cos
+from sympy import symbols, plotting, sin, cos
+from sympy.solvers import solve
 from scipy import linalg
 from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
 from colour import xy_to_XYZ
@@ -84,7 +85,6 @@ def get_large_xyz_symbol(n, t, upper=True):
     z = get_large_xyz_symbol(n=D65_Z, t=zt, upper=True)
     """
     func, u = get_inv_f_upper() if upper else get_inv_f_lower()
-    print(func)
     return n / 100 * func.subs({u: t})
 
 
@@ -108,43 +108,63 @@ def get_xyz_to_rgb_matrix(primaries=cs.REC2020_xy):
 
 
 def lab_to_xyz_formla():
-    c, l, h = symbols('c, l, h')
+    l_val = 50
+    h_val = np.pi / 4
+    matrix = get_xyz_to_rgb_matrix(primaries=cs.REC2020_xy)
+
+    # base formula
+    c, l, h = symbols('c, l, h', real=True)
     xt = (l + 16) / 116 + (c * cos(h)) / 500
     yt = (l + 16) / 116
     zt = (l + 16) / 116 - (c * sin(h)) / 200
-
-    matrix = get_xyz_to_rgb_matrix(primaries=cs.REC2020_xy)
+    xyz_t = [xt, yt, zt]
 
     # upper
-    xu = get_large_xyz_symbol(n=D65_X, t=xt, upper=True)
-    yu = get_large_xyz_symbol(n=D65_Y, t=yt, upper=True)
-    zu = get_large_xyz_symbol(n=D65_Z, t=zt, upper=True)
-    ru, gu, bu = apply_matrix([xu, yu, zu], matrix)
+    upper_xyzt = [
+        get_large_xyz_symbol(n=D65_WHITE[idx], t=xyz_t[idx], upper=True)
+        for idx in range(3)]
+    upper_rgb = apply_matrix(upper_xyzt, matrix)
 
     # lower
-    xd = get_large_xyz_symbol(n=D65_X, t=xt, upper=False)
-    yd = get_large_xyz_symbol(n=D65_Y, t=yt, upper=False)
-    zd = get_large_xyz_symbol(n=D65_Z, t=zt, upper=False)
-    rd, gd, bd = apply_matrix([xd, yd, zd], matrix)
+    lower_xyzt = [
+        get_large_xyz_symbol(n=D65_WHITE[idx], t=xyz_t[idx], upper=False)
+        for idx in range(3)]
+    lower_rgb = apply_matrix(lower_xyzt, matrix)
 
-    l_val = 50
-    h_val = np.pi / 4
+    solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val)
 
-    ru = ru.subs({l: l_val, h: h_val})
-    gu = gu.subs({l: l_val, h: h_val})
-    bu = bu.subs({l: l_val, h: h_val})
+    # plotting.plot(upper_rgb[0], (c, -200, 200))
+    # plotting.plot(upper_rgb[1], (c, -200, 200))
+    # plotting.plot(upper_rgb[2], (c, -200, 200))
 
-    # plotting.plot(ru, (c, -200, 200))
-    # plotting.plot(gu, (c, -200, 200))
-    # plotting.plot(bu, (c, -200, 200))
+    # plotting.plot(lower_rgb[0], (c, -200, 200))
+    # plotting.plot(lower_rgb[1], (c, -200, 200))
+    # plotting.plot(lower_rgb[2], (c, -200, 200))
 
-    rd = rd.subs({l: l_val, h: h_val})
-    gd = gd.subs({l: l_val, h: h_val})
-    bd = bd.subs({l: l_val, h: h_val})
 
-    plotting.plot(rd, (c, -200, 200))
-    plotting.plot(gd, (c, -200, 200))
-    plotting.plot(bd, (c, -200, 200))
+def solve_chroma(upper_rgb, lower_rgb, l, h, l_val, h_val):
+    """
+    与えられた条件下での Chroma の限界値を算出する。
+
+
+    """
+    upper_rgb = [
+        upper_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+    lower_rgb = [
+        lower_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+
+    # まず解く
+    upper_solution_zero = [solve(upper_rgb[idx]) for idx in range(3)]
+    upper_solution_one = [solve(upper_rgb[idx] - 1) for idx in range(3)]
+
+    # それぞれの解が \sigma の条件を満たしているか確認
+
+    # 出揃った全てのパターンの中から最小値を選択する
+
+    x = symbols('x', real=True)
+    y = (x - 1) ** 2 + 1
+    solution = solve(y)
+    print(solution)
 
 
 def experimental_functions():

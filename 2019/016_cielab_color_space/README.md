@@ -92,3 +92,12 @@ X a_{31} + Y a_{32} + Z a_{33} \\
 $$
 
 である。
+
+実数解が欲しい場合は以下のように、`symbols` で `real=True` を指定すること。
+
+```python
+x = symbols('x', real=True)
+y = (x - 1) ** 2 + 1
+solution = solve(y)
+print(solution)
+```
