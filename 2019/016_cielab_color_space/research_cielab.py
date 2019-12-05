@@ -19,9 +19,12 @@ from sympy.solvers import solve
 from scipy import linalg
 from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
 from colour import xy_to_XYZ
+from numba import jit
+import matplotlib.pyplot as plt
 
 # import my libraries
 import color_space as cs
+import plot_utility as pu
 
 # definition
 D65_X = 95.04
@@ -108,9 +111,48 @@ def get_xyz_to_rgb_matrix(primaries=cs.REC2020_xy):
     return xyz_to_rgb_matrix
 
 
-def lab_to_xyz_formla():
+def calc_chroma(h_sample=32):
     l_val = 50
-    h_val = np.pi / 4
+    h = np.linspace(0, 1, h_sample) * 2 * np.pi
+
+    chroma = []
+    for h_val in h:
+        chroma.append(lab_to_xyz_formla(l_val, h_val))
+    return np.array(chroma)
+
+
+def plot_ab_plane():
+    h_sample = 32
+    h = np.linspace(0, 1, h_sample) * 2 * np.pi
+    chroma = calc_chroma(h_sample)
+    a = chroma * np.cos(h)
+    b = chroma * np.sin(h)
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="Title",
+        graph_title_size=None,
+        xlabel="X Axis Label", ylabel="Y Axis Label",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(a, b, label="ab plane")
+    plt.legend(loc='upper left')
+    plt.show()
+
+
+def lab_to_xyz_formla(l_val=50, h_val=np.pi/4):
+    """
+    L*, H から Chroma値の限界を求める。
+    """
     matrix = get_xyz_to_rgb_matrix(primaries=cs.REC2020_xy)
 
     # base formula
@@ -133,14 +175,6 @@ def lab_to_xyz_formla():
     lower_rgb = apply_matrix(lower_xyzt, matrix)
 
     chroma = solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c)
-
-    # plotting.plot(upper_rgb[0], (c, -200, 200))
-    # plotting.plot(upper_rgb[1], (c, -200, 200))
-    # plotting.plot(upper_rgb[2], (c, -200, 200))
-
-    # plotting.plot(lower_rgb[0], (c, -200, 200))
-    # plotting.plot(lower_rgb[1], (c, -200, 200))
-    # plotting.plot(lower_rgb[2], (c, -200, 200))
 
     return chroma
 
@@ -172,13 +206,16 @@ def solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c):
             if t_val > SIGMA:
                 solve_list.append(solve_val)
         for solve_val in upper_solution_one[idx]:
+            t_val = xyz_t[idx].subs({c: solve_val})
             if t_val > SIGMA:
                 solve_list.append(solve_val)
 
         for solve_val in lower_solution_zero[idx]:
+            t_val = xyz_t[idx].subs({c: solve_val})
             if t_val <= SIGMA:
                 solve_list.append(solve_val)
         for solve_val in lower_solution_one[idx]:
+            t_val = xyz_t[idx].subs({c: solve_val})
             if t_val <= SIGMA:
                 solve_list.append(solve_val)
 
@@ -192,7 +229,7 @@ def solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c):
 def experimental_functions():
     # check_basic_trigonometricfunction()
     # plot_inv_f()
-    lab_to_xyz_formla()
+    plot_ab_plane()
 
 
 if __name__ == '__main__':
