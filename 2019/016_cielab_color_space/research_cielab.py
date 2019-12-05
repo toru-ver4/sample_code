@@ -28,6 +28,7 @@ D65_X = 95.04
 D65_Y = 100.0
 D65_Z = 108.89
 D65_WHITE = [D65_X, D65_Y, D65_Z]
+SIGMA = 6/29
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -59,7 +60,7 @@ def get_inv_f_lower():
     t <= sigma の f^-1 を返す
     """
     t = symbols('t')
-    sigma = 6/29
+    sigma = SIGMA
     return 3 * (sigma ** 2) * (t - 4 / 29), t
 
 
@@ -131,7 +132,7 @@ def lab_to_xyz_formla():
         for idx in range(3)]
     lower_rgb = apply_matrix(lower_xyzt, matrix)
 
-    solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val)
+    chroma = solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c)
 
     # plotting.plot(upper_rgb[0], (c, -200, 200))
     # plotting.plot(upper_rgb[1], (c, -200, 200))
@@ -141,8 +142,10 @@ def lab_to_xyz_formla():
     # plotting.plot(lower_rgb[1], (c, -200, 200))
     # plotting.plot(lower_rgb[2], (c, -200, 200))
 
+    return chroma
 
-def solve_chroma(upper_rgb, lower_rgb, l, h, l_val, h_val):
+
+def solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c):
     """
     与えられた条件下での Chroma の限界値を算出する。
 
@@ -152,19 +155,38 @@ def solve_chroma(upper_rgb, lower_rgb, l, h, l_val, h_val):
         upper_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
     lower_rgb = [
         lower_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+    xyz_t = [
+        xyz_t[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
 
     # まず解く
-    upper_solution_zero = [solve(upper_rgb[idx]) for idx in range(3)]
+    upper_solution_zero = [solve(upper_rgb[idx] + 0) for idx in range(3)]
     upper_solution_one = [solve(upper_rgb[idx] - 1) for idx in range(3)]
+    lower_solution_zero = [solve(lower_rgb[idx] + 0) for idx in range(3)]
+    lower_solution_one = [solve(lower_rgb[idx] - 1) for idx in range(3)]
 
     # それぞれの解が \sigma の条件を満たしているか確認
+    solve_list = []
+    for idx in range(3):
+        for solve_val in upper_solution_zero[idx]:
+            t_val = xyz_t[idx].subs({c: solve_val})
+            if t_val > SIGMA:
+                solve_list.append(solve_val)
+        for solve_val in upper_solution_one[idx]:
+            if t_val > SIGMA:
+                solve_list.append(solve_val)
+
+        for solve_val in lower_solution_zero[idx]:
+            if t_val <= SIGMA:
+                solve_list.append(solve_val)
+        for solve_val in lower_solution_one[idx]:
+            if t_val <= SIGMA:
+                solve_list.append(solve_val)
 
     # 出揃った全てのパターンの中から最小値を選択する
+    solve_list = np.array(solve_list)
+    chroma = np.min(solve_list[solve_list >= 0.0])
 
-    x = symbols('x', real=True)
-    y = (x - 1) ** 2 + 1
-    solution = solve(y)
-    print(solution)
+    return chroma
 
 
 def experimental_functions():
