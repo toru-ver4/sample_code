@@ -11,6 +11,7 @@ CIELAB色空間の基礎調査
 
 # import standard libraries
 import os
+import time
 
 # import third-party libraries
 import numpy as np
@@ -149,9 +150,9 @@ def plot_ab_plane():
     plt.show()
 
 
-def lab_to_xyz_formla(l_val=50, h_val=np.pi/4):
+def lab_to_xyz_formla():
     """
-    L*, H から Chroma値の限界を求める。
+    数式を取得
     """
     matrix = get_xyz_to_rgb_matrix(primaries=cs.REC2020_xy)
 
@@ -174,31 +175,54 @@ def lab_to_xyz_formla(l_val=50, h_val=np.pi/4):
         for idx in range(3)]
     lower_rgb = apply_matrix(lower_xyzt, matrix)
 
-    chroma = solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c)
+    # chroma = solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c)
 
-    return chroma
+    return upper_rgb, lower_rgb, xyz_t, l, h, c
 
 
-def solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c):
+def solve_chroma(
+        l_vals=[50], h_vals=np.linspace(0, 2*np.pi, 64)):
+    upper_rgb, lower_rgb, xyz_t, l, h, c = lab_to_xyz_formla()
+    chroma_return = []
+    for l_val in l_vals:
+        chroma = []
+        for h_val in h_vals:
+            temp = solve_chroma_sub(
+                upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c)
+            chroma.append(temp)
+        chroma_return.append(chroma)
+
+    return np.array(chroma_return)
+
+
+def solve_chroma_sub(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c):
     """
     与えられた条件下での Chroma の限界値を算出する。
 
 
     """
+    start = time.time()
+
     upper_rgb = [
         upper_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
     lower_rgb = [
         lower_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
     xyz_t = [
         xyz_t[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+    end = time.time()
+    # print("intro = {}".format(end - start))
 
     # まず解く
+    start = time.time()
     upper_solution_zero = [solve(upper_rgb[idx] + 0) for idx in range(3)]
     upper_solution_one = [solve(upper_rgb[idx] - 1) for idx in range(3)]
     lower_solution_zero = [solve(lower_rgb[idx] + 0) for idx in range(3)]
     lower_solution_one = [solve(lower_rgb[idx] - 1) for idx in range(3)]
+    end = time.time()
+    # print("mazutoku = {}".format(end - start))
 
     # それぞれの解が \sigma の条件を満たしているか確認
+    start = time.time()
     solve_list = []
     for idx in range(3):
         for solve_val in upper_solution_zero[idx]:
@@ -219,9 +243,15 @@ def solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c):
             if t_val <= SIGMA:
                 solve_list.append(solve_val)
 
+    end = time.time()
+    # print("sorekai = {}".format(end - start))
+
     # 出揃った全てのパターンの中から最小値を選択する
+    start = time.time()
     solve_list = np.array(solve_list)
     chroma = np.min(solve_list[solve_list >= 0.0])
+    end = time.time()
+    # print("get_minimum = {}".format(end - start))
 
     return chroma
 
@@ -229,7 +259,14 @@ def solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c):
 def experimental_functions():
     # check_basic_trigonometricfunction()
     # plot_inv_f()
-    plot_ab_plane()
+    # plot_ab_plane()
+    solve_list = solve_chroma()
+    l_len = len(solve_list)
+    l_val = np.linspace(0, 100, l_len)
+    p_str = "{}, {}, {}"
+    print(50)
+    for idx in range(len(solve_list[0])):
+        print(solve_list[0][idx])
 
 
 if __name__ == '__main__':
