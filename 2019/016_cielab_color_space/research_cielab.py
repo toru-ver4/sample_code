@@ -12,6 +12,7 @@ CIELAB色空間の基礎調査
 # import standard libraries
 import os
 import time
+import ctypes
 
 # import third-party libraries
 import numpy as np
@@ -20,8 +21,8 @@ from sympy.solvers import solve
 from scipy import linalg
 from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
 from colour import xy_to_XYZ
-from numba import jit
 import matplotlib.pyplot as plt
+from multiprocessing import Pool, cpu_count, Array
 
 # import my libraries
 import color_space as cs
@@ -42,6 +43,13 @@ __maintainer__ = 'Toru Yoshihara'
 __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
+
+# global variables
+l_sample_num = 256
+h_sample_num = 256
+shared_array = Array(
+    typecode_or_type=ctypes.c_float,
+    size_or_initializer=l_sample_num*h_sample_num)
 
 
 def check_basic_trigonometricfunction():
@@ -180,49 +188,52 @@ def lab_to_xyz_formla():
     return upper_rgb, lower_rgb, xyz_t, l, h, c
 
 
-def solve_chroma(
-        l_vals=[50], h_vals=np.linspace(0, 2*np.pi, 64)):
+def solve_chroma():
+    l_vals = np.linspace(0, 100, l_sample_num)
+    h_vals = np.linspace(0, 2*np.pi, h_sample_num)
     upper_rgb, lower_rgb, xyz_t, l, h, c = lab_to_xyz_formla()
-    chroma_return = []
-    for l_val in l_vals:
-        chroma = []
-        for h_val in h_vals:
-            temp = solve_chroma_sub(
-                upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c)
-            chroma.append(temp)
-        chroma_return.append(chroma)
+    args = []
 
-    return np.array(chroma_return)
+    with Pool(cpu_count()) as pool:
+        for l_idx, l_val in enumerate(l_vals):
+            for h_idx, h_val in enumerate(h_vals):
+                idx = h_sample_num * l_idx + h_idx
+                args.append(
+                    [l_val, h_val, idx, upper_rgb, lower_rgb, xyz_t,
+                     l, h, c])
+        pool.map(thread_wrapper, args)
+
+
+def thread_wrapper(args):
+    return solve_chroma_thread(*args)
+
+
+def solve_chroma_thread(
+        l_val, h_val, idx, upper_rgb, lower_rgb, xyz_t,
+        l, h, c):
+    result = solve_chroma_sub(
+        upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c)
+    shared_array[idx] = result
 
 
 def solve_chroma_sub(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c):
     """
     与えられた条件下での Chroma の限界値を算出する。
-
-
     """
-    start = time.time()
-
     upper_rgb = [
         upper_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
     lower_rgb = [
         lower_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
     xyz_t = [
         xyz_t[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
-    end = time.time()
-    # print("intro = {}".format(end - start))
 
     # まず解く
-    start = time.time()
     upper_solution_zero = [solve(upper_rgb[idx] + 0) for idx in range(3)]
     upper_solution_one = [solve(upper_rgb[idx] - 1) for idx in range(3)]
     lower_solution_zero = [solve(lower_rgb[idx] + 0) for idx in range(3)]
     lower_solution_one = [solve(lower_rgb[idx] - 1) for idx in range(3)]
-    end = time.time()
-    # print("mazutoku = {}".format(end - start))
 
     # それぞれの解が \sigma の条件を満たしているか確認
-    start = time.time()
     solve_list = []
     for idx in range(3):
         for solve_val in upper_solution_zero[idx]:
@@ -243,32 +254,117 @@ def solve_chroma_sub(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c):
             if t_val <= SIGMA:
                 solve_list.append(solve_val)
 
-    end = time.time()
-    # print("sorekai = {}".format(end - start))
-
     # 出揃った全てのパターンの中から最小値を選択する
-    start = time.time()
     solve_list = np.array(solve_list)
     chroma = np.min(solve_list[solve_list >= 0.0])
-    end = time.time()
-    # print("get_minimum = {}".format(end - start))
 
     return chroma
+
+
+def plot_and_save_ab_plane(idx, data):
+    graph_name = "./ab_plane_seq/L_num_{}_{:04d}.png".format(l_sample_num, idx)
+    rad = np.linspace(0, 2 * np.pi, h_sample_num)
+    a = data * np.cos(rad)
+    b = data * np.sin(rad)
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="CIELAB Plane",
+        graph_title_size=None,
+        xlabel="a*", ylabel="b*",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=(-200, 200),
+        ylim=(-200, 200),
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(a, b, label="L*={:.03f}".format(idx * 100 / (l_sample_num - 1)))
+    plt.legend(loc='upper left')
+    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    print("plot l_idx={}".format(idx))
+    # plt.show()
+
+
+def visualization_ab_plane():
+    """
+    ab plane を L* = 0～100 で静止画にして吐く。
+    後で Resolve で動画にして楽しもう！
+    """
+    calc_data = np.load("./data/L_256_H_256_data.npy")
+    # for l_idx in range(l_sample_num):
+    #     plot_and_save_ab_plane(idx=l_idx, data=calc_data[l_idx])
+
+    args = []
+
+    with Pool(cpu_count()) as pool:
+        for l_idx in range(l_sample_num):
+            args.append([l_idx, calc_data[l_idx]])
+        pool.map(thread_wrapper_visualization, args)
+
+
+def thread_wrapper_visualization(args):
+    return plot_and_save_ab_plane(*args)
+
+
+def visualization_formula():
+    """
+    C* を設定すると RGB 値が求まる数式をプロットする。
+    全体的に見つめて問題が無いか確認する。
+    """
+    upper_rgb, lower_rgb, xyz_t, l, h, c = lab_to_xyz_formla()
+    return None
+    l_vals = np.linspace(0, 100, l_sample_num)
+    h_vals = np.linspace(0, 2*np.pi, h_sample_num)
+    for l_idx, l_val in enumerate(l_vals):
+        for h_idx, h_val in enumerate(h_vals):
+            pass
+
+
+def plot_formula_for_specific_lstar(
+        upper_rgb, lower_rgb, xyz_t, l, h, c, l_idx, l_val, h_idx, h_val):
+    """
+    Q：何をするの？
+    A：* l_val, h_val を代入した C* の数式を計算(6本)
+       * C* に -250～+250 を代入してプロット＆保存
+       * ファイル名は *l_{l_idx}_formula_{h_idx}.png*
+    """
+    # l_val, h_val 代入
+    upper_rgb = [
+        upper_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+    lower_rgb = [
+        lower_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+    xyz_t = [
+        xyz_t[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+
+    # lambdify 実行
+    pass
 
 
 def experimental_functions():
     # check_basic_trigonometricfunction()
     # plot_inv_f()
     # plot_ab_plane()
-    solve_list = solve_chroma()
-    l_len = len(solve_list)
-    l_val = np.linspace(0, 100, l_len)
-    p_str = "{}, {}, {}"
-    print(50)
-    for idx in range(len(solve_list[0])):
-        print(solve_list[0][idx])
+    # start = time.time()
+    # solve_chroma()
+    # end = time.time()
+    # print("time = {:.4f} [s]".format(end - start))
+    # data = np.array(shared_array[:]).reshape((l_sample_num, h_sample_num))
+    # fname = "./data/L_{}_H_{}_data.npy".format(l_sample_num, h_sample_num)
+    # np.save(fname, data)
+    # visualization_ab_plane()
+    visualization_formula()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     experimental_functions()
+    """
+    time = 7.8243 [s]
+    [[0.0 0.0 0.0]
+    [105.609084208454 77.1514136635651 105.609084208454]
+    [0.0 1.02149424848761e-13 2.28617836127562e-11]]
+    """
