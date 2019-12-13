@@ -124,4 +124,6 @@ venv.bak/
 2019/010_hdr_to_sdr_on_youtube/**/*.mkv
 2019/011_hdr_to_sdr_tonemapping/blog_img/bak.zip
 2019/011_hdr_to_sdr_tonemapping/img/img.zip
+2019/012_colour_v0.3.14_check/img/**
 2019/014_3dlut_using_colour_science/img/img.zip
+2019/016_cielab_color_space/ab_plane_seq/*.png
