@@ -15,12 +15,14 @@ import time
 import ctypes
 
 # import third-party libraries
+import matplotlib as mpl
+mpl.use('Agg')
 import numpy as np
-from sympy import symbols, plotting, sin, cos
+from sympy import symbols, plotting, sin, cos, lambdify
 from sympy.solvers import solve
 from scipy import linalg
 from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
-from colour import xy_to_XYZ
+from colour import xy_to_XYZ, read_image, write_image
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count, Array
 
@@ -45,8 +47,8 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 # global variables
-l_sample_num = 256
-h_sample_num = 256
+l_sample_num = 4
+h_sample_num = 16
 shared_array = Array(
     typecode_or_type=ctypes.c_float,
     size_or_initializer=l_sample_num*h_sample_num)
@@ -158,6 +160,20 @@ def plot_ab_plane():
     plt.show()
 
 
+def get_xyz_t():
+    """
+    CIELAB to XYZ の逆関数の中の値を
+    XYZ のぞれぞれについて求める。
+    """
+    c, l, h = symbols('c, l, h', real=True)
+    xt = (l + 16) / 116 + (c * cos(h)) / 500
+    yt = (l + 16) / 116
+    zt = (l + 16) / 116 - (c * sin(h)) / 200
+    xyz_t = [xt, yt, zt]
+
+    return xyz_t, c, l, h
+
+
 def lab_to_xyz_formla():
     """
     数式を取得
@@ -165,11 +181,7 @@ def lab_to_xyz_formla():
     matrix = get_xyz_to_rgb_matrix(primaries=cs.REC2020_xy)
 
     # base formula
-    c, l, h = symbols('c, l, h', real=True)
-    xt = (l + 16) / 116 + (c * cos(h)) / 500
-    yt = (l + 16) / 116
-    zt = (l + 16) / 116 - (c * sin(h)) / 200
-    xyz_t = [xt, yt, zt]
+    xyz_t, c, l, h = get_xyz_t()
 
     # upper
     upper_xyzt = [
@@ -310,38 +322,121 @@ def thread_wrapper_visualization(args):
     return plot_and_save_ab_plane(*args)
 
 
+def thread_wrapper_visualization_formula(args):
+    return plot_formula_for_specific_lstar(*args)
+
+
 def visualization_formula():
     """
     C* を設定すると RGB 値が求まる数式をプロットする。
     全体的に見つめて問題が無いか確認する。
     """
+
     upper_rgb, lower_rgb, xyz_t, l, h, c = lab_to_xyz_formla()
-    return None
     l_vals = np.linspace(0, 100, l_sample_num)
     h_vals = np.linspace(0, 2*np.pi, h_sample_num)
     for l_idx, l_val in enumerate(l_vals):
+        args = []
         for h_idx, h_val in enumerate(h_vals):
-            pass
+            args.append([upper_rgb, lower_rgb,
+                         l, h, c, l_idx, l_val, h_idx, h_val])
+        with Pool(cpu_count()//2) as pool:
+            pool.map(thread_wrapper_visualization_formula, args)
 
 
 def plot_formula_for_specific_lstar(
-        upper_rgb, lower_rgb, xyz_t, l, h, c, l_idx, l_val, h_idx, h_val):
+        upper_rgb, lower_rgb, l, h, c, l_idx, l_val, h_idx, h_val):
     """
     Q：何をするの？
     A：* l_val, h_val を代入した C* の数式を計算(6本)
        * C* に -250～+250 を代入してプロット＆保存
        * ファイル名は *l_{l_idx}_formula_{h_idx}.png*
     """
+    print(l_idx, h_idx)
     # l_val, h_val 代入
     upper_rgb = [
         upper_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
     lower_rgb = [
         lower_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
-    xyz_t = [
-        xyz_t[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+    xyz_t2, c2, l2, h2 = get_xyz_t()
+    xyz_t2 = [
+        xyz_t2[idx].subs({l2: l_val, h2: h_val}) for idx in range(3)]
 
     # lambdify 実行
-    pass
+    upper_rgb = [lambdify(c, upper_rgb[idx], 'numpy') for idx in range(3)]
+    lower_rgb = [lambdify(c, lower_rgb[idx], 'numpy') for idx in range(3)]
+    xyz_t2 = [lambdify(c2, xyz_t2[idx], 'numpy') for idx in range(3)]
+
+    # プロット対象のY軸データ作成
+    x = np.linspace(-250, 250, 1024)
+    upper_rgb = [upper_rgb[idx](x) for idx in range(3)]
+    lower_rgb = [lower_rgb[idx](x) for idx in range(3)]
+    xyz_t2 = [xyz_t2[idx](x) for idx in range(3)]
+
+    # upper_rgb と lower_rgb を合成
+    rgb = [np.zeros_like(upper_rgb[idx]) for idx in range(3)]
+    for idx in range(3):
+        upper_idx = xyz_t2[idx] > SIGMA
+        lower_idx = xyz_t2[idx] <= SIGMA
+        rgb[idx][upper_idx] = upper_rgb[idx][upper_idx]
+        rgb[idx][lower_idx] = lower_rgb[idx][lower_idx]
+
+    graph_name_0 = "./formula_seq/L0_{:03d}_{:04d}.png".format(l_idx, h_idx)
+    graph_name_1 = "./formula_seq/L1_{:03d}_{:04d}.png".format(l_idx, h_idx)
+    graph_name_2 = "./formula_seq/L_{:03d}_{:04d}.png".format(l_idx, h_idx)
+    title_str = "L*={:.02f}_H={:.01f}°".format(
+        100 * l_idx / (l_sample_num - 1), 360 * h_idx / (h_sample_num - 1))
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        graph_title=title_str,
+        graph_title_size=None,
+        xlabel="C*", ylabel="RGB Value",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=(-50, 250),
+        ylim=(-0.5, 0.5),
+        xtick=[25 * x - 50 for x in range(13)],
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, rgb[0], 'r-', label="R")
+    ax1.plot(x, rgb[1], 'g-', label="G")
+    ax1.plot(x, rgb[2], 'b-', label="B")
+    plt.legend(loc='upper left')
+    plt.savefig(graph_name_0, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        graph_title=title_str,
+        graph_title_size=None,
+        xlabel="C*", ylabel="RGB Value",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=(-50, 250),
+        ylim=(0.5, 1.5),
+        xtick=[25 * x - 50 for x in range(13)],
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, rgb[0], 'r-', label="R")
+    ax1.plot(x, rgb[1], 'g-', label="G")
+    ax1.plot(x, rgb[2], 'b-', label="B")
+    plt.legend(loc='upper left')
+    plt.savefig(graph_name_1, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+    img_0 = read_image(graph_name_0)
+    img_1 = read_image(graph_name_1)
+    img = np.hstack((img_0, img_1))
+    write_image(img, graph_name_2)
+    os.remove(graph_name_0)
+    os.remove(graph_name_1)
 
 
 def experimental_functions():
