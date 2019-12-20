@@ -127,3 +127,5 @@ venv.bak/
 2019/012_colour_v0.3.14_check/img/**
 2019/014_3dlut_using_colour_science/img/img.zip
 2019/016_cielab_color_space/ab_plane_seq/*.png
+2019/016_cielab_color_space/xy_plane_seq/*.png
+2019/016_cielab_color_space/formula_seq/*.png
