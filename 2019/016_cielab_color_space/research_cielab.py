@@ -47,8 +47,8 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 # global variables
-l_sample_num = 4
-h_sample_num = 16
+l_sample_num = 16
+h_sample_num = 64
 shared_array = Array(
     typecode_or_type=ctypes.c_float,
     size_or_initializer=l_sample_num*h_sample_num)
@@ -340,7 +340,7 @@ def visualization_formula():
         for h_idx, h_val in enumerate(h_vals):
             args.append([upper_rgb, lower_rgb,
                          l, h, c, l_idx, l_val, h_idx, h_val])
-        with Pool(cpu_count()//2) as pool:
+        with Pool(cpu_count()) as pool:
             pool.map(thread_wrapper_visualization_formula, args)
 
 
@@ -373,8 +373,17 @@ def plot_formula_for_specific_lstar(
     lower_rgb = [lower_rgb[idx](x) for idx in range(3)]
     xyz_t2 = [xyz_t2[idx](x) for idx in range(3)]
 
+    # 1次元になっちゃうやつへの対処
+    for idx in range(3):
+        if not isinstance(upper_rgb[idx], np.ndarray):
+            upper_rgb[idx] = np.ones_like(x) * upper_rgb[idx]
+        if not isinstance(lower_rgb[idx], np.ndarray):
+            lower_rgb[idx] = np.ones_like(x) * lower_rgb[idx]
+        if not isinstance(xyz_t2[idx], np.ndarray):
+            xyz_t2[idx] = np.ones_like(x) * xyz_t2[idx]
+
     # upper_rgb と lower_rgb を合成
-    rgb = [np.zeros_like(upper_rgb[idx]) for idx in range(3)]
+    rgb = [np.ones_like(upper_rgb[idx])*100 for idx in range(3)]
     for idx in range(3):
         upper_idx = xyz_t2[idx] > SIGMA
         lower_idx = xyz_t2[idx] <= SIGMA
@@ -405,6 +414,9 @@ def plot_formula_for_specific_lstar(
     ax1.plot(x, rgb[0], 'r-', label="R")
     ax1.plot(x, rgb[1], 'g-', label="G")
     ax1.plot(x, rgb[2], 'b-', label="B")
+    ax1.plot(x, xyz_t2[0] > SIGMA, 'r-', alpha=0.3, label="are")
+    ax1.plot(x, xyz_t2[1] > SIGMA, 'g-', alpha=0.3, label="are")
+    ax1.plot(x, xyz_t2[2] > SIGMA, 'b-', alpha=0.3, label="are")
     plt.legend(loc='upper left')
     plt.savefig(graph_name_0, bbox_inches='tight', pad_inches=0.1)
     # plt.show()
@@ -428,6 +440,9 @@ def plot_formula_for_specific_lstar(
     ax1.plot(x, rgb[0], 'r-', label="R")
     ax1.plot(x, rgb[1], 'g-', label="G")
     ax1.plot(x, rgb[2], 'b-', label="B")
+    ax1.plot(x, xyz_t2[0] > SIGMA, 'r-', alpha=0.3, label="are")
+    ax1.plot(x, xyz_t2[1] > SIGMA, 'g-', alpha=0.3, label="are")
+    ax1.plot(x, xyz_t2[2] > SIGMA, 'b-', alpha=0.3, label="are")
     plt.legend(loc='upper left')
     plt.savefig(graph_name_1, bbox_inches='tight', pad_inches=0.1)
     # plt.show()
@@ -437,6 +452,159 @@ def plot_formula_for_specific_lstar(
     write_image(img, graph_name_2)
     os.remove(graph_name_0)
     os.remove(graph_name_1)
+
+
+def lab_to_xyz_formla_2nd():
+    """
+    数式を取得。XYZ to RGB 変換をしないのが
+    初代との違い。
+    """
+    # base formula
+    xyz_t, c, l, h = get_xyz_t()
+
+    # upper
+    upper_xyz = [
+        get_large_xyz_symbol(n=D65_WHITE[idx], t=xyz_t[idx], upper=True)
+        for idx in range(3)]
+
+    # lower
+    lower_xyz = [
+        get_large_xyz_symbol(n=D65_WHITE[idx], t=xyz_t[idx], upper=False)
+        for idx in range(3)]
+
+    # chroma = solve_chroma(upper_rgb, lower_rgb, xyz_t, l, h, l_val, h_val, c)
+
+    return upper_xyz, lower_xyz, xyz_t, l, h, c
+
+
+def plot_xyz_formula(upper_xyz, lower_xyz, xyz_t,
+                     l, h, c, l_idx, l_val, h_idx, h_val):
+    print("L*: {}/{}, Hue: {}/{}".format(
+        l_idx+1, l_sample_num, h_idx+1, h_sample_num))
+
+    # l_val, h_val 代入
+    upper_xyz = [
+        upper_xyz[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+    lower_xyz = [
+        lower_xyz[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+    xyz_t = [
+        xyz_t[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+
+    # lambdify 実行
+    upper_xyz = [lambdify(c, upper_xyz[idx], 'numpy') for idx in range(3)]
+    lower_xyz = [lambdify(c, lower_xyz[idx], 'numpy') for idx in range(3)]
+    xyz_t = [lambdify(c, xyz_t[idx], 'numpy') for idx in range(3)]
+
+    # プロット対象のY軸データ作成
+    x = np.linspace(-250, 250, 1024)
+    upper_xyz = [upper_xyz[idx](x) for idx in range(3)]
+    lower_xyz = [lower_xyz[idx](x) for idx in range(3)]
+    xyz_t = [xyz_t[idx](x) for idx in range(3)]
+
+    # 1次元になっちゃうやつへの対処
+    for idx in range(3):
+        if not isinstance(upper_xyz[idx], np.ndarray):
+            upper_xyz[idx] = np.ones_like(x) * upper_xyz[idx]
+        if not isinstance(lower_xyz[idx], np.ndarray):
+            lower_xyz[idx] = np.ones_like(x) * lower_xyz[idx]
+        if not isinstance(xyz_t[idx], np.ndarray):
+            xyz_t[idx] = np.ones_like(x) * xyz_t[idx]
+
+    # upper_rgb と lower_rgb を合成
+    large_xyz = [np.ones_like(upper_xyz[idx])*100 for idx in range(3)]
+    for idx in range(3):
+        upper_idx = xyz_t[idx] > SIGMA
+        lower_idx = xyz_t[idx] <= SIGMA
+        large_xyz[idx][upper_idx] = upper_xyz[idx][upper_idx]
+        large_xyz[idx][lower_idx] = lower_xyz[idx][lower_idx]
+
+    graph_name_0 = "./formula_seq/L0_{:03d}_{:04d}.png".format(l_idx, h_idx)
+    graph_name_1 = "./formula_seq/L1_{:03d}_{:04d}.png".format(l_idx, h_idx)
+    graph_name_2 = "./formula_seq/L_{:03d}_{:04d}.png".format(l_idx, h_idx)
+    title_str = "L*={:.02f}_H={:.01f}°".format(
+        100 * l_idx / (l_sample_num - 1), 360 * h_idx / (h_sample_num - 1))
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        graph_title=title_str,
+        graph_title_size=None,
+        xlabel="C*", ylabel="RGB Value",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=(-50, 250),
+        ylim=(-0.5, 0.5),
+        xtick=[25 * x - 50 for x in range(13)],
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, large_xyz[0], 'r-', label="R")
+    ax1.plot(x, large_xyz[1], 'g-', label="G")
+    ax1.plot(x, large_xyz[2], 'b-', label="B")
+    ax1.plot(x, xyz_t[0] > SIGMA, 'r-', alpha=0.3, label="are")
+    ax1.plot(x, xyz_t[1] > SIGMA, 'g-', alpha=0.3, label="are")
+    ax1.plot(x, xyz_t[2] > SIGMA, 'b-', alpha=0.3, label="are")
+    plt.legend(loc='upper left')
+    plt.savefig(graph_name_0, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        graph_title=title_str,
+        graph_title_size=None,
+        xlabel="C*", ylabel="RGB Value",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=(-50, 250),
+        ylim=(0.5, 1.5),
+        xtick=[25 * x - 50 for x in range(13)],
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, large_xyz[0], 'r-', label="R")
+    ax1.plot(x, large_xyz[1], 'g-', label="G")
+    ax1.plot(x, large_xyz[2], 'b-', label="B")
+    ax1.plot(x, xyz_t[0] > SIGMA, 'r-', alpha=0.3, label="are")
+    ax1.plot(x, xyz_t[1] > SIGMA, 'g-', alpha=0.3, label="are")
+    ax1.plot(x, xyz_t[2] > SIGMA, 'b-', alpha=0.3, label="are")
+    plt.legend(loc='upper left')
+    plt.savefig(graph_name_1, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+
+    img_0 = read_image(graph_name_0)
+    img_1 = read_image(graph_name_1)
+    img = np.hstack((img_0, img_1))
+    write_image(img, graph_name_2)
+    os.remove(graph_name_0)
+    os.remove(graph_name_1)
+
+
+def thread_wrapper_visualization_xyz(args):
+    plot_xyz_formula(*args)
+
+
+def visualization_large_xyz_from_lab():
+    """
+    そもそも、CIELAB to XYZ って滑らかなの？との疑念が出たので
+    基本的なところから確認する。
+    """
+    upper_xyz, lower_xyz, xyz_t, l, h, c = lab_to_xyz_formla_2nd()
+    l_vals = np.linspace(0, 100, l_sample_num)
+    h_vals = np.linspace(0, 2*np.pi, h_sample_num)
+
+    for l_idx, l_val in enumerate(l_vals):
+        args = []
+        for h_idx, h_val in enumerate(h_vals):
+            args.append([upper_xyz, lower_xyz, xyz_t,
+                         l, h, c, l_idx, l_val, h_idx, h_val])
+            # plot_xyz_formula(upper_xyz, lower_xyz, xyz_t,
+            #                  l, h, c, l_idx, l_val, h_idx, h_val)
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_visualization_xyz, args)
 
 
 def experimental_functions():
@@ -452,6 +620,7 @@ def experimental_functions():
     # np.save(fname, data)
     # visualization_ab_plane()
     visualization_formula()
+    # visualization_large_xyz_from_lab()
 
 
 if __name__ == '__main__':
