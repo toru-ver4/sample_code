@@ -15,14 +15,14 @@ import time
 import ctypes
 
 # import third-party libraries
-import matplotlib as mpl
-mpl.use('Agg')
+# import matplotlib as mpl
+# mpl.use('Agg')
 import numpy as np
 from sympy import symbols, plotting, sin, cos, lambdify
 from sympy.solvers import solve
 from scipy import linalg
 from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
-from colour import xy_to_XYZ, read_image, write_image
+from colour import xy_to_XYZ, read_image, write_image, Lab_to_XYZ, XYZ_to_RGB
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count, Array
 
@@ -47,8 +47,8 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 # global variables
-l_sample_num = 16
-h_sample_num = 64
+l_sample_num = 4
+h_sample_num = 4
 shared_array = Array(
     typecode_or_type=ctypes.c_float,
     size_or_initializer=l_sample_num*h_sample_num)
@@ -607,6 +607,84 @@ def visualization_large_xyz_from_lab():
             pool.map(thread_wrapper_visualization_xyz, args)
 
 
+def visualization_rgb_from_lab_using_colour():
+    """
+    colour を使って Lab to RGB した際の確認。
+    """
+    l_vals = np.linspace(0, 100, l_sample_num)
+    h_vals = np.linspace(0, 2*np.pi, h_sample_num)
+
+    for l_idx, l_val in enumerate(l_vals):
+        args = []
+        for h_idx, h_val in enumerate(h_vals):
+            args.append([l_val, h_val, l_idx, h_idx])
+            # plot_lab_to_rgb_using_colour(l_val, h_val, l_idx, h_idx)
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_lab_to_rgb_using_colour, args)
+
+
+def thread_wrapper_lab_to_rgb_using_colour(args):
+    plot_lab_to_rgb_using_colour(*args)
+
+
+def plot_lab_to_rgb_using_colour(l, h, l_idx, h_idx):
+    c = np.linspace(-50, 250, 1024)
+    print(np.cos(h))
+    a_array = c * np.cos(h)
+    b_array = c * np.sin(h)
+    l_array = np.ones_like(a_array) * l
+    lab = np.dstack((l_array, a_array, b_array))
+
+    # rgb = Lab_to_XYZ(lab)
+    large_xyz = Lab_to_XYZ(lab)
+    rgb = XYZ_to_RGB(
+        large_xyz, cs.D65, cs.D65, BT2020_COLOURSPACE.XYZ_to_RGB_matrix)
+    # print(rgb)
+
+    # ちょっとデバッグ
+    xyz_t2, c2, l2, h2 = get_xyz_t()
+    xyz_t2 = [
+        xyz_t2[idx].subs({l2: l, h2: h}) for idx in range(3)]
+    xyz_t2 = [lambdify(c2, xyz_t2[idx], 'numpy') for idx in range(3)]
+    xyz_t2 = [xyz_t2[idx](c) for idx in range(3)]
+    for idx in range(3):
+        if not isinstance(xyz_t2[idx], np.ndarray):
+            xyz_t2[idx] = np.ones_like(c) * xyz_t2[idx]
+
+    graph_name_0 = "./formula_seq/L0_{:03d}_{:04d}.png".format(l_idx, h_idx)
+    title_str = "L*={:.02f}_H={:.01f}°".format(
+        100 * l_idx / (l_sample_num - 1), 360 * h_idx / (h_sample_num - 1))
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        graph_title=title_str,
+        graph_title_size=None,
+        xlabel="C*", ylabel="RGB Value",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=(-50, 250),
+        ylim=(-0.5, 0.5),
+        xtick=[25 * x - 50 for x in range(13)],
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(c, rgb[..., 0].flatten(), 'r-', label="R")
+    ax1.plot(c, rgb[..., 1].flatten(), 'g-', label="G")
+    ax1.plot(c, rgb[..., 2].flatten(), 'b-', label="B")
+    # ax1.plot(c, xyz_t2[0], 'r-', label="X")
+    # ax1.plot(c, xyz_t2[1], 'g-', label="Y")
+    # ax1.plot(c, xyz_t2[2], 'b-', label="Z")
+    # ax1.plot(c, xx2, 'k-', label="My X")
+    # ax1.plot(x, xyz_t2[0] > SIGMA, 'r-', alpha=0.3, label="are")
+    # ax1.plot(x, xyz_t2[1] > SIGMA, 'g-', alpha=0.3, label="are")
+    # ax1.plot(x, xyz_t2[2] > SIGMA, 'b-', alpha=0.3, label="are")
+    plt.legend(loc='upper left')
+    plt.savefig(graph_name_0, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+
+
 def experimental_functions():
     # check_basic_trigonometricfunction()
     # plot_inv_f()
@@ -621,6 +699,7 @@ def experimental_functions():
     # visualization_ab_plane()
     visualization_formula()
     # visualization_large_xyz_from_lab()
+    # visualization_rgb_from_lab_using_colour()
 
 
 if __name__ == '__main__':
