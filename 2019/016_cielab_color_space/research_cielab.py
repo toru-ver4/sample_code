@@ -332,20 +332,21 @@ def visualization_formula():
     全体的に見つめて問題が無いか確認する。
     """
 
-    upper_rgb, lower_rgb, xyz_t, l, h, c = lab_to_xyz_formla()
+    # upper_rgb, lower_rgb, xyz_t, l, h, c = lab_to_xyz_formla()
+    upper_xyz, lower_xyz, xyz_t, l, h, c = lab_to_xyz_formla_2nd()
     l_vals = np.linspace(0, 100, l_sample_num)
     h_vals = np.linspace(0, 2*np.pi, h_sample_num)
     for l_idx, l_val in enumerate(l_vals):
         args = []
         for h_idx, h_val in enumerate(h_vals):
-            args.append([upper_rgb, lower_rgb,
+            args.append([upper_xyz, lower_xyz,
                          l, h, c, l_idx, l_val, h_idx, h_val])
         with Pool(cpu_count()) as pool:
             pool.map(thread_wrapper_visualization_formula, args)
 
 
 def plot_formula_for_specific_lstar(
-        upper_rgb, lower_rgb, l, h, c, l_idx, l_val, h_idx, h_val):
+        upper_xyz, lower_xyz, l, h, c, l_idx, l_val, h_idx, h_val):
     """
     Q：何をするの？
     A：* l_val, h_val を代入した C* の数式を計算(6本)
@@ -354,24 +355,29 @@ def plot_formula_for_specific_lstar(
     """
     print(l_idx, h_idx)
     # l_val, h_val 代入
-    upper_rgb = [
-        upper_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
-    lower_rgb = [
-        lower_rgb[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+    upper_xyz = [
+        upper_xyz[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+    lower_xyz = [
+        lower_xyz[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
     xyz_t2, c2, l2, h2 = get_xyz_t()
     xyz_t2 = [
         xyz_t2[idx].subs({l2: l_val, h2: h_val}) for idx in range(3)]
 
     # lambdify 実行
-    upper_rgb = [lambdify(c, upper_rgb[idx], 'numpy') for idx in range(3)]
-    lower_rgb = [lambdify(c, lower_rgb[idx], 'numpy') for idx in range(3)]
+    upper_xyz = [lambdify(c, upper_xyz[idx], 'numpy') for idx in range(3)]
+    lower_xyz = [lambdify(c, lower_xyz[idx], 'numpy') for idx in range(3)]
     xyz_t2 = [lambdify(c2, xyz_t2[idx], 'numpy') for idx in range(3)]
 
     # プロット対象のY軸データ作成
     x = np.linspace(-250, 250, 1024)
-    upper_rgb = [upper_rgb[idx](x) for idx in range(3)]
-    lower_rgb = [lower_rgb[idx](x) for idx in range(3)]
+    upper_xyz = [upper_xyz[idx](x) for idx in range(3)]
+    lower_xyz = [lower_xyz[idx](x) for idx in range(3)]
     xyz_t2 = [xyz_t2[idx](x) for idx in range(3)]
+
+    # XYZ to RGB 変換
+    matrix = get_xyz_to_rgb_matrix(primaries=cs.REC2020_xy)
+    upper_rgb = apply_matrix(upper_xyz, matrix)
+    lower_rgb = apply_matrix(lower_xyz, matrix)
 
     # 1次元になっちゃうやつへの対処
     for idx in range(3):
@@ -704,7 +710,9 @@ def experimental_functions():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    experimental_functions()
+    # experimental_functions()
+    matrix = get_xyz_to_rgb_matrix(primaries=cs.REC709_xy)
+    print(matrix)
     """
     time = 7.8243 [s]
     [[0.0 0.0 0.0]
