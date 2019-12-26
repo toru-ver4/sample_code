@@ -198,10 +198,10 @@ def plot_formula_for_specific_lstar(
     rgb = [np.zeros_like(rgb_exprs[0][idx]) for idx in range(3)]
     for ii in range(len(IJK_LIST)):
         for jj in range(3):
-            r_idx = (xyz_t[jj] <= SIGMA) if IJK_LIST[ii][jj] else (xyz_t[jj] > SIGMA)
-            g_idx = (xyz_t[jj] <= SIGMA) if IJK_LIST[ii][jj] else (xyz_t[jj] > SIGMA)
-            b_idx = (xyz_t[jj] <= SIGMA) if IJK_LIST[ii][jj] else (xyz_t[jj] > SIGMA)
-            idx = (r_idx & g_idx) & b_idx
+            x_idx = (xyz_t[0] > SIGMA) if IJK_LIST[ii][0] else (xyz_t[0] <= SIGMA)
+            y_idx = (xyz_t[1] > SIGMA) if IJK_LIST[ii][1] else (xyz_t[1] <= SIGMA)
+            z_idx = (xyz_t[2] > SIGMA) if IJK_LIST[ii][2] else (xyz_t[2] <= SIGMA)
+            idx = (x_idx & y_idx) & z_idx
             rgb[jj][idx] = rgb_exprs[ii][jj][idx]
 
     graph_name_0 = "./formula_seq/L0_{:03d}_{:04d}.png".format(l_idx, h_idx)
