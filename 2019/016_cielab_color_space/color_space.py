@@ -27,6 +27,7 @@ from scipy import linalg
 
 # Define
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
+D65 = ILLUMINANTS[CMFS_NAME]['D65']
 
 # NAME
 BT709 = 'ITU-R BT.709'

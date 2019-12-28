@@ -13,6 +13,7 @@ CIELAB色空間の基礎調査
 import os
 import time
 import ctypes
+import copy
 
 # import third-party libraries
 # import matplotlib as mpl
@@ -58,7 +59,7 @@ __all__ = []
 
 # global variables
 l_sample_num = 4
-h_sample_num = 4
+h_sample_num = 5
 shared_array = Array(
     typecode_or_type=ctypes.c_float,
     size_or_initializer=l_sample_num*h_sample_num)
@@ -167,11 +168,10 @@ def thread_wrapper_visualization_formula(args):
 
 def plot_formula_for_specific_lstar(
         l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h):
-    print(l_idx, h_idx)
+    print("l_idx={}, h_idx={}".format(l_idx, h_idx))
     x = np.linspace(-250, 250, 1024)
 
     for ii in range(len(IJK_LIST)):
-
         for jj in range(3):
             # l_val, h_val 代入
             rgb_exprs[ii][jj] = rgb_exprs[ii][jj].subs({l: l_val, h: h_val})
@@ -269,10 +269,69 @@ def plot_formula_for_specific_lstar(
     os.remove(graph_name_1)
 
 
+def solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h):
+    xyz_t = [get_tx(l, c, h), get_ty(l), get_tz(l, c, h)]
+    xyz_t = [xyz_t[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
+    temp_solution = []
+    for ii in range(len(IJK_LIST)):
+        for jj in range(3):
+            # l_val, h_val 代入
+            c_expr = rgb_exprs[ii][jj].subs({l: l_val, h: h_val})
+            solution_zero = solve(c_expr + 0)
+            solution_one = solve(c_expr - 1)
+
+            for solve_val in solution_zero:
+                t = [xyz_t[kk].subs({c: solve_val}) for kk in range(3)]
+                xt_bool = (t[0] > SIGMA) if IJK_LIST[ii][0] else (t[0] <= SIGMA)
+                yt_bool = (t[1] > SIGMA) if IJK_LIST[ii][1] else (t[1] <= SIGMA)
+                zt_bool = (t[2] > SIGMA) if IJK_LIST[ii][2] else (t[2] <= SIGMA)
+                xyz_t_bool = (xt_bool and yt_bool) and zt_bool
+                if xyz_t_bool:
+                    temp_solution.append(solve_val)
+
+            for solve_val in solution_one:
+                t = [xyz_t[kk].subs({c: solve_val}) for kk in range(3)]
+                xt_bool = (t[0] > SIGMA) if IJK_LIST[ii][0] else (t[0] <= SIGMA)
+                yt_bool = (t[1] > SIGMA) if IJK_LIST[ii][1] else (t[1] <= SIGMA)
+                zt_bool = (t[2] > SIGMA) if IJK_LIST[ii][2] else (t[2] <= SIGMA)
+                xyz_t_bool = (xt_bool and yt_bool) and zt_bool
+                if xyz_t_bool:
+                    temp_solution.append(solve_val)
+
+    chroma_list = np.array(temp_solution)
+    chroma = np.min(chroma_list[chroma_list >= 0.0])
+    print(chroma)
+
+    return chroma
+
+
+def make_chroma_array():
+    """
+    L*a*b* 空間における a*b*平面の境界線プロットのために、
+    各L* における 境界線の Chroma を計算する。
+    """
+    l, c, h = symbols('l, c, h', real=True)
+    rgb_exprs = lab_to_rgb_expr(l, c, h)
+    l_vals = np.linspace(0, 100, l_sample_num)
+    h_vals = np.linspace(0, 2*np.pi, h_sample_num)
+    for l_idx, l_val in enumerate(l_vals):
+        args = []
+        for h_idx, h_val in enumerate(h_vals):
+            args.append([l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h])
+            solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h)
+
+        # with Pool(cpu_count()) as pool:
+        #     pool.map(thread_wrapper_visualization_formula, args)
+
+
 def experimental_functions():
-    visualize_formula()
+    # visualize_formula()
+    make_chroma_array()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    start = time.time()
     experimental_functions()
+    end = time.time()
+    print("total_time={}[s]".format(end-start))
