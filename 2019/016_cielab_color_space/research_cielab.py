@@ -64,6 +64,7 @@ shared_array = Array(
     typecode_or_type=ctypes.c_float,
     size_or_initializer=l_sample_num*h_sample_num)
 npy_name = "chroma_l_{}_h_{}.npy".format(l_sample_num, h_sample_num)
+im_threshold = 0.00000001
 
 
 def get_ty(l):
@@ -153,6 +154,11 @@ def visualize_formula():
     rgb_exprs = lab_to_rgb_expr(l, c, h)
     l_vals = np.linspace(0, 100, l_sample_num)
     h_vals = np.linspace(0, 2*np.pi, h_sample_num)
+    l_idx = 1
+    h_idx = 12
+    plot_formula_for_specific_lstar(
+        l_vals[l_idx], l_idx, h_vals[h_idx], h_idx, rgb_exprs, l, c, h)
+    return None
     for l_idx, l_val in enumerate(l_vals):
         args = []
         for h_idx, h_val in enumerate(h_vals):
@@ -277,19 +283,26 @@ def solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h):
     xyz_t = [get_tx(l, c, h), get_ty(l), get_tz(l, c, h)]
     xyz_t = [xyz_t[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
     temp_solution = []
-    h_val_sympy = 2 * pi * h_idx / (h_sample_num - 1)
 
     for ii in range(len(IJK_LIST)):
         for jj in range(3):  # R, G, B のループ
             # l_val, h_val 代入
-            c_expr = rgb_exprs[ii][jj].subs({l: l_val, h: h_val_sympy})
+            c_expr = rgb_exprs[ii][jj].subs({l: l_val, h: h_val})
+            print("ii: {}, jj: {}".format(ii, jj))
+            print(c_expr)
             solution = []
             solution.extend(solve(c_expr))
             solution.extend(solve(c_expr - 1))
+            print(solution)
 
-            for solve_val in solution:
+            for solve_val_complex in solution:
+                # 複素成分を見て、小さければ実数とみなす
+                # どうも solve では複素数として算出されてしまうケースがあるっぽい
+                solve_val, im_val = solve_val_complex.as_real_imag()
+                if im_val > im_threshold:
+                    continue
+
                 t = [xyz_t[kk].subs({c: solve_val}) for kk in range(3)]
-                # print(t)
                 xt_bool = (t[0] > SIGMA) if IJK_LIST[ii][0] else (t[0] <= SIGMA)
                 yt_bool = (t[1] > SIGMA) if IJK_LIST[ii][1] else (t[1] <= SIGMA)
                 zt_bool = (t[2] > SIGMA) if IJK_LIST[ii][2] else (t[2] <= SIGMA)
@@ -319,10 +332,14 @@ def make_chroma_array():
     L*a*b* 空間における a*b*平面の境界線プロットのために、
     各L* における 境界線の Chroma を計算する。
     """
-    l, c, h = symbols('l, c, h', real=True)
+    l, c, h = symbols('l, c, h')
     rgb_exprs = lab_to_rgb_expr(l, c, h)
     l_vals = np.linspace(0, 100, l_sample_num)
     h_vals = np.linspace(0, 2*np.pi, h_sample_num)
+    l_idx = 1
+    h_idx = 12
+    solve_chroma(l_vals[l_idx], l_idx, h_vals[h_idx], h_idx, rgb_exprs, l, c, h)
+    return None
     for l_idx, l_val in enumerate(l_vals):
         args = []
         for h_idx, h_val in enumerate(h_vals):
@@ -386,9 +403,9 @@ def thread_wrapper_visualization(args):
 
 def experimental_functions():
     # visualize_formula()
-    # chroma = make_chroma_array()
+    chroma = make_chroma_array()
     # np.save(npy_name, chroma)
-    visualization_ab_plane()
+    # visualization_ab_plane()
 
 
 if __name__ == '__main__':
@@ -397,7 +414,15 @@ if __name__ == '__main__':
     experimental_functions()
     end = time.time()
     print("total_time={}[s]".format(end-start))
-    # c = symbols('c', real=True)
-    # expr = -0.0006587933118851*c + 0.0167674289909477*(1.22464679914735e-19*c + 0.425287356321839)**3 + 0.0345712150974614
+    # c = symbols('c')
+    # # expr = -0.0006587933118851*c + 0.0167674289909477*(1.22464679914735e-19*c + 0.425287356321839)**3 + 0.0345712150974614
+    # expr = -0.0006587933118851*c*sin(8*pi/21) + 0.0167674289909477*(c*cos(8*pi/21)/500 + 0.425287356321839)**3 + 0.0345712150974614
     # print(expr)
-    # print(solve(expr))
+    # solution = solve(expr)
+    # for sol_val in solution:
+    #     print((sol_val.as_real_imag()[1]))
+
+    # expr2 = c ** 2 - 1
+    # solution = solve(expr2)
+    # for sol_val in solution:
+    #     print((sol_val.as_real_imag()[1]))
