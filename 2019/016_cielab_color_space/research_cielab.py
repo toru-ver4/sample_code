@@ -19,7 +19,7 @@ import copy
 # import matplotlib as mpl
 # mpl.use('Agg')
 import numpy as np
-from sympy import symbols, plotting, sin, cos, lambdify
+from sympy import symbols, plotting, sin, cos, lambdify, pi
 from sympy.solvers import solve
 from scipy import linalg
 from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
@@ -59,10 +59,11 @@ __all__ = []
 
 # global variables
 l_sample_num = 4
-h_sample_num = 5
+h_sample_num = 64
 shared_array = Array(
     typecode_or_type=ctypes.c_float,
     size_or_initializer=l_sample_num*h_sample_num)
+npy_name = "chroma_l_{}_h_{}.npy".format(l_sample_num, h_sample_num)
 
 
 def get_ty(l):
@@ -272,21 +273,19 @@ def plot_formula_for_specific_lstar(
 
 
 def solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h):
+    start = time.time()
     xyz_t = [get_tx(l, c, h), get_ty(l), get_tz(l, c, h)]
     xyz_t = [xyz_t[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
     temp_solution = []
-    print(xyz_t)
+    h_val_sympy = 2 * pi * h_idx / (h_sample_num - 1)
+
     for ii in range(len(IJK_LIST)):
         for jj in range(3):  # R, G, B のループ
             # l_val, h_val 代入
-            c_expr = rgb_exprs[ii][jj].subs({l: l_val, h: h_val})
+            c_expr = rgb_exprs[ii][jj].subs({l: l_val, h: h_val_sympy})
             solution = []
-            print(c_expr)
             solution.extend(solve(c_expr))
             solution.extend(solve(c_expr - 1))
-            # solution_zero = solve(c_expr)
-            # solution_one = solve(c_expr - 1)
-            print("ii:{}, jj:{}, solution:{}".format(ii, jj, solution))
 
             for solve_val in solution:
                 t = [xyz_t[kk].subs({c: solve_val}) for kk in range(3)]
@@ -294,30 +293,25 @@ def solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h):
                 xt_bool = (t[0] > SIGMA) if IJK_LIST[ii][0] else (t[0] <= SIGMA)
                 yt_bool = (t[1] > SIGMA) if IJK_LIST[ii][1] else (t[1] <= SIGMA)
                 zt_bool = (t[2] > SIGMA) if IJK_LIST[ii][2] else (t[2] <= SIGMA)
-                print(xt_bool, yt_bool, zt_bool)
                 xyz_t_bool = (xt_bool and yt_bool) and zt_bool
                 if xyz_t_bool:
                     temp_solution.append(solve_val)
 
-            # for solve_val in solution_one:
-            #     t = [xyz_t[kk].subs({c: solve_val}) for kk in range(3)]
-            #     # print(t)
-            #     xt_bool = (t[0] > SIGMA) if IJK_LIST[ii][0] else (t[0] <= SIGMA)
-            #     yt_bool = (t[1] > SIGMA) if IJK_LIST[ii][1] else (t[1] <= SIGMA)
-            #     zt_bool = (t[2] > SIGMA) if IJK_LIST[ii][2] else (t[2] <= SIGMA)
-            #     print(xt_bool, yt_bool, zt_bool)
-            #     xyz_t_bool = (xt_bool and yt_bool) and zt_bool
-            #     print(xyz_t_bool)
-            #     if xyz_t_bool:
-            #         temp_solution.append(solve_val)
-
-    print(temp_solution)
     chroma_list = np.array(temp_solution)
-    print(chroma_list)
     chroma = np.min(chroma_list[chroma_list >= 0.0])
-    print(chroma)
 
+    s_idx = h_sample_num * l_idx + h_idx
+    shared_array[s_idx] = chroma
+    print("L*={:.2f}, H={:.2f}, C={:.3f}".format(
+            l_val, h_val / (2 * np.pi) * 360, chroma))
+    print(chroma)
+    end = time.time()
+    print("each_time={}[s]".format(end-start))
     return chroma
+
+
+def solve_chroma_wrapper(args):
+    solve_chroma(*args)
 
 
 def make_chroma_array():
@@ -330,35 +324,80 @@ def make_chroma_array():
     l_vals = np.linspace(0, 100, l_sample_num)
     h_vals = np.linspace(0, 2*np.pi, h_sample_num)
     for l_idx, l_val in enumerate(l_vals):
-        if l_idx == 0:
-            continue
         args = []
         for h_idx, h_val in enumerate(h_vals):
-            print("===========================")
-            print("===========================")
-            print(h_idx)
-            print("===========================")
-            print("===========================")
             args.append([l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h])
-            solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h)
-            if h_idx == 1 and l_idx == 1:
-                return None
-        # with Pool(cpu_count()) as pool:
-        #     pool.map(thread_wrapper_visualization_formula, args)
+            # solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h)
+        with Pool(cpu_count()) as pool:
+            pool.map(solve_chroma_wrapper, args)
+
+    chroma = np.array(shared_array[:]).reshape((l_sample_num, h_sample_num))
+    return chroma
+
+
+def plot_and_save_ab_plane(idx, data):
+    graph_name = "./ab_plane_seq/L_num_{}_{:04d}.png".format(l_sample_num, idx)
+    rad = np.linspace(0, 2 * np.pi, h_sample_num)
+    a = data * np.cos(rad)
+    b = data * np.sin(rad)
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="CIELAB Plane",
+        graph_title_size=None,
+        xlabel="a*", ylabel="b*",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=(-200, 200),
+        ylim=(-200, 200),
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(a, b, label="L*={:.03f}".format(idx * 100 / (l_sample_num - 1)))
+    plt.legend(loc='upper left')
+    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    print("plot l_idx={}".format(idx))
+    # plt.show()
+
+
+def visualization_ab_plane():
+    """
+    ab plane を L* = 0～100 で静止画にして吐く。
+    後で Resolve で動画にして楽しもう！
+    """
+    calc_data = np.load(npy_name)
+    # for l_idx in range(l_sample_num):
+    #     plot_and_save_ab_plane(idx=l_idx, data=calc_data[l_idx])
+
+    args = []
+
+    with Pool(cpu_count()) as pool:
+        for l_idx in range(l_sample_num):
+            args.append([l_idx, calc_data[l_idx]])
+        pool.map(thread_wrapper_visualization, args)
+
+
+def thread_wrapper_visualization(args):
+    return plot_and_save_ab_plane(*args)
 
 
 def experimental_functions():
     # visualize_formula()
-    make_chroma_array()
+    # chroma = make_chroma_array()
+    # np.save(npy_name, chroma)
+    visualization_ab_plane()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     start = time.time()
-    # experimental_functions()
+    experimental_functions()
     end = time.time()
     print("total_time={}[s]".format(end-start))
-    c = symbols('c', real=True)
-    expr = -0.0006587933118851*c + 0.0167674289909477*(1.22464679914735e-19*c + 0.425287356321839)**3 + 0.0345712150974614
-    print(expr)
-    print(solve(expr))
+    # c = symbols('c', real=True)
+    # expr = -0.0006587933118851*c + 0.0167674289909477*(1.22464679914735e-19*c + 0.425287356321839)**3 + 0.0345712150974614
+    # print(expr)
+    # print(solve(expr))
