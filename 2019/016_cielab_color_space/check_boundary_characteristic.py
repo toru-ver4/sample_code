@@ -37,8 +37,8 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 # global variables
-y_sample = 64
-h_sample = 128
+y_sample = 256
+h_sample = 256
 shared_array = Array(
     typecode_or_type=ctypes.c_float,
     size_or_initializer=y_sample*h_sample)

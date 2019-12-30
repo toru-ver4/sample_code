@@ -58,13 +58,13 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 # global variables
-l_sample_num = 4
-h_sample_num = 64
+l_sample_num = 16
+h_sample_num = 256
 shared_array = Array(
     typecode_or_type=ctypes.c_float,
     size_or_initializer=l_sample_num*h_sample_num)
 npy_name = "chroma_l_{}_h_{}.npy".format(l_sample_num, h_sample_num)
-im_threshold = 0.00000001
+im_threshold = 0.0000000001
 
 
 def get_ty(l):
@@ -279,6 +279,8 @@ def plot_formula_for_specific_lstar(
 
 
 def solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h):
+    if l_idx == l_sample_num - 1:
+        return 0
     start = time.time()
     xyz_t = [get_tx(l, c, h), get_ty(l), get_tz(l, c, h)]
     xyz_t = [xyz_t[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
@@ -288,18 +290,15 @@ def solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h):
         for jj in range(3):  # R, G, B のループ
             # l_val, h_val 代入
             c_expr = rgb_exprs[ii][jj].subs({l: l_val, h: h_val})
-            print("ii: {}, jj: {}".format(ii, jj))
-            print(c_expr)
             solution = []
             solution.extend(solve(c_expr))
             solution.extend(solve(c_expr - 1))
-            print(solution)
 
             for solve_val_complex in solution:
                 # 複素成分を見て、小さければ実数とみなす
                 # どうも solve では複素数として算出されてしまうケースがあるっぽい
                 solve_val, im_val = solve_val_complex.as_real_imag()
-                if im_val > im_threshold:
+                if abs(im_val) > im_threshold:
                     continue
 
                 t = [xyz_t[kk].subs({c: solve_val}) for kk in range(3)]
@@ -317,7 +316,6 @@ def solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h):
     shared_array[s_idx] = chroma
     print("L*={:.2f}, H={:.2f}, C={:.3f}".format(
             l_val, h_val / (2 * np.pi) * 360, chroma))
-    print(chroma)
     end = time.time()
     print("each_time={}[s]".format(end-start))
     return chroma
@@ -336,10 +334,6 @@ def make_chroma_array():
     rgb_exprs = lab_to_rgb_expr(l, c, h)
     l_vals = np.linspace(0, 100, l_sample_num)
     h_vals = np.linspace(0, 2*np.pi, h_sample_num)
-    l_idx = 1
-    h_idx = 12
-    solve_chroma(l_vals[l_idx], l_idx, h_vals[h_idx], h_idx, rgb_exprs, l, c, h)
-    return None
     for l_idx, l_val in enumerate(l_vals):
         args = []
         for h_idx, h_val in enumerate(h_vals):
@@ -404,8 +398,8 @@ def thread_wrapper_visualization(args):
 def experimental_functions():
     # visualize_formula()
     chroma = make_chroma_array()
-    # np.save(npy_name, chroma)
-    # visualization_ab_plane()
+    np.save(npy_name, chroma)
+    visualization_ab_plane()
 
 
 if __name__ == '__main__':
