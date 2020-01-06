@@ -129,3 +129,4 @@ venv.bak/
 2019/016_cielab_color_space/ab_plane_seq/*.png
 2019/016_cielab_color_space/xy_plane_seq/*.png
 2019/016_cielab_color_space/formula_seq/*.png
+2019/016_cielab_color_space/xyY_color_volume_seq/*.png

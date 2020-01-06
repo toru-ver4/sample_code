@@ -14,11 +14,13 @@ import ctypes
 # import third-party libraries
 import numpy as np
 import matplotlib.pyplot as plt
-from colour import xyY_to_XYZ, XYZ_to_RGB
+from colour import xyY_to_XYZ, XYZ_to_RGB, read_image, write_image
 from colour.models import BT709_COLOURSPACE
 from sympy import symbols, solve
 from multiprocessing import Pool, cpu_count, Array
 from mpl_toolkits.mplot3d import Axes3D
+import test_pattern_generator2 as tpg
+import cv2
 # import matplotlib as mpl
 # mpl.use('Agg')
 
@@ -37,8 +39,8 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 # global variables
-y_sample = 256
-h_sample = 256
+y_sample = 64
+h_sample = 1024
 shared_array = Array(
     typecode_or_type=ctypes.c_float,
     size_or_initializer=y_sample*h_sample)
@@ -333,7 +335,10 @@ def plot_xy_plane(y_idx, chroma):
     large_xyz = xyY_to_XYZ(np.dstack((x, y, ly)))
     rgb = XYZ_to_RGB(
         large_xyz, cs.D65, cs.D65, BT709_COLOURSPACE.XYZ_to_RGB_matrix)
-    rgb = np.clip(rgb, 0.0, 1.0) ** 1/2.4
+    rgb = rgb.reshape((rgb.shape[1], rgb.shape[2]))
+    rgb = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
+    cmf_xy = tpg._get_cmfs_xy()
+
     ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(8, 9),
@@ -350,7 +355,13 @@ def plot_xy_plane(y_idx, chroma):
         linewidth=3,
         minor_xtick_num=None,
         minor_ytick_num=None)
-    ax1.plot(x, y, 'k-')
+    ax1.patch.set_facecolor("#B0B0B0")
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=3, label=None)
+    ax1.plot((cmf_xy[-1, 0], cmf_xy[0, 0]), (cmf_xy[-1, 1], cmf_xy[0, 1]),
+             '-k', lw=3, label=None)
+
+    # ax1.plot(x, y, 'k-')
+    ax1.scatter(x, y, c=rgb)
     # plt.legend(loc='upper left')
     plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
     print("plot y_idx={}".format(y_idx))
@@ -365,8 +376,22 @@ def plot_xy_pane_all(chroma):
     args = []
     with Pool(cpu_count()) as pool:
         for y_idx in range(y_sample):
-            plot_xy_plane(y_idx, chroma[y_idx])
+            args.append([y_idx, chroma[y_idx]])
+            # plot_xy_plane(y_idx, chroma[y_idx])
         pool.map(plot_xy_plane_thread, args)
+
+
+def plot_xyY_plane_seq(chroma):
+    args = []
+    with Pool(cpu_count()) as pool:
+        for y_idx in range(y_sample):
+            args.append([y_idx, chroma])
+            # plot_xy_plane(y_idx, chroma[y_idx])
+        pool.map(plot_xyY_plane_seq_thread, args)
+
+
+def plot_xyY_plane_seq_thread(args):
+    plot_xyY_color_volume_seq(*args)
 
 
 def plot_xyY_color_volume(chroma):
@@ -399,6 +424,61 @@ def plot_xyY_color_volume(chroma):
                 bbox_inches='tight', pad_inches=0.1)
 
 
+def plot_xyY_color_volume_seq(y_idx, chroma):
+    graph_name_0 = "./xy_plane_seq/no_{:04d}.png".format(y_idx)
+    graph_name_1 = "./xyY_color_volume_seq/no_{:04d}.png".format(y_idx)
+
+    rad = np.linspace(0, 2 * np.pi, h_sample)
+    large_y = np.linspace(0, 1, y_sample).reshape((y_sample, 1))
+    large_y = large_y[:y_idx+1]
+    chroma[-1, :] = 0.0
+    x = chroma[:y_idx+1] * np.cos(rad) + cs.D65[0]
+    y = chroma[:y_idx+1] * np.sin(rad) + cs.D65[1]
+    ly = np.ones_like(y) * large_y
+    large_xyz = xyY_to_XYZ(np.dstack((x, y, ly)))
+    print(large_xyz.shape)
+    rgb = XYZ_to_RGB(
+        large_xyz, cs.D65, cs.D65, BT709_COLOURSPACE.XYZ_to_RGB_matrix)
+    rgb = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
+    rgb = rgb.reshape(((y_idx + 1) * h_sample, 3))
+
+    fig = plt.figure(figsize=(9, 9))
+    ax = Axes3D(fig)
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("Y")
+    ax.set_title("Y={:.03f} xyY Color Volume".format(large_y[-1, 0]),
+                 fontsize=18)
+    ax.set_xlim(0.0, 0.8)
+    ax.set_ylim(0.0, 0.9)
+    ax.set_zlim(0.0, 1.1)
+    ax.view_init(elev=20, azim=-120)
+    ax.scatter(x.flatten(), y.flatten(), ly.flatten(),
+               marker='o', c=rgb, zorder=1)
+    plt.savefig(graph_name_1, bbox_inches='tight', pad_inches=0.1)
+
+    resize_and_hstack(graph_name_0, graph_name_1)
+
+
+def resize_and_hstack(fname1, fname2):
+    img_0 = read_image(fname1)
+    img_1 = read_image(fname2)
+
+    if img_0.shape[0] > img_1.shape[0]:
+        static_img = img_0
+        resize_img = img_1
+    else:
+        static_img = img_1
+        resize_img = img_0
+
+    rate = static_img.shape[0] / resize_img.shape[0]
+    dst_size = (int(resize_img.shape[1] * rate),
+                int(resize_img.shape[0] * rate))
+    resize_img = cv2.resize(resize_img, dst_size)
+    img = np.hstack((resize_img, static_img))
+    write_image(img, fname2)
+
+
 def main_func():
     # check_large_xyz_boundary(large_y=0.7, hue=45/360*2*np.pi)
     # calc_point_ab_rgb()
@@ -406,7 +486,8 @@ def main_func():
     # chroma = calc_all_chroma()
     # np.save("cie1931_chroma.npy", chroma)
     chroma = np.load("cie1931_chroma.npy")
-    plot_xy_pane_all(chroma)
+    # plot_xy_pane_all(chroma)
+    plot_xyY_plane_seq(chroma)
     # plot_xyY_color_volume(chroma)
 
 
