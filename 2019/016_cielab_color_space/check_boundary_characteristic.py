@@ -14,15 +14,16 @@ import ctypes
 # import third-party libraries
 import numpy as np
 import matplotlib.pyplot as plt
-from colour import xyY_to_XYZ, XYZ_to_RGB, read_image, write_image
+from colour import xyY_to_XYZ, XYZ_to_RGB, read_image, write_image, LUT3D,\
+    RGB_to_XYZ, XYZ_to_xyY
 from colour.models import BT709_COLOURSPACE
 from sympy import symbols, solve
 from multiprocessing import Pool, cpu_count, Array
 from mpl_toolkits.mplot3d import Axes3D
 import test_pattern_generator2 as tpg
 import cv2
-import matplotlib as mpl
-mpl.use('Agg')
+# import matplotlib as mpl
+# mpl.use('Agg')
 
 # import my libraries
 import plot_utility as pu
@@ -658,10 +659,59 @@ def concat_graph_thread(args):
     resize_and_hstack2(*args)
 
 
+def verify_xy_gamut_boundary(sample=256):
+    idx_list = np.array([8, 16, 24, 32, 48, 56])
+    # idx_list = np.array([16])
+    delta_large_y = 0.001
+    y_list = idx_list / (y_sample - 1)
+    chroma = np.load("cie1931_chroma.npy")
+
+    rgb = LUT3D.linear_table(sample).reshape((1, sample ** 3, 3))
+    xyz = RGB_to_XYZ(rgb, cs.D65, cs.D65, BT709_COLOURSPACE.RGB_to_XYZ_matrix)
+    xyY = XYZ_to_xyY(xyz)
+    for idx, y in enumerate(y_list):
+        ok_idx = (y < xyY[:, :, 2]) & (xyY[:, :, 2] < (y + delta_large_y))
+        verify_xy_gamut_boundary_plot(
+            idx, y, xyY[ok_idx], rgb[ok_idx], chroma[idx_list[idx]])
+
+
+def verify_xy_gamut_boundary_plot(y_idx, large_y, xyY, rgb, chroma):
+    rad = np.linspace(0, 2 * np.pi, h_sample)
+    x = chroma * np.cos(rad) + cs.D65[0]
+    y = chroma * np.sin(rad) + cs.D65[1]
+    cmf_xy = tpg._get_cmfs_xy()
+    fname = "./blog_img/verify_y_{:.03f}.png".format(large_y)
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(8, 9),
+        graph_title="Y={:.03f} xy plane".format(large_y),
+        graph_title_size=None,
+        xlabel="x", ylabel="y",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=(0.0, 0.8),
+        ylim=(0.0, 0.9),
+        xtick=[x * 0.1 for x in range(9)],
+        ytick=[x * 0.1 for x in range(10)],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.patch.set_facecolor("#D0D0D0")
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=3, label=None)
+    ax1.plot(x, y, c='k', lw=3, label='Gamut Boundary', alpha=0.5)
+    ax1.plot((cmf_xy[-1, 0], cmf_xy[0, 0]), (cmf_xy[-1, 1], cmf_xy[0, 1]),
+             '-k', lw=3, label=None)
+    ax1.scatter(xyY[..., 0], xyY[..., 1], c=rgb, s=2)
+    plt.savefig(fname, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+
+
 def main_func():
     # check_large_xyz_boundary(large_y=0.51, hue=90/360*2*np.pi)
     # calc_point_ab_rgb()
-    calc_point_xyY_rgb()
+    # calc_point_xyY_rgb()
     # solve_chroma(0.1, 45/360*2*np.pi)
     # chroma = calc_all_chroma()
     # np.save("cie1931_chroma.npy", chroma)
@@ -672,6 +722,7 @@ def main_func():
     # make_rgb_figure(y_idx=y_sample//4)
     # plot_xy_plane_little_by_little_seq(y_idx=y_sample//4)
     # concat_graph()
+    verify_xy_gamut_boundary()
 
 
 if __name__ == '__main__':
