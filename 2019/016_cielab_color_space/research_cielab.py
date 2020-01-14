@@ -16,14 +16,15 @@ import ctypes
 import copy
 
 # import third-party libraries
-# import matplotlib as mpl
-# mpl.use('Agg')
+import matplotlib as mpl
+mpl.use('Agg')
 import numpy as np
 from sympy import symbols, plotting, sin, cos, lambdify, pi
 from sympy.solvers import solve
 from scipy import linalg
 from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
-from colour import xy_to_XYZ, read_image, write_image, Lab_to_XYZ, XYZ_to_RGB
+from colour import xy_to_XYZ, read_image, write_image, Lab_to_XYZ, XYZ_to_RGB,\
+    LUT3D, RGB_to_XYZ, XYZ_to_Lab
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count, Array
 
@@ -32,10 +33,15 @@ import color_space as cs
 import plot_utility as pu
 
 # definition
-D65_X = 95.04
-D65_Y = 100.0
-D65_Z = 108.89
-D65_WHITE = [D65_X, D65_Y, D65_Z]
+D65_WHITE = xy_to_XYZ(cs.D65) * 100
+D65_X = D65_WHITE[0]
+D65_Y = D65_WHITE[1]
+D65_Z = D65_WHITE[2]
+
+# D65_X = 95.04
+# D65_Y = 100.0
+# D65_Z = 108.89
+# D65_WHITE = [D65_X, D65_Y, D65_Z]
 SIGMA = 6/29
 
 IJK_LIST = [
@@ -58,7 +64,7 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 # global variables
-l_sample_num = 16
+l_sample_num = 256
 h_sample_num = 256
 shared_array = Array(
     typecode_or_type=ctypes.c_float,
@@ -279,9 +285,9 @@ def plot_formula_for_specific_lstar(
 
 
 def solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h):
-    if l_idx == l_sample_num - 1:
+    if l_idx == l_sample_num - 1:  # L=100 の Chroma は 0 なので計算しない
         return 0
-    start = time.time()
+    # start = time.time()
     xyz_t = [get_tx(l, c, h), get_ty(l), get_tz(l, c, h)]
     xyz_t = [xyz_t[idx].subs({l: l_val, h: h_val}) for idx in range(3)]
     temp_solution = []
@@ -316,8 +322,8 @@ def solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h):
     shared_array[s_idx] = chroma
     print("L*={:.2f}, H={:.2f}, C={:.3f}".format(
             l_val, h_val / (2 * np.pi) * 360, chroma))
-    end = time.time()
-    print("each_time={}[s]".format(end-start))
+    # end = time.time()
+    # print("each_time={}[s]".format(end-start))
     return chroma
 
 
@@ -374,31 +380,125 @@ def plot_and_save_ab_plane(idx, data):
     # plt.show()
 
 
-def visualization_ab_plane():
+def plot_and_save_ab_plane_color(idx, data):
+    graph_name = "./ab_plane_seq/color_L_num_{}_{:04d}.png".format(
+        l_sample_num, idx)
+    rad = np.linspace(0, 2 * np.pi, h_sample_num)
+    a = data * np.cos(rad)
+    b = data * np.sin(rad)
+    large_l = np.ones_like(a) * (idx * 100) / (l_sample_num - 1)
+    lab = np.dstack((large_l, a, b)).reshape((h_sample_num, 3))
+    large_xyz = Lab_to_XYZ(lab)
+    rgb = XYZ_to_RGB(
+        large_xyz, cs.D65, cs.D65, BT2020_COLOURSPACE.XYZ_to_RGB_matrix)
+    rgb = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="CIELAB Plane L*={:.03f}".format(
+            idx * 100 / (l_sample_num - 1)),
+        graph_title_size=None,
+        xlabel="a*", ylabel="b*",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=(-200, 200),
+        ylim=(-200, 200),
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    # ax1.plot(a, b, label="L*={:.03f}".format(idx * 100 / (l_sample_num - 1)))
+    ax1.patch.set_facecolor("#B0B0B0")
+    ax1.scatter(a, b, c=rgb)
+    # plt.legend(loc='upper left')
+    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    print("plot l_idx={}".format(idx))
+    # plt.show()
+
+
+def plot_and_save_ab_plane_verify(idx, data, inner_rgb, inner_lab):
+    graph_name = "./ab_plane_seq/verify_L_num_{}_{:04d}.png".format(
+        l_sample_num, idx)
+    rad = np.linspace(0, 2 * np.pi, h_sample_num)
+    a = data * np.cos(rad)
+    b = data * np.sin(rad)
+    large_l = np.ones_like(a) * (idx * 100) / (l_sample_num - 1)
+    lab = np.dstack((large_l, a, b)).reshape((h_sample_num, 3))
+    large_xyz = Lab_to_XYZ(lab)
+    rgb = XYZ_to_RGB(
+        large_xyz, cs.D65, cs.D65, BT2020_COLOURSPACE.XYZ_to_RGB_matrix)
+    rgb = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="CIELAB Plane L*={:.03f}".format(
+            idx * 100 / (l_sample_num - 1)),
+        graph_title_size=None,
+        xlabel="a*", ylabel="b*",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=(-200, 200),
+        ylim=(-200, 200),
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    # ax1.plot(a, b, label="L*={:.03f}".format(idx * 100 / (l_sample_num - 1)))
+    ax1.patch.set_facecolor("#B0B0B0")
+    # ax1.scatter(a, b, c=rgb)
+    ax1.plot(a, b, '-k')
+    ax1.scatter(inner_lab[..., 1], inner_lab[..., 2], c=inner_rgb, s=7.5)
+    # plt.legend(loc='upper left')
+    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    print("plot l_idx={}".format(idx))
+    # plt.show()
+
+
+def visualization_ab_plane(sample=256):
     """
     ab plane を L* = 0～100 で静止画にして吐く。
     後で Resolve で動画にして楽しもう！
     """
     calc_data = np.load(npy_name)
-    # for l_idx in range(l_sample_num):
-    #     plot_and_save_ab_plane(idx=l_idx, data=calc_data[l_idx])
+    delta_l = 0.001 * 100
+
+    rgb = LUT3D.linear_table(sample).reshape((1, sample ** 3, 3)) ** (2.4)
+    xyz = RGB_to_XYZ(rgb, cs.D65, cs.D65, BT2020_COLOURSPACE.RGB_to_XYZ_matrix)
+    lab = XYZ_to_Lab(xyz)
+    rgb = rgb ** (1/2.4)
 
     args = []
+    l_list = np.linspace(0, 100, l_sample_num)
+
+    # for l_idx, l_val in enumerate(l_list):
+    #     print("l_idx={:04d}, l_val={:.03f}".format(l_idx, l_val))
+    #     ok_idx = (l_val - delta_l <= lab[:, :, 0]) & (lab[:, :, 0] < l_val + delta_l)
+    #     args.append([l_idx, calc_data[l_idx], rgb[ok_idx], lab[ok_idx]])
+    #     plot_and_save_ab_plane_verify(l_idx, calc_data[l_idx], rgb[ok_idx], lab[ok_idx])
 
     with Pool(cpu_count()) as pool:
-        for l_idx in range(l_sample_num):
-            args.append([l_idx, calc_data[l_idx]])
+        for l_idx, l_val in enumerate(l_list):
+            ok_idx = (l_val - delta_l <= lab[:, :, 0]) & (lab[:, :, 0] < l_val + delta_l)
+            args.append([l_idx, calc_data[l_idx], rgb[ok_idx], lab[ok_idx]])
         pool.map(thread_wrapper_visualization, args)
 
 
 def thread_wrapper_visualization(args):
-    return plot_and_save_ab_plane(*args)
+    # return plot_and_save_ab_plane(*args)
+    # return plot_and_save_ab_plane_color(*args)
+    return plot_and_save_ab_plane_verify(*args)
 
 
 def experimental_functions():
     # visualize_formula()
-    chroma = make_chroma_array()
-    np.save(npy_name, chroma)
+    # chroma = make_chroma_array()
+    # np.save(npy_name, chroma)
     visualization_ab_plane()
 
 
@@ -408,15 +508,3 @@ if __name__ == '__main__':
     experimental_functions()
     end = time.time()
     print("total_time={}[s]".format(end-start))
-    # c = symbols('c')
-    # # expr = -0.0006587933118851*c + 0.0167674289909477*(1.22464679914735e-19*c + 0.425287356321839)**3 + 0.0345712150974614
-    # expr = -0.0006587933118851*c*sin(8*pi/21) + 0.0167674289909477*(c*cos(8*pi/21)/500 + 0.425287356321839)**3 + 0.0345712150974614
-    # print(expr)
-    # solution = solve(expr)
-    # for sol_val in solution:
-    #     print((sol_val.as_real_imag()[1]))
-
-    # expr2 = c ** 2 - 1
-    # solution = solve(expr2)
-    # for sol_val in solution:
-    #     print((sol_val.as_real_imag()[1]))

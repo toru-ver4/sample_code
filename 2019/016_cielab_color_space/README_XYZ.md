@@ -42,7 +42,7 @@ BT.2407 の Annex2(以後、BT.2407と略す) の実装には、CIELAB色空間�
 具体例を図2 を使って説明する。図2 は $Y=0.05$ における xy平面である。
 
 ![a](./blog_img/Chromaticity_Diagram.png)
-<div style="text-align: center;">図1. xyY色空ででの BT.709色域の Gamut Boundary</div>
+<div style="text-align: center;">図1. xyY色空間での BT.709色域の Gamut Boundary</div>
 
 図2 に示したように Gamut Boundary の内側に点Aを、外側に点Bを設定する。点A、点B の xyY値はそれぞれ [0.35, 0.2, 0.05], [0.45, 0.2, 0.05] である。この xyY値 を RGB値に変換してみる。
 
