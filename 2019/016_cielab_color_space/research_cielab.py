@@ -496,7 +496,7 @@ def thread_wrapper_visualization(args):
 
 
 def experimental_functions():
-    # visualize_formula()
+    # visualize_formula()  # 事前調査用
     # chroma = make_chroma_array()
     # np.save(npy_name, chroma)
     visualization_ab_plane()
