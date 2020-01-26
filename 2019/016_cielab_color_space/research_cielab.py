@@ -13,11 +13,10 @@ CIELAB色空間の基礎調査
 import os
 import time
 import ctypes
-import copy
 
 # import third-party libraries
-import matplotlib as mpl
-mpl.use('Agg')
+# import matplotlib as mpl
+# mpl.use('Agg')
 import numpy as np
 from sympy import symbols, plotting, sin, cos, lambdify, pi
 from sympy.solvers import solve
@@ -26,7 +25,9 @@ from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
 from colour import xy_to_XYZ, read_image, write_image, Lab_to_XYZ, XYZ_to_RGB,\
     LUT3D, RGB_to_XYZ, XYZ_to_Lab
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 from multiprocessing import Pool, cpu_count, Array
+import cv2
 
 # import my libraries
 import color_space as cs
@@ -411,7 +412,7 @@ def plot_and_save_ab_plane_color(idx, data):
         minor_xtick_num=None,
         minor_ytick_num=None)
     # ax1.plot(a, b, label="L*={:.03f}".format(idx * 100 / (l_sample_num - 1)))
-    ax1.patch.set_facecolor("#B0B0B0")
+    ax1.patch.set_facecolor("#E0E0E0")
     ax1.scatter(a, b, c=rgb)
     # plt.legend(loc='upper left')
     plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
@@ -419,7 +420,7 @@ def plot_and_save_ab_plane_color(idx, data):
     # plt.show()
 
 
-def plot_and_save_ab_plane_verify(idx, data, inner_rgb, inner_lab):
+def plot_and_save_ab_plane_fill_color(idx, data, inner_rgb, inner_lab):
     graph_name = "./ab_plane_seq/verify_L_num_{}_{:04d}.png".format(
         l_sample_num, idx)
     rad = np.linspace(0, 2 * np.pi, h_sample_num)
@@ -460,7 +461,7 @@ def plot_and_save_ab_plane_verify(idx, data, inner_rgb, inner_lab):
     # plt.show()
 
 
-def visualization_ab_plane(sample=256):
+def visualization_ab_plane_fill_color(sample=256):
     """
     ab plane を L* = 0～100 で静止画にして吐く。
     後で Resolve で動画にして楽しもう！
@@ -476,30 +477,133 @@ def visualization_ab_plane(sample=256):
     args = []
     l_list = np.linspace(0, 100, l_sample_num)
 
-    # for l_idx, l_val in enumerate(l_list):
-    #     print("l_idx={:04d}, l_val={:.03f}".format(l_idx, l_val))
-    #     ok_idx = (l_val - delta_l <= lab[:, :, 0]) & (lab[:, :, 0] < l_val + delta_l)
-    #     args.append([l_idx, calc_data[l_idx], rgb[ok_idx], lab[ok_idx]])
-    #     plot_and_save_ab_plane_verify(l_idx, calc_data[l_idx], rgb[ok_idx], lab[ok_idx])
-
     with Pool(cpu_count()) as pool:
         for l_idx, l_val in enumerate(l_list):
             ok_idx = (l_val - delta_l <= lab[:, :, 0]) & (lab[:, :, 0] < l_val + delta_l)
             args.append([l_idx, calc_data[l_idx], rgb[ok_idx], lab[ok_idx]])
-        pool.map(thread_wrapper_visualization, args)
+        pool.map(thread_wrapper_visualization_ab_plane_fill_color, args)
 
 
-def thread_wrapper_visualization(args):
-    # return plot_and_save_ab_plane(*args)
-    # return plot_and_save_ab_plane_color(*args)
-    return plot_and_save_ab_plane_verify(*args)
+def thread_wrapper_visualization_ab_plane_fill_color(args):
+    return plot_and_save_ab_plane_fill_color(*args)
+
+
+def visualization_ab_plane_color(sample=256):
+    """
+    ab plane を L* = 0～100 で静止画にして吐く。
+    後で Resolve で動画にして楽しもう！
+    """
+    calc_data = np.load(npy_name)
+
+    args = []
+    l_list = np.linspace(0, 100, l_sample_num)
+
+    with Pool(cpu_count()) as pool:
+        for l_idx, l_val in enumerate(l_list):
+            args.append([l_idx, calc_data[l_idx]])
+        pool.map(thread_wrapper_visualization_ab_plane_color, args)
+
+
+def thread_wrapper_visualization_ab_plane_color(args):
+    return plot_and_save_ab_plane_color(*args)
+
+
+def visualization_cielab_color_volume():
+    chroma = np.load(npy_name)
+    args = []
+
+    with Pool(cpu_count()) as pool:
+        for l_idx in range(l_sample_num):
+            args.append([l_idx, chroma])
+        pool.map(thread_wrapper_cielab_color_volume, args)
+
+
+def thread_wrapper_cielab_color_volume(args):
+    plot_cielab_color_volume_seq(*args)
+
+
+def plot_cielab_color_volume_seq(l_idx, chroma):
+    graph_name = "./Lab_color_volume_seq/no_{:04d}.png".format(l_idx)
+    print("l_idx = {}".format(l_idx))
+
+    rad = np.linspace(0, 2 * np.pi, h_sample_num)
+    ll = np.linspace(0, 100, l_sample_num).reshape((l_sample_num, 1))
+    ll = ll[:l_idx+1]
+    chroma[-1, :] = 0.0
+    a = chroma[:l_idx+1] * np.cos(rad) + cs.D65[0]
+    b = chroma[:l_idx+1] * np.sin(rad) + cs.D65[1]
+    ly = np.ones_like(b) * ll
+    large_xyz = Lab_to_XYZ(np.dstack((ly, a, b)))
+    rgb = XYZ_to_RGB(
+        large_xyz, cs.D65, cs.D65, BT2020_COLOURSPACE.XYZ_to_RGB_matrix)
+    rgb = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
+    rgb = rgb.reshape(((l_idx + 1) * h_sample_num, 3))
+
+    fig = plt.figure(figsize=(9, 9))
+    ax = Axes3D(fig)
+    ax.set_xlabel("a*")
+    ax.set_ylabel("b*")
+    ax.set_zlabel("L*")
+    ax.set_title("L*={:.03f} CIELAB Color Volume".format(ll[-1, 0]),
+                 fontsize=18)
+    ax.set_xlim(-200, 200)
+    ax.set_ylim(-200, 200)
+    ax.set_zlim(0, 110)
+    ax.view_init(elev=20, azim=-120)
+    ax.scatter(a.flatten(), b.flatten(), ly.flatten(),
+               marker='o', c=rgb, zorder=1)
+    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+
+
+def resize_and_hstack(fname1, fname2, fname3):
+    print(fname1, fname2)
+    img_0 = read_image(fname1)
+    img_1 = read_image(fname2)
+
+    if img_0.shape[0] > img_1.shape[0]:
+        static_img = img_0
+        resize_img = img_1
+    else:
+        static_img = img_1
+        resize_img = img_0
+
+    rate = static_img.shape[0] / resize_img.shape[0]
+    dst_size = (int(resize_img.shape[1] * rate),
+                int(resize_img.shape[0] * rate))
+    resize_img = cv2.resize(resize_img, dst_size)
+    img = np.hstack((resize_img, static_img))
+    write_image(img, fname3)
+
+
+def visualization_cielab_color_volume_seq():
+    """
+    a*b* plane と L*a*b* のプロットを連番静止画にする。
+    """
+    args = []
+    with Pool(cpu_count()) as pool:
+        for l_idx in range(l_sample_num):
+            volume_name = "./Lab_color_volume_seq/no_{:04d}.png".format(l_idx)
+            plane_name = "./ab_plane_seq/color_L_num_{}_{:04d}.png".format(
+                l_sample_num, l_idx)
+            concat_name = "./Lab_color_volume_seq/concat_{:04d}.png".format(
+                l_idx)
+            args.append([volume_name, plane_name, concat_name])
+        pool.map(thread_wrapper_visualization_cielab_color_volume_seq, args)
+
+
+def thread_wrapper_visualization_cielab_color_volume_seq(args):
+    resize_and_hstack(*args)
 
 
 def experimental_functions():
     # visualize_formula()  # 事前調査用
     # chroma = make_chroma_array()
     # np.save(npy_name, chroma)
-    visualization_ab_plane()
+    visualization_ab_plane_color()
+    # visualization_ab_plane_fill_color()
+    # visualization_cielab_color_volume()
+    # visualization_cielab_color_volume_seq()
 
 
 if __name__ == '__main__':
