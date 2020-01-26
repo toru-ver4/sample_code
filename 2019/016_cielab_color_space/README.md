@@ -16,6 +16,12 @@ BT.2407 の Annex2(以後、BT.2407と略す) の実装には、CIELAB色空間�
 
 ## 結論
 
+筆者独自方式で CIELAB色空間での BT.2020色域の Gamut Bounadry の算出に成功した。結果を図1に示す。
+
+
+![zu1](./blog_img/cielab_colorvolume.png)
+<div style="text-align: center;">図1. Gamut Boundary</div>
+
 
 ## 算出方法
 
@@ -25,7 +31,7 @@ BT.2407 の Annex2(以後、BT.2407と略す) の実装には、CIELAB色空間�
 
 ---
 
-ここに動画
+https://www.youtube.com/watch?v=NNz7cpvkxRY&feature=youtu.be
 
 ---
 
@@ -150,7 +156,7 @@ $$
 
 さて、更に式に変更を加える。これまでに定式化した RGB値を求める数式は、L\*, a\*, b\* を変数としている。冒頭の動画で示したとおり今回は任意の L\* に対する a\*b\* 平面での Gamut Boundary を求める。よって a\*b\* 平面でのパラメータ探索（方程式の解を求める）をすることになるが、a\* と b\* の2変数だと方程式の解を求めるのが難しい。
 
-そこで以下の図のように中心から角度$H$の場所に直線を引き、中心からの距離を $C^{*}$ とする。すると $a^*$, $b^*$ は以下の式で表現できる。
+そこで図2のように中心から角度$H$の場所に直線を引き、中心からの距離を $C^{*}$ とする。すると $a^*$, $b^*$ は以下の式で表現できる。
 
 $$
 \begin{array}{ll}
@@ -158,6 +164,9 @@ a^* = C^* \cos{H} \\
 b^* = C^* \sin{H} \\
 \end{array}
 $$
+
+![zu2](./blog_img/CIELAB_variables.png)
+<div style="text-align: center;">図2. 変数定義</div>
 
 こうすることで、角度$H$ における Gamut Boundary は $C^*$ に関する方程式で表現できる。更に $H$ を 0～360° まで変化させることで a\*b\* 平面での Gamut Boundary を算出可能となる。
 
@@ -192,7 +201,7 @@ $$
 
 結果を以下の動画に示す。
 
-
+https://www.youtube.com/watch?v=Y_gm5WXlR1Q&feature=youtu.be
 
 角のあるところで若干のズレが見られるが、これは $H$ 方向のサンプル不足に起因するものだと推測される。よって本手法によって求められる Gamut Boundary は正しい値であると判断する。
 
