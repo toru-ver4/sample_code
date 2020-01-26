@@ -286,6 +286,10 @@ def plot_formula_for_specific_lstar(
 
 
 def solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h):
+    """
+    引数で与えられた L*, H に対する Chroma値を算出する。
+    ```make_chroma_array``` のループからコールされることが前提のコード。
+    """
     if l_idx == l_sample_num - 1:  # L=100 の Chroma は 0 なので計算しない
         return 0
     # start = time.time()
@@ -345,7 +349,6 @@ def make_chroma_array():
         args = []
         for h_idx, h_val in enumerate(h_vals):
             args.append([l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h])
-            # solve_chroma(l_val, l_idx, h_val, h_idx, rgb_exprs, l, c, h)
         with Pool(cpu_count()) as pool:
             pool.map(solve_chroma_wrapper, args)
 
@@ -600,10 +603,11 @@ def experimental_functions():
     # visualize_formula()  # 事前調査用
     # chroma = make_chroma_array()
     # np.save(npy_name, chroma)
-    visualization_ab_plane_color()
+    # visualization_ab_plane_color()
     # visualization_ab_plane_fill_color()
     # visualization_cielab_color_volume()
     # visualization_cielab_color_volume_seq()
+    pass
 
 
 if __name__ == '__main__':
