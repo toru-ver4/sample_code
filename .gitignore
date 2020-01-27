@@ -135,3 +135,4 @@ venv.bak/
 2019/016_cielab_color_space/blog_img/*.mp4
 2019/016_cielab_color_space/**/*.npy
 2020/001_x9500_abl_tm_characteristic/img/*.tiff
+2020/002_wrgbmyc_checker_and_moving_peak_white/img/*.tiff
