@@ -48,7 +48,7 @@ class ReflectiveMovingObject:
         """
         velocityの更新。
         あまりにも移動量が多いと色々とおかしくなるので、
-        最大値には制限をかける。
+        移動量には上限を設ける。
         """
         if (abs(velocity[0]) > self.outline_width // 2):
             self.velocity[0] = self.outline_width // 2
