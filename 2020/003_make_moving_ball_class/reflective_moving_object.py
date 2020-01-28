@@ -40,7 +40,8 @@ class ReflectiveMovingObject:
         self.radius = radius
         self.outline_width = outline_size[0] - self.radius * 2
         self.outline_height = outline_size[1] - self.radius * 2
-        self.pos = pos_init
+        self.pos = [pos_init[0], pos_init[1]]
+        self.velocity = [0, 0]
         self.set_velocity(velocity_init)
 
     def set_velocity(self, velocity=(5, 5)):
@@ -82,7 +83,8 @@ class ReflectiveMovingObject:
         else:
             None  # do nothing
 
-        self.pots = new_pos
+        self.pos[0] = new_pos[0]
+        self.pos[1] = new_pos[1]
 
     def calc_next_pos(self):
         """
@@ -90,8 +92,8 @@ class ReflectiveMovingObject:
         現在の pos に velocity を加算するだけ。
         計算結果が outline を超えていたら反射する
         """
-        next_pos = (self.pos[0] + self.velocity[0],
-                    self.pos[1] + self.velocity[1])
+        next_pos = [self.pos[0] + self.velocity[0],
+                    self.pos[1] + self.velocity[1]]
         self.set_pos(next_pos)
 
     def get_pos(self):
