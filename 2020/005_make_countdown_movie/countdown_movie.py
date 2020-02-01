@@ -30,6 +30,8 @@ class BackgroundImageColorParam(NamedTuple):
     transfer_function: str = tf.GAMMA24
     bg_luminance: float = 18.0
     fg_luminance: float = 90.0
+    object_outline_luminance: float = 1.0
+    step_ramp_code_values: list = [x * 64 for x in range(16)] + [1023]
 
 
 class BackgroundImageCoodinateParam(NamedTuple):
@@ -38,12 +40,16 @@ class BackgroundImageCoodinateParam(NamedTuple):
     height: int = 1080
     crosscross_line_width: int = 4
     outline_width: int = 8
+    ramp_pos_v_from_center: int = 360
+    ramp_height: int = 216
+    ramp_outline_width: int = 2
 
 
 class BackgroundImage():
     def __init__(
             self, color_param, coordinate_param, fname_base, dynamic_range):
         self.bit_depth = 10
+        self.code_value_max = (1 << self.bit_depth) - 1
 
         # color settings
         self.transfer_function = color_param.transfer_function
@@ -51,6 +57,10 @@ class BackgroundImage():
             color_param.fg_luminance, self.transfer_function)
         self.bg_color = self.convert_luminance_to_color_value(
             color_param.bg_luminance, self.transfer_function)
+        self.obj_outline_color = self.convert_luminance_to_color_value(
+            color_param.object_outline_luminance, self.transfer_function)
+        self.step_ramp_code_values\
+            = np.array(color_param.step_ramp_code_values) / self.code_value_max
 
         # coordinate settings
         self.set_coordinate_param(coordinate_param)
@@ -64,15 +74,20 @@ class BackgroundImage():
         self.height = param.height * param.scaling_factor
         self.cc_line_width = param.crosscross_line_width * param.scaling_factor
         self.outline_width = param.outline_width * param.scaling_factor
+        self.ramp_pos_v = (param.ramp_pos_v_from_center + param.height // 2)\
+            * param.scaling_factor
+        self.ramp_obj_height = param.ramp_height * param.scaling_factor
+        self.ramp_obj_width\
+            = (1024 + param.ramp_outline_width * 2) * param.scaling_factor
+        self.ramp_outline_width\
+            = param.ramp_outline_width * param.scaling_factor
+        self.step_ramp_pos_v\
+            = ((param.height // 2 - param.ramp_pos_v_from_center
+                - param.ramp_height)) * param.scaling_factor
 
     def _debug_dump_param(self):
-        print(f"transfer_function: {self.transfer_function}")
-        print(f"fg_color: {self.fg_color}")
-        print(f"bg_color: {self.bg_color}")
-        print(f"width: {self.width}")
-        print(f"height: {self.height}")
-        print(f"cc_line_width: {self.cc_line_width}")
-        print(f"filename: {self.filename}")
+        for key, value in self.__dict__.items():
+            print(key, ':', value)
 
     def convert_luminance_to_color_value(self, luminance, transfer_function):
         """
@@ -105,26 +120,46 @@ class BackgroundImage():
         tpg.draw_straight_line(
             self.img, pt1, pt2, self.fg_color, self.cc_line_width)
 
-    def draw_outline(self):
-        # upper left
-        pt1 = (0, 0)
-        pt2 = (self.width, 0)
-        tpg.draw_straight_line(
-            self.img, pt1, pt2, self.fg_color, self.outline_width)
-        pt1 = (0, 0)
-        pt2 = (0, self.height)
-        tpg.draw_straight_line(
-            self.img, pt1, pt2, self.fg_color, self.outline_width)
+    def draw_outline(self, img, fg_color, outline_width):
+        tpg.draw_outline(img, fg_color, outline_width)
 
-        # lower right
-        pt1 = (self.width - self.outline_width, 0)
-        pt2 = (self.width - self.outline_width, self.height)
-        tpg.draw_straight_line(
-            self.img, pt1, pt2, self.fg_color, self.outline_width)
-        pt1 = (0, self.height - self.outline_width)
-        pt2 = (self.width, self.height - self.outline_width)
-        tpg.draw_straight_line(
-            self.img, pt1, pt2, self.fg_color, self.outline_width)
+    def draw_ramp_pattern(self):
+        ramp_obj_img = np.ones((self.ramp_obj_height, self.ramp_obj_width, 3))\
+            * self.obj_outline_color
+
+        ramp_width = self.ramp_obj_width - self.ramp_outline_width * 2
+        ramp_height = self.ramp_obj_height - self.ramp_outline_width * 2
+        ramp_img = tpg.gen_step_gradation(
+            width=ramp_width, height=ramp_height, step_num=1025,
+            bit_depth=10, color=(1.0, 1.0, 1.0), direction='h')
+        ramp_img = ramp_img / self.code_value_max
+
+        tpg.merge(ramp_obj_img, ramp_img,
+                  (self.ramp_outline_width, self.ramp_outline_width))
+        ramp_pos_h\
+            = (self.width // 2) - (ramp_width // 2) - self.ramp_outline_width
+        tpg.merge(self.img, ramp_obj_img, pos=(ramp_pos_h, self.ramp_pos_v))
+
+    def draw_step_ramp_pattern(self):
+        ramp_obj_img = np.ones((self.ramp_obj_height, self.ramp_obj_width, 3))\
+            * self.obj_outline_color
+
+        ramp_width = self.ramp_obj_width - self.ramp_outline_width * 2
+        ramp_height = self.ramp_obj_height - self.ramp_outline_width * 2
+
+        buf = []
+        width_list\
+            = tpg.equal_devision(ramp_width, len(self.step_ramp_code_values))
+        for code_value, width in zip(self.step_ramp_code_values, width_list):
+            buf.append(np.ones((ramp_height, width, 3)) * code_value)
+        step_ramp_img = np.hstack(buf)
+
+        tpg.merge(ramp_obj_img, step_ramp_img,
+                  (self.ramp_outline_width, self.ramp_outline_width))
+        ramp_pos_h\
+            = (self.width // 2) - (ramp_width // 2) - self.ramp_outline_width
+        tpg.merge(
+            self.img, ramp_obj_img, pos=(ramp_pos_h, self.step_ramp_pos_v))
 
     def make(self):
         """
@@ -133,7 +168,9 @@ class BackgroundImage():
         self.img = np.ones((self.height, self.width, 3))
         self.img = self.img * self.bg_color
         self.draw_crisscross_line()
-        self.draw_outline()
+        self.draw_outline(self.img, self.fg_color, self.outline_width)
+        self.draw_ramp_pattern()
+        self.draw_step_ramp_pattern()
 
         # tpg.preview_image(self.img)
 

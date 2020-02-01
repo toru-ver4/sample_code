@@ -85,7 +85,9 @@ __all__ = []
 SDR_COLOR_PARAM = BackgroundImageColorParam(
     transfer_function=tf.GAMMA24,
     bg_luminance=18.0,
-    fg_luminance=90.0
+    fg_luminance=90.0,
+    object_outline_luminance=1.0,
+    step_ramp_code_values=([x * 64 for x in range(16)] + [1023])
 )
 
 
@@ -93,8 +95,11 @@ COODINATE_PARAM = BackgroundImageCoodinateParam(
     scaling_factor=1,
     width=1920,
     height=1080,
-    crosscross_line_width=4,
-    outline_width=8
+    crosscross_line_width=2,
+    outline_width=2,
+    ramp_pos_v_from_center=400,
+    ramp_height=84,
+    ramp_outline_width=4
 )
 
 SDR_BG_FILENAME_BASE = "./bg_img/backgraound_{}_{}x{}.tiff"

@@ -1170,5 +1170,45 @@ def draw_straight_line(img, pt1, pt2, color, thickness):
             img[pt1[1] + v_idx, pt1[0]:pt2[0], :] = color
 
 
+def draw_outline(img, fg_color, outline_width):
+    """
+    img に対して外枠線を引く
+
+    Parameters
+    ----------
+    img : array_like
+        image data.
+    fg_color : array_like
+        color
+    outline_width : int
+        thickness.
+
+    Returns
+    -------
+    array_like
+        image data with line.
+    """
+    width = img.shape[1]
+    height = img.shape[0]
+    # upper left
+    pt1 = (0, 0)
+    pt2 = (width, 0)
+    draw_straight_line(
+        img, pt1, pt2, fg_color, outline_width)
+    pt1 = (0, 0)
+    pt2 = (0, height)
+    draw_straight_line(
+        img, pt1, pt2, fg_color, outline_width)
+    # lower right
+    pt1 = (width - outline_width, 0)
+    pt2 = (width - outline_width, height)
+    draw_straight_line(
+        img, pt1, pt2, fg_color, outline_width)
+    pt1 = (0, height - outline_width)
+    pt2 = (width, height - outline_width)
+    draw_straight_line(
+        img, pt1, pt2, fg_color, outline_width)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
