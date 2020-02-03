@@ -11,6 +11,9 @@ from typing import NamedTuple
 # import third-party libraries
 import numpy as np
 import cv2
+from PIL import Image
+from PIL import ImageFont
+from PIL import ImageDraw
 
 # import my libraries
 import transfer_functions as tf
@@ -43,6 +46,58 @@ class BackgroundImageCoodinateParam(NamedTuple):
     ramp_pos_v_from_center: int = 360
     ramp_height: int = 216
     ramp_outline_width: int = 2
+    step_ramp_font_size: float = 10
+
+
+FONT_PATH = "/usr/share/fonts/opentype/noto/NotoSansMonoCJKjp-Regular.otf"
+
+
+def convert_from_pillow_to_numpy(img):
+    img = np.asarray(img) / 0xFF
+
+    return img
+
+
+def merge_text(img, txt_img, pos):
+    """
+    テキストを合成する作業の最後の部分。
+    pos は テキストの (st_pos_h, st_pos_v) 。
+    ## 個人的実装メモ
+    今回はちゃんとアルファチャンネルを使った合成をしたかったが、
+    PILは8bit, それ以外は 10～16bit により BG_COLOR に差が出るので断念。
+    """
+    st_pos_v = pos[1]
+    ed_pos_v = pos[1] + txt_img.shape[0]
+    st_pos_h = pos[0]
+    ed_pos_h = pos[0] + txt_img.shape[1]
+    # かなり汚い実装。0x00 で無いピクセルのインデックスを抽出し、
+    # そのピクセルのみを元の画像に上書きするという処理をしている。
+    text_index = txt_img > 0
+    temp_img = img[st_pos_v:ed_pos_v, st_pos_h:ed_pos_h]
+    temp_img[text_index] = txt_img[text_index]
+    img[st_pos_v:ed_pos_v, st_pos_h:ed_pos_h] = temp_img
+
+
+def merge_each_spec_text(img, pos, font_size, text_img_size, text):
+    """
+    各パーツの説明テキストを合成。
+    pos は テキストの (st_pos_h, st_pos_v) 。
+    text_img_size = (size_h, size_v)
+    ## 個人的実装メモ
+    今回はちゃんとアルファチャンネルを使った合成をしたかったが、
+    PILは8bit, それ以外は 10～16bit により BG_COLOR に差が出るので断念。
+    """
+    # テキストイメージ作成
+    text_width = text_img_size[0]
+    text_height = text_img_size[1]
+    fg_color = (0x80, 0x80, 0x80, 0xFF)
+    bg_color = (0x00, 0x00, 0x00, 0x00)
+    txt_img = Image.new("RGBA", (text_width, text_height), bg_color)
+    draw = ImageDraw.Draw(txt_img)
+    font = ImageFont.truetype(FONT_PATH, font_size)
+    draw.text((0, 0), text, font=font, fill=fg_color)
+    txt_img = convert_from_pillow_to_numpy(txt_img)
+    # merge_text(img, txt_img, pos)
 
 
 class BackgroundImage():
@@ -84,6 +139,8 @@ class BackgroundImage():
         self.step_ramp_pos_v\
             = ((param.height // 2 - param.ramp_pos_v_from_center
                 - param.ramp_height)) * param.scaling_factor
+        self.step_ramp_font_size\
+            = param.step_ramp_font_size * param.scaling_factor
 
     def _debug_dump_param(self):
         for key, value in self.__dict__.items():
@@ -141,25 +198,40 @@ class BackgroundImage():
         tpg.merge(self.img, ramp_obj_img, pos=(ramp_pos_h, self.ramp_pos_v))
 
     def draw_step_ramp_pattern(self):
+        # 枠を含めた背景作成
         ramp_obj_img = np.ones((self.ramp_obj_height, self.ramp_obj_width, 3))\
             * self.obj_outline_color
 
+        # 枠の内部の Step Ramp のパラメータ算出
         ramp_width = self.ramp_obj_width - self.ramp_outline_width * 2
         ramp_height = self.ramp_obj_height - self.ramp_outline_width * 2
 
+        # Step Ramp をブロックごとに作成して、最後に hstack で結合
         buf = []
         width_list\
             = tpg.equal_devision(ramp_width, len(self.step_ramp_code_values))
         for code_value, width in zip(self.step_ramp_code_values, width_list):
-            buf.append(np.ones((ramp_height, width, 3)) * code_value)
+            block_img = np.ones((ramp_height, width, 3)) * code_value
+            # テキスト付与
+            self.draw_text_into_step_ramp(block_img, code_value)
+            buf.append(block_img)
         step_ramp_img = np.hstack(buf)
 
+        # 枠を含む背景に Step Ramp を合成
         tpg.merge(ramp_obj_img, step_ramp_img,
                   (self.ramp_outline_width, self.ramp_outline_width))
+        # メイン背景画像に合成
         ramp_pos_h\
             = (self.width // 2) - (ramp_width // 2) - self.ramp_outline_width
         tpg.merge(
             self.img, ramp_obj_img, pos=(ramp_pos_h, self.step_ramp_pos_v))
+
+    def draw_text_into_step_ramp(self, block_img, code_value):
+        width = block_img.shape[1]
+        height = block_img.shape[0]
+        text = str(int(code_value * self.code_value_max + 0.5))
+        merge_each_spec_text(block_img, (0, 0), self.step_ramp_font_size,
+                             (width, height), text)
 
     def make(self):
         """
