@@ -83,7 +83,7 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 SDR_COLOR_PARAM = BackgroundImageColorParam(
-    transfer_function=tf.GAMMA24,
+    transfer_function=tf.ST2084,
     bg_luminance=18.0,
     fg_luminance=90.0,
     object_outline_luminance=1.0,
@@ -99,7 +99,10 @@ COODINATE_PARAM = BackgroundImageCoodinateParam(
     outline_width=2,
     ramp_pos_v_from_center=400,
     ramp_height=84,
-    ramp_outline_width=4
+    ramp_outline_width=4,
+    step_ramp_font_size=24,
+    step_ramp_font_offset_x=5,
+    step_ramp_font_offset_y=5
 )
 
 SDR_BG_FILENAME_BASE = "./bg_img/backgraound_{}_{}x{}.tiff"

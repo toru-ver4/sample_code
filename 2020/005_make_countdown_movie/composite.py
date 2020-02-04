@@ -116,15 +116,14 @@ class TextDrawer():
         text_height = self.text_img.shape[0]
         composite_area_img = self.img[self.pos[1]:self.pos[1]+text_height,
                                       self.pos[0]:self.pos[0]+text_width]
-        bg_img_linear = tf.eotf(composite_area_img, self.tf)
-        text_img_linear = tf.eotf(self.text_img, tf.SRGB)
-        print(np.max(bg_img_linear), np.max(text_img_linear[:, :, :-1]))
+        bg_img_linear = tf.eotf_to_luminance(composite_area_img, self.tf)
+        text_img_linear = tf.eotf_to_luminance(self.text_img, tf.SRGB)
 
         alpha = self.text_img[:, :, 3:]
 
         bg_img_linear = (1 - alpha) * bg_img_linear\
             + text_img_linear[:, :, :-1]
-        bg_img_linear = tf.oetf(bg_img_linear, tf.SRGB)
+        bg_img_linear = tf.oetf_from_luminance(bg_img_linear, self.tf)
         self.img[self.pos[1]:self.pos[1]+text_height,
                  self.pos[0]:self.pos[0]+text_width] = bg_img_linear
 

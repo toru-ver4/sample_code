@@ -34,6 +34,8 @@ def preview_image(img, order='rgb', over_disp=False):
         cv2.imshow('preview', img[:, :, ::-1])
     elif order == 'bgr':
         cv2.imshow('preview', img)
+    elif order == 'mono':
+        cv2.imshow('preview', img)
     else:
         raise ValueError("order parameter is invalid")
 
