@@ -11,14 +11,12 @@ from typing import NamedTuple
 # import third-party libraries
 import numpy as np
 import cv2
-from PIL import Image
-from PIL import ImageFont
-from PIL import ImageDraw
 
 # import my libraries
 import transfer_functions as tf
 import test_pattern_generator2 as tpg
-from composite import TextDrawer
+from font_control import TextDrawer
+from font_control import NOTO_SANS_MONO_BOLD
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -28,9 +26,6 @@ __maintainer__ = 'Toru Yoshihara'
 __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
-
-NOTO_REGULAR = "/usr/share/fonts/opentype/noto/NotoSansMonoCJKjp-Regular.otf"
-NOTO_BOLD = "/usr/share/fonts/opentype/noto/NotoSansMonoCJKjp-Bold.otf"
 
 
 class BackgroundImageColorParam(NamedTuple):
@@ -53,9 +48,6 @@ class BackgroundImageCoodinateParam(NamedTuple):
     step_ramp_font_size: float = 10
     step_ramp_font_offset_x: int = 10
     step_ramp_font_offset_y: int = 10
-
-
-FONT_PATH = "/usr/share/fonts/opentype/noto/NotoSansMonoCJKjp-Regular.otf"
 
 
 def convert_from_pillow_to_numpy(img):
@@ -196,7 +188,6 @@ class BackgroundImage():
 
     def draw_text_into_step_ramp(self, block_img, code_value):
         fg_color = (1 - code_value) / 3 + 1.0 / 6.0
-        print(fg_color)
         text = "{:>4d}".format(int(code_value * self.code_value_max + 0.5))
         text_drawer = TextDrawer(
             block_img, text,
@@ -204,7 +195,7 @@ class BackgroundImage():
             font_color=(fg_color, fg_color, fg_color, 1.0),
             font_size=self.step_ramp_font_size,
             transfer_functions=self.transfer_function,
-            font_path=NOTO_REGULAR)
+            font_path=NOTO_SANS_MONO_BOLD)
         text_drawer.draw()
 
     def make(self):
