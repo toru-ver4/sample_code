@@ -58,69 +58,54 @@ def convert_from_pillow_to_numpy(img):
 
 class BackgroundImage():
     def __init__(
-            self, color_param, coordinate_param, fname_base, dynamic_range):
+            self, color_param, coordinate_param, fname_base, dynamic_range,
+            scale_factor):
         self.bit_depth = 10
         self.code_value_max = (1 << self.bit_depth) - 1
 
         # color settings
         self.transfer_function = color_param.transfer_function
-        self.fg_color = self.convert_luminance_to_color_value(
+        self.fg_color = tpg.convert_luminance_to_color_value(
             color_param.fg_luminance, self.transfer_function)
-        self.bg_color = self.convert_luminance_to_color_value(
+        self.bg_color = tpg.convert_luminance_to_color_value(
             color_param.bg_luminance, self.transfer_function)
-        self.obj_outline_color = self.convert_luminance_to_color_value(
+        self.obj_outline_color = tpg.convert_luminance_to_color_value(
             color_param.object_outline_luminance, self.transfer_function)
         self.step_ramp_code_values\
             = np.array(color_param.step_ramp_code_values) / self.code_value_max
 
         # coordinate settings
-        self.set_coordinate_param(coordinate_param)
+        self.set_coordinate_param(coordinate_param, scale_factor)
 
         # file io settings
         self.filename = fname_base.format(
             dynamic_range, self.width, self.height)
 
-    def set_coordinate_param(self, param):
-        self.width = param.width * param.scaling_factor
-        self.height = param.height * param.scaling_factor
-        self.cc_line_width = param.crosscross_line_width * param.scaling_factor
-        self.outline_width = param.outline_width * param.scaling_factor
+    def set_coordinate_param(self, param, scale_factor):
+        self.width = param.width * scale_factor
+        self.height = param.height * scale_factor
+        self.cc_line_width = param.crosscross_line_width * scale_factor
+        self.outline_width = param.outline_width * scale_factor
         self.ramp_pos_v = (param.ramp_pos_v_from_center + param.height // 2)\
-            * param.scaling_factor
-        self.ramp_obj_height = param.ramp_height * param.scaling_factor
+            * scale_factor
+        self.ramp_obj_height = param.ramp_height * scale_factor
         self.ramp_obj_width\
-            = (1024 + param.ramp_outline_width * 2) * param.scaling_factor
+            = (1024 + param.ramp_outline_width * 2) * scale_factor
         self.ramp_outline_width\
-            = param.ramp_outline_width * param.scaling_factor
+            = param.ramp_outline_width * scale_factor
         self.step_ramp_pos_v\
             = ((param.height // 2 - param.ramp_pos_v_from_center
-                - param.ramp_height)) * param.scaling_factor
+                - param.ramp_height)) * scale_factor
         self.step_ramp_font_size\
-            = param.step_ramp_font_size * param.scaling_factor
+            = param.step_ramp_font_size * scale_factor
         self.step_ramp_font_offset_x\
-            = param.step_ramp_font_offset_x * param.scaling_factor
+            = param.step_ramp_font_offset_x * scale_factor
         self.step_ramp_font_offset_y\
-            = param.step_ramp_font_offset_y * param.scaling_factor
+            = param.step_ramp_font_offset_y * scale_factor
 
     def _debug_dump_param(self):
         for key, value in self.__dict__.items():
             print(key, ':', value)
-
-    def convert_luminance_to_color_value(self, luminance, transfer_function):
-        """
-        輝度[cd/m2] から 10bit code value の RGB値に変換する。
-        luminance の単位は [cd/m2]。無彩色である。
-        """
-        code_value = self.convert_luminance_to_code_value(
-            luminance, transfer_function)
-        return np.array([code_value, code_value, code_value])
-
-    def convert_luminance_to_code_value(self, luminance, transfer_function):
-        """
-        輝度[cd/m2] から 10bit code value に変換する。
-        luminance の単位は [cd/m2]
-        """
-        return tf.oetf_from_luminance(luminance, transfer_function)
 
     def draw_crisscross_line(self):
         # H Line
@@ -187,7 +172,7 @@ class BackgroundImage():
             self.img, ramp_obj_img, pos=(ramp_pos_h, self.step_ramp_pos_v))
 
     def draw_text_into_step_ramp(self, block_img, code_value):
-        fg_color = (1 - code_value) / 3 + 1.0 / 6.0
+        fg_color = (1 - code_value) / 2
         text = "{:>4d}".format(int(code_value * self.code_value_max + 0.5))
         text_drawer = TextDrawer(
             block_img, text,
@@ -214,3 +199,78 @@ class BackgroundImage():
     def save(self):
         cv2.imwrite(
             self.filename, np.uint16(np.round(self.img[:, :, ::-1] * 0xFFFF)))
+
+
+class CountDownImageColorParam(NamedTuple):
+    transfer_function: str = tf.GAMMA24
+    bg_luminance: float = 18.0
+    fg_luminance: float = 90.0
+    object_outline_luminance: float = 1.0
+
+
+class CountDownImageCoordinateParam(NamedTuple):
+    radius1: int = 300
+    radius2: int = 295
+    radius3: int = 290
+    fps: int = 24
+    crosscross_line_width: int = 4
+
+
+class CountDownSequence():
+    def __init__(
+            self, color_param, coordinate_param, fname_base, dynamic_range,
+            scale_factor):
+        self.transfer_function = color_param.transfer_function
+        self.fg_color = tpg.convert_luminance_to_color_value(
+            color_param.fg_luminance, self.transfer_function)
+        self.bg_color = tpg.convert_luminance_to_color_value(
+            color_param.bg_luminance, self.transfer_function)
+        self.obj_outline_color = tpg.convert_luminance_to_color_value(
+            color_param.object_outline_luminance, self.transfer_function)
+
+        self.set_coordinate_param(coordinate_param, scale_factor)
+
+        self.fname_base = fname_base
+        self.fname_width = 1920 * scale_factor
+        self.fname_height = 1080 * scale_factor
+        self.dynamic_range = dynamic_range
+
+    def set_coordinate_param(self, param, scale_factor):
+        self.fps = param.fps
+        self.radius1 = param.radius1 * scale_factor
+        self.radius2 = param.radius2 * scale_factor
+        self.radius3 = param.radius3 * scale_factor
+        self.cc_line_width = param.crosscross_line_width * scale_factor
+        self.center_pos = (self.radius1, self.radius1)
+
+    def draw_crisscross_line(self, img):
+        # H Line
+        width, height = img.shape[:2]
+        pos_v = self.radius1 - self.cc_line_width // 2
+        pt1 = (0, pos_v)
+        pt2 = (width, pos_v)
+        tpg.draw_straight_line(
+            img, pt1, pt2, self.obj_outline_color, self.cc_line_width)
+
+        # V Line
+        pos_h = self.radius1 - self.cc_line_width // 2
+        pt1 = (pos_h, 0)
+        pt2 = (pos_h, height)
+        tpg.draw_straight_line(
+            img, pt1, pt2, self.obj_outline_color, self.cc_line_width)
+
+    def draw_countdown_seuqence_image(self):
+        counter = 0
+        img = np.zeros((self.radius1 * 2 + 1, self.radius1 * 2 + 1, 3))
+        cv2.circle(
+            img, self.center_pos, self.radius1, self.fg_color, -1, cv2.LINE_AA)
+        cv2.circle(
+            img, self.center_pos, self.radius2, self.bg_color, -1, cv2.LINE_AA)
+        self.draw_crisscross_line(img)
+
+        # tpg.preview_image(img, 'bgr')
+        self.filename = self.fname_base.format(
+            self.dynamic_range, self.fname_width, self.fname_height, counter)
+        counter = counter + 1
+
+        cv2.imwrite(self.filename, np.uint16(np.round(img * 0xFFFF)))

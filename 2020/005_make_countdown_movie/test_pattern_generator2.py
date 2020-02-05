@@ -20,6 +20,8 @@ from scipy.spatial import Delaunay
 from scipy.ndimage.filters import convolve
 import math
 
+import transfer_functions as tf
+
 
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
 D65_WHITE = ILLUMINANTS[CMFS_NAME]['D65']
@@ -1210,6 +1212,24 @@ def draw_outline(img, fg_color, outline_width):
     pt2 = (width, height - outline_width)
     draw_straight_line(
         img, pt1, pt2, fg_color, outline_width)
+
+
+def convert_luminance_to_color_value(luminance, transfer_function):
+    """
+    輝度[cd/m2] から 10bit code value の RGB値に変換する。
+    luminance の単位は [cd/m2]。無彩色である。
+    """
+    code_value = convert_luminance_to_code_value(
+        luminance, transfer_function)
+    return np.array([code_value, code_value, code_value])
+
+
+def convert_luminance_to_code_value(luminance, transfer_function):
+    """
+    輝度[cd/m2] から 10bit code value に変換する。
+    luminance の単位は [cd/m2]
+    """
+    return tf.oetf_from_luminance(luminance, transfer_function)
 
 
 if __name__ == '__main__':

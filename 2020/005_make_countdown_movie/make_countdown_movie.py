@@ -69,8 +69,9 @@ import os
 
 # import my libraries
 from countdown_movie import BackgroundImageColorParam,\
-    BackgroundImageCoodinateParam
-from countdown_movie import BackgroundImage
+    BackgroundImageCoodinateParam, CountDownImageColorParam,\
+    CountDownImageCoordinateParam
+from countdown_movie import BackgroundImage, CountDownSequence
 import transfer_functions as tf
 
 # information
@@ -83,7 +84,7 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 SDR_COLOR_PARAM = BackgroundImageColorParam(
-    transfer_function=tf.ST2084,
+    transfer_function=tf.GAMMA24,
     bg_luminance=18.0,
     fg_luminance=90.0,
     object_outline_luminance=1.0,
@@ -92,7 +93,6 @@ SDR_COLOR_PARAM = BackgroundImageColorParam(
 
 
 COODINATE_PARAM = BackgroundImageCoodinateParam(
-    scaling_factor=1,
     width=1920,
     height=1080,
     crosscross_line_width=2,
@@ -105,16 +105,44 @@ COODINATE_PARAM = BackgroundImageCoodinateParam(
     step_ramp_font_offset_y=5
 )
 
+
+COUNTDOWN_COLOR_PARAM = CountDownImageColorParam(
+    transfer_function=tf.GAMMA24,
+    bg_luminance=18.0,
+    fg_luminance=90.0,
+    object_outline_luminance=1.0,
+)
+
+
+COUNTDOWN_COORDINATE_PARAM = CountDownImageCoordinateParam(
+    radius1=300,
+    radius2=280,
+    radius3=260,
+    fps=24,
+    crosscross_line_width=2
+)
+
+
 SDR_BG_FILENAME_BASE = "./bg_img/backgraound_{}_{}x{}.tiff"
+SDR_COUNTDOWN_FILENAME_BASE = "./fg_img/countdown_{}_{}x{}_{:06d}.tiff"
 
 
 def make_sdr_countdown_movie():
-    bg_image_maker = BackgroundImage(
-        color_param=SDR_COLOR_PARAM, coordinate_param=COODINATE_PARAM,
-        fname_base=SDR_BG_FILENAME_BASE, dynamic_range='sdr')
-    bg_image_maker._debug_dump_param()
-    bg_image_maker.make()
-    bg_image_maker.save()
+    # bg_image_maker = BackgroundImage(
+    #     color_param=SDR_COLOR_PARAM, coordinate_param=COODINATE_PARAM,
+    #     fname_base=SDR_BG_FILENAME_BASE, dynamic_range='sdr',
+    #     scale_factor=1)
+    # bg_image_maker._debug_dump_param()
+    # bg_image_maker.make()
+    # bg_image_maker.save()
+
+    count_down_seq_maker = CountDownSequence(
+        color_param=COUNTDOWN_COLOR_PARAM,
+        coordinate_param=COUNTDOWN_COORDINATE_PARAM,
+        fname_base=SDR_COUNTDOWN_FILENAME_BASE,
+        dynamic_range='sdr',
+        scale_factor=1)
+    count_down_seq_maker.draw_countdown_seuqence_image()
 
 
 def main_func():
