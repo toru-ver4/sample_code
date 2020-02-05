@@ -44,8 +44,8 @@ class TextDrawer():
 
         Parameters
         ----------
-        img : array_like
-            image data
+        img : array_like(float, gamma corrected)
+            image data.
         text : strings
             text.
         pos : list or tuple(int)
@@ -67,7 +67,7 @@ class TextDrawer():
         >>> dst_img = np.ones((540, 960, 3)) * np.array([0.3, 0.3, 0.1])
         >>> text_drawer = TextDrawer(
         >>>     dst_img, text="天上天下唯我独尊", pos=(200, 50),
-        >>>     font_color=(0.5, 0.5, 0.5, 1.0), font_size=30,
+        >>>     font_color=(0.5, 0.5, 0.5), font_size=30,
         >>>     transfer_functions=tf.SRGB)
         >>> text_drawer.draw()
         >>> img = text_drawer.get_img()
@@ -78,7 +78,7 @@ class TextDrawer():
         self.pos = pos
         self.font_size = font_size
         self.font_color = tuple(
-            np.uint8(np.round(np.array(font_color) * 0xFF)))
+            np.uint8(np.round(np.append(np.array(font_color), 1.0) * 0xFF)))
         self.bg_color = tuple(
             np.array([0x00, 0x00, 0x00, 0x00], dtype=np.uint8))
         self.tf = transfer_functions
@@ -124,12 +124,16 @@ class TextDrawer():
 
         bg_img_linear = (1 - alpha) * bg_img_linear\
             + text_img_linear[:, :, :-1]
+        bg_img_linear = np.clip(bg_img_linear, 0.0, tf.PEAK_LUMINANCE[self.tf])
         bg_img_linear = tf.oetf_from_luminance(bg_img_linear, self.tf)
         self.img[self.pos[1]:self.pos[1]+text_height,
                  self.pos[0]:self.pos[0]+text_width] = bg_img_linear
 
     def get_img(self):
         return self.img
+
+    def get_text_size(self):
+        return self.text_img.shape[1], self.text_img.shape[0]
 
 
 if __name__ == '__main__':
@@ -139,8 +143,9 @@ if __name__ == '__main__':
     dst_img = np.ones((540, 960, 3)) * np.array([0.3, 0.3, 0.1])
     text_drawer = TextDrawer(
         dst_img, text="天上天下唯我独尊", pos=(200, 50),
-        font_color=(0.5, 0.5, 0.5, 1.0), font_size=40,
+        font_color=(0.5, 0.5, 0.5), font_size=40,
         transfer_functions=tf.SRGB)
     text_drawer.draw()
     img = text_drawer.get_img()
-    cv2.imwrite("hoge.png", np.uint8(np.round(img[:, :, ::-1] * 0xFF)))
+    cv2.imwrite(
+        "./blog_img/hoge.png", np.uint8(np.round(img[:, :, ::-1] * 0xFF)))

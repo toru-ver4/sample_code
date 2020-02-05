@@ -177,7 +177,7 @@ class BackgroundImage():
         text_drawer = TextDrawer(
             block_img, text,
             pos=(self.step_ramp_font_offset_x, self.step_ramp_font_offset_y),
-            font_color=(fg_color, fg_color, fg_color, 1.0),
+            font_color=(fg_color, fg_color, fg_color),
             font_size=self.step_ramp_font_size,
             transfer_functions=self.transfer_function,
             font_path=NOTO_SANS_MONO_BOLD)
@@ -212,8 +212,11 @@ class CountDownImageCoordinateParam(NamedTuple):
     radius1: int = 300
     radius2: int = 295
     radius3: int = 290
+    radius4: int = 280
     fps: int = 24
     crosscross_line_width: int = 4
+    font_size: int = 60
+    font_pos: int = (30, 30)
 
 
 class CountDownSequence():
@@ -221,11 +224,11 @@ class CountDownSequence():
             self, color_param, coordinate_param, fname_base, dynamic_range,
             scale_factor):
         self.transfer_function = color_param.transfer_function
-        self.fg_color = tpg.convert_luminance_to_color_value(
+        self.fg_color = self.convert_luminance_to_color_value(
             color_param.fg_luminance, self.transfer_function)
-        self.bg_color = tpg.convert_luminance_to_color_value(
+        self.bg_color = self.convert_luminance_to_color_value(
             color_param.bg_luminance, self.transfer_function)
-        self.obj_outline_color = tpg.convert_luminance_to_color_value(
+        self.obj_outline_color = self.convert_luminance_to_color_value(
             color_param.object_outline_luminance, self.transfer_function)
 
         self.set_coordinate_param(coordinate_param, scale_factor)
@@ -234,43 +237,107 @@ class CountDownSequence():
         self.fname_width = 1920 * scale_factor
         self.fname_height = 1080 * scale_factor
         self.dynamic_range = dynamic_range
+        
+        self._debug_dump_param()
+
+        self.counter = 0
+
+    def _debug_dump_param(self):
+        for key, value in self.__dict__.items():
+            print(key, ':', value)
+
+    def convert_luminance_to_color_value(self, x, y):
+        return self.float_to_uint8(
+            tpg.convert_luminance_to_color_value(x, y))
+
+    def float_to_uint8(self, x):
+        return np.uint8(np.round(x * 0xFF))
 
     def set_coordinate_param(self, param, scale_factor):
         self.fps = param.fps
+        self.space = 4 * scale_factor
         self.radius1 = param.radius1 * scale_factor
         self.radius2 = param.radius2 * scale_factor
         self.radius3 = param.radius3 * scale_factor
+        self.radius4 = param.radius4 * scale_factor
         self.cc_line_width = param.crosscross_line_width * scale_factor
-        self.center_pos = (self.radius1, self.radius1)
+        self.img_width = self.radius1 * 2 + self.space * 2
+        self.img_height = self.img_width
+        self.center_pos = (self.img_width // 2, self.img_height // 2)
+        self.font_size = param.font_size * scale_factor
+        self.calc_text_pos()
+
+    def calc_text_pos(self):
+        dummy_img = np.zeros((self.img_height, self.img_width, 3))
+        text_drawer = TextDrawer(
+            dummy_img, text="9", pos=(0, 0),
+            font_color=self.fg_color/0xFF,
+            font_size=self.font_size,
+            transfer_functions=self.transfer_function,
+            font_path=NOTO_SANS_MONO_BOLD)
+        text_drawer.draw()
+        text_width, text_height = text_drawer.get_text_size()
+        pos_h = self.img_width // 2 - text_width // 2
+        pos_v = self.img_height // 2 - text_height // 2
+        self.font_pos = (pos_h, pos_v)
 
     def draw_crisscross_line(self, img):
         # H Line
-        width, height = img.shape[:2]
-        pos_v = self.radius1 - self.cc_line_width // 2
+        height, width = img.shape[0:2]
+        pos_v = self.center_pos[1] - self.cc_line_width // 2
         pt1 = (0, pos_v)
         pt2 = (width, pos_v)
         tpg.draw_straight_line(
             img, pt1, pt2, self.obj_outline_color, self.cc_line_width)
 
         # V Line
-        pos_h = self.radius1 - self.cc_line_width // 2
+        pos_h = self.center_pos[0] - self.cc_line_width // 2
         pt1 = (pos_h, 0)
         pt2 = (pos_h, height)
         tpg.draw_straight_line(
             img, pt1, pt2, self.obj_outline_color, self.cc_line_width)
 
-    def draw_countdown_seuqence_image(self):
-        counter = 0
-        img = np.zeros((self.radius1 * 2 + 1, self.radius1 * 2 + 1, 3))
+    def draw_circles(self, img):
         cv2.circle(
-            img, self.center_pos, self.radius1, self.fg_color, -1, cv2.LINE_AA)
+            img, self.center_pos, self.radius1, self.fg_color.tolist(), -1,
+            cv2.LINE_AA)
         cv2.circle(
-            img, self.center_pos, self.radius2, self.bg_color, -1, cv2.LINE_AA)
-        self.draw_crisscross_line(img)
+            img, self.center_pos, self.radius2,
+            self.obj_outline_color.tolist(), -1, cv2.LINE_AA)
+        cv2.circle(
+            img, self.center_pos, self.radius3,
+            self.bg_color.tolist(), -1, cv2.LINE_AA)
 
-        # tpg.preview_image(img, 'bgr')
+    def draw_ellipse(self, img, frame=10):
+        end_angle = 360 / self.fps * frame - 90
+        cv2.ellipse(
+            img, self.center_pos, (self.radius4, self.radius4), angle=0,
+            startAngle=-90, endAngle=end_angle,
+            color=self.obj_outline_color.tolist(), thickness=-1)
+
+    def draw_text(self, img, sec):
+        text_drawer = TextDrawer(
+            img / 0xFF, text=str(sec), pos=self.font_pos,
+            font_color=self.fg_color / 0xFF,
+            font_size=self.font_size,
+            transfer_functions=self.transfer_function,
+            font_path=NOTO_SANS_MONO_BOLD)
+        text_drawer.draw()
+        return text_drawer.get_img()
+
+    def draw_countdown_seuqence_image(self, sec, frame):
+        img = np.ones((self.img_height, self.img_width, 3), dtype=np.uint8)*10
+        self.draw_circles(img)
+        self.draw_crisscross_line(img)
+        self.draw_ellipse(img, frame=frame)
+
         self.filename = self.fname_base.format(
-            self.dynamic_range, self.fname_width, self.fname_height, counter)
-        counter = counter + 1
+            self.dynamic_range, self.fname_width, self.fname_height,
+            self.counter)
+
+        # ここから img は float
+        img = self.draw_text(img, sec)
+
+        self.counter += 1
 
         cv2.imwrite(self.filename, np.uint16(np.round(img * 0xFFFF)))

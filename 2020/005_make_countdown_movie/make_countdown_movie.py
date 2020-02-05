@@ -109,7 +109,7 @@ COODINATE_PARAM = BackgroundImageCoodinateParam(
 COUNTDOWN_COLOR_PARAM = CountDownImageColorParam(
     transfer_function=tf.GAMMA24,
     bg_luminance=18.0,
-    fg_luminance=90.0,
+    fg_luminance=60.0,
     object_outline_luminance=1.0,
 )
 
@@ -117,9 +117,11 @@ COUNTDOWN_COLOR_PARAM = CountDownImageColorParam(
 COUNTDOWN_COORDINATE_PARAM = CountDownImageCoordinateParam(
     radius1=300,
     radius2=280,
-    radius3=260,
+    radius3=275,
+    radius4=276,
     fps=24,
-    crosscross_line_width=2
+    crosscross_line_width=2,
+    font_size=550,
 )
 
 
@@ -128,13 +130,13 @@ SDR_COUNTDOWN_FILENAME_BASE = "./fg_img/countdown_{}_{}x{}_{:06d}.tiff"
 
 
 def make_sdr_countdown_movie():
-    # bg_image_maker = BackgroundImage(
-    #     color_param=SDR_COLOR_PARAM, coordinate_param=COODINATE_PARAM,
-    #     fname_base=SDR_BG_FILENAME_BASE, dynamic_range='sdr',
-    #     scale_factor=1)
-    # bg_image_maker._debug_dump_param()
-    # bg_image_maker.make()
-    # bg_image_maker.save()
+    bg_image_maker = BackgroundImage(
+        color_param=SDR_COLOR_PARAM, coordinate_param=COODINATE_PARAM,
+        fname_base=SDR_BG_FILENAME_BASE, dynamic_range='sdr',
+        scale_factor=1)
+    bg_image_maker._debug_dump_param()
+    bg_image_maker.make()
+    bg_image_maker.save()
 
     count_down_seq_maker = CountDownSequence(
         color_param=COUNTDOWN_COLOR_PARAM,
@@ -142,7 +144,12 @@ def make_sdr_countdown_movie():
         fname_base=SDR_COUNTDOWN_FILENAME_BASE,
         dynamic_range='sdr',
         scale_factor=1)
-    count_down_seq_maker.draw_countdown_seuqence_image()
+    for sec in [9, 8, 7, 6, 5, 4, 3, 2, 1]:
+        for frame in range(24):
+            count_down_seq_maker.draw_countdown_seuqence_image(
+                sec=sec, frame=frame)
+            break
+        break
 
 
 def main_func():
