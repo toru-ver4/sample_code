@@ -66,6 +66,8 @@ class Compoite():
 import os
 
 # import third-party libraries
+import cv2
+import numpy as np
 
 # import my libraries
 from countdown_movie import BackgroundImageColorParam,\
@@ -73,6 +75,7 @@ from countdown_movie import BackgroundImageColorParam,\
     CountDownImageCoordinateParam
 from countdown_movie import BackgroundImage, CountDownSequence
 import transfer_functions as tf
+import test_pattern_generator2 as tpg
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -95,7 +98,7 @@ SDR_COLOR_PARAM = BackgroundImageColorParam(
 COODINATE_PARAM = BackgroundImageCoodinateParam(
     width=1920,
     height=1080,
-    crosscross_line_width=2,
+    crosscross_line_width=4,
     outline_width=2,
     ramp_pos_v_from_center=400,
     ramp_height=84,
@@ -115,18 +118,25 @@ COUNTDOWN_COLOR_PARAM = CountDownImageColorParam(
 
 
 COUNTDOWN_COORDINATE_PARAM = CountDownImageCoordinateParam(
-    radius1=300,
-    radius2=280,
-    radius3=275,
-    radius4=276,
+    radius1=360,
+    radius2=320,
+    radius3=310,
+    radius4=315,
     fps=24,
-    crosscross_line_width=2,
-    font_size=550,
+    crosscross_line_width=4,
+    font_size=570,
 )
 
 
 SDR_BG_FILENAME_BASE = "./bg_img/backgraound_{}_{}x{}.tiff"
 SDR_COUNTDOWN_FILENAME_BASE = "./fg_img/countdown_{}_{}x{}_{:06d}.tiff"
+
+
+def calc_merge_st_pos(bg_image_maker, count_down_seq_maker):
+    pos_h = bg_image_maker.width // 2 - count_down_seq_maker.img_width // 2
+    pos_v = bg_image_maker.height // 2 - count_down_seq_maker.img_height // 2
+
+    return (pos_h, pos_v)
 
 
 def make_sdr_countdown_movie():
@@ -137,6 +147,7 @@ def make_sdr_countdown_movie():
     bg_image_maker._debug_dump_param()
     bg_image_maker.make()
     bg_image_maker.save()
+    bg_image = bg_image_maker.img
 
     count_down_seq_maker = CountDownSequence(
         color_param=COUNTDOWN_COLOR_PARAM,
@@ -144,12 +155,18 @@ def make_sdr_countdown_movie():
         fname_base=SDR_COUNTDOWN_FILENAME_BASE,
         dynamic_range='sdr',
         scale_factor=1)
+    merge_st_pos = calc_merge_st_pos(bg_image_maker, count_down_seq_maker)
+    counter = 0
     for sec in [9, 8, 7, 6, 5, 4, 3, 2, 1]:
         for frame in range(24):
-            count_down_seq_maker.draw_countdown_seuqence_image(
+            fg_img = count_down_seq_maker.draw_countdown_seuqence_image(
                 sec=sec, frame=frame)
-            break
-        break
+            img = tpg.merge_with_alpha(
+                bg_image, fg_img, tf_str=SDR_COLOR_PARAM.transfer_function,
+                pos=merge_st_pos)
+            fname = "./movie_seq/movie_{:04d}.tiff".format(counter)
+            cv2.imwrite(fname, np.uint16(np.round(img * 0xFFFF)))
+            counter += 1
 
 
 def main_func():

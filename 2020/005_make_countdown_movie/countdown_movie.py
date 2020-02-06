@@ -237,8 +237,8 @@ class CountDownSequence():
         self.fname_width = 1920 * scale_factor
         self.fname_height = 1080 * scale_factor
         self.dynamic_range = dynamic_range
-        
-        self._debug_dump_param()
+
+        # self._debug_dump_param()
 
         self.counter = 0
 
@@ -325,8 +325,17 @@ class CountDownSequence():
         text_drawer.draw()
         return text_drawer.get_img()
 
+    def attatch_alpha_channel(self, img):
+        dummy = np.zeros_like(img, dtype=np.uint8)
+        cv2.circle(
+            dummy, self.center_pos, self.radius1, [0xFF, 0xFF, 0xFF], -1,
+            cv2.LINE_AA)
+        alpha = dummy[..., 1] / 0xFF
+        img = np.dstack((img, alpha))
+        return img
+
     def draw_countdown_seuqence_image(self, sec, frame):
-        img = np.ones((self.img_height, self.img_width, 3), dtype=np.uint8)*10
+        img = np.ones((self.img_height, self.img_width, 3), dtype=np.uint8)
         self.draw_circles(img)
         self.draw_crisscross_line(img)
         self.draw_ellipse(img, frame=frame)
@@ -337,7 +346,10 @@ class CountDownSequence():
 
         # ここから img は float
         img = self.draw_text(img, sec)
+        img = self.attatch_alpha_channel(img)
 
         self.counter += 1
 
         cv2.imwrite(self.filename, np.uint16(np.round(img * 0xFFFF)))
+
+        return img

@@ -736,6 +736,36 @@ def merge(img_a, img_b, pos=(0, 0)):
     img_a[pos[1]:b_height+pos[1], pos[0]:b_width+pos[0]] = img_b
 
 
+def merge_with_alpha(bg_img, fg_img, tf_str=tf.SRGB, pos=(0, 0)):
+    """
+    合成する。
+
+    Parameters
+    ----------
+    bg_img : array_like(float, 3-channel)
+        image data.
+    fg_img : array_like(float, 4-channel)
+        image data
+    tf : strings
+        transfer function
+    pos : list(int)
+        (pos_h, pos_v)
+    """
+    f_width = fg_img.shape[1]
+    f_height = fg_img.shape[0]
+
+    bg_merge_area = bg_img[pos[1]:f_height+pos[1], pos[0]:f_width+pos[0]]
+    bg_linear = tf.eotf_to_luminance(bg_merge_area, tf_str)
+    fg_linear = tf.eotf_to_luminance(fg_img, tf_str)
+    alpha = fg_linear[:, :, 3:] / tf.PEAK_LUMINANCE[tf_str]
+
+    out_linear = (1 - alpha) * bg_linear + fg_linear[:, :, :-1]
+    out_merge_area = tf.oetf_from_luminance(out_linear, tf_str)
+    bg_img[pos[1]:f_height+pos[1], pos[0]:f_width+pos[0]] = out_merge_area
+
+    return bg_img
+
+
 def dot_pattern(dot_size=4, repeat=4, color=np.array([1.0, 1.0, 1.0])):
     """
     dot pattern 作る。
