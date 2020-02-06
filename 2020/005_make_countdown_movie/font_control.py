@@ -120,10 +120,12 @@ class TextDrawer():
         bg_img_linear = tf.eotf_to_luminance(composite_area_img, self.tf)
         text_img_linear = tf.eotf_to_luminance(self.text_img, tf.SRGB)
 
-        alpha = self.text_img[:, :, 3:]
+        alpha = text_img_linear[:, :, 3:] / tf.PEAK_LUMINANCE[tf.SRGB]
 
-        bg_img_linear = (1 - alpha) * bg_img_linear\
-            + text_img_linear[:, :, :-1]
+        a_idx = (alpha > 0)[..., 0]
+
+        bg_img_linear[a_idx] = (1 - alpha[a_idx])\
+            * bg_img_linear[a_idx] + text_img_linear[a_idx, :-1]
         bg_img_linear = np.clip(bg_img_linear, 0.0, tf.PEAK_LUMINANCE[self.tf])
         bg_img_linear = tf.oetf_from_luminance(bg_img_linear, self.tf)
         self.img[self.pos[1]:self.pos[1]+text_height,
