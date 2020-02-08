@@ -216,7 +216,7 @@ class CountDownImageCoordinateParam(NamedTuple):
     fps: int = 24
     crosscross_line_width: int = 4
     font_size: int = 60
-    font_pos: int = (30, 30)
+    font_path: str = NOTO_SANS_MONO_BOLD
 
 
 class CountDownSequence():
@@ -265,16 +265,16 @@ class CountDownSequence():
         self.img_height = self.img_width
         self.center_pos = (self.img_width // 2, self.img_height // 2)
         self.font_size = param.font_size * scale_factor
-        self.calc_text_pos()
+        self.font_path = param.font_path
 
-    def calc_text_pos(self):
+    def calc_text_pos(self, text="0"):
         dummy_img = np.zeros((self.img_height, self.img_width, 3))
         text_drawer = TextDrawer(
-            dummy_img, text="9", pos=(0, 0),
+            dummy_img, text=text, pos=(0, 0),
             font_color=self.fg_color/0xFF,
             font_size=self.font_size,
             transfer_functions=self.transfer_function,
-            font_path=NOTO_SANS_MONO_BOLD)
+            font_path=self.font_path)
         text_drawer.draw()
         text_width, text_height = text_drawer.get_text_size()
         pos_h = self.img_width // 2 - text_width // 2
@@ -316,12 +316,13 @@ class CountDownSequence():
             color=self.obj_outline_color.tolist(), thickness=-1)
 
     def draw_text(self, img, sec):
+        self.calc_text_pos(text=str(sec))
         text_drawer = TextDrawer(
             img / 0xFF, text=str(sec), pos=self.font_pos,
             font_color=self.fg_color / 0xFF,
             font_size=self.font_size,
             transfer_functions=self.transfer_function,
-            font_path=NOTO_SANS_MONO_BOLD)
+            font_path=self.font_path)
         text_drawer.draw()
         return text_drawer.get_img()
 
@@ -350,6 +351,6 @@ class CountDownSequence():
 
         self.counter += 1
 
-        cv2.imwrite(self.filename, np.uint16(np.round(img * 0xFFFF)))
+        # cv2.imwrite(self.filename, np.uint16(np.round(img * 0xFFFF)))
 
         return img

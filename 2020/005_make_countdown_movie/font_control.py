@@ -32,6 +32,12 @@ NOTO_SANS_MONO_REGULAR\
     = "/usr/share/fonts/opentype/noto/NotoSansMonoCJKjp-Regular.otf"
 NOTO_SANS_MONO_BOLD\
     = "/usr/share/fonts/opentype/noto/NotoSansMonoCJKjp-Bold.otf"
+NOTO_SANS_MONO_EX_BOLD\
+    = "./font/NotoSansMono-ExtraBold.ttf"
+NOTO_SANS_MONO_BLACK\
+    = "./font/NotoSansMono-Black.ttf"
+HELVETICA_DISPLAY_BLACK\
+    = "./font/HelveticaNowDisplayXBlk.otf"
 
 
 class TextDrawer():
@@ -82,7 +88,7 @@ class TextDrawer():
         self.bg_color = tuple(
             np.array([0x00, 0x00, 0x00, 0x00], dtype=np.uint8))
         self.tf = transfer_functions
-        self.NOTO_SANS_MONO_BOLD = NOTO_SANS_MONO_BOLD
+        self.font_path = font_path
 
     def draw(self):
         """
@@ -101,14 +107,14 @@ class TextDrawer():
         """
         dummy_img = Image.new("RGBA", (1, 1), self.bg_color)
         dummy_draw = ImageDraw.Draw(dummy_img)
-        font = ImageFont.truetype(self.NOTO_SANS_MONO_BOLD, self.font_size)
+        font = ImageFont.truetype(self.font_path, self.font_size)
         text_size = dummy_draw.textsize(self.text, font)
         (_, _), (_, offset_y) = font.font.getsize(self.text)
 
         text_img = Image.new(
             "RGBA", (text_size[0], text_size[1]), self.bg_color)
         draw = ImageDraw.Draw(text_img)
-        font = ImageFont.truetype(self.NOTO_SANS_MONO_BOLD, self.font_size)
+        font = ImageFont.truetype(self.font_path, self.font_size)
         draw.text((0, 0), self.text, font=font, fill=self.font_color)
         self.text_img = np.asarray(text_img)[offset_y:text_size[1]] / 0xFF
 
