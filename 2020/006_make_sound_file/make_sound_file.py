@@ -10,13 +10,12 @@ import os
 # import third-party libraries
 import numpy as np
 import numpy.fft as fft
-import matplotlib.pyplot as plt
 from scipy.io import wavfile
 import turbo_colormap
 from scipy import interpolate
 
 # import my libraries
-import test_pattern_generator2 as tpg
+# import test_pattern_generator2 as tpg
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -64,6 +63,19 @@ def write_wav_file(fname, sampling_rate, data):
 def read_wav_file(wav_file_name):
     sampling_rate, data = wavfile.read(wav_file_name)
     return sampling_rate, data / np.iinfo(data.dtype).max
+
+
+def get_sine_wave(freq=440, sec=5, sampling_rate=48000, gain=0.9):
+    """
+    """
+    total_sample_num, sample_per_one_cycle, cycle_num\
+        = calc_cycle_param(freq=freq, sec=sec, sampling_rate=sampling_rate)
+
+    x = np.linspace(0, 2*np.pi, sample_per_one_cycle, endpoint=False)
+    one_sine = np.sin(x)
+    all_sine = np.tile(one_sine, cycle_num) * gain
+
+    return np.int16(np.round(all_sine * np.iinfo(np.int16).max))
 
 
 def make_sine_wave(freq=440, sec=5, sampling_rate=48000):
@@ -118,15 +130,74 @@ def make_sawtooth_wave(freq=440, sec=5, sampling_rate=48000):
     write_wav_file(fname, sampling_rate, all_cycle)
 
 
+def add_fade_in_out(data, sec=0.005, sampling_rate=48000):
+    """
+    データにプチノイズが乗らないように
+    始めと終わりをまろやかにする。
+    """
+    sample = int(sampling_rate * sec + 0.5)
+    x = np.linspace(0, 0.5 * np.pi, sample)
+    y = np.sin(x)
+    data[:sample] = data[:sample] * y
+    data[-sample:] = data[-sample:] * y[::-1]
+
+
+def make_countdown_sound(sampling_rate=48000):
+    count_down_sec = 4
+    left_st_sec = 1
+    right_st_sec = 2
+    center_st_sec = 3
+    low_freq = 1000
+    high_freq = 2000
+    beep_sec = 0.06
+    fade_in_out_sec = 0.0065
+    total_sample = count_down_sec * sampling_rate
+
+    # 無音ファイル
+    np.zeros((total_sample), dtype=np.int16)
+
+    # 100ms だけ鳴らすファイル
+    sine_low = get_sine_wave(
+        freq=low_freq, sec=beep_sec, sampling_rate=sampling_rate, gain=0.9)
+    sine_high = get_sine_wave(
+        freq=high_freq, sec=beep_sec, sampling_rate=sampling_rate, gain=0.7)
+    add_fade_in_out(sine_low, fade_in_out_sec, sampling_rate)
+    add_fade_in_out(sine_high, fade_in_out_sec, sampling_rate)
+
+    # left
+    st_sample = sampling_rate * left_st_sec
+    left_sound = np.zeros((total_sample), dtype=np.int16)
+    left_sound[st_sample:st_sample+sine_low.shape[0]] = sine_low
+
+    # right
+    st_sample = sampling_rate * right_st_sec
+    right_sound = np.zeros((total_sample), dtype=np.int16)
+    right_sound[st_sample:st_sample+sine_low.shape[0]] = sine_low
+
+    # center
+    st_sample = sampling_rate * center_st_sec
+    left_sound[st_sample:st_sample+sine_high.shape[0]] = sine_high
+    right_sound[st_sample:st_sample+sine_high.shape[0]] = sine_high
+
+    stereo = np.dstack((left_sound, right_sound)).reshape((total_sample, 2))
+    wavfile.write("./wav/countdown.wav", sampling_rate, stereo)
+
+
 def main_func():
+    # 色んな周波数を作るよ
     # for idx in range(6):
     #     freq = 440 * (2 ** idx)
     #     make_sine_wave(freq=freq, sec=5, sampling_rate=48000)
     #     make_triangle_wave(freq=freq, sec=5, sampling_rate=48000)
     #     make_square_wave(freq=freq, sec=5, sampling_rate=48000)
     #     make_sawtooth_wave(freq=freq, sec=5, sampling_rate=48000)
+
+    # 時間周波数平面をプロットするよ
     # make_time_freq_plane('./wav/sawtooth_440Hz_48.0kHz.wav')
-    make_time_freq_plane("./voice/aaa.wav")
+    # make_time_freq_plane("./voice/aaa.wav")
+
+    # カウントダウン動画用にデータを作るよ
+    make_countdown_sound()
 
 
 def get_turbo_colormap():
@@ -177,7 +248,7 @@ def plot_time_freq_plane(data, freq):
     img = data / np.max(data)
     img = log_y_to_turbo(data ** (1/2.4))
     preview_img = img[::-1, :, :][-img.shape[0]//2:]
-    tpg.preview_image(preview_img)
+    # tpg.preview_image(preview_img)
 
 
 def make_time_freq_plane(wav_file_name):
