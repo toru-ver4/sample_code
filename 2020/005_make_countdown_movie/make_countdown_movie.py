@@ -197,6 +197,7 @@ def make_sdr_countdown_movie(
             args.append(dict(sec=sec, frame=frame, counter=counter, 
                              count_down_seq_maker=count_down_seq_maker,
                              bg_image=bg_image, merge_st_pos=merge_st_pos,
+
                              dynamic_range=dynamic_range))
             # composite_sequence(
             #     sec=sec, frame=frame, counter=counter,
