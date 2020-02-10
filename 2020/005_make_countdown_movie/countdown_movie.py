@@ -16,7 +16,7 @@ import cv2
 import transfer_functions as tf
 import test_pattern_generator2 as tpg
 from font_control import TextDrawer
-from font_control import NOTO_SANS_MONO_BOLD
+from font_control import NOTO_SANS_MONO_BOLD, NOTO_SANS_MONO_BLACK
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -32,6 +32,7 @@ class BackgroundImageColorParam(NamedTuple):
     transfer_function: str = tf.GAMMA24
     bg_luminance: float = 18.0
     fg_luminance: float = 90.0
+    sound_lumiannce: float = 30.0
     object_outline_luminance: float = 1.0
     step_ramp_code_values: list = [x * 64 for x in range(16)] + [1023]
 
@@ -48,6 +49,8 @@ class BackgroundImageCoodinateParam(NamedTuple):
     step_ramp_font_size: float = 10
     step_ramp_font_offset_x: int = 10
     step_ramp_font_offset_y: int = 10
+    sound_text_font_size: float = 50
+    sound_text_font_path: str = NOTO_SANS_MONO_BLACK
 
 
 def convert_from_pillow_to_numpy(img):
@@ -73,6 +76,8 @@ class BackgroundImage():
             color_param.object_outline_luminance, self.transfer_function)
         self.step_ramp_code_values\
             = np.array(color_param.step_ramp_code_values) / self.code_value_max
+        self.sound_text_color = tpg.convert_luminance_to_color_value(
+            color_param.sound_lumiannce, self.transfer_function)
 
         # coordinate settings
         self.set_coordinate_param(coordinate_param, scale_factor)
@@ -102,6 +107,10 @@ class BackgroundImage():
             = param.step_ramp_font_offset_x * scale_factor
         self.step_ramp_font_offset_y\
             = param.step_ramp_font_offset_y * scale_factor
+        self.sound_text_font_size\
+            = param.sound_text_font_size * scale_factor
+        self.sound_text_font_path = param.sound_text_font_path
+        self.dummy_img_size = 1024 * scale_factor
 
     def _debug_dump_param(self):
         for key, value in self.__dict__.items():
@@ -166,10 +175,11 @@ class BackgroundImage():
         tpg.merge(ramp_obj_img, step_ramp_img,
                   (self.ramp_outline_width, self.ramp_outline_width))
         # メイン背景画像に合成
-        ramp_pos_h\
+        self.ramp_pos_h\
             = (self.width // 2) - (ramp_width // 2) - self.ramp_outline_width
         tpg.merge(
-            self.img, ramp_obj_img, pos=(ramp_pos_h, self.step_ramp_pos_v))
+            self.img, ramp_obj_img, pos=(self.ramp_pos_h,
+                                         self.step_ramp_pos_v))
 
     def draw_text_into_step_ramp(self, block_img, code_value):
         fg_color = (1 - code_value) / 2
@@ -183,6 +193,76 @@ class BackgroundImage():
             font_path=NOTO_SANS_MONO_BOLD)
         text_drawer.draw()
 
+    def get_text_size(
+            self, text="0", font_size=10, font_path=NOTO_SANS_MONO_BOLD):
+        """
+        テキスト1文字分の width, height を求める。
+
+        example
+        =======
+        >>> width, height = self.get_text_size(
+        >>>     text="0", font_size=10, font_path=NOTO_SANS_MONO_BOLD)
+        """
+        dummy_img = np.zeros((self.dummy_img_size, self.dummy_img_size, 3))
+        text_drawer = TextDrawer(
+            dummy_img, text=text, pos=(0, 0),
+            font_color=self.fg_color/0xFF,
+            font_size=font_size,
+            transfer_functions=self.transfer_function,
+            font_path=font_path)
+        text_drawer.draw()
+        return text_drawer.get_text_size()
+
+    def draw_sound_text(self, text="L"):
+        width, height = self.get_text_size(
+            text="0", font_size=self.sound_text_font_size,
+            font_path=self.sound_text_font_path)
+
+        upper_left\
+            = (self.ramp_pos_h + width // 4,
+               self.step_ramp_pos_v + self.ramp_obj_height + height // 4)
+        upper_right\
+            = (self.width - (self.ramp_pos_h + width // 4) - width,
+               self.step_ramp_pos_v + self.ramp_obj_height + height // 4)
+        lower_left\
+            = (self.ramp_pos_h + width // 4,
+               self.height - (self.step_ramp_pos_v + self.ramp_obj_height + height // 4) - height)
+        lower_right\
+            = (self.width - (self.ramp_pos_h + width // 4) - width,
+               self.height - (self.step_ramp_pos_v + self.ramp_obj_height + height // 4) - height)
+
+        text_drawer = TextDrawer(
+            self.img, text, pos=upper_left,
+            font_color=self.sound_text_color,
+            font_size=self.sound_text_font_size,
+            transfer_functions=self.transfer_function,
+            font_path=self.sound_text_font_path)
+        text_drawer.draw()
+
+        text_drawer = TextDrawer(
+            self.img, text, pos=upper_right,
+            font_color=self.sound_text_color,
+            font_size=self.sound_text_font_size,
+            transfer_functions=self.transfer_function,
+            font_path=self.sound_text_font_path)
+        text_drawer.draw()
+
+        text_drawer = TextDrawer(
+            self.img, text, pos=lower_left,
+            font_color=self.sound_text_color,
+            font_size=self.sound_text_font_size,
+            transfer_functions=self.transfer_function,
+            font_path=self.sound_text_font_path)
+        text_drawer.draw()
+
+        text_drawer = TextDrawer(
+            self.img, text, pos=lower_right,
+            font_color=self.sound_text_color,
+            font_size=self.sound_text_font_size,
+            transfer_functions=self.transfer_function,
+            font_path=self.sound_text_font_path)
+        text_drawer.draw()
+
     def make(self):
         """
         背景画像を生成する
@@ -193,6 +273,7 @@ class BackgroundImage():
         self.draw_outline(self.img, self.fg_color, self.outline_width)
         self.draw_ramp_pattern()
         self.draw_step_ramp_pattern()
+        self.draw_sound_text(text="C")
 
         # tpg.preview_image(self.img)
 

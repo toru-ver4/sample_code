@@ -78,6 +78,7 @@ from countdown_movie import BackgroundImage, CountDownSequence
 import transfer_functions as tf
 import test_pattern_generator2 as tpg
 from font_control import NOTO_SANS_MONO_EX_BOLD
+from make_sound_file import make_countdown_sound
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -92,6 +93,7 @@ SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
     transfer_function=tf.GAMMA24,
     bg_luminance=18.0,
     fg_luminance=90.0,
+    sound_lumiannce=22.0,
     object_outline_luminance=1.0,
     step_ramp_code_values=([x * 64 for x in range(16)] + [1023])
 )
@@ -107,7 +109,8 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     ramp_outline_width=4,
     step_ramp_font_size=24,
     step_ramp_font_offset_x=5,
-    step_ramp_font_offset_y=5
+    step_ramp_font_offset_y=5,
+    sound_text_font_size=200
 )
 
 
@@ -124,7 +127,7 @@ COUNTDOWN_COORDINATE_PARAM = CountDownImageCoordinateParam(
     radius2=320,
     radius3=313,
     radius4=315,
-    fps=24,
+    fps=1,
     crosscross_line_width=4,
     font_size=570,
     font_path=NOTO_SANS_MONO_EX_BOLD
@@ -145,11 +148,17 @@ def calc_merge_st_pos(bg_image_maker, count_down_seq_maker):
 def composite_sequence(
         sec, frame, counter, count_down_seq_maker, bg_image, merge_st_pos,
         dynamic_range):
-    fg_img = count_down_seq_maker.draw_countdown_seuqence_image(
-        sec=sec, frame=frame)
-    img = tpg.merge_with_alpha(
-        bg_image, fg_img, tf_str=count_down_seq_maker.transfer_function,
-        pos=merge_st_pos)
+    if sec > 0:
+        fg_img = count_down_seq_maker.draw_countdown_seuqence_image(
+            sec=sec, frame=frame)
+        img = tpg.merge_with_alpha(
+            bg_image, fg_img, tf_str=count_down_seq_maker.transfer_function,
+            pos=merge_st_pos)
+    else:
+        if frame % count_down_seq_maker.fps == 0:
+            img = bg_image.copy()
+        else:
+            img = np.zeros_like(bg_image)
     fname = "./movie_seq/movie_{:}_{:}fps_{:04d}.tiff".format(
         dynamic_range, count_down_seq_maker.fps, counter)
     print(fname)
@@ -191,13 +200,12 @@ def make_sdr_countdown_movie(
 
     # composite
     counter = 0
-    for sec in [9, 8, 7, 6, 5, 4, 3, 2, 1]:
+    for sec in [1]:
         args = []
         for frame in range(cd_coordinate_param.fps):
-            args.append(dict(sec=sec, frame=frame, counter=counter, 
+            args.append(dict(sec=sec, frame=frame, counter=counter,
                              count_down_seq_maker=count_down_seq_maker,
                              bg_image=bg_image, merge_st_pos=merge_st_pos,
-
                              dynamic_range=dynamic_range))
             # composite_sequence(
             #     sec=sec, frame=frame, counter=counter,
@@ -216,6 +224,7 @@ def main_func():
         bg_coordinate_param=BG_COODINATE_PARAM,
         cd_coordinate_param=COUNTDOWN_COORDINATE_PARAM,
         scale_factor=1)
+    # make_countdown_sound()
 
 
 if __name__ == '__main__':
