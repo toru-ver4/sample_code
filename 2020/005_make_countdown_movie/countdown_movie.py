@@ -56,6 +56,8 @@ class BackgroundImageCoodinateParam(NamedTuple):
     sound_text_font_path: str = NOTO_SANS_MONO_BLACK
     info_text_font_size: float = 10
     info_text_font_path: str = NOTO_SANS_MONO_REGULAR
+    limited_text_font_size: float = 100
+    limited_text_font_path: str = NOTO_SANS_MONO_BLACK
 
 
 def convert_from_pillow_to_numpy(img):
@@ -129,6 +131,9 @@ class BackgroundImage():
         self.into_text_font_size\
             = param.info_text_font_size * scale_factor
         self.info_text_font_path = param.info_text_font_path
+        self.limited_text_font_size\
+            = param.limited_text_font_size * scale_factor
+        self.limited_text_font_path = param.limited_text_font_path
 
     @property
     def sound_text(self):
@@ -311,7 +316,7 @@ class BackgroundImage():
             self.gamut)
         width, height = self.get_text_size(
             text=text, font_size=self.into_text_font_size,
-            font_path=NOTO_SANS_MONO_BOLD)
+            font_path=self.info_text_font_path)
 
         st_pos_v = self.height - self.outline_width * 4 - height
         st_pos_h = self.outline_width * 4
@@ -331,7 +336,7 @@ class BackgroundImage():
         text = "Revision {:02d}".format(self.revision)
         width, height = self.get_text_size(
             text=text, font_size=self.into_text_font_size,
-            font_path=NOTO_SANS_MONO_BOLD)
+            font_path=self.info_text_font_path)
 
         st_pos_v = self.height - self.outline_width * 4 - height
         st_pos_h = self.width - self.outline_width * 4 - width
@@ -351,6 +356,52 @@ class BackgroundImage():
         self.draw_signal_information()
         self.draw_revision()
 
+    def draw_limited_range_text(self):
+        """
+        Limited Range の OK/NG 判別用のテキスト描画
+        """
+        low_text_color = np.array([64, 64, 64]) / 1023
+        high_text_color = np.array([940, 940, 940]) / 1023
+        low_text = "{:03d}".format(64)
+        high_text = "{:03d}".format(940)
+
+        # テキストを収める箱を作る
+        text_width, text_height = self.get_text_size(
+            text=low_text, font_size=self.limited_text_font_size,
+            font_path=self.limited_text_font_path)
+        padding = text_height // 4
+        width = text_width + padding * 2
+        height = text_height + padding * 2
+        img = np.zeros((height, width, 3))
+
+        # Low Level(64) の描画＆合成
+        text_drawer = TextDrawer(
+            img, low_text, pos=(padding, padding),
+            font_color=low_text_color,
+            font_size=self.limited_text_font_size,
+            transfer_functions=self.transfer_function,
+            font_path=self.limited_text_font_path)
+        text_drawer.draw()
+        st_pos_h = self.ramp_pos_h // 2 - width // 2
+        st_pos_v = self.step_ramp_pos_v + self.ramp_obj_height // 2\
+            - height // 2
+        tpg.merge(self.img, img, pos=(st_pos_h, st_pos_v))
+
+        # Low Level(64) の描画＆合成
+        img = np.ones_like(img)
+        text_drawer = TextDrawer(
+            img, high_text, pos=(padding, padding),
+            font_color=high_text_color,
+            font_size=self.limited_text_font_size,
+            transfer_functions=self.transfer_function,
+            font_path=self.limited_text_font_path)
+        text_drawer.draw()
+        st_pos_h = self.ramp_pos_h // 2 - width // 2
+        st_pos_v = self.step_ramp_pos_v + self.ramp_obj_height // 2\
+            - height // 2
+        tpg.merge(self.img, img,
+                  pos=(self.width - st_pos_h - width, st_pos_v))
+
     def make(self):
         """
         背景画像を生成する
@@ -363,6 +414,7 @@ class BackgroundImage():
         self.draw_step_ramp_pattern()
         self.draw_sound_text(self.sound_text)
         self.draw_information()
+        self.draw_limited_range_text()
 
         # tpg.preview_image(self.img)
 

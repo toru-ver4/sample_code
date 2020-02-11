@@ -116,7 +116,8 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     step_ramp_font_offset_x=5,
     step_ramp_font_offset_y=5,
     sound_text_font_size=200,
-    info_text_font_size=25
+    info_text_font_size=25,
+    limited_text_font_size=96
 )
 
 
@@ -133,7 +134,7 @@ COUNTDOWN_COORDINATE_PARAM = CountDownImageCoordinateParam(
     radius2=320,
     radius3=313,
     radius4=315,
-    fps=24,
+    fps=2,
     crosscross_line_width=4,
     font_size=570,
     font_path=NOTO_SANS_MONO_EX_BOLD
