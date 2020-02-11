@@ -79,6 +79,10 @@ class BackgroundImage():
         self.sound_text_color = tpg.convert_luminance_to_color_value(
             color_param.sound_lumiannce, self.transfer_function)
 
+        # text settings
+        self.__sound_text = " "
+        self.__frame_idx = 0
+
         # coordinate settings
         self.set_coordinate_param(coordinate_param, scale_factor)
 
@@ -111,6 +115,22 @@ class BackgroundImage():
             = param.sound_text_font_size * scale_factor
         self.sound_text_font_path = param.sound_text_font_path
         self.dummy_img_size = 1024 * scale_factor
+
+    @property
+    def sound_text(self):
+        return self.__sound_text
+
+    @sound_text.setter
+    def sound_text(self, text):
+        self.__sound_text = text
+
+    @property
+    def frame_idx(self):
+        return self.__frame_idx
+
+    @frame_idx.setter
+    def frame_idx(self, frame_idx):
+        self.__frame_idx = frame_idx
 
     def _debug_dump_param(self):
         for key, value in self.__dict__.items():
@@ -213,7 +233,7 @@ class BackgroundImage():
         text_drawer.draw()
         return text_drawer.get_text_size()
 
-    def draw_sound_text(self, text="L"):
+    def draw_sound_text(self, text=" "):
         width, height = self.get_text_size(
             text="0", font_size=self.sound_text_font_size,
             font_path=self.sound_text_font_path)
@@ -226,42 +246,46 @@ class BackgroundImage():
                self.step_ramp_pos_v + self.ramp_obj_height + height // 4)
         lower_left\
             = (self.ramp_pos_h + width // 4,
-               self.height - (self.step_ramp_pos_v + self.ramp_obj_height + height // 4) - height)
+               self.height - (self.step_ramp_pos_v + self.ramp_obj_height
+                              + height // 4) - height)
         lower_right\
             = (self.width - (self.ramp_pos_h + width // 4) - width,
-               self.height - (self.step_ramp_pos_v + self.ramp_obj_height + height // 4) - height)
+               self.height - (self.step_ramp_pos_v + self.ramp_obj_height
+                              + height // 4) - height)
 
-        text_drawer = TextDrawer(
-            self.img, text, pos=upper_left,
-            font_color=self.sound_text_color,
-            font_size=self.sound_text_font_size,
-            transfer_functions=self.transfer_function,
-            font_path=self.sound_text_font_path)
-        text_drawer.draw()
+        if text == "L" or text == "C":
+            text_drawer = TextDrawer(
+                self.img, text, pos=upper_left,
+                font_color=self.sound_text_color,
+                font_size=self.sound_text_font_size,
+                transfer_functions=self.transfer_function,
+                font_path=self.sound_text_font_path)
+            text_drawer.draw()
 
-        text_drawer = TextDrawer(
-            self.img, text, pos=upper_right,
-            font_color=self.sound_text_color,
-            font_size=self.sound_text_font_size,
-            transfer_functions=self.transfer_function,
-            font_path=self.sound_text_font_path)
-        text_drawer.draw()
+            text_drawer = TextDrawer(
+                self.img, text, pos=lower_left,
+                font_color=self.sound_text_color,
+                font_size=self.sound_text_font_size,
+                transfer_functions=self.transfer_function,
+                font_path=self.sound_text_font_path)
+            text_drawer.draw()
 
-        text_drawer = TextDrawer(
-            self.img, text, pos=lower_left,
-            font_color=self.sound_text_color,
-            font_size=self.sound_text_font_size,
-            transfer_functions=self.transfer_function,
-            font_path=self.sound_text_font_path)
-        text_drawer.draw()
+        if text == "R" or text == "C":
+            text_drawer = TextDrawer(
+                self.img, text, pos=upper_right,
+                font_color=self.sound_text_color,
+                font_size=self.sound_text_font_size,
+                transfer_functions=self.transfer_function,
+                font_path=self.sound_text_font_path)
+            text_drawer.draw()
 
-        text_drawer = TextDrawer(
-            self.img, text, pos=lower_right,
-            font_color=self.sound_text_color,
-            font_size=self.sound_text_font_size,
-            transfer_functions=self.transfer_function,
-            font_path=self.sound_text_font_path)
-        text_drawer.draw()
+            text_drawer = TextDrawer(
+                self.img, text, pos=lower_right,
+                font_color=self.sound_text_color,
+                font_size=self.sound_text_font_size,
+                transfer_functions=self.transfer_function,
+                font_path=self.sound_text_font_path)
+            text_drawer.draw()
 
     def make(self):
         """
@@ -273,7 +297,7 @@ class BackgroundImage():
         self.draw_outline(self.img, self.fg_color, self.outline_width)
         self.draw_ramp_pattern()
         self.draw_step_ramp_pattern()
-        self.draw_sound_text(text="C")
+        self.draw_sound_text(self.sound_text)
 
         # tpg.preview_image(self.img)
 

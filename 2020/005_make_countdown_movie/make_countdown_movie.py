@@ -127,7 +127,7 @@ COUNTDOWN_COORDINATE_PARAM = CountDownImageCoordinateParam(
     radius2=320,
     radius3=313,
     radius4=315,
-    fps=1,
+    fps=24,
     crosscross_line_width=4,
     font_size=570,
     font_path=NOTO_SANS_MONO_EX_BOLD
@@ -159,8 +159,9 @@ def composite_sequence(
             img = bg_image.copy()
         else:
             img = np.zeros_like(bg_image)
-    fname = "./movie_seq/movie_{:}_{:}fps_{:04d}.tiff".format(
-        dynamic_range, count_down_seq_maker.fps, counter)
+    fname = "./movie_seq/movie_{:}_{:}x{:}_{:}fps_{:04d}.tiff".format(
+        dynamic_range, bg_image.shape[1], bg_image.shape[0],
+        count_down_seq_maker.fps, counter)
     print(fname)
     cv2.imwrite(fname, np.uint16(np.round(img * 0xFFFF)))
 
@@ -179,11 +180,7 @@ def make_sdr_countdown_movie(
     bg_image_maker = BackgroundImage(
         color_param=bg_color_param, coordinate_param=bg_coordinate_param,
         fname_base=bg_filename_base, dynamic_range='sdr',
-        scale_factor=1)
-    bg_image_maker._debug_dump_param()
-    bg_image_maker.make()
-    bg_image_maker.save()
-    bg_image = bg_image_maker.img
+        scale_factor=scale_factor)
 
     # foreground image
     cd_filename_base\
@@ -193,16 +190,29 @@ def make_sdr_countdown_movie(
         coordinate_param=cd_coordinate_param,
         fname_base=cd_filename_base,
         dynamic_range='sdr',
-        scale_factor=1)
+        scale_factor=scale_factor)
 
     # get merge pos
     merge_st_pos = calc_merge_st_pos(bg_image_maker, count_down_seq_maker)
 
     # composite
     counter = 0
-    for sec in [1]:
+    sec_list = [3, 2, 1, 0]
+    sound_text_list = ["L", "R", "C", " "]
+    for sec, sound_text in zip(sec_list, sound_text_list):
+        bg_image_maker.sound_text = " "
+        bg_image_maker.make()
+        bg_image_without_sound = bg_image_maker.img.copy()
+        bg_image_maker.sound_text = sound_text
+        bg_image_maker.make()
+        bg_image_with_sound = bg_image_maker.img.copy()
+
         args = []
         for frame in range(cd_coordinate_param.fps):
+            if frame < int(cd_coordinate_param.fps * 0.5 + 0.5):
+                bg_image = bg_image_without_sound
+            else:
+                bg_image = bg_image_with_sound
             args.append(dict(sec=sec, frame=frame, counter=counter,
                              count_down_seq_maker=count_down_seq_maker,
                              bg_image=bg_image, merge_st_pos=merge_st_pos,
@@ -210,13 +220,14 @@ def make_sdr_countdown_movie(
             # composite_sequence(
             #     sec=sec, frame=frame, counter=counter,
             #     count_down_seq_maker=count_down_seq_maker,
-            #     bg_image=bg_image, merge_st_pos=merge_st_pos)
+            #     bg_image=bg_image, merge_st_pos=merge_st_pos,
+            #     dynamic_range=dynamic_range)
             counter += 1
         with Pool(cpu_count()) as pool:
             pool.map(thread_wrapper_composite_sequence, args)
 
 
-def main_func():
+def make_sdr_hd_sequence():
     make_sdr_countdown_movie(
         bg_color_param=SDR_BG_COLOR_PARAM,
         cd_color_param=SDR_COUNTDOWN_COLOR_PARAM,
@@ -229,4 +240,4 @@ def main_func():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    main_func()
+    make_sdr_hd_sequence()
