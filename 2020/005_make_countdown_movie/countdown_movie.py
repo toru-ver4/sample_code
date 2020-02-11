@@ -16,7 +16,8 @@ import cv2
 import transfer_functions as tf
 import test_pattern_generator2 as tpg
 from font_control import TextDrawer
-from font_control import NOTO_SANS_MONO_BOLD, NOTO_SANS_MONO_BLACK
+from font_control import NOTO_SANS_MONO_BOLD, NOTO_SANS_MONO_BLACK,\
+    NOTO_SANS_MONO_REGULAR
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -35,6 +36,8 @@ class BackgroundImageColorParam(NamedTuple):
     sound_lumiannce: float = 30.0
     object_outline_luminance: float = 1.0
     step_ramp_code_values: list = [x * 64 for x in range(16)] + [1023]
+    gamut: str = 'ITU-R BT.709'
+    text_info_luminance: float = 50.0
 
 
 class BackgroundImageCoodinateParam(NamedTuple):
@@ -51,6 +54,8 @@ class BackgroundImageCoodinateParam(NamedTuple):
     step_ramp_font_offset_y: int = 10
     sound_text_font_size: float = 50
     sound_text_font_path: str = NOTO_SANS_MONO_BLACK
+    info_text_font_size: float = 10
+    info_text_font_path: str = NOTO_SANS_MONO_REGULAR
 
 
 def convert_from_pillow_to_numpy(img):
@@ -62,7 +67,7 @@ def convert_from_pillow_to_numpy(img):
 class BackgroundImage():
     def __init__(
             self, color_param, coordinate_param, fname_base, dynamic_range,
-            scale_factor):
+            scale_factor, fps, revision):
         self.bit_depth = 10
         self.code_value_max = (1 << self.bit_depth) - 1
 
@@ -78,10 +83,16 @@ class BackgroundImage():
             = np.array(color_param.step_ramp_code_values) / self.code_value_max
         self.sound_text_color = tpg.convert_luminance_to_color_value(
             color_param.sound_lumiannce, self.transfer_function)
+        self.gamut = color_param.gamut
+        self.text_info_color = tpg.convert_luminance_to_color_value(
+            color_param.text_info_luminance, self.transfer_function)
 
         # text settings
         self.__sound_text = " "
         self.__frame_idx = 0
+        self.fps = fps
+        self.dynamic_range = dynamic_range
+        self.revision = revision
 
         # coordinate settings
         self.set_coordinate_param(coordinate_param, scale_factor)
@@ -115,6 +126,9 @@ class BackgroundImage():
             = param.sound_text_font_size * scale_factor
         self.sound_text_font_path = param.sound_text_font_path
         self.dummy_img_size = 1024 * scale_factor
+        self.into_text_font_size\
+            = param.info_text_font_size * scale_factor
+        self.info_text_font_path = param.info_text_font_path
 
     @property
     def sound_text(self):
@@ -287,6 +301,56 @@ class BackgroundImage():
                 font_path=self.sound_text_font_path)
             text_drawer.draw()
 
+    def draw_signal_information(self):
+        """
+        解像度とか色域とかの情報
+        """
+        text_base = "{}x{}, {:02d}fps, {}, {}, D65"
+        text = text_base.format(
+            self.width, self.height, self.fps, self.transfer_function,
+            self.gamut)
+        width, height = self.get_text_size(
+            text=text, font_size=self.into_text_font_size,
+            font_path=NOTO_SANS_MONO_BOLD)
+
+        st_pos_v = self.height - self.outline_width * 4 - height
+        st_pos_h = self.outline_width * 4
+
+        text_drawer = TextDrawer(
+            self.img, text, pos=(st_pos_h, st_pos_v),
+            font_color=self.text_info_color,
+            font_size=self.into_text_font_size,
+            transfer_functions=self.transfer_function,
+            font_path=self.info_text_font_path)
+        text_drawer.draw()
+
+    def draw_revision(self):
+        """
+        解像度とか色域とかの情報
+        """
+        text = "Revision {:02d}".format(self.revision)
+        width, height = self.get_text_size(
+            text=text, font_size=self.into_text_font_size,
+            font_path=NOTO_SANS_MONO_BOLD)
+
+        st_pos_v = self.height - self.outline_width * 4 - height
+        st_pos_h = self.width - self.outline_width * 4 - width
+
+        text_drawer = TextDrawer(
+            self.img, text, pos=(st_pos_h, st_pos_v),
+            font_color=self.text_info_color,
+            font_size=self.into_text_font_size,
+            transfer_functions=self.transfer_function,
+            font_path=self.info_text_font_path)
+        text_drawer.draw()
+
+    def draw_information(self):
+        """
+        画面下部にテキストを書く
+        """
+        self.draw_signal_information()
+        self.draw_revision()
+
     def make(self):
         """
         背景画像を生成する
@@ -298,6 +362,7 @@ class BackgroundImage():
         self.draw_ramp_pattern()
         self.draw_step_ramp_pattern()
         self.draw_sound_text(self.sound_text)
+        self.draw_information()
 
         # tpg.preview_image(self.img)
 

@@ -89,13 +89,18 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
 
+# REVISION = 2  # added sound information.
+REVISION = 3  # added signal information at the bottom.
+
 SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
     transfer_function=tf.GAMMA24,
     bg_luminance=18.0,
     fg_luminance=90.0,
     sound_lumiannce=22.0,
     object_outline_luminance=1.0,
-    step_ramp_code_values=([x * 64 for x in range(16)] + [1023])
+    step_ramp_code_values=([x * 64 for x in range(16)] + [1023]),
+    gamut='ITU-R BT.709',
+    text_info_luminance=50
 )
 
 
@@ -110,7 +115,8 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     step_ramp_font_size=24,
     step_ramp_font_offset_x=5,
     step_ramp_font_offset_y=5,
-    sound_text_font_size=200
+    sound_text_font_size=200,
+    info_text_font_size=25
 )
 
 
@@ -180,7 +186,8 @@ def make_sdr_countdown_movie(
     bg_image_maker = BackgroundImage(
         color_param=bg_color_param, coordinate_param=bg_coordinate_param,
         fname_base=bg_filename_base, dynamic_range='sdr',
-        scale_factor=scale_factor)
+        scale_factor=scale_factor, fps=cd_coordinate_param.fps,
+        revision=REVISION)
 
     # foreground image
     cd_filename_base\
@@ -231,7 +238,7 @@ def make_sdr_hd_sequence():
     make_sdr_countdown_movie(
         bg_color_param=SDR_BG_COLOR_PARAM,
         cd_color_param=SDR_COUNTDOWN_COLOR_PARAM,
-        dynamic_range='sdr',
+        dynamic_range='SDR',
         bg_coordinate_param=BG_COODINATE_PARAM,
         cd_coordinate_param=COUNTDOWN_COORDINATE_PARAM,
         scale_factor=1)
