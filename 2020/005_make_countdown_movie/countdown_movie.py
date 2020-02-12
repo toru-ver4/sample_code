@@ -11,6 +11,8 @@ from typing import NamedTuple
 # import third-party libraries
 import numpy as np
 import cv2
+from sympy import symbols
+from colour import RGB_COLOURSPACES
 
 # import my libraries
 import transfer_functions as tf
@@ -18,6 +20,7 @@ import test_pattern_generator2 as tpg
 from font_control import TextDrawer
 from font_control import NOTO_SANS_MONO_BOLD, NOTO_SANS_MONO_BLACK,\
     NOTO_SANS_MONO_REGULAR
+from cielab import solve_chroma, lab_to_rgb_expr
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -28,6 +31,17 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
 
+
+CHROMA = {'ITU-R BT.709': [0.467893566324554, 0.215787584674837,
+                           0.149781375011629, 0.208001181214428,
+                           0.139928129463102, 0.137355386982480,
+                           0.317511492648874, 0.754346115001794]}
+
+# L* = 1.0
+# [4.67893566324554 2.15787584674837 1.49781375011629 2.08001181214428
+#  1.39928129463102 1.37355386982480 3.17511492648874 7.54346115001794]
+
+# L* = 10
 
 class BackgroundImageColorParam(NamedTuple):
     transfer_function: str = tf.GAMMA24
@@ -402,6 +416,17 @@ class BackgroundImage():
         tpg.merge(self.img, img,
                   pos=(self.width - st_pos_h - width, st_pos_v))
 
+    def draw_low_level_color_patch(self, l_val=10):
+        l, c, h = symbols('l, c, h', real=True)
+        rgb_exprs = lab_to_rgb_expr(
+            l, c, h, primaries=RGB_COLOURSPACES[self.gamut].primaries)
+        h_vals = np.linspace(0, 2 * np.pi, 8, endpoint=False)
+        chroma_list = []
+        for h_val in h_vals:
+            chroma_list.append(solve_chroma(l_val, h_val + 0.01, rgb_exprs, l, c, h))
+        chroma_list = np.array(chroma_list)
+        print(chroma_list)
+
     def make(self):
         """
         背景画像を生成する
@@ -415,6 +440,7 @@ class BackgroundImage():
         self.draw_sound_text(self.sound_text)
         self.draw_information()
         self.draw_limited_range_text()
+        # self.draw_low_level_color_patch()
 
         # tpg.preview_image(self.img)
 
