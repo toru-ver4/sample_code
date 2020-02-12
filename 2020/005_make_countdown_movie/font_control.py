@@ -97,6 +97,29 @@ class TextDrawer():
         self.make_text_img_with_alpha()
         self.composite_text()
 
+    def draw_with_dropped_dot(self):
+        """
+        ドット抜きのテキストを描画する
+        """
+        self.make_text_img_with_alpha()
+        self.drop_dot()
+        self.composite_text()
+
+    def drop_dot(self):
+        dot_mesh_idx = np.ones(
+            (self.text_img.shape[0], self.text_img.shape[1]), dtype=np.bool)
+        v_idx_list = np.arange(self.text_img.shape[0])
+        h_idx_list = np.arange(self.text_img.shape[1])
+        idx_even = (v_idx_list % 2 == 0)[:, np.newaxis]\
+            * (h_idx_list % 2 == 0)[np.newaxis, :]
+        idx_odd = (v_idx_list % 2 == 1)[:, np.newaxis]\
+            * (h_idx_list % 2 == 1)[np.newaxis, :]
+        idx = idx_even | idx_odd
+        # dot_mesh_idx[vv, hh] = False
+        # vv, hh = np.meshgrid(v_idx_list % 2 == 1, h_idx_list % 2 == 1)
+        # dot_mesh_idx[vv, hh] = False
+        self.text_img[idx] = 0.0
+
     def split_rgb_alpha_from_rgba_img(self, img):
         self.rgb_img = img[:, :, :3]
         self.alpha_img = np.dstack((img[:, :, 3], img[:, :, 3], img[:, :, 3]))

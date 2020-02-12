@@ -246,6 +246,39 @@ def make_sdr_hd_sequence():
     # make_countdown_sound()
 
 
+from font_control import TextDrawer
+from font_control import NOTO_SANS_MONO_BOLD, NOTO_SANS_MONO_BLACK,\
+    NOTO_SANS_MONO_REGULAR
+
+def make_dot_dropped_character_image(text="R"):
+    img = np.ones((1080 // 8, 1920 // 8, 3)) * 0.2
+
+    text_drawer = TextDrawer(
+        img, text="R", pos=(10, 20),
+        font_color=(1.0, 0.0, 0.0),
+        font_size=100,
+        transfer_functions=tf.GAMMA24,
+        font_path=NOTO_SANS_MONO_BLACK)
+    text_drawer.draw_with_dropped_dot()
+    text_drawer = TextDrawer(
+        img, text="G", pos=(80, 20),
+        font_color=(0.0, 1.0, 0.0),
+        font_size=100,
+        transfer_functions=tf.GAMMA24,
+        font_path=NOTO_SANS_MONO_BLACK)
+    text_drawer.draw_with_dropped_dot()
+    text_drawer = TextDrawer(
+        img, text="B", pos=(150, 20),
+        font_color=(0.0, 0.0, 1.0),
+        font_size=100,
+        transfer_functions=tf.GAMMA24,
+        font_path=NOTO_SANS_MONO_BLACK)
+    text_drawer.draw_with_dropped_dot()
+    img = cv2.resize(img, None, fx=8, fy=8, interpolation=cv2.INTER_NEAREST)
+    cv2.imwrite("dot_dropped.tiff", np.uint16(np.round(img[..., ::-1] * 0xFFFF)))
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    make_sdr_hd_sequence()
+    # make_sdr_hd_sequence()
+    make_dot_dropped_character_image("R")
