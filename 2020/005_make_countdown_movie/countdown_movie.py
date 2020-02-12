@@ -11,12 +11,16 @@ from typing import NamedTuple
 # import third-party libraries
 import numpy as np
 import cv2
+from sympy import symbols
+from colour import RGB_COLOURSPACES
 
 # import my libraries
 import transfer_functions as tf
 import test_pattern_generator2 as tpg
 from font_control import TextDrawer
-from font_control import NOTO_SANS_MONO_BOLD
+from font_control import NOTO_SANS_MONO_BOLD, NOTO_SANS_MONO_BLACK,\
+    NOTO_SANS_MONO_REGULAR
+from cielab import solve_chroma, lab_to_rgb_expr
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -28,12 +32,26 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
+CHROMA = {'ITU-R BT.709': [0.467893566324554, 0.215787584674837,
+                           0.149781375011629, 0.208001181214428,
+                           0.139928129463102, 0.137355386982480,
+                           0.317511492648874, 0.754346115001794]}
+
+# L* = 1.0
+# [4.67893566324554 2.15787584674837 1.49781375011629 2.08001181214428
+#  1.39928129463102 1.37355386982480 3.17511492648874 7.54346115001794]
+
+# L* = 10
+
 class BackgroundImageColorParam(NamedTuple):
     transfer_function: str = tf.GAMMA24
     bg_luminance: float = 18.0
     fg_luminance: float = 90.0
+    sound_lumiannce: float = 30.0
     object_outline_luminance: float = 1.0
     step_ramp_code_values: list = [x * 64 for x in range(16)] + [1023]
+    gamut: str = 'ITU-R BT.709'
+    text_info_luminance: float = 50.0
 
 
 class BackgroundImageCoodinateParam(NamedTuple):
@@ -48,6 +66,12 @@ class BackgroundImageCoodinateParam(NamedTuple):
     step_ramp_font_size: float = 10
     step_ramp_font_offset_x: int = 10
     step_ramp_font_offset_y: int = 10
+    sound_text_font_size: float = 50
+    sound_text_font_path: str = NOTO_SANS_MONO_BLACK
+    info_text_font_size: float = 10
+    info_text_font_path: str = NOTO_SANS_MONO_REGULAR
+    limited_text_font_size: float = 100
+    limited_text_font_path: str = NOTO_SANS_MONO_BLACK
 
 
 def convert_from_pillow_to_numpy(img):
@@ -59,7 +83,7 @@ def convert_from_pillow_to_numpy(img):
 class BackgroundImage():
     def __init__(
             self, color_param, coordinate_param, fname_base, dynamic_range,
-            scale_factor):
+            scale_factor, fps, revision):
         self.bit_depth = 10
         self.code_value_max = (1 << self.bit_depth) - 1
 
@@ -73,6 +97,18 @@ class BackgroundImage():
             color_param.object_outline_luminance, self.transfer_function)
         self.step_ramp_code_values\
             = np.array(color_param.step_ramp_code_values) / self.code_value_max
+        self.sound_text_color = tpg.convert_luminance_to_color_value(
+            color_param.sound_lumiannce, self.transfer_function)
+        self.gamut = color_param.gamut
+        self.text_info_color = tpg.convert_luminance_to_color_value(
+            color_param.text_info_luminance, self.transfer_function)
+
+        # text settings
+        self.__sound_text = " "
+        self.__frame_idx = 0
+        self.fps = fps
+        self.dynamic_range = dynamic_range
+        self.revision = revision
 
         # coordinate settings
         self.set_coordinate_param(coordinate_param, scale_factor)
@@ -102,6 +138,32 @@ class BackgroundImage():
             = param.step_ramp_font_offset_x * scale_factor
         self.step_ramp_font_offset_y\
             = param.step_ramp_font_offset_y * scale_factor
+        self.sound_text_font_size\
+            = param.sound_text_font_size * scale_factor
+        self.sound_text_font_path = param.sound_text_font_path
+        self.dummy_img_size = 1024 * scale_factor
+        self.into_text_font_size\
+            = param.info_text_font_size * scale_factor
+        self.info_text_font_path = param.info_text_font_path
+        self.limited_text_font_size\
+            = param.limited_text_font_size * scale_factor
+        self.limited_text_font_path = param.limited_text_font_path
+
+    @property
+    def sound_text(self):
+        return self.__sound_text
+
+    @sound_text.setter
+    def sound_text(self, text):
+        self.__sound_text = text
+
+    @property
+    def frame_idx(self):
+        return self.__frame_idx
+
+    @frame_idx.setter
+    def frame_idx(self, frame_idx):
+        self.__frame_idx = frame_idx
 
     def _debug_dump_param(self):
         for key, value in self.__dict__.items():
@@ -166,10 +228,11 @@ class BackgroundImage():
         tpg.merge(ramp_obj_img, step_ramp_img,
                   (self.ramp_outline_width, self.ramp_outline_width))
         # メイン背景画像に合成
-        ramp_pos_h\
+        self.ramp_pos_h\
             = (self.width // 2) - (ramp_width // 2) - self.ramp_outline_width
         tpg.merge(
-            self.img, ramp_obj_img, pos=(ramp_pos_h, self.step_ramp_pos_v))
+            self.img, ramp_obj_img, pos=(self.ramp_pos_h,
+                                         self.step_ramp_pos_v))
 
     def draw_text_into_step_ramp(self, block_img, code_value):
         fg_color = (1 - code_value) / 2
@@ -183,6 +246,187 @@ class BackgroundImage():
             font_path=NOTO_SANS_MONO_BOLD)
         text_drawer.draw()
 
+    def get_text_size(
+            self, text="0", font_size=10, font_path=NOTO_SANS_MONO_BOLD):
+        """
+        テキスト1文字分の width, height を求める。
+
+        example
+        =======
+        >>> width, height = self.get_text_size(
+        >>>     text="0", font_size=10, font_path=NOTO_SANS_MONO_BOLD)
+        """
+        dummy_img = np.zeros((self.dummy_img_size, self.dummy_img_size, 3))
+        text_drawer = TextDrawer(
+            dummy_img, text=text, pos=(0, 0),
+            font_color=self.fg_color/0xFF,
+            font_size=font_size,
+            transfer_functions=self.transfer_function,
+            font_path=font_path)
+        text_drawer.draw()
+        return text_drawer.get_text_size()
+
+    def draw_sound_text(self, text=" "):
+        width, height = self.get_text_size(
+            text="0", font_size=self.sound_text_font_size,
+            font_path=self.sound_text_font_path)
+
+        upper_left\
+            = (self.ramp_pos_h + width // 4,
+               self.step_ramp_pos_v + self.ramp_obj_height + height // 4)
+        upper_right\
+            = (self.width - (self.ramp_pos_h + width // 4) - width,
+               self.step_ramp_pos_v + self.ramp_obj_height + height // 4)
+        lower_left\
+            = (self.ramp_pos_h + width // 4,
+               self.height - (self.step_ramp_pos_v + self.ramp_obj_height
+                              + height // 4) - height)
+        lower_right\
+            = (self.width - (self.ramp_pos_h + width // 4) - width,
+               self.height - (self.step_ramp_pos_v + self.ramp_obj_height
+                              + height // 4) - height)
+
+        if text == "L" or text == "C":
+            text_drawer = TextDrawer(
+                self.img, text, pos=upper_left,
+                font_color=self.sound_text_color,
+                font_size=self.sound_text_font_size,
+                transfer_functions=self.transfer_function,
+                font_path=self.sound_text_font_path)
+            text_drawer.draw()
+
+            text_drawer = TextDrawer(
+                self.img, text, pos=lower_left,
+                font_color=self.sound_text_color,
+                font_size=self.sound_text_font_size,
+                transfer_functions=self.transfer_function,
+                font_path=self.sound_text_font_path)
+            text_drawer.draw()
+
+        if text == "R" or text == "C":
+            text_drawer = TextDrawer(
+                self.img, text, pos=upper_right,
+                font_color=self.sound_text_color,
+                font_size=self.sound_text_font_size,
+                transfer_functions=self.transfer_function,
+                font_path=self.sound_text_font_path)
+            text_drawer.draw()
+
+            text_drawer = TextDrawer(
+                self.img, text, pos=lower_right,
+                font_color=self.sound_text_color,
+                font_size=self.sound_text_font_size,
+                transfer_functions=self.transfer_function,
+                font_path=self.sound_text_font_path)
+            text_drawer.draw()
+
+    def draw_signal_information(self):
+        """
+        解像度とか色域とかの情報
+        """
+        text_base = "{}x{}, {:02d}fps, {}, {}, D65"
+        text = text_base.format(
+            self.width, self.height, self.fps, self.transfer_function,
+            self.gamut)
+        width, height = self.get_text_size(
+            text=text, font_size=self.into_text_font_size,
+            font_path=self.info_text_font_path)
+
+        st_pos_v = self.height - self.outline_width * 4 - height
+        st_pos_h = self.outline_width * 4
+
+        text_drawer = TextDrawer(
+            self.img, text, pos=(st_pos_h, st_pos_v),
+            font_color=self.text_info_color,
+            font_size=self.into_text_font_size,
+            transfer_functions=self.transfer_function,
+            font_path=self.info_text_font_path)
+        text_drawer.draw()
+
+    def draw_revision(self):
+        """
+        解像度とか色域とかの情報
+        """
+        text = "Revision {:02d}".format(self.revision)
+        width, height = self.get_text_size(
+            text=text, font_size=self.into_text_font_size,
+            font_path=self.info_text_font_path)
+
+        st_pos_v = self.height - self.outline_width * 4 - height
+        st_pos_h = self.width - self.outline_width * 4 - width
+
+        text_drawer = TextDrawer(
+            self.img, text, pos=(st_pos_h, st_pos_v),
+            font_color=self.text_info_color,
+            font_size=self.into_text_font_size,
+            transfer_functions=self.transfer_function,
+            font_path=self.info_text_font_path)
+        text_drawer.draw()
+
+    def draw_information(self):
+        """
+        画面下部にテキストを書く
+        """
+        self.draw_signal_information()
+        self.draw_revision()
+
+    def draw_limited_range_text(self):
+        """
+        Limited Range の OK/NG 判別用のテキスト描画
+        """
+        low_text_color = np.array([64, 64, 64]) / 1023
+        high_text_color = np.array([940, 940, 940]) / 1023
+        low_text = "{:03d}".format(64)
+        high_text = "{:03d}".format(940)
+
+        # テキストを収める箱を作る
+        text_width, text_height = self.get_text_size(
+            text=low_text, font_size=self.limited_text_font_size,
+            font_path=self.limited_text_font_path)
+        padding = text_height // 4
+        width = text_width + padding * 2
+        height = text_height + padding * 2
+        img = np.zeros((height, width, 3))
+
+        # Low Level(64) の描画＆合成
+        text_drawer = TextDrawer(
+            img, low_text, pos=(padding, padding),
+            font_color=low_text_color,
+            font_size=self.limited_text_font_size,
+            transfer_functions=self.transfer_function,
+            font_path=self.limited_text_font_path)
+        text_drawer.draw()
+        st_pos_h = self.ramp_pos_h // 2 - width // 2
+        st_pos_v = self.step_ramp_pos_v + self.ramp_obj_height // 2\
+            - height // 2
+        tpg.merge(self.img, img, pos=(st_pos_h, st_pos_v))
+
+        # Low Level(64) の描画＆合成
+        img = np.ones_like(img)
+        text_drawer = TextDrawer(
+            img, high_text, pos=(padding, padding),
+            font_color=high_text_color,
+            font_size=self.limited_text_font_size,
+            transfer_functions=self.transfer_function,
+            font_path=self.limited_text_font_path)
+        text_drawer.draw()
+        st_pos_h = self.ramp_pos_h // 2 - width // 2
+        st_pos_v = self.step_ramp_pos_v + self.ramp_obj_height // 2\
+            - height // 2
+        tpg.merge(self.img, img,
+                  pos=(self.width - st_pos_h - width, st_pos_v))
+
+    def draw_low_level_color_patch(self, l_val=10):
+        l, c, h = symbols('l, c, h', real=True)
+        rgb_exprs = lab_to_rgb_expr(
+            l, c, h, primaries=RGB_COLOURSPACES[self.gamut].primaries)
+        h_vals = np.linspace(0, 2 * np.pi, 8, endpoint=False)
+        chroma_list = []
+        for h_val in h_vals:
+            chroma_list.append(solve_chroma(l_val, h_val + 0.01, rgb_exprs, l, c, h))
+        chroma_list = np.array(chroma_list)
+        print(chroma_list)
+
     def make(self):
         """
         背景画像を生成する
@@ -193,6 +437,10 @@ class BackgroundImage():
         self.draw_outline(self.img, self.fg_color, self.outline_width)
         self.draw_ramp_pattern()
         self.draw_step_ramp_pattern()
+        self.draw_sound_text(self.sound_text)
+        self.draw_information()
+        self.draw_limited_range_text()
+        # self.draw_low_level_color_patch()
 
         # tpg.preview_image(self.img)
 
