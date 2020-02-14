@@ -106,8 +106,6 @@ class TextDrawer():
         self.composite_text()
 
     def drop_dot(self):
-        dot_mesh_idx = np.ones(
-            (self.text_img.shape[0], self.text_img.shape[1]), dtype=np.bool)
         v_idx_list = np.arange(self.text_img.shape[0])
         h_idx_list = np.arange(self.text_img.shape[1])
         idx_even = (v_idx_list % 2 == 0)[:, np.newaxis]\
@@ -115,9 +113,6 @@ class TextDrawer():
         idx_odd = (v_idx_list % 2 == 1)[:, np.newaxis]\
             * (h_idx_list % 2 == 1)[np.newaxis, :]
         idx = idx_even | idx_odd
-        # dot_mesh_idx[vv, hh] = False
-        # vv, hh = np.meshgrid(v_idx_list % 2 == 1, h_idx_list % 2 == 1)
-        # dot_mesh_idx[vv, hh] = False
         self.text_img[idx] = 0.0
 
     def split_rgb_alpha_from_rgba_img(self, img):
