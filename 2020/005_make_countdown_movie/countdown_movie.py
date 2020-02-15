@@ -21,6 +21,7 @@ from font_control import TextDrawer
 from font_control import NOTO_SANS_MONO_BOLD, NOTO_SANS_MONO_BLACK,\
     NOTO_SANS_MONO_REGULAR
 from cielab import solve_chroma, lab_to_rgb_expr
+from cielab import plot_formula_for_specific_lstar
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -37,11 +38,30 @@ CHROMA = {'ITU-R BT.709': [0.467893566324554, 0.215787584674837,
                            0.139928129463102, 0.137355386982480,
                            0.317511492648874, 0.754346115001794]}
 
+# # L* = 0.5
+# CHROMA = {
+#     'ITU-R BT.709': [2.33946783162278, 1.07893792337419, 0.748906875058145,
+#                      1.04000590607214, 0.699640647315515, 0.686776934912400,
+#                      1.58755746324438, 3.77173057500899]}
 # L* = 1.0
-# [4.67893566324554 2.15787584674837 1.49781375011629 2.08001181214428
-#  1.39928129463102 1.37355386982480 3.17511492648874 7.54346115001794]
+CHROMA = {
+    'ITU-R BT.709': [4.67893566324554, 2.15787584674837, 1.49781375011629,
+                     2.08001181214428, 1.39928129463102, 1.37355386982480,
+                     3.17511492648874, 7.54346115001794]}
 
-# L* = 10
+# # L* = 5.0
+# CHROMA = {
+#     'ITU-R BT.709': [22.4851328201947, 10.7893792337419, 7.48906875058145,
+#                      10.4000590607214, 6.99640647315515, 6.86776934912400,
+#                      13.9036573539259, 37.2973759306897]}
+
+
+# # L* = 10
+# CHROMA = {
+#     'ITU-R BT.709': [31.1134446845507, 21.6612897565317, 14.9393690072093,
+#                      20.7274414737387, 13.4941585448319, 11.7856223341119,
+#                      18.6662114728803, 51.6143768309843]}
+
 
 class BackgroundImageColorParam(NamedTuple):
     transfer_function: str = tf.GAMMA24
@@ -52,6 +72,7 @@ class BackgroundImageColorParam(NamedTuple):
     step_ramp_code_values: list = [x * 64 for x in range(16)] + [1023]
     gamut: str = 'ITU-R BT.709'
     text_info_luminance: float = 50.0
+    crosshatch_luminance: float = 5.0
 
 
 class BackgroundImageCoodinateParam(NamedTuple):
@@ -72,6 +93,7 @@ class BackgroundImageCoodinateParam(NamedTuple):
     info_text_font_path: str = NOTO_SANS_MONO_REGULAR
     limited_text_font_size: float = 100
     limited_text_font_path: str = NOTO_SANS_MONO_BLACK
+    crosshatch_size: int = 128
 
 
 def convert_from_pillow_to_numpy(img):
@@ -102,6 +124,8 @@ class BackgroundImage():
         self.gamut = color_param.gamut
         self.text_info_color = tpg.convert_luminance_to_color_value(
             color_param.text_info_luminance, self.transfer_function)
+        self.crosshatch_color = tpg.convert_luminance_to_color_value(
+            color_param.crosshatch_luminance, self.transfer_function)
 
         # text settings
         self.__sound_text = " "
@@ -148,6 +172,7 @@ class BackgroundImage():
         self.limited_text_font_size\
             = param.limited_text_font_size * scale_factor
         self.limited_text_font_path = param.limited_text_font_path
+        self.crosshatch_size = param.crosshatch_size * scale_factor
 
     @property
     def sound_text(self):
@@ -417,15 +442,46 @@ class BackgroundImage():
                   pos=(self.width - st_pos_h - width, st_pos_v))
 
     def draw_low_level_color_patch(self, l_val=10):
-        l, c, h = symbols('l, c, h', real=True)
-        rgb_exprs = lab_to_rgb_expr(
-            l, c, h, primaries=RGB_COLOURSPACES[self.gamut].primaries)
+        l, c, h = symbols('l, c, h')
+        # rgb_exprs = lab_to_rgb_expr(
+        #     l, c, h, primaries=RGB_COLOURSPACES[self.gamut].primaries)
         h_vals = np.linspace(0, 2 * np.pi, 8, endpoint=False)
         chroma_list = []
-        for h_val in h_vals:
-            chroma_list.append(solve_chroma(l_val, h_val + 0.01, rgb_exprs, l, c, h))
+        for h_idx, h_val in enumerate(h_vals):
+            rgb_exprs = lab_to_rgb_expr(
+                l, c, h, primaries=RGB_COLOURSPACES[self.gamut].primaries)
+            # plot_formula_for_specific_lstar(l_val, 0, h_val, h_idx, rgb_exprs, l, c, h)
+            chroma_list.append(solve_chroma(l_val, h_val, rgb_exprs, l, c, h))
         chroma_list = np.array(chroma_list)
         print(chroma_list)
+
+    def draw_crosshatch(self):
+        st_pos_v = self.height // 2
+        st_pos_h = self.width // 2
+
+        # v-direction loop
+        v_loop_num = (self.height // 2 + 1) // self.crosshatch_size
+        for v_idx in range(1, v_loop_num):
+            pos_v_upper = st_pos_v - v_idx * self.crosshatch_size
+            pos_v_lower = st_pos_v + v_idx * self.crosshatch_size
+            tpg.draw_straight_line(
+                self.img, (0, pos_v_upper), (self.width, pos_v_upper),
+                self.crosshatch_color, 1)
+            tpg.draw_straight_line(
+                self.img, (0, pos_v_lower), (self.width, pos_v_lower),
+                self.crosshatch_color, 1)
+
+        # h-direction loop
+        h_loop_num = (self.width // 2 + 1) // self.crosshatch_size
+        for h_idx in range(1, h_loop_num):
+            pos_h_upper = st_pos_h - h_idx * self.crosshatch_size
+            pos_h_lower = st_pos_h + h_idx * self.crosshatch_size
+            tpg.draw_straight_line(
+                self.img, (pos_h_upper, 0), (pos_h_upper, self.height),
+                self.crosshatch_color, 1)
+            tpg.draw_straight_line(
+                self.img, (pos_h_lower, 0), (pos_h_lower, self.height),
+                self.crosshatch_color, 1)
 
     def make(self):
         """
@@ -433,6 +489,7 @@ class BackgroundImage():
         """
         self.img = np.ones((self.height, self.width, 3))
         self.img = self.img * self.bg_color
+        self.draw_crosshatch()
         self.draw_crisscross_line()
         self.draw_outline(self.img, self.fg_color, self.outline_width)
         self.draw_ramp_pattern()
@@ -440,7 +497,10 @@ class BackgroundImage():
         self.draw_sound_text(self.sound_text)
         self.draw_information()
         self.draw_limited_range_text()
-        # self.draw_low_level_color_patch()
+        self.draw_low_level_color_patch(l_val=0.5)
+        self.draw_low_level_color_patch(l_val=1)
+        self.draw_low_level_color_patch(l_val=5)
+        self.draw_low_level_color_patch(l_val=10)
 
         # tpg.preview_image(self.img)
 

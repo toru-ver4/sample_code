@@ -67,7 +67,7 @@ shared_array = Array(
     typecode_or_type=ctypes.c_float,
     size_or_initializer=l_sample_num*h_sample_num)
 npy_name = "chroma_l_{}_h_{}.npy".format(l_sample_num, h_sample_num)
-im_threshold = 0.0000001
+im_threshold = 0.00000000001
 
 
 def get_ty(l):
@@ -184,6 +184,7 @@ def plot_formula_for_specific_lstar(
     for ii in range(len(IJK_LIST)):
         for jj in range(3):
             # l_val, h_val 代入
+            print(rgb_exprs[ii][jj])
             rgb_exprs[ii][jj] = rgb_exprs[ii][jj].subs({l: l_val, h: h_val})
             # lambdify 実行
             rgb_exprs[ii][jj] = lambdify(c, rgb_exprs[ii][jj], 'numpy')
@@ -240,8 +241,8 @@ def plot_formula_for_specific_lstar(
     ax1.plot(x, rgb[0], 'r-', label="R")
     ax1.plot(x, rgb[1], 'g-', label="G")
     ax1.plot(x, rgb[2], 'b-', label="B")
-    # ax1.plot(x, arg_idxs[0], 'r-', alpha=0.3, label="arg_idx")
-    # ax1.plot(x, arg_idxs[1], 'g-', alpha=0.3, label="arg_idx")
+    ax1.plot(x, arg_idxs[0], 'r-', alpha=0.3, label="arg_idx")
+    ax1.plot(x, arg_idxs[1], 'g-', alpha=0.3, label="arg_idx")
     ax1.plot(x, arg_idxs[2], 'b-', alpha=0.3, label="arg_idx")
     plt.legend(loc='upper left')
     plt.savefig(graph_name_0, bbox_inches='tight', pad_inches=0.1)
