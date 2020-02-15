@@ -100,7 +100,8 @@ SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
     object_outline_luminance=1.0,
     step_ramp_code_values=([x * 64 for x in range(16)] + [1023]),
     gamut='ITU-R BT.709',
-    text_info_luminance=50
+    text_info_luminance=50,
+    crosshatch_luminance=30.0
 )
 
 
@@ -117,7 +118,8 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     step_ramp_font_offset_y=5,
     sound_text_font_size=200,
     info_text_font_size=25,
-    limited_text_font_size=80
+    limited_text_font_size=80,
+    crosshatch_size=64
 )
 
 
@@ -134,7 +136,7 @@ COUNTDOWN_COORDINATE_PARAM = CountDownImageCoordinateParam(
     radius2=320,
     radius3=313,
     radius4=315,
-    fps=24,
+    fps=2,
     crosscross_line_width=4,
     font_size=570,
     font_path=NOTO_SANS_MONO_EX_BOLD
@@ -211,6 +213,7 @@ def make_sdr_countdown_movie(
         bg_image_maker.sound_text = " "
         bg_image_maker.make()
         bg_image_without_sound = bg_image_maker.img.copy()
+        break
         bg_image_maker.sound_text = sound_text
         bg_image_maker.make()
         bg_image_with_sound = bg_image_maker.img.copy()
@@ -250,6 +253,7 @@ from font_control import TextDrawer
 from font_control import NOTO_SANS_MONO_BOLD, NOTO_SANS_MONO_BLACK,\
     NOTO_SANS_MONO_REGULAR
 
+
 def make_dot_dropped_character_image(text="R"):
     img = np.ones((1080 // 8, 1920 // 8, 3)) * 0.2
 
@@ -280,5 +284,5 @@ def make_dot_dropped_character_image(text="R"):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # make_sdr_hd_sequence()
-    make_dot_dropped_character_image("R")
+    make_sdr_hd_sequence()
+    # make_dot_dropped_character_image("R")
