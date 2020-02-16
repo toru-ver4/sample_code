@@ -1325,7 +1325,7 @@ def _calc_rgb_from_same_lstar_radial_data(
     rgb = XYZ_to_RGB(large_xyz, D65_WHITE, D65_WHITE,
                      color_space.XYZ_to_RGB_matrix)
 
-    return rgb
+    return np.clip(rgb, 0.0, 1.0)
 
 
 def calc_same_lstar_radial_color_patch_data(
@@ -1346,9 +1346,7 @@ def calc_same_lstar_radial_color_patch_data(
         rgb = tf.oetf(rgb, transfer_function)
         conv_idx = calc_rad_patch_idx2(
             outmost_num=outmost_num, current_num=current_num)
-        print(conv_idx)
         for idx in range(current_patch_num):
-            print(rgb[idx])
             rgb_list[conv_idx[idx]] = rgb[idx]
 
     return rgb_list
@@ -1358,8 +1356,8 @@ def _plot_same_lstar_radial_color_patch_data(
         lstar=58, chroma=32.5, outmost_num=9,
         color_space=BT709_COLOURSPACE,
         transfer_function=tf.GAMMA24):
-    patch_size = 1080 // 9
-    img = np.ones((1080, 1080, 3)) * 0.0
+    patch_size = 1080 // outmost_num
+    img = np.ones((1080, 1920, 3)) * 0.0
     rgb = calc_same_lstar_radial_color_patch_data(
         lstar=lstar, chroma=chroma, outmost_num=outmost_num,
         color_space=color_space, transfer_function=transfer_function)
@@ -1372,7 +1370,7 @@ def _plot_same_lstar_radial_color_patch_data(
             * rgb[idx][np.newaxis, np.newaxis, :]
         merge(img, temp_img, st_pos)
 
-    cv2.imwrite("hoge.tiff", np.uint16(np.round(img[:, :, ::-1] * 0xFFFF)))
+    cv2.imwrite("hoge2.tiff", np.uint16(np.round(img[:, :, ::-1] * 0xFFFF)))
 
 
 def calc_rad_patch_idx2(outmost_num=5, current_num=3):
@@ -1408,7 +1406,7 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
     _plot_same_lstar_radial_color_patch_data(
-        lstar=58, chroma=32.5, outmost_num=9,
+        lstar=4, chroma=5.49421547929920, outmost_num=5,
         color_space=BT709_COLOURSPACE,
         transfer_function=tf.GAMMA24)
     # calc_rad_patch_idx2(outmost_num=9, current_num=7)
