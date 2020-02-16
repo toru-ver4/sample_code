@@ -318,8 +318,8 @@ def solve_chroma(l_val, h_val, rgb_exprs, l, c, h):
     chroma_list = np.array(temp_solution)
     chroma = np.min(chroma_list[chroma_list >= 0.0])
 
-    print("L*={:.2f}, H={:.2f}, C={:.3f}".format(
-            l_val, h_val / (2 * np.pi) * 360, chroma))
+    # print("L*={:.2f}, H={:.2f}, C={:.3f}".format(
+    #         l_val, h_val / (2 * np.pi) * 360, chroma))
     # end = time.time()
     # print("each_time={}[s]".format(end-start))
     return chroma
