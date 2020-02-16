@@ -69,6 +69,8 @@ import os
 import cv2
 import numpy as np
 from multiprocessing import Pool, cpu_count
+from colour import Lab_to_XYZ, XYZ_to_RGB
+from colour.models import BT709_COLOURSPACE, BT2020_COLOURSPACE
 
 # import my libraries
 from countdown_movie import BackgroundImageColorParam,\
@@ -282,7 +284,48 @@ def make_dot_dropped_character_image(text="R"):
     cv2.imwrite("dot_dropped.tiff", np.uint16(np.round(img[..., ::-1] * 0xFFFF)))
 
 
+def make_low_level_patch():
+    lstar = 4
+    patch_num = 25  # center: 1, surround: 8
+    patch_size = 1080 // 5
+    rad = np.linspace(0, 2 * np.pi, 9)
+    chroma = 5.49421547929920 * np.ones((patch_num))
+    chroma[-1] = 0.0
+    print(chroma)
+    l = np.ones_like(rad) * lstar
+    a = np.cos(rad) * chroma
+    b = np.sin(rad) * chroma
+    lab = np.dstack((l, a, b))
+    large_xyz = Lab_to_XYZ(lab)
+    rgb = XYZ_to_RGB(large_xyz, tpg.D65_WHITE, tpg.D65_WHITE,
+                     BT709_COLOURSPACE.XYZ_to_RGB_matrix)
+    # rgb = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
+    print(f"{np.max(rgb)}, {np.min(rgb)}")
+    rgb = np.clip(rgb, 0.0, 1.0)
+    rgb = tf.oetf_from_luminance(rgb * 100, tf.GAMMA24)
+    img = np.ones((1080, 1920, 3)) * 0.0
+
+    st_pos_list = []
+    for idx in range(patch_num):
+        h_idx = idx % 3
+        v_idx = idx // 3
+        st_pos_list.append((h_idx * patch_size, v_idx * patch_size))
+
+    conv_idx_center = [5, 2, 1, 0, 3, 6, 7, 8, 4]
+    conv_idx = [6, 5, 4, 3, 2, 7, 1, 8, 0, 9, 15,
+                10, 11, 12, 13, 14]
+
+    for idx in range(patch_num):
+        temp_img = np.ones((patch_size, patch_size, 3)) * rgb[:, idx, :]
+        st_pos = st_pos_list[conv_idx[idx]]
+        tpg.merge(img, temp_img, st_pos)
+
+    img = np.uint16(np.round(img * 0xFFFF))
+    cv2.imwrite("patch.tiff", img[:, :, ::-1])
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     make_sdr_hd_sequence()
     # make_dot_dropped_character_image("R")
+    # make_low_level_patch()
