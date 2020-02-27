@@ -1247,8 +1247,15 @@ def draw_outline(img, fg_color, outline_width):
 
 def convert_luminance_to_color_value(luminance, transfer_function):
     """
-    輝度[cd/m2] から 10bit code value の RGB値に変換する。
+    輝度[cd/m2] から code value の RGB値に変換する。
     luminance の単位は [cd/m2]。無彩色である。
+
+    Examples
+    --------
+    >>> convert_luminance_to_color_value(100, tf.GAMMA24)
+    >>> [ 1.0  1.0  1.0 ]
+    >>> convert_luminance_to_color_value(100, tf.ST2084)
+    >>> [ 0.50807842  0.50807842  0.50807842 ]
     """
     code_value = convert_luminance_to_code_value(
         luminance, transfer_function)
@@ -1257,7 +1264,7 @@ def convert_luminance_to_color_value(luminance, transfer_function):
 
 def convert_luminance_to_code_value(luminance, transfer_function):
     """
-    輝度[cd/m2] から 10bit code value に変換する。
+    輝度[cd/m2] から code value に変換する。
     luminance の単位は [cd/m2]
     """
     return tf.oetf_from_luminance(luminance, transfer_function)
@@ -1405,8 +1412,9 @@ def calc_rad_patch_idx2(outmost_num=5, current_num=3):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
-    _plot_same_lstar_radial_color_patch_data(
-        lstar=4, chroma=5.49421547929920, outmost_num=5,
-        color_space=BT709_COLOURSPACE,
-        transfer_function=tf.GAMMA24)
+    # _plot_same_lstar_radial_color_patch_data(
+    #     lstar=4, chroma=5.49421547929920, outmost_num=5,
+    #     color_space=BT709_COLOURSPACE,
+    #     transfer_function=tf.GAMMA24)
     # calc_rad_patch_idx2(outmost_num=9, current_num=7)
+    print(convert_luminance_to_color_value(100, tf.ST2084))

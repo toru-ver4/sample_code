@@ -92,7 +92,8 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 # REVISION = 2  # added sound information.
-REVISION = 3  # added signal information at the bottom.
+# REVISION = 3  # added signal information at the bottom.
+REVISION = 4  # added Three types of test patterns.
 
 SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
     transfer_function=tf.GAMMA24,
@@ -121,7 +122,8 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     sound_text_font_size=200,
     info_text_font_size=25,
     limited_text_font_size=80,
-    crosshatch_size=64
+    crosshatch_size=64,
+    dot_dropped_text_size=144
 )
 
 
@@ -215,10 +217,12 @@ def make_sdr_countdown_movie(
         bg_image_maker.sound_text = " "
         bg_image_maker.make()
         bg_image_without_sound = bg_image_maker.img.copy()
-        break
+        bg_image_maker.save()
+
         bg_image_maker.sound_text = sound_text
         bg_image_maker.make()
         bg_image_with_sound = bg_image_maker.img.copy()
+        break
 
         args = []
         for frame in range(cd_coordinate_param.fps):
@@ -257,71 +261,57 @@ from font_control import NOTO_SANS_MONO_BOLD, NOTO_SANS_MONO_BLACK,\
 
 
 def make_dot_dropped_character_image(text="R"):
-    img = np.ones((1080 // 8, 1920 // 8, 3)) * 0.2
+    fxy = 8
+    # img = np.ones((1080 // 8, 1920 // 8, 3)) * 0.2
+    img = np.zeros((2160, 3840, 3))
 
     text_drawer = TextDrawer(
-        img, text="R", pos=(10, 20),
+        img, text="R", pos=(11, 21),
         font_color=(1.0, 0.0, 0.0),
         font_size=100,
         transfer_functions=tf.GAMMA24,
         font_path=NOTO_SANS_MONO_BLACK)
-    text_drawer.draw_with_dropped_dot()
+    text_drawer.draw_with_dropped_dot(dot_factor=2)
     text_drawer = TextDrawer(
-        img, text="G", pos=(80, 20),
-        font_color=(0.0, 1.0, 0.0),
+        img, text="W", pos=(81, 21),
+        font_color=(1.0, 1.0, 1.0),
         font_size=100,
         transfer_functions=tf.GAMMA24,
         font_path=NOTO_SANS_MONO_BLACK)
-    text_drawer.draw_with_dropped_dot()
+    text_drawer.draw_with_dropped_dot(dot_factor=2)
     text_drawer = TextDrawer(
-        img, text="B", pos=(150, 20),
-        font_color=(0.0, 0.0, 1.0),
+        img, text="M", pos=(151, 21),
+        font_color=(1.0, 0.0, 1.0),
         font_size=100,
         transfer_functions=tf.GAMMA24,
         font_path=NOTO_SANS_MONO_BLACK)
-    text_drawer.draw_with_dropped_dot()
-    img = cv2.resize(img, None, fx=8, fy=8, interpolation=cv2.INTER_NEAREST)
-    cv2.imwrite("dot_dropped.tiff", np.uint16(np.round(img[..., ::-1] * 0xFFFF)))
+    text_drawer.draw_with_dropped_dot(dot_factor=2)
 
-
-def make_low_level_patch():
-    lstar = 4
-    patch_num = 25  # center: 1, surround: 8
-    patch_size = 1080 // 5
-    rad = np.linspace(0, 2 * np.pi, 9)
-    chroma = 5.49421547929920 * np.ones((patch_num))
-    chroma[-1] = 0.0
-    print(chroma)
-    l = np.ones_like(rad) * lstar
-    a = np.cos(rad) * chroma
-    b = np.sin(rad) * chroma
-    lab = np.dstack((l, a, b))
-    large_xyz = Lab_to_XYZ(lab)
-    rgb = XYZ_to_RGB(large_xyz, tpg.D65_WHITE, tpg.D65_WHITE,
-                     BT709_COLOURSPACE.XYZ_to_RGB_matrix)
-    # rgb = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
-    print(f"{np.max(rgb)}, {np.min(rgb)}")
-    rgb = np.clip(rgb, 0.0, 1.0)
-    rgb = tf.oetf_from_luminance(rgb * 100, tf.GAMMA24)
-    img = np.ones((1080, 1920, 3)) * 0.0
-
-    st_pos_list = []
-    for idx in range(patch_num):
-        h_idx = idx % 3
-        v_idx = idx // 3
-        st_pos_list.append((h_idx * patch_size, v_idx * patch_size))
-
-    conv_idx_center = [5, 2, 1, 0, 3, 6, 7, 8, 4]
-    conv_idx = [6, 5, 4, 3, 2, 7, 1, 8, 0, 9, 15,
-                10, 11, 12, 13, 14]
-
-    for idx in range(patch_num):
-        temp_img = np.ones((patch_size, patch_size, 3)) * rgb[:, idx, :]
-        st_pos = st_pos_list[conv_idx[idx]]
-        tpg.merge(img, temp_img, st_pos)
-
-    img = np.uint16(np.round(img * 0xFFFF))
-    cv2.imwrite("patch.tiff", img[:, :, ::-1])
+    v_offset = 99
+    text_drawer = TextDrawer(
+        img, text="R", pos=(10, 21 + v_offset),
+        font_color=(1.0, 0.0, 0.0),
+        font_size=100,
+        transfer_functions=tf.GAMMA24,
+        font_path=NOTO_SANS_MONO_BLACK)
+    text_drawer.draw_with_dropped_dot(dot_factor=2)
+    text_drawer = TextDrawer(
+        img, text="W", pos=(80, 21 + v_offset),
+        font_color=(1.0, 1.0, 1.0),
+        font_size=100,
+        transfer_functions=tf.GAMMA24,
+        font_path=NOTO_SANS_MONO_BLACK)
+    text_drawer.draw_with_dropped_dot(dot_factor=2)
+    text_drawer = TextDrawer(
+        img, text="M", pos=(150, 21 + v_offset),
+        font_color=(1.0, 0.0, 1.0),
+        font_size=100,
+        transfer_functions=tf.GAMMA24,
+        font_path=NOTO_SANS_MONO_BLACK)
+    text_drawer.draw_with_dropped_dot(dot_factor=2)
+    # img = cv2.resize(img, None, fx=8, fy=8, interpolation=cv2.INTER_NEAREST)
+    cv2.imwrite(
+        "dot_dropped.tiff", np.uint16(np.round(img[..., ::-1] * 0xFFFF)))
 
 
 if __name__ == '__main__':
