@@ -117,6 +117,7 @@ class BackgroundImageCoodinateParam(NamedTuple):
     limited_text_font_path: str = NOTO_SANS_MONO_BLACK
     crosshatch_size: int = 128
     dot_dropped_text_size: float = 100
+    lab_patch_each_size: int = 32
 
 
 def convert_from_pillow_to_numpy(img):
@@ -198,6 +199,8 @@ class BackgroundImage():
         self.crosshatch_size = param.crosshatch_size * scale_factor
         self.dot_dropped_text_size\
             = param.dot_dropped_text_size * scale_factor
+        self.lab_patch_each_size\
+            = lab_patch_each_size * scale_factor
 
     @property
     def sound_text(self):
@@ -527,7 +530,14 @@ class BackgroundImage():
         tpg.merge(self.img, img, (self.width // 4 * 3, self.height // 2))
 
     def draw_low_level_color_patch(self):
-        
+        outmost_num = 5
+        total_width = self.lab_patch_each_size * outmost_num
+        total_height = total_height
+        img = np.zeros((total_height, total_width, 3))
+        rgb = tpg.calc_same_lstar_radial_color_patch_data(
+            lstar=5.0, chroma=CHROMA_MAX_05_00, outmost_num=outmost_num,
+            color_space=RGB_COLOURSPACES[self.gamut],
+            transfer_function=self.transfer_function)
 
     def make(self):
         """
