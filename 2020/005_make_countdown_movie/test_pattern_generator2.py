@@ -1270,117 +1270,16 @@ def convert_luminance_to_code_value(luminance, transfer_function):
     return tf.oetf_from_luminance(luminance, transfer_function)
 
 
-def _calc_rad_patch_idx_offset(outmost_num=5, current_num=3):
-    """
-    `calc_rad_patch_idx` の 最後のオフセット計算
-    """
-    offset = 0
-    for idx in range(outmost_num, current_num, -2):
-        offset += (idx - 1) * 4
-
-    return offset
-
-
-def calc_rad_patch_idx(outmost_num=5, current_num=3):
-    """
-    色相角を回転させて作成するタイプのカラーパッチの
-    local index --> total index への変換を行う。
-
-    local index: 現在のグルっと一周するところのインデックス。
-                 合計 (current_num - 1) * 4 個
-    total index: outmost_num ** 2 個 の空間でのインデックス
-
-    outmost_num: int
-        1番外側の1辺のパッチ個数
-    current_num: int
-        現在の1辺ののパッチ個数
-    """
-    half_num = current_num // 2
-    conv_idx = []
-    for idx in range(half_num, current_num + half_num)[::-1]:
-        conv_idx.append(idx)
-    for idx in range(current_num - 2):
-        diff = current_num + 1 + idx * 2
-        diff_inv = (current_num + 1 + (current_num - 3 - idx) * 2) * -1
-        diff = diff if idx < (current_num - 2) // 2 + 1 else diff_inv
-        conv_idx.append(conv_idx[0] + idx + 1)
-        conv_idx.append(conv_idx[-1] - diff)
-    if current_num > 1:
-        for idx in range(current_num):
-            conv_idx.append(idx + (current_num - 1) * 2 + half_num)
-
-    # offset = _calc_rad_patch_idx_offset(
-    #     outmost_num=outmost_num, current_num=current_num)
-    # conv_idx = [conv_idx[idx] + offset for idx in range(len(conv_idx))]
-
-    return conv_idx
-
-
-def _calc_rgb_from_same_lstar_radial_data(
-        lstar, temp_chroma, current_num, color_space):
-    """
-    放射線状データの L*a*b* to RGB 変換を行う。
-    出力のRGBは [0:1] の Linear値。
-    """
-    current_patch_num = (current_num - 1) * 4 if current_num > 1 else 1
-    rad = np.linspace(0, 2 * np.pi, current_patch_num, endpoint=False)
-    ll = np.ones((current_patch_num)) * lstar
-    aa = np.cos(rad) * temp_chroma
-    bb = np.sin(rad) * temp_chroma
-    lab = np.dstack((ll, aa, bb))
-    large_xyz = Lab_to_XYZ(lab)
-    rgb = XYZ_to_RGB(large_xyz, D65_WHITE, D65_WHITE,
-                     color_space.XYZ_to_RGB_matrix)
-
-    return np.clip(rgb, 0.0, 1.0)
-
-
-def calc_same_lstar_radial_color_patch_data(
-        lstar=58, chroma=32.5, outmost_num=9,
-        color_space=BT709_COLOURSPACE,
-        transfer_function=tf.GAMMA24):
-    patch_num = outmost_num ** 2
-    transfer_function = tf.GAMMA24
-    rgb_list = np.ones((patch_num, 3))
-
-    current_num_list = range(1, outmost_num + 1, 2)
-    chroma_list = np.linspace(0, chroma, len(current_num_list))
-    for temp_chroma, current_num in zip(chroma_list, current_num_list):
-        current_patch_num = (current_num - 1) * 4 if current_num > 1 else 1
-        rgb = _calc_rgb_from_same_lstar_radial_data(
-            lstar, temp_chroma, current_num, color_space)
-        rgb = np.reshape(rgb, (current_patch_num, 3))
-        rgb = tf.oetf(rgb, transfer_function)
-        conv_idx = calc_rad_patch_idx2(
-            outmost_num=outmost_num, current_num=current_num)
-        for idx in range(current_patch_num):
-            rgb_list[conv_idx[idx]] = rgb[idx]
-
-    return rgb_list
-
-
-def _plot_same_lstar_radial_color_patch_data(
-        lstar=58, chroma=32.5, outmost_num=9,
-        color_space=BT709_COLOURSPACE,
-        transfer_function=tf.GAMMA24):
-    patch_size = 1080 // outmost_num
-    img = np.ones((1080, 1920, 3)) * 0.0
-    rgb = calc_same_lstar_radial_color_patch_data(
-        lstar=lstar, chroma=chroma, outmost_num=outmost_num,
-        color_space=color_space, transfer_function=transfer_function)
-
-    for idx in range(outmost_num ** 2):
-        h_idx = idx % outmost_num
-        v_idx = idx // outmost_num
-        st_pos = (h_idx * patch_size, v_idx * patch_size)
-        temp_img = np.ones((patch_size, patch_size, 3))\
-            * rgb[idx][np.newaxis, np.newaxis, :]
-        merge(img, temp_img, st_pos)
-
-    cv2.imwrite("hoge2.tiff", np.uint16(np.round(img[:, :, ::-1] * 0xFFFF)))
-
-
 def calc_rad_patch_idx2(outmost_num=5, current_num=3):
+    """
+    以下のような、中心がGray、周りは CIELAB 空間の a*b*平面のカラーパッチの
+    RGB値のリストを得る。
+    https://user-images.githubusercontent.com/3609012/75444470-d3bc5600-59a6-11ea-962b-c315648782a9.png
+
+    得られたデータは並べ替えが済んでいないため、calc_rad_patch_idx2() で
+    得られる変換テーブルを使った変換が必要。
+    本関数はまさにその変換を行う。
+    """
     base = np.arange(outmost_num ** 2).reshape((outmost_num, outmost_num))
     # print(base)
     t_idx = (outmost_num - current_num) // 2
@@ -1409,12 +1308,91 @@ def calc_rad_patch_idx2(outmost_num=5, current_num=3):
     return conv_idx
 
 
+def _calc_rgb_from_same_lstar_radial_data(
+        lstar, temp_chroma, current_num, color_space):
+    """
+    以下のような、中心がGray、周りは CIELAB 空間の a*b*平面のカラーパッチの
+    RGB値のリストを得る。
+    https://user-images.githubusercontent.com/3609012/75444470-d3bc5600-59a6-11ea-962b-c315648782a9.png
+
+    得られたデータは並べ替えが済んでいないため、calc_rad_patch_idx2() で
+    得られる変換テーブルを使った変換が必要。
+    """
+    current_patch_num = (current_num - 1) * 4 if current_num > 1 else 1
+    rad = np.linspace(0, 2 * np.pi, current_patch_num, endpoint=False)
+    ll = np.ones((current_patch_num)) * lstar
+    aa = np.cos(rad) * temp_chroma
+    bb = np.sin(rad) * temp_chroma
+    lab = np.dstack((ll, aa, bb))
+    large_xyz = Lab_to_XYZ(lab)
+    rgb = XYZ_to_RGB(large_xyz, D65_WHITE, D65_WHITE,
+                     color_space.XYZ_to_RGB_matrix)
+
+    return np.clip(rgb, 0.0, 1.0)
+
+
+def calc_same_lstar_radial_color_patch_data(
+        lstar=58, chroma=32.5, outmost_num=9,
+        color_space=BT709_COLOURSPACE,
+        transfer_function=tf.GAMMA24):
+    """
+    以下のような、中心がGray、周りは CIELAB 空間の a*b*平面のカラーパッチの
+    RGB値のリストを得る。
+    https://user-images.githubusercontent.com/3609012/75444470-d3bc5600-59a6-11ea-962b-c315648782a9.png
+
+    得られた RGB値のリストは最初のデータが画像左上の緑データ、
+    最後のデータが画像右下の紫データとなるよう既に**並べ替え**が行われている。
+
+    よってパッチをプロットする場合はRGB値リストの先頭から順にデータを取り出し、
+    右下に向かって並べていけば良い。
+    """
+    patch_num = outmost_num ** 2
+    transfer_function = tf.GAMMA24
+    rgb_list = np.ones((patch_num, 3))
+
+    current_num_list = range(1, outmost_num + 1, 2)
+    chroma_list = np.linspace(0, chroma, len(current_num_list))
+    for temp_chroma, current_num in zip(chroma_list, current_num_list):
+        current_patch_num = (current_num - 1) * 4 if current_num > 1 else 1
+        rgb = _calc_rgb_from_same_lstar_radial_data(
+            lstar, temp_chroma, current_num, color_space)
+        rgb = np.reshape(rgb, (current_patch_num, 3))
+        rgb = tf.oetf(rgb, transfer_function)
+        conv_idx = calc_rad_patch_idx2(
+            outmost_num=outmost_num, current_num=current_num)
+        for idx in range(current_patch_num):
+            rgb_list[conv_idx[idx]] = rgb[idx]
+
+    return rgb_list
+
+
+def _plot_same_lstar_radial_color_patch_data(
+        lstar=58, chroma=32.5, outmost_num=9,
+        color_space=BT709_COLOURSPACE,
+        transfer_function=tf.GAMMA24):
+    patch_size = 1080 // outmost_num
+    img = np.ones((1080, 1080, 3)) * 0.0
+    rgb = calc_same_lstar_radial_color_patch_data(
+        lstar=lstar, chroma=chroma, outmost_num=outmost_num,
+        color_space=color_space, transfer_function=transfer_function)
+
+    for idx in range(outmost_num ** 2):
+        h_idx = idx % outmost_num
+        v_idx = idx // outmost_num
+        st_pos = (h_idx * patch_size, v_idx * patch_size)
+        temp_img = np.ones((patch_size, patch_size, 3))\
+            * rgb[idx][np.newaxis, np.newaxis, :]
+        merge(img, temp_img, st_pos)
+
+    cv2.imwrite("hoge2.tiff", np.uint16(np.round(img[:, :, ::-1] * 0xFFFF)))
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
-    # _plot_same_lstar_radial_color_patch_data(
-    #     lstar=4, chroma=5.49421547929920, outmost_num=5,
-    #     color_space=BT709_COLOURSPACE,
-    #     transfer_function=tf.GAMMA24)
+    _plot_same_lstar_radial_color_patch_data(
+        lstar=58, chroma=32.5, outmost_num=7,
+        color_space=BT709_COLOURSPACE,
+        transfer_function=tf.GAMMA24)
     # calc_rad_patch_idx2(outmost_num=9, current_num=7)
-    print(convert_luminance_to_color_value(100, tf.ST2084))
+    # print(convert_luminance_to_color_value(100, tf.ST2084))
