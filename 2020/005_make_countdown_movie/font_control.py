@@ -97,21 +97,23 @@ class TextDrawer():
         self.make_text_img_with_alpha()
         self.composite_text()
 
-    def draw_with_dropped_dot(self):
+    def draw_with_dropped_dot(self, dot_factor=0):
         """
         ドット抜きのテキストを描画する
         """
         self.make_text_img_with_alpha()
-        self.drop_dot()
+        self.drop_dot(dot_factor)
         self.composite_text()
 
-    def drop_dot(self):
+    def drop_dot(self, dot_factor=0):
+        mod_val = 2 ** dot_factor
+        div_val = mod_val // 2
         v_idx_list = np.arange(self.text_img.shape[0])
         h_idx_list = np.arange(self.text_img.shape[1])
-        idx_even = (v_idx_list % 2 == 0)[:, np.newaxis]\
-            * (h_idx_list % 2 == 0)[np.newaxis, :]
-        idx_odd = (v_idx_list % 2 == 1)[:, np.newaxis]\
-            * (h_idx_list % 2 == 1)[np.newaxis, :]
+        idx_even = (v_idx_list % mod_val // div_val == 0)[:, np.newaxis]\
+            * (h_idx_list % mod_val // div_val == 0)[np.newaxis, :]
+        idx_odd = (v_idx_list % mod_val // div_val == 1)[:, np.newaxis]\
+            * (h_idx_list % mod_val // div_val == 1)[np.newaxis, :]
         idx = idx_even | idx_odd
         self.text_img[idx] = 0.0
 

@@ -41,7 +41,9 @@ CHROMA = {'ITU-R BT.709': [0.467893566324554, 0.215787584674837,
 CHROMA_MAX_02_00 = 2.74710773964960
 CHROMA_MAX_03_00 = 4.12066160947440
 CHROMA_MAX_04_00 = 5.49421547929920
-CHROMA_MAX_05_00 = 5.49421547929920
+CHROMA_MAX_05_00 = 6.86776934912400
+CHROMA_MAX_07_00 = 9.35495271612193
+CHROMA_MAX_10_00 = 11.7856223341119
 CHROMA_MAX_58_00 = 33.5436943355494
 
 # # L* = 0.5
@@ -114,6 +116,7 @@ class BackgroundImageCoodinateParam(NamedTuple):
     limited_text_font_size: float = 100
     limited_text_font_path: str = NOTO_SANS_MONO_BLACK
     crosshatch_size: int = 128
+    dot_dropped_text_size: float = 100
 
 
 def convert_from_pillow_to_numpy(img):
@@ -193,6 +196,8 @@ class BackgroundImage():
             = param.limited_text_font_size * scale_factor
         self.limited_text_font_path = param.limited_text_font_path
         self.crosshatch_size = param.crosshatch_size * scale_factor
+        self.dot_dropped_text_size\
+            = param.dot_dropped_text_size * scale_factor
 
     @property
     def sound_text(self):
@@ -461,20 +466,6 @@ class BackgroundImage():
         tpg.merge(self.img, img,
                   pos=(self.width - st_pos_h - width, st_pos_v))
 
-    def draw_low_level_color_patch(self, l_val=10):
-        l, c, h = symbols('l, c, h')
-        # rgb_exprs = lab_to_rgb_expr(
-        #     l, c, h, primaries=RGB_COLOURSPACES[self.gamut].primaries)
-        h_vals = np.linspace(0, 2 * np.pi, 8, endpoint=False)
-        chroma_list = []
-        for h_idx, h_val in enumerate(h_vals):
-            rgb_exprs = lab_to_rgb_expr(
-                l, c, h, primaries=RGB_COLOURSPACES[self.gamut].primaries)
-            # plot_formula_for_specific_lstar(l_val, 0, h_val, h_idx, rgb_exprs, l, c, h)
-            chroma_list.append(solve_chroma(l_val, h_val, rgb_exprs, l, c, h))
-        chroma_list = np.array(chroma_list)
-        print(f"{np.min(chroma_list)}, ", end="")
-
     def draw_crosshatch(self):
         st_pos_v = self.height // 2
         st_pos_h = self.width // 2
@@ -503,6 +494,41 @@ class BackgroundImage():
                 self.img, (pos_h_lower, 0), (pos_h_lower, self.height),
                 self.crosshatch_color, 1)
 
+    def draw_dot_dropped_text(self):
+        # テキストを収める箱を作る
+        text_width, text_height = self.get_text_size(
+            text="R", font_size=self.dot_dropped_text_size,
+            font_path=self.limited_text_font_path)
+        padding = text_height // 4
+        width = text_width * 2 + padding * 3
+        height = text_height * 2 + padding * 3
+        img = np.ones((height, width, 3)) * self.bg_color
+
+        texts = ["W", "R", "G", "M"]
+        text_colors = np.array(
+            [[1.0, 1.0, 1.0], [1.0, 0.0, 0.0],
+             [0.0, 1.0, 0.0], [1.0, 0.0, 1.0]])
+
+        # テキスト描画
+        for idx in range(len(texts)):
+            text = texts[idx]
+            text_color = text_colors[idx]
+            pos_h = (padding + text_width) * (idx % 2)
+            pos_v = (padding + text_height) * (idx // 2)
+            text_drawer = TextDrawer(
+                img, text=text, pos=(pos_h, pos_v),
+                font_color=text_color,
+                font_size=self.dot_dropped_text_size,
+                transfer_functions=self.transfer_function,
+                font_path=self.limited_text_font_path)
+            text_drawer.draw_with_dropped_dot(dot_factor=2)
+
+        # 背景画像と合成
+        tpg.merge(self.img, img, (self.width // 4 * 3, self.height // 2))
+
+    def draw_low_level_color_patch(self):
+        
+
     def make(self):
         """
         背景画像を生成する
@@ -517,7 +543,9 @@ class BackgroundImage():
         self.draw_sound_text(self.sound_text)
         self.draw_information()
         self.draw_limited_range_text()
-        self.draw_low_level_color_patch(l_val=58)
+        self.draw_dot_dropped_text()
+        # self.draw_low_level_color_patch(l_val=7)
+        # self.draw_low_level_color_patch(l_val=10)
 
         # tpg.preview_image(self.img)
 
