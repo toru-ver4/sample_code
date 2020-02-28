@@ -104,7 +104,7 @@ SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
     step_ramp_code_values=([x * 64 for x in range(16)] + [1023]),
     gamut='ITU-R BT.709',
     text_info_luminance=50,
-    crosshatch_luminance=30.0
+    crosshatch_luminance=28.0
 )
 
 
@@ -121,10 +121,10 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     step_ramp_font_offset_y=5,
     sound_text_font_size=200,
     info_text_font_size=25,
-    limited_text_font_size=80,
-    crosshatch_size=64,
-    dot_dropped_text_size=144,
-    lab_patch_each_size=32
+    limited_text_font_size=96,
+    crosshatch_size=128,
+    dot_dropped_text_size=132,
+    lab_patch_each_size=48
 )
 
 
@@ -141,7 +141,7 @@ COUNTDOWN_COORDINATE_PARAM = CountDownImageCoordinateParam(
     radius2=320,
     radius3=313,
     radius4=315,
-    fps=2,
+    fps=24,
     crosscross_line_width=4,
     font_size=570,
     font_path=NOTO_SANS_MONO_EX_BOLD
@@ -177,7 +177,7 @@ def composite_sequence(
         dynamic_range, bg_image.shape[1], bg_image.shape[0],
         count_down_seq_maker.fps, counter)
     print(fname)
-    cv2.imwrite(fname, np.uint16(np.round(img * 0xFFFF)))
+    cv2.imwrite(fname, np.uint16(np.round(img[..., ::-1] * 0xFFFF)))
 
 
 def thread_wrapper_composite_sequence(args):
@@ -223,7 +223,6 @@ def make_sdr_countdown_movie(
         bg_image_maker.sound_text = sound_text
         bg_image_maker.make()
         bg_image_with_sound = bg_image_maker.img.copy()
-        break
 
         args = []
         for frame in range(cd_coordinate_param.fps):
@@ -253,11 +252,9 @@ def make_sdr_hd_sequence():
         bg_coordinate_param=BG_COODINATE_PARAM,
         cd_coordinate_param=COUNTDOWN_COORDINATE_PARAM,
         scale_factor=1)
-    # make_countdown_sound()
+    make_countdown_sound()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     make_sdr_hd_sequence()
-    # make_dot_dropped_character_image("R")
-    # make_low_level_patch()

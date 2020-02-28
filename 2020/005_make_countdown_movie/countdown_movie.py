@@ -20,8 +20,6 @@ import test_pattern_generator2 as tpg
 from font_control import TextDrawer
 from font_control import NOTO_SANS_MONO_BOLD, NOTO_SANS_MONO_BLACK,\
     NOTO_SANS_MONO_REGULAR
-from cielab import solve_chroma, lab_to_rgb_expr
-from cielab import plot_formula_for_specific_lstar
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -200,7 +198,7 @@ class BackgroundImage():
         self.dot_dropped_text_size\
             = param.dot_dropped_text_size * scale_factor
         self.lab_patch_each_size\
-            = lab_patch_each_size * scale_factor
+            = param.lab_patch_each_size * scale_factor
 
     @property
     def sound_text(self):
@@ -454,7 +452,7 @@ class BackgroundImage():
             - height // 2
         tpg.merge(self.img, img, pos=(st_pos_h, st_pos_v))
 
-        # Low Level(64) の描画＆合成
+        # High Level(940) の描画＆合成
         img = np.ones_like(img)
         text_drawer = TextDrawer(
             img, high_text, pos=(padding, padding),
@@ -469,12 +467,16 @@ class BackgroundImage():
         tpg.merge(self.img, img,
                   pos=(self.width - st_pos_h - width, st_pos_v))
 
+        self.limited_range_ed_pos_v = st_pos_v + height
+        self.limited_range_high_center_pos_h\
+            = self.width - st_pos_h - width // 2
+
     def draw_crosshatch(self):
         st_pos_v = self.height // 2
         st_pos_h = self.width // 2
 
         # v-direction loop
-        v_loop_num = (self.height // 2 + 1) // self.crosshatch_size
+        v_loop_num = int((self.height / 2) / self.crosshatch_size + 0.5) + 1
         for v_idx in range(1, v_loop_num):
             pos_v_upper = st_pos_v - v_idx * self.crosshatch_size
             pos_v_lower = st_pos_v + v_idx * self.crosshatch_size
@@ -486,7 +488,7 @@ class BackgroundImage():
                 self.crosshatch_color, 1)
 
         # h-direction loop
-        h_loop_num = (self.width // 2 + 1) // self.crosshatch_size
+        h_loop_num = int((self.width / 2) / self.crosshatch_size + 0.5)
         for h_idx in range(1, h_loop_num):
             pos_h_upper = st_pos_h - h_idx * self.crosshatch_size
             pos_h_lower = st_pos_h + h_idx * self.crosshatch_size
@@ -502,10 +504,10 @@ class BackgroundImage():
         text_width, text_height = self.get_text_size(
             text="R", font_size=self.dot_dropped_text_size,
             font_path=self.limited_text_font_path)
-        padding = text_height // 4
+        padding = text_height // 6
         width = text_width * 2 + padding * 3
         height = text_height * 2 + padding * 3
-        img = np.ones((height, width, 3)) * self.bg_color
+        img = np.ones((height, width, 3)) * self.obj_outline_color
 
         texts = ["W", "R", "G", "M"]
         text_colors = np.array(
@@ -516,8 +518,8 @@ class BackgroundImage():
         for idx in range(len(texts)):
             text = texts[idx]
             text_color = text_colors[idx]
-            pos_h = (padding + text_width) * (idx % 2)
-            pos_v = (padding + text_height) * (idx // 2)
+            pos_h = padding + (padding + text_width) * (idx % 2)
+            pos_v = padding + (padding + text_height) * (idx // 2)
             text_drawer = TextDrawer(
                 img, text=text, pos=(pos_h, pos_v),
                 font_color=text_color,
@@ -527,17 +529,36 @@ class BackgroundImage():
             text_drawer.draw_with_dropped_dot(dot_factor=2)
 
         # 背景画像と合成
-        tpg.merge(self.img, img, (self.width // 4 * 3, self.height // 2))
+        pos_h = self.limited_range_high_center_pos_h - width // 2
+        temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
+        pos_v = self.limited_range_ed_pos_v + temp - height // 2
+        tpg.merge(self.img, img, ((pos_h & 0xFFFE) + 1, (pos_v & 0xFFFE) + 1))
 
     def draw_low_level_color_patch(self):
         outmost_num = 5
         total_width = self.lab_patch_each_size * outmost_num
-        total_height = total_height
+        total_height = total_width
         img = np.zeros((total_height, total_width, 3))
         rgb = tpg.calc_same_lstar_radial_color_patch_data(
-            lstar=5.0, chroma=CHROMA_MAX_05_00, outmost_num=outmost_num,
+            lstar=7.0, chroma=CHROMA_MAX_07_00, outmost_num=outmost_num,
             color_space=RGB_COLOURSPACES[self.gamut],
             transfer_function=self.transfer_function)
+
+        for idx in range(outmost_num ** 2):
+            h_idx = idx % outmost_num
+            v_idx = idx // outmost_num
+            st_pos = (h_idx * self.lab_patch_each_size,
+                      v_idx * self.lab_patch_each_size)
+            temp_img = np.ones((self.lab_patch_each_size,
+                                self.lab_patch_each_size, 3))\
+                * rgb[idx][np.newaxis, np.newaxis, :]
+            tpg.merge(img, temp_img, st_pos)
+
+        pos_h = self.ramp_pos_h // 2 - total_width // 2
+        temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
+        pos_v = self.limited_range_ed_pos_v + temp - total_height // 2
+        pos = (pos_h, pos_v)
+        tpg.merge(self.img, img, pos)
 
     def make(self):
         """
@@ -554,7 +575,7 @@ class BackgroundImage():
         self.draw_information()
         self.draw_limited_range_text()
         self.draw_dot_dropped_text()
-        # self.draw_low_level_color_patch(l_val=7)
+        self.draw_low_level_color_patch()
         # self.draw_low_level_color_patch(l_val=10)
 
         # tpg.preview_image(self.img)
