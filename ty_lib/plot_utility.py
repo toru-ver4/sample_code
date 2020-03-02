@@ -167,7 +167,10 @@ def plot_1_graph(fontsize=20, **kwargs):
     # ------------------------------------
     fig.tight_layout()
 
-    return ax1
+    if 'return_figure' in kwargs and kwargs['return_figure']:
+        return fig, ax1
+    else:
+        return ax1
 
 
 def plot_1_graph_ret_figure(fontsize=20, **kwargs):
