@@ -135,7 +135,9 @@ def solve_chroma(
     引数で与えられた L*, H に対する Chroma値を算出する。
     ```make_chroma_array``` のループからコールされることが前提のコード。
     """
-    if l_idx == l_sample_num - 1:  # L=100 の Chroma は 0 なので計算しない
+    if l_sample_num == 0:  # 特定の ab平面計算用の引数
+        pass
+    elif l_idx == l_sample_num - 1:  # L=100 の Chroma は 0 なので計算しない
         return 0
     elif l_idx == 0:   # L=0 の Chroma は 0 なので計算しない
         return 0
@@ -170,12 +172,8 @@ def solve_chroma(
     chroma_list = np.array(temp_solution)
     chroma = np.min(chroma_list[chroma_list >= 0.0])
 
-    # s_idx = h_sample_num * l_idx + h_idx
-    # shared_array[s_idx] = chroma
     print("L*={:.2f}, H={:.2f}, C={:.3f}".format(
             l_val, h_val / (2 * np.pi) * 360, chroma))
-    # end = time.time()
-    # print("each_time={}[s]".format(end-start))
     return chroma
 
 
