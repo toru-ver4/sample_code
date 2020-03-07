@@ -145,3 +145,4 @@ venv.bak/
 2020/006_make_sound_file/**/*.aac
 **/*.ttf
 **/*.otf
+2020/009_add_bt709_color_space_to_research_cielab_py/ab_plane_seq/*.png

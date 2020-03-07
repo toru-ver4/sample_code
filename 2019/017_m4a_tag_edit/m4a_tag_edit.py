@@ -37,6 +37,9 @@ def replace_name(filename):
 def main_func():
     dir = "./m4a_files"
     for filename in os.listdir(dir):
+        if filename == "desktop.ini":
+            continue
+        print(filename)
         replace_name(os.path.join(dir, filename))
 
 

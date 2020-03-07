@@ -27,6 +27,7 @@ from scipy import linalg
 
 # Define
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
+D65 = ILLUMINANTS[CMFS_NAME]['D65']
 
 # NAME
 BT709 = 'ITU-R BT.709'
@@ -177,6 +178,10 @@ def ocio_matrix_transform_mtx(src_name, dst_name):
     mtx44 = mtx44_from_mtx33(mtx33)
 
     return mtx44.flatten().tolist()
+
+
+def get_primaries(color_space_name=BT709):
+    return RGB_COLOURSPACES[color_space_name].primaries
 
 
 if __name__ == '__main__':
