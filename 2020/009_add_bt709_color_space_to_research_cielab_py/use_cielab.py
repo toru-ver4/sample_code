@@ -119,12 +119,27 @@ def make_bt2020_cielab_outline_data(
     np.save(fname, chroma)
 
 
-def make_ab_plane_boundary_data(lstar=50, color_space=cs.BT709):
+def make_ab_plane_boundary_data(
+        lstar=50, h_sample_num=256, color_space=cs.BT709):
     l, c, h = symbols('l, c, h')
     primaries = cs.get_primaries(color_space)
     rgb_exprs = cl.lab_to_rgb_expr(l, c, h, primaries=primaries)
-    l_vals = np.linspace(0, 100, l_sample_num)
+    l_val = lstar
     h_vals = np.linspace(0, 2*np.pi, h_sample_num)
+    args = []
+    for h_idx, h_val in enumerate(h_vals):
+        d = dict(
+            l_val=l_val, l_idx=0, h_val=h_val, h_idx=h_idx,
+            rgb_exprs=rgb_exprs, l=l, c=c, h=h,
+            l_sample_num=0, h_sample_num=h_sample_num)
+        args.append(d)
+    with Pool(cpu_count()) as pool:
+        pool.map(solve_chroma_wrapper, args)
+
+    chroma = np.array(shared_array[:h_sample_num])
+    fname = f"Chroma_L_{lstar}_BT709_h_{h_sample_num}.npy"
+    np.save(fname, chroma)
+    return chroma
 
 
 def main_func():
@@ -142,13 +157,21 @@ def main_func():
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # main_func()
+    # make_ab_plane_boundary_data()
+
     # primaries = cs.get_primaries(cs.BT709)
     # print(primaries)
-    l_sample_num = 5
-    h_sample_num = 32
-    fname = f"Chroma_BT709_l_{l_sample_num}_h_{h_sample_num}.npy"
+    # l_sample_num = 5
+    # h_sample_num = 32
+    # fname = f"Chroma_BT709_l_{l_sample_num}_h_{h_sample_num}.npy"
+    # chroma = np.load(fname)
+    # plot_and_save_ab_plane(1, chroma[1], l_sample_num, h_sample_num)
+    # fname = f"Chroma_BT2020_l_{l_sample_num}_h_{h_sample_num}.npy"
+    # chroma = np.load(fname)
+    # plot_and_save_ab_plane(1, chroma[1], l_sample_num, h_sample_num)
+
+    lstar = 50
+    h_sample_num = 256
+    fname = f"Chroma_L_{lstar}_BT709_h_{h_sample_num}.npy"
     chroma = np.load(fname)
-    plot_and_save_ab_plane(1, chroma[1], l_sample_num, h_sample_num)
-    fname = f"Chroma_BT2020_l_{l_sample_num}_h_{h_sample_num}.npy"
-    chroma = np.load(fname)
-    plot_and_save_ab_plane(1, chroma[1], l_sample_num, h_sample_num)
+    plot_and_save_ab_plane(1, chroma, 0, h_sample_num)
