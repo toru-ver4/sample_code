@@ -1387,6 +1387,113 @@ def _plot_same_lstar_radial_color_patch_data(
     cv2.imwrite("hoge2.tiff", np.uint16(np.round(img[:, :, ::-1] * 0xFFFF)))
 
 
+def get_accelerated_x_1x(sample_num=64):
+    """
+    単調増加ではなく、加速度が 0→1→0 となるような x を作る
+
+    Parameters
+    ----------
+    sample_num : int
+        the number of the sample.
+
+    Returns
+    -------
+    array_like
+        accelerated value list
+
+    Examples
+    --------
+    >>> x0 = np.linspace(0, 1, 8)
+    >>> x1 = get_accelerated_x_1x(8)
+    >>> print(x0)
+    >>> [ 0.  0.142  0.285  0.428  0.571  0.714  0.857  1. ]
+    >>> print(x1)
+    >>> [ 0.  0.049  0.188  0.388  0.611  0.811  0.950  1. ]
+    """
+    rad = np.linspace(-0.5 * np.pi, 0.5 * np.pi, sample_num)
+    x = (np.sin(rad) + 1) / 2
+
+    return x
+
+
+def get_accelerated_x_2x(sample_num=64):
+    """
+    単調増加ではなく、加速度が 0→1→0 となるような x を作る。
+    加速度が `get_accelerated_x_1x` の2倍！！
+
+    Parameters
+    ----------
+    sample_num : int
+        the number of the sample.
+
+    Returns
+    -------
+    array_like
+        accelerated value list
+
+    Examples
+    --------
+    >>> x0 = np.linspace(0, 1, 8)
+    >>> x2 = get_accelerated_x_2x(8)
+    >>> print(x0)
+    >>> [ 0.  0.142  0.285  0.428  0.571  0.714  0.857  1. ]
+    >>> print(x2)
+    >>> [ 0.  0.006  0.084  0.328  0.671  0.915  0.993  1. ]
+    """
+    rad = np.linspace(-0.5 * np.pi, 0.5 * np.pi, sample_num)
+    rad = np.sin(rad) * 0.5 * np.pi
+    x = (np.sin(rad) + 1) / 2
+
+    return x
+
+
+def get_accelerated_x_4x(sample_num=64):
+    """
+    単調増加ではなく、加速度が 0→1→0 となるような x を作る。
+    加速度が `get_accelerated_x_1x` の4倍！！
+
+    Parameters
+    ----------
+    sample_num : int
+        the number of the sample.
+
+    Returns
+    -------
+    array_like
+        accelerated value list
+    """
+    rad = np.linspace(-0.5 * np.pi, 0.5 * np.pi, sample_num)
+    rad = np.sin(rad) * 0.5 * np.pi
+    rad = np.sin(rad) * 0.5 * np.pi
+    x = (np.sin(rad) + 1) / 2
+
+    return x
+
+
+def get_accelerated_x_8x(sample_num=64):
+    """
+    単調増加ではなく、加速度が 0→1→0 となるような x を作る。
+    加速度が `get_accelerated_x_1x` の4倍！！
+
+    Parameters
+    ----------
+    sample_num : int
+        the number of the sample.
+
+    Returns
+    -------
+    array_like
+        accelerated value list
+    """
+    rad = np.linspace(-0.5 * np.pi, 0.5 * np.pi, sample_num)
+    rad = np.sin(rad) * 0.5 * np.pi
+    rad = np.sin(rad) * 0.5 * np.pi
+    rad = np.sin(rad) * 0.5 * np.pi
+    x = (np.sin(rad) + 1) / 2
+
+    return x
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))

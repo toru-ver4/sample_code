@@ -147,3 +147,4 @@ venv.bak/
 **/*.otf
 2020/009_add_bt709_color_space_to_research_cielab_py/ab_plane_seq/*.png
 2020/010_tp_for_backlight_block_number/sequence/*.png
+2020/011_make_reverse_checkerboard/sequence/*.tiff
