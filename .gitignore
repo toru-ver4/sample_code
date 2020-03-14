@@ -141,6 +141,7 @@ venv.bak/
 2020/003_make_moving_ball_class/**/*.mov
 2020/004_make_bright_point_pattern/img/*.tiff
 2020/005_make_countdown_movie/**/*.tiff
+2020/005_make_countdown_movie/**/*.png
 2020/006_make_sound_file/**/*.wav
 2020/006_make_sound_file/**/*.aac
 **/*.ttf

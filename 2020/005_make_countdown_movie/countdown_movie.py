@@ -293,8 +293,9 @@ class BackgroundImage():
             pos=(self.step_ramp_font_offset_x, self.step_ramp_font_offset_y),
             font_color=(fg_color, fg_color, fg_color),
             font_size=self.step_ramp_font_size,
-            transfer_functions=self.transfer_function,
-            font_path=NOTO_SANS_MONO_BOLD)
+            bg_transfer_functions=self.transfer_function,
+            fg_transfer_functions=tf.GAMMA24,
+            font_path=NOTO_SANS_MONO_BLACK)
         text_drawer.draw()
 
     def get_text_size(
@@ -312,7 +313,7 @@ class BackgroundImage():
             dummy_img, text=text, pos=(0, 0),
             font_color=self.fg_color/0xFF,
             font_size=font_size,
-            transfer_functions=self.transfer_function,
+            bg_transfer_functions=self.transfer_function,
             font_path=font_path)
         text_drawer.draw()
         return text_drawer.get_text_size()
@@ -342,7 +343,8 @@ class BackgroundImage():
                 self.img, text, pos=upper_left,
                 font_color=self.sound_text_color,
                 font_size=self.sound_text_font_size,
-                transfer_functions=self.transfer_function,
+                fg_transfer_functions=self.transfer_function,
+                bg_transfer_functions=self.transfer_function,
                 font_path=self.sound_text_font_path)
             text_drawer.draw()
 
@@ -350,7 +352,8 @@ class BackgroundImage():
                 self.img, text, pos=lower_left,
                 font_color=self.sound_text_color,
                 font_size=self.sound_text_font_size,
-                transfer_functions=self.transfer_function,
+                fg_transfer_functions=self.transfer_function,
+                bg_transfer_functions=self.transfer_function,
                 font_path=self.sound_text_font_path)
             text_drawer.draw()
 
@@ -359,7 +362,8 @@ class BackgroundImage():
                 self.img, text, pos=upper_right,
                 font_color=self.sound_text_color,
                 font_size=self.sound_text_font_size,
-                transfer_functions=self.transfer_function,
+                fg_transfer_functions=self.transfer_function,
+                bg_transfer_functions=self.transfer_function,
                 font_path=self.sound_text_font_path)
             text_drawer.draw()
 
@@ -367,7 +371,8 @@ class BackgroundImage():
                 self.img, text, pos=lower_right,
                 font_color=self.sound_text_color,
                 font_size=self.sound_text_font_size,
-                transfer_functions=self.transfer_function,
+                fg_transfer_functions=self.transfer_function,
+                bg_transfer_functions=self.transfer_function,
                 font_path=self.sound_text_font_path)
             text_drawer.draw()
 
@@ -390,7 +395,8 @@ class BackgroundImage():
             self.img, text, pos=(st_pos_h, st_pos_v),
             font_color=self.text_info_color,
             font_size=self.into_text_font_size,
-            transfer_functions=self.transfer_function,
+            fg_transfer_functions=self.transfer_function,
+            bg_transfer_functions=self.transfer_function,
             font_path=self.info_text_font_path)
         text_drawer.draw()
 
@@ -410,7 +416,8 @@ class BackgroundImage():
             self.img, text, pos=(st_pos_h, st_pos_v),
             font_color=self.text_info_color,
             font_size=self.into_text_font_size,
-            transfer_functions=self.transfer_function,
+            fg_transfer_functions=self.transfer_function,
+            bg_transfer_functions=self.transfer_function,
             font_path=self.info_text_font_path)
         text_drawer.draw()
 
@@ -444,7 +451,8 @@ class BackgroundImage():
             img, low_text, pos=(padding, padding),
             font_color=low_text_color,
             font_size=self.limited_text_font_size,
-            transfer_functions=self.transfer_function,
+            fg_transfer_functions=self.transfer_function,
+            bg_transfer_functions=self.transfer_function,
             font_path=self.limited_text_font_path)
         text_drawer.draw()
         st_pos_h = self.ramp_pos_h // 2 - width // 2
@@ -458,7 +466,8 @@ class BackgroundImage():
             img, high_text, pos=(padding, padding),
             font_color=high_text_color,
             font_size=self.limited_text_font_size,
-            transfer_functions=self.transfer_function,
+            fg_transfer_functions=self.transfer_function,
+            bg_transfer_functions=self.transfer_function,
             font_path=self.limited_text_font_path)
         text_drawer.draw()
         st_pos_h = self.ramp_pos_h // 2 - width // 2
@@ -524,7 +533,8 @@ class BackgroundImage():
                 img, text=text, pos=(pos_h, pos_v),
                 font_color=text_color,
                 font_size=self.dot_dropped_text_size,
-                transfer_functions=self.transfer_function,
+                bg_transfer_functions=self.transfer_function,
+                fg_transfer_functions=self.transfer_function,
                 font_path=self.limited_text_font_path)
             text_drawer.draw_with_dropped_dot(dot_factor=2)
 
@@ -657,7 +667,8 @@ class CountDownSequence():
             dummy_img, text=text, pos=(0, 0),
             font_color=self.fg_color/0xFF,
             font_size=self.font_size,
-            transfer_functions=self.transfer_function,
+            fg_transfer_functions=self.transfer_function,
+            bg_transfer_functions=self.transfer_function,
             font_path=self.font_path)
         text_drawer.draw()
         text_width, text_height = text_drawer.get_text_size()
@@ -705,7 +716,8 @@ class CountDownSequence():
             img / 0xFF, text=str(sec), pos=self.font_pos,
             font_color=self.fg_color / 0xFF,
             font_size=self.font_size,
-            transfer_functions=self.transfer_function,
+            bg_transfer_functions=self.transfer_function,
+            fg_transfer_functions=self.transfer_function,
             font_path=self.font_path)
         text_drawer.draw()
         return text_drawer.get_img()
