@@ -108,6 +108,19 @@ SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
 )
 
 
+HDR_BG_COLOR_PARAM = BackgroundImageColorParam(
+    transfer_function=tf.ST2084,
+    bg_luminance=18.0,
+    fg_luminance=90.0,
+    sound_lumiannce=22.0,
+    object_outline_luminance=1.0,
+    step_ramp_code_values=([x * 64 for x in range(16)] + [1023]),
+    gamut='ITU-R BT.2020',
+    text_info_luminance=50,
+    crosshatch_luminance=28.0
+)
+
+
 BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     width=1920,
     height=1080,
@@ -116,7 +129,7 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     ramp_pos_v_from_center=400,
     ramp_height=84,
     ramp_outline_width=4,
-    step_ramp_font_size=24,
+    step_ramp_font_size=20,
     step_ramp_font_offset_x=5,
     step_ramp_font_offset_y=5,
     sound_text_font_size=200,
@@ -136,12 +149,31 @@ SDR_COUNTDOWN_COLOR_PARAM = CountDownImageColorParam(
 )
 
 
-COUNTDOWN_COORDINATE_PARAM = CountDownImageCoordinateParam(
+HDR_COUNTDOWN_COLOR_PARAM = CountDownImageColorParam(
+    transfer_function=tf.ST2084,
+    bg_luminance=18.0,
+    fg_luminance=60.0,
+    object_outline_luminance=1.0,
+)
+
+
+COUNTDOWN_COORDINATE_PARAM_24P = CountDownImageCoordinateParam(
     radius1=360,
     radius2=320,
     radius3=313,
     radius4=315,
     fps=24,
+    crosscross_line_width=4,
+    font_size=570,
+    font_path=NOTO_SANS_MONO_EX_BOLD
+)
+
+COUNTDOWN_COORDINATE_PARAM_60P = CountDownImageCoordinateParam(
+    radius1=360,
+    radius2=320,
+    radius3=313,
+    radius4=315,
+    fps=60,
     crosscross_line_width=4,
     font_size=570,
     font_path=NOTO_SANS_MONO_EX_BOLD
@@ -173,7 +205,7 @@ def composite_sequence(
             img = bg_image.copy()
         else:
             img = np.zeros_like(bg_image)
-    fname = "./movie_seq/movie_{:}_{:}x{:}_{:}fps_{:04d}.tiff".format(
+    fname = "./movie_seq/movie_{:}_{:}x{:}_{:}fps_{:04d}.png".format(
         dynamic_range, bg_image.shape[1], bg_image.shape[0],
         count_down_seq_maker.fps, counter)
     print(fname)
@@ -184,7 +216,7 @@ def thread_wrapper_composite_sequence(args):
     composite_sequence(**args)
 
 
-def make_sdr_countdown_movie(
+def make_countdown_movie(
         bg_color_param, bg_coordinate_param,
         cd_color_param, cd_coordinate_param,
         dynamic_range='sdr', scale_factor=1):
@@ -193,7 +225,7 @@ def make_sdr_countdown_movie(
         = f"./bg_img/backgraound_{dynamic_range}_{{}}_{{}}x{{}}.tiff"
     bg_image_maker = BackgroundImage(
         color_param=bg_color_param, coordinate_param=bg_coordinate_param,
-        fname_base=bg_filename_base, dynamic_range='sdr',
+        fname_base=bg_filename_base, dynamic_range=dynamic_range,
         scale_factor=scale_factor, fps=cd_coordinate_param.fps,
         revision=REVISION)
 
@@ -204,7 +236,7 @@ def make_sdr_countdown_movie(
         color_param=cd_color_param,
         coordinate_param=cd_coordinate_param,
         fname_base=cd_filename_base,
-        dynamic_range='sdr',
+        dynamic_range=dynamic_range,
         scale_factor=scale_factor)
 
     # get merge pos
@@ -244,17 +276,28 @@ def make_sdr_countdown_movie(
             pool.map(thread_wrapper_composite_sequence, args)
 
 
-def make_sdr_hd_sequence():
-    make_sdr_countdown_movie(
-        bg_color_param=SDR_BG_COLOR_PARAM,
-        cd_color_param=SDR_COUNTDOWN_COLOR_PARAM,
-        dynamic_range='SDR',
-        bg_coordinate_param=BG_COODINATE_PARAM,
-        cd_coordinate_param=COUNTDOWN_COORDINATE_PARAM,
-        scale_factor=1)
-    make_countdown_sound()
+def make_sequence():
+    cd_coordinate_param_list = [
+        COUNTDOWN_COORDINATE_PARAM_24P, COUNTDOWN_COORDINATE_PARAM_60P]
+    for scale_factor in [1, 2]:
+        for cd_coordinate_param in cd_coordinate_param_list:
+            make_countdown_movie(
+                bg_color_param=SDR_BG_COLOR_PARAM,
+                cd_color_param=SDR_COUNTDOWN_COLOR_PARAM,
+                dynamic_range='SDR',
+                bg_coordinate_param=BG_COODINATE_PARAM,
+                cd_coordinate_param=cd_coordinate_param,
+                scale_factor=scale_factor)
+            make_countdown_movie(
+                bg_color_param=HDR_BG_COLOR_PARAM,
+                cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
+                dynamic_range='HDR',
+                bg_coordinate_param=BG_COODINATE_PARAM,
+                cd_coordinate_param=cd_coordinate_param,
+                scale_factor=scale_factor)
+        make_countdown_sound()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    make_sdr_hd_sequence()
+    make_sequence()

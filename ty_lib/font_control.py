@@ -43,7 +43,8 @@ HELVETICA_DISPLAY_BLACK\
 class TextDrawer():
     def __init__(
             self, img, text="hoge", pos=(0, 0), font_color=(1.0, 1.0, 0.0),
-            font_size=30, transfer_functions=tf.SRGB,
+            font_size=30, bg_transfer_functions=tf.SRGB,
+            fg_transfer_functions=tf.SRGB,
             font_path=NOTO_SANS_MONO_BOLD):
         """
         テキストをプロットするクラスのコンストラクタ
@@ -51,7 +52,7 @@ class TextDrawer():
         Parameters
         ----------
         img : array_like(float, gamma corrected)
-            image data.
+            background image data.
         text : strings
             text.
         pos : list or tuple(int)
@@ -60,8 +61,10 @@ class TextDrawer():
             font color.
         font_size : int
             font size
-        transfer_function : strings
-            transfer function
+        bg_transfer_functions : strings
+            transfer function of the background image data
+        fg_transfer_functions : strings
+            transfer function of the text data
 
         Returns
         -------
@@ -74,11 +77,15 @@ class TextDrawer():
         >>> text_drawer = TextDrawer(
         >>>     dst_img, text="天上天下唯我独尊", pos=(200, 50),
         >>>     font_color=(0.5, 0.5, 0.5), font_size=30,
-        >>>     transfer_functions=tf.SRGB)
+        >>>     bg_transfer_functions=tf.SRGB)
         >>> text_drawer.draw()
         >>> img = text_drawer.get_img()
         >>> cv2.imwrite("hoge.png", np.uint8(np.round(img[:, :, ::-1] * 0xFF)))
         """
+        # パラメータチェック
+        if tf.PEAK_LUMINANCE[fg_transfer_functions] > tf.PEAK_LUMINANCE[bg_transfer_functions]:
+            raise ValueError("fg_transfer_functions should be large luminance")
+
         self.img = img
         self.text = text
         self.pos = pos
@@ -87,7 +94,8 @@ class TextDrawer():
             np.uint8(np.round(np.append(np.array(font_color), 1.0) * 0xFF)))
         self.bg_color = tuple(
             np.array([0x00, 0x00, 0x00, 0x00], dtype=np.uint8))
-        self.tf = transfer_functions
+        self.bg_tf = bg_transfer_functions
+        self.fg_tf = fg_transfer_functions
         self.font_path = font_path
 
     def draw(self):
@@ -143,17 +151,18 @@ class TextDrawer():
         text_height = self.text_img.shape[0]
         composite_area_img = self.img[self.pos[1]:self.pos[1]+text_height,
                                       self.pos[0]:self.pos[0]+text_width]
-        bg_img_linear = tf.eotf_to_luminance(composite_area_img, self.tf)
-        text_img_linear = tf.eotf_to_luminance(self.text_img, tf.SRGB)
+        bg_img_linear = tf.eotf_to_luminance(composite_area_img, self.bg_tf)
+        text_img_linear = tf.eotf_to_luminance(self.text_img, self.fg_tf)
 
-        alpha = text_img_linear[:, :, 3:] / tf.PEAK_LUMINANCE[tf.SRGB]
+        alpha = text_img_linear[:, :, 3:] / tf.PEAK_LUMINANCE[self.fg_tf]
 
         a_idx = (alpha > 0)[..., 0]
 
         bg_img_linear[a_idx] = (1 - alpha[a_idx])\
             * bg_img_linear[a_idx] + text_img_linear[a_idx, :-1]
-        bg_img_linear = np.clip(bg_img_linear, 0.0, tf.PEAK_LUMINANCE[self.tf])
-        bg_img_linear = tf.oetf_from_luminance(bg_img_linear, self.tf)
+        bg_img_linear = np.clip(
+            bg_img_linear, 0.0, tf.PEAK_LUMINANCE[self.bg_tf])
+        bg_img_linear = tf.oetf_from_luminance(bg_img_linear, self.bg_tf)
         self.img[self.pos[1]:self.pos[1]+text_height,
                  self.pos[0]:self.pos[0]+text_width] = bg_img_linear
 
@@ -167,13 +176,51 @@ class TextDrawer():
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-    # example
+    # example 1 SDR text on SDR background
     dst_img = np.ones((540, 960, 3)) * np.array([0.3, 0.3, 0.1])
     text_drawer = TextDrawer(
         dst_img, text="天上天下唯我独尊", pos=(200, 50),
         font_color=(0.5, 0.5, 0.5), font_size=40,
-        transfer_functions=tf.SRGB)
+        bg_transfer_functions=tf.SRGB,
+        fg_transfer_functions=tf.SRGB)
     text_drawer.draw()
     img = text_drawer.get_img()
     cv2.imwrite(
-        "./blog_img/hoge.png", np.uint8(np.round(img[:, :, ::-1] * 0xFF)))
+        "sdr_text_on_sdr_image.png",
+        np.uint8(np.round(img[:, :, ::-1] * 0xFF)))
+
+    # example 2 SDR text on HDR background
+    nits100_st2084 = tf.oetf_from_luminance(100, tf.ST2084)
+    nits50_gm24 = tf.oetf_from_luminance(50, tf.GAMMA24)
+    dst_img = np.ones((540, 960, 3))\
+        * np.array([nits100_st2084, nits100_st2084, nits100_st2084])
+    text_drawer = TextDrawer(
+        dst_img, text="天上天下唯我独尊", pos=(200, 50),
+        font_color=(nits50_gm24, nits50_gm24, nits50_gm24), font_size=40,
+        bg_transfer_functions=tf.ST2084,
+        fg_transfer_functions=tf.GAMMA24)
+    text_drawer.draw()
+    img = text_drawer.get_img()
+    cv2.imwrite(
+        "sdr_text_on_hdr_image.png",
+        np.uint8(np.round(img[:, :, ::-1] * 0xFF)))
+    print(tf.oetf_from_luminance(100, tf.ST2084) * 0xFF)
+    print(tf.oetf_from_luminance(50, tf.ST2084) * 0xFF)
+
+    # example 3 HDR text on HDR background
+    nits100_st2084 = tf.oetf_from_luminance(100, tf.ST2084)
+    nits700_st2084 = tf.oetf_from_luminance(700, tf.ST2084)
+    dst_img = np.ones((540, 960, 3))\
+        * np.array([nits100_st2084, nits100_st2084, nits100_st2084])
+    text_drawer = TextDrawer(
+        dst_img, text="天上天下唯我独尊", pos=(200, 50),
+        font_color=(nits700_st2084, 0, nits700_st2084), font_size=40,
+        bg_transfer_functions=tf.ST2084,
+        fg_transfer_functions=tf.ST2084)
+    text_drawer.draw()
+    img = text_drawer.get_img()
+    cv2.imwrite(
+        "hdr_text_on_hdr_image.png",
+        np.uint8(np.round(img[:, :, ::-1] * 0xFF)))
+    print(tf.oetf_from_luminance(100, tf.ST2084) * 0xFF)
+    print(tf.oetf_from_luminance(700, tf.ST2084) * 0xFF)
