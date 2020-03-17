@@ -1,13 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-CIELAB 
-==============
-
-## 方針
-
-HUE を求める。HUE を360 で割って正規化。
-roundup(HUE * sample_num), rounddown(HUE * sample_num) で補間対象のindexが求まる？
-L* 方向も同様で
+CIELAB の Gamut Boundary データの補間
+=====================================
 
 """
 
@@ -98,54 +92,78 @@ def bilinear_interpolation(lh, lut2d):
 
     Examples
     --------
-
+    >>> # 256x256 は密集すぎなのでスカスカな LUT を作成
+    >>> chroma_lut = np.load("./boundary_data/Chroma_BT709_l_256_h_256.npy")
+    >>> h_idx = np.arange(0, 256, 8)
+    >>> l_idx = np.arange(0, 256, 64)
+    >>> sparse_lut = chroma_lut[l_idx][:, h_idx]
+    >>>
+    >>> l_sample_num, h_sample_num = sparse_lut.shape
+    >>>
+    >>> # 補間の入力データ lh を作成
+    >>> l_val = 40
+    >>> target_h_num = 256
+    >>> ll = l_val * np.ones(target_h_num)
+    >>> hue = np.linspace(0, 2 * np.pi, target_h_num)
+    >>> lh = np.dstack((ll, hue))
+    >>>
+    >>> # 補間実行
+    >>> chroma_interpolation = bilinear_interpolation(lh, sparse_lut)
     """
     l_sample_num = lut2d.shape[0]
     h_sample_num = lut2d.shape[1]
     indices, ratios = calc_bilinear_sample_data(
         lh, l_sample_num, h_sample_num)
+    l_hi_idx = indices[..., 0]
+    l_lo_idx = indices[..., 1]
+    h_hi_idx = indices[..., 2]
+    h_lo_idx = indices[..., 3]
+    l_ratio = ratios[..., 0]
+    h_ratio = ratios[..., 1]
 
     # interpolation in Hue direction
-    temp_hi = lut2d[indices[..., 0], indices[..., 2]] * (1 - ratios[..., 1])\
-        + lut2d[indices[..., 0], indices[..., 3]] * ratios[..., 1]
-    temp_lo = lut2d[indices[..., 1], indices[..., 2]] * (1 - ratios[..., 1])\
-        + lut2d[indices[..., 1], indices[..., 3]] * ratios[..., 1]
+    temp_hi = lut2d[l_hi_idx, h_hi_idx] * (1 - h_ratio)\
+        + lut2d[l_hi_idx, h_lo_idx] * h_ratio
+    temp_lo = lut2d[l_lo_idx, h_hi_idx] * (1 - h_ratio)\
+        + lut2d[l_lo_idx, h_lo_idx] * h_ratio
 
     # interpolation in Luminance direction
-    result = temp_hi * (1 - ratios[..., 0]) + temp_lo * ratios[..., 0]
+    result = temp_hi * (1 - l_ratio) + temp_lo * l_ratio
 
     return result[0]
 
 
 def check_interpolation():
     """"""
+    # 256x256 は密集すぎなのでスカスカな LUT を作成
     chroma_lut = np.load("./boundary_data/Chroma_BT709_l_256_h_256.npy")
     h_idx = np.arange(0, 256, 8)
     l_idx = np.arange(0, 256, 64)
-    chroma2 = chroma_lut[l_idx][:, h_idx]
-    print(chroma2.shape)
+    sparse_lut = chroma_lut[l_idx][:, h_idx]
 
-    l_sample_num, h_sample_num = chroma2.shape
+    l_sample_num, h_sample_num = sparse_lut.shape
 
+    # 補間の入力データ lh を作成
     l_val = 40
-    hhh_num = 256
-    ll = l_val * np.ones(hhh_num)
-    hue = np.linspace(0, 2 * np.pi, hhh_num)
+    target_h_num = 256
+    ll = l_val * np.ones(target_h_num)
+    hue = np.linspace(0, 2 * np.pi, target_h_num)
     lh = np.dstack((ll, hue))
-    chroma_interpolation = bilinear_interpolation(lh, chroma2)
-    print(chroma_interpolation.shape)
 
+    # 補間実行
+    chroma_interpolation = bilinear_interpolation(lh, sparse_lut)
+
+    # 補間結果のプロット
     l_temp = l_val / 100 * (l_sample_num - 1)
     l_lo_idx = int(np.floor(l_temp))
     l_hi_idx = int(np.ceil(l_temp))
-    print(l_temp, l_lo_idx, l_hi_idx)
 
     rad = np.linspace(0, 2 * np.pi, h_sample_num)
-    rad2 = np.linspace(0, 2 * np.pi, hhh_num)
-    a_lo = chroma2[l_lo_idx] * np.cos(rad)
-    b_lo = chroma2[l_lo_idx] * np.sin(rad)
-    a_hi = chroma2[l_hi_idx] * np.cos(rad)
-    b_hi = chroma2[l_hi_idx] * np.sin(rad)
+    rad2 = np.linspace(0, 2 * np.pi, target_h_num)
+    a_lo = sparse_lut[l_lo_idx] * np.cos(rad)
+    b_lo = sparse_lut[l_lo_idx] * np.sin(rad)
+    a_hi = sparse_lut[l_hi_idx] * np.cos(rad)
+    b_hi = sparse_lut[l_hi_idx] * np.sin(rad)
     a = chroma_interpolation * np.cos(rad2)
     b = chroma_interpolation * np.sin(rad2)
     ax1 = pu.plot_1_graph(
@@ -168,8 +186,6 @@ def check_interpolation():
     ax1.plot(a_hi, b_hi, 'o', label="High")
     ax1.plot(a, b, 'o', label="Interpolation")
     plt.legend(loc='upper left')
-    # plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
-    # print("plot l_idx={}".format(idx))
     plt.show()
 
 
