@@ -27,14 +27,12 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-def make_multi_video_level_background():
-    width = 1920
-    height = 1080
+def make_multi_video_level_background(
+        width=1920, height=1080, h_sample_num=5, v_sample_num=3,
+        max_rate=0.6, font_size=20):
     img = np.zeros((height, width, 3))
-    h_sample_num = 5
-    v_sample_num = 3
     block_num = h_sample_num * v_sample_num
-    video_levels = np.linspace(0, 1, block_num) * 0.6
+    video_levels = np.linspace(0, 1, block_num) * max_rate
     h_block_size_list = tpg.equal_devision(width, h_sample_num)
     v_block_size_list = tpg.equal_devision(height, v_sample_num)
 
@@ -55,7 +53,7 @@ def make_multi_video_level_background():
             text = f"{nits:5.0f} nits" if nits >= 1000 else f"{nits:3.1f} nits"
             text_drawer = TextDrawer(
                 block_img, text=text, pos=(0, 0), font_color=(0, 0, 0),
-                font_size=15, font_path=NOTO_SANS_MONO_REGULAR)
+                font_size=font_size, font_path=NOTO_SANS_MONO_REGULAR)
             text_drawer.draw()
             tpg.merge(img, block_img, st_pos)
 
@@ -66,6 +64,9 @@ def make_multi_video_level_background():
 
 def main_func():
     make_multi_video_level_background()
+    make_multi_video_level_background(
+        width=1920, height=1080, h_sample_num=16, v_sample_num=9,
+        max_rate=0.7, font_size=20)
 
 
 if __name__ == '__main__':
