@@ -1067,6 +1067,25 @@ def plot_color_checker_image(rgb, rgb2=None, size=(1920, 1080),
     return img_all_patch
 
 
+def get_log10_x_scale(
+        sample_num=8, ref_val=1.0, min_exposure=-1, max_exposure=6):
+    """
+    Log10スケールのx軸データを作る。
+
+    Examples
+    --------
+    >>> get_log2_x_scale(
+    ...     sample_num=8, ref_val=1.0, min_exposure=-1, max_exposure=6)
+    array([  1.0000e-01   1.0000e+00   1.0000e+01   1.0000e+02
+             1.0000e+03   1.0000e+04   1.0000e+05   1.0000e+06])
+    """
+    x_min = np.log10(ref_val * (10 ** min_exposure))
+    x_max = np.log10(ref_val * (10 ** max_exposure))
+    x = np.linspace(x_min, x_max, sample_num)
+
+    return 10.0 ** x
+
+
 def get_log2_x_scale(
         sample_num=32, ref_val=1.0, min_exposure=-6.5, max_exposure=6.5):
     """
