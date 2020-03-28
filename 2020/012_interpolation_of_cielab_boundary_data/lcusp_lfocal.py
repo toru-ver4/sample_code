@@ -29,6 +29,8 @@ __all__ = []
 
 BT709_BOUNDARY = "./boundary_data/Chroma_BT709_l_256_h_256.npy"
 BT2020_BOUNDAY = "./boundary_data/Chroma_BT2020_l_256_h_256.npy"
+L_CUSP_NAME = "./L_CUSP.npy"
+L_FOCAL_NAME = "./L_FOCAL.npy"
 
 L_SEARCH_SAMPLE = 256
 C_SEARCH_SAMPLE = 256
@@ -269,12 +271,18 @@ def low_pass_filter(x, nn=4, wn=0.25):
 
 
 def get_dips_value_around_150(l_cusp):
+    """
+    135°付近の凹みの L* 値および、それを指す Hue の Index を計算する。
+    """
     dips_150 = np.min(l_cusp[DIPS_150_SAMPLE_ST:DIPS_150_SAMPLE_ED])
     dips_150_idx = np.argmin(l_cusp[DIPS_150_SAMPLE_ST:DIPS_150_SAMPLE_ED])
     return dips_150, dips_150_idx
 
 
 def get_dips_value_around_300(l_cusp):
+    """
+    300°付近の凹みの L* 値および、それを指す Hue の Index を計算する。
+    """
     dips_300 = np.min(l_cusp[DIPS_300_SAMPLE_ST:DIPS_300_SAMPLE_ED])
     dips_300_idx = np.argmin(l_cusp[DIPS_300_SAMPLE_ST:DIPS_300_SAMPLE_ED])
     dips_300_idx += DIPS_300_SAMPLE_ST
@@ -292,6 +300,17 @@ def calc_l_cusp():
         lll = calc_l_cusp_specific_hue(hue, inner_lut, outer_lut)
         l_cusp.append(lll)
     l_cusp = np.array(l_cusp)
+
+    return l_cusp
+
+
+def calc_l_focal(l_cusp):
+    """
+    l_cusp に修正を加えた l_focal を求める
+
+    1. min, max の設定。np.clip() で dips300, dips150 の範囲内に制限
+    2. 240°～300° にかけて緩やかにスロープさせる
+    """
     dips_150, _ = get_dips_value_around_150(l_cusp)
     dips_300, dips_300_idx = get_dips_value_around_300(l_cusp)
     decrement_sample = dips_300_idx - L_FOCAL_240_INDEX + 1
@@ -301,11 +320,18 @@ def calc_l_cusp():
     l_focal[L_FOCAL_240_INDEX:dips_300_idx + 1] = decrement_data
     l_focal[dips_300_idx:] = dips_300
 
-    _debug_plot_l_cusp(l_cusp, l_focal, dips_150, dips_300)
+    # _debug_plot_l_cusp(l_cusp, l_focal, dips_150, dips_300)
+
+    return l_focal
 
 
 def main_func():
-    calc_l_cusp()
+    # l_cusp = calc_l_cusp()
+    # np.save(L_CUSP_NAME, l_cusp)
+    # l_focal = calc_l_focal(l_cusp)
+    # np.save(L_FOCAL_NAME, l_focal)
+    l_cusp = np.load(L_CUSP_NAME)
+    l_focal = np.load(L_FOCAL_NAME)
 
 
 if __name__ == '__main__':
