@@ -11,6 +11,7 @@ import os
 # import third-party libraries
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import signal
 
 # import my libraries
 import plot_utility as pu
@@ -31,6 +32,14 @@ BT2020_BOUNDAY = "./boundary_data/Chroma_BT2020_l_256_h_256.npy"
 
 L_SEARCH_SAMPLE = 256
 C_SEARCH_SAMPLE = 256
+
+DIPS_150_SAMPLE_ST = int(0.32 * C_SEARCH_SAMPLE)
+DIPS_150_SAMPLE_ED = int(0.6 * C_SEARCH_SAMPLE)
+DIPS_300_SAMPLE_ST = int(0.75 * C_SEARCH_SAMPLE)
+DIPS_300_SAMPLE_ED = int(0.9 * C_SEARCH_SAMPLE)
+
+# BT.2407 の FIGURE A2-4 を見ると 240° くらいで終わってるので…
+L_FOCAL_240_INDEX = int(240 / 360 * C_SEARCH_SAMPLE)
 
 
 def plot_lc_plane_specific_hue(hue=0/360*2*np.pi):
@@ -219,7 +228,7 @@ def calc_l_cusp_specific_hue(hue, inner_lut, outer_lut):
     return lcusp[0]
 
 
-def _debug_plot_l_cusp(l_cusp):
+def _debug_plot_l_cusp(l_cusp, l_focal, dips_150, dips_300):
 
     x = np.linspace(0, 360, len(l_cusp))
     ax1 = pu.plot_1_graph(
@@ -233,14 +242,43 @@ def _debug_plot_l_cusp(l_cusp):
         legend_size=17,
         xlim=[-10, 370],
         ylim=None,
-        xtick=[x * 30 for x in range(13)],
+        xtick=[x * 45 for x in range(9)],
         ytick=None,
         xtick_size=None, ytick_size=None,
         linewidth=3,
         minor_xtick_num=None,
         minor_ytick_num=None)
-    ax1.plot(x, l_cusp)
+    ax1.plot(x, l_cusp, lw=5, label="Original")
+    # ax1.plot(x, low_pass, label="Low Pass")
+    ax1.plot(x, np.ones_like(x) * dips_150, 'k--', label=f"L*={dips_150:.2f}",
+             alpha=0.5)
+    ax1.plot(x, np.ones_like(x) * dips_300, 'k:', label=f"L*={dips_300:.2f}",
+             alpha=0.5)
+    ax1.plot(x, l_focal, label="Lfocal")
+    # ax1.plot(l_cusp, label="Original")
+    # ax1.plot(low_pass, label="Low Pass")
+    plt.legend(loc='lower center')
     plt.show()
+
+
+def low_pass_filter(x, nn=4, wn=0.25):
+    b1, a1 = signal.butter(nn, wn, "low")
+    result = signal.filtfilt(b1, a1, x)
+
+    return result
+
+
+def get_dips_value_around_150(l_cusp):
+    dips_150 = np.min(l_cusp[DIPS_150_SAMPLE_ST:DIPS_150_SAMPLE_ED])
+    dips_150_idx = np.argmin(l_cusp[DIPS_150_SAMPLE_ST:DIPS_150_SAMPLE_ED])
+    return dips_150, dips_150_idx
+
+
+def get_dips_value_around_300(l_cusp):
+    dips_300 = np.min(l_cusp[DIPS_300_SAMPLE_ST:DIPS_300_SAMPLE_ED])
+    dips_300_idx = np.argmin(l_cusp[DIPS_300_SAMPLE_ST:DIPS_300_SAMPLE_ED])
+    dips_300_idx += DIPS_300_SAMPLE_ST
+    return dips_300, dips_300_idx
 
 
 def calc_l_cusp():
@@ -254,8 +292,16 @@ def calc_l_cusp():
         lll = calc_l_cusp_specific_hue(hue, inner_lut, outer_lut)
         l_cusp.append(lll)
     l_cusp = np.array(l_cusp)
+    dips_150, _ = get_dips_value_around_150(l_cusp)
+    dips_300, dips_300_idx = get_dips_value_around_300(l_cusp)
+    decrement_sample = dips_300_idx - L_FOCAL_240_INDEX + 1
+    decrement_data = np.linspace(dips_150, dips_300, decrement_sample)
+    l_cusp_low_pass = low_pass_filter(l_cusp, nn=4, wn=0.2)
+    l_focal = np.clip(l_cusp_low_pass, dips_300, dips_150)
+    l_focal[L_FOCAL_240_INDEX:dips_300_idx + 1] = decrement_data
+    l_focal[dips_300_idx:] = dips_300
 
-    _debug_plot_l_cusp(l_cusp)
+    _debug_plot_l_cusp(l_cusp, l_focal, dips_150, dips_300)
 
 
 def main_func():
