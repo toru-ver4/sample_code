@@ -19,6 +19,18 @@ from matplotlib.ticker import AutoMinorLocator
 import colorsys
 import matplotlib.font_manager as fm
 
+# define
+# from https://jfly.uni-koeln.de/colorset/
+RED = np.array([255, 75, 0]) / 255
+YELLOW = np.array([255, 241, 0]) / 255
+GREEN = np.array([3, 175, 122]) / 255
+BLUE = np.array([0, 90, 255]) / 255
+SKY = np.array([77, 196, 255]) / 255
+PINK = np.array([255, 128, 130]) / 255
+ORANGE = np.array([246, 170, 0]) / 255
+MAJENTA = np.array([153, 0, 153]) / 255
+BROWN = np.array([128, 64, 0]) / 255
+
 cycle_num = 6
 v_offset = 0.2
 s = np.arange(cycle_num) / (cycle_num - 1) * (1 - v_offset) + v_offset

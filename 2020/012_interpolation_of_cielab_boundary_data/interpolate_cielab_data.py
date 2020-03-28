@@ -88,7 +88,8 @@ def bilinear_interpolation(lh, lut2d):
     Returns
     -------
     array_like
-        four sample indeces used for Bilinear Interpolation.
+        Chroma value calculated from four sample indices
+        using Bilinear Interpolation.
 
     Examples
     --------
@@ -97,8 +98,6 @@ def bilinear_interpolation(lh, lut2d):
     >>> h_idx = np.arange(0, 256, 8)
     >>> l_idx = np.arange(0, 256, 64)
     >>> sparse_lut = chroma_lut[l_idx][:, h_idx]
-    >>>
-    >>> l_sample_num, h_sample_num = sparse_lut.shape
     >>>
     >>> # 補間の入力データ lh を作成
     >>> l_val = 40
