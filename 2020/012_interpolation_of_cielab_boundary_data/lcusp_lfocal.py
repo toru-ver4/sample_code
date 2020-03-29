@@ -250,16 +250,17 @@ def _debug_plot_l_cusp(l_cusp, l_focal, dips_150, dips_300):
         linewidth=3,
         minor_xtick_num=None,
         minor_ytick_num=None)
-    ax1.plot(x, l_cusp, lw=5, label="Original")
+    ax1.plot(x, l_cusp, lw=5, label="L_cusp")
     # ax1.plot(x, low_pass, label="Low Pass")
     ax1.plot(x, np.ones_like(x) * dips_150, 'k--', label=f"L*={dips_150:.2f}",
              alpha=0.5)
     ax1.plot(x, np.ones_like(x) * dips_300, 'k:', label=f"L*={dips_300:.2f}",
              alpha=0.5)
-    ax1.plot(x, l_focal, label="Lfocal")
+    ax1.plot(x, l_focal, label="L_focal")
     # ax1.plot(l_cusp, label="Original")
     # ax1.plot(low_pass, label="Low Pass")
     plt.legend(loc='lower center')
+    plt.savefig("./figure/L_focal.png", bbox_inches='tight', pad_inches=0.1)
     plt.show()
 
 
@@ -320,18 +321,18 @@ def calc_l_focal(l_cusp):
     l_focal[L_FOCAL_240_INDEX:dips_300_idx + 1] = decrement_data
     l_focal[dips_300_idx:] = dips_300
 
-    # _debug_plot_l_cusp(l_cusp, l_focal, dips_150, dips_300)
+    _debug_plot_l_cusp(l_cusp, l_focal, dips_150, dips_300)
 
     return l_focal
 
 
 def main_func():
-    # l_cusp = calc_l_cusp()
-    # np.save(L_CUSP_NAME, l_cusp)
-    # l_focal = calc_l_focal(l_cusp)
-    # np.save(L_FOCAL_NAME, l_focal)
-    l_cusp = np.load(L_CUSP_NAME)
-    l_focal = np.load(L_FOCAL_NAME)
+    l_cusp = calc_l_cusp()
+    np.save(L_CUSP_NAME, l_cusp)
+    l_focal = calc_l_focal(l_cusp)
+    np.save(L_FOCAL_NAME, l_focal)
+    # l_cusp = np.load(L_CUSP_NAME)
+    # l_focal = np.load(L_FOCAL_NAME)
 
 
 if __name__ == '__main__':
