@@ -1241,6 +1241,13 @@ def draw_outline(img, fg_color, outline_width):
     -------
     array_like
         image data with line.
+
+    Examples
+    --------
+    >>> img = np.zeros((1080, 1920, 3))
+    >>> color = (940, 940, 940)
+    >>> thickness = 2
+    >>> draw_outline(img, color, thickness)
     """
     width = img.shape[1]
     height = img.shape[0]
@@ -1615,6 +1622,47 @@ def make_color_checker_image(rgb, width=1920, padding_rate=0.01):
     return img
 
 
+def calc_st_pos_for_centering(bg_size, fg_size):
+    """
+    Calculate start postion for centering.
+
+    Parameters
+    ----------
+    bg_size : touple(int)
+        (width, height) of the background image.
+
+    fg_size : touple(int)
+        (width, height) of the foreground image.
+
+    Returns
+    -------
+    touple (int)
+        (st_pos_h, st_pos_v)
+
+    Examples
+    --------
+    >>> calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480))
+    >>> (640, 300)
+    """
+    bg_width = bg_size[0]
+    bg_height = bg_size[1]
+
+    fg_width = fg_size[0]
+    fg_height = fg_size[1]
+
+    st_pos_h = bg_width // 2 - fg_width // 2
+    st_pos_v = bg_height // 2 - fg_height // 2
+
+    return (st_pos_h, st_pos_v)
+
+
+def get_size_from_image(img):
+    """
+    `calc_st_pos_for_centering()` の引数計算が面倒だったので関数化。
+    """
+    return (img.shape[1], img.shape[0])
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
@@ -1624,4 +1672,5 @@ if __name__ == '__main__':
     #     transfer_function=tf.GAMMA24)
     # calc_rad_patch_idx2(outmost_num=9, current_num=7)
     # print(convert_luminance_to_color_value(100, tf.ST2084))
-    print(generate_color_checker_rgb_value(target_white=[0.3127, 0.3290]))
+    # print(generate_color_checker_rgb_value(target_white=[0.3127, 0.3290]))
+    print(calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480)))
