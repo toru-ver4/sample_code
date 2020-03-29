@@ -16,7 +16,7 @@ from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ
 from colour.models import BT709_COLOURSPACE
 from colour.utilities import normalise_maximum
 from colour import models
-from colour import RGB_COLOURSPACES
+from colour import RGB_COLOURSPACES, COLOURCHECKERS
 from scipy.spatial import Delaunay
 from scipy.ndimage.filters import convolve
 import math
@@ -1241,6 +1241,13 @@ def draw_outline(img, fg_color, outline_width):
     -------
     array_like
         image data with line.
+
+    Examples
+    --------
+    >>> img = np.zeros((1080, 1920, 3))
+    >>> color = (940, 940, 940)
+    >>> thickness = 2
+    >>> draw_outline(img, color, thickness)
     """
     width = img.shape[1]
     height = img.shape[0]
@@ -1513,12 +1520,157 @@ def get_accelerated_x_8x(sample_num=64):
     return x
 
 
+def generate_color_checker_rgb_value(
+        color_space=BT709_COLOURSPACE, target_white=D65_WHITE):
+    """
+    Generate the 24 RGB values of the color checker.
+
+    Parameters
+    ----------
+    color_space : color space
+        color space object in `colour` module.
+
+    target_white : array_like
+        the xy values of the white point of target color space.
+
+    Returns
+    -------
+    array_like
+        24 RGB values. This is linear. OETF is not applied.
+
+    Examples
+    --------
+    >>> generate_color_checker_rgb_value(
+    ...     color_space=colour.models.BT709_COLOURSPACE,
+    ...     target_white=[0.3127, 0.3290])
+    >>> [[ 0.17289286  0.08205728  0.05714562]
+    >>>  [ 0.5680292   0.29250401  0.21951748]
+    >>>  [ 0.10435534  0.19656108  0.32958666]
+    >>>  [ 0.1008804   0.14839018  0.05327639]
+    >>>  [ 0.22303549  0.2169701   0.43166537]
+    >>>  [ 0.10715338  0.513512    0.41415978]
+    >>>  [ 0.74639182  0.20020473  0.03081343]
+    >>>  [ 0.05947812  0.10659045  0.39897686]
+    >>>  [ 0.5673215   0.08485376  0.11945382]
+    >>>  [ 0.11177253  0.04285397  0.14166202]
+    >>>  [ 0.34250836  0.5062777   0.0557734 ]
+    >>>  [ 0.79262553  0.35803886  0.025485  ]
+    >>>  [ 0.01864598  0.05139665  0.28886469]
+    >>>  [ 0.054392    0.29876719  0.07187681]
+    >>>  [ 0.45628547  0.03075684  0.04092033]
+    >>>  [ 0.85379178  0.56503558  0.01475575]
+    >>>  [ 0.53533883  0.09006355  0.3047824 ]
+    >>>  [-0.03662977  0.24753781  0.39824679]
+    >>>  [ 0.91177068  0.91497623  0.89427332]
+    >>>  [ 0.57973934  0.59203191  0.59370647]
+    >>>  [ 0.35495537  0.36538027  0.36772001]
+    >>>  [ 0.19009594  0.19180133  0.19316719]
+    >>>  [ 0.08524707  0.08890587  0.09255774]
+    >>>  [ 0.03038879  0.03118623  0.03279615]]
+    """
+    colour_checker_param = COLOURCHECKERS.get('ColorChecker 2005')
+    # 今回の処理では必要ないデータもあるので xyY と whitepoint だけ抽出
+    # -------------------------------------------------------------
+    _name, data, whitepoint = colour_checker_param
+    temp_xyY = []
+    for key in data.keys():
+        temp_xyY.append(data[key])
+    temp_xyY = np.array(temp_xyY)
+    large_xyz = xyY_to_XYZ(temp_xyY)
+    rgb_white_point = D65_WHITE
+    illuminant_XYZ = whitepoint   # ColorCheckerのオリジナルデータの白色点
+    illuminant_RGB = rgb_white_point  # XYZ to RGB 変換後の白色点を設定
+    chromatic_adaptation_transform = 'CAT02'
+    large_xyz_to_rgb_matrix = color_space.XYZ_to_RGB_matrix
+
+    rgb = XYZ_to_RGB(
+        large_xyz, illuminant_XYZ, illuminant_RGB,
+        large_xyz_to_rgb_matrix, chromatic_adaptation_transform)
+
+    return rgb
+
+
+def make_color_checker_image(rgb, width=1920, padding_rate=0.01):
+    """
+    6x4 の カラーチェッカーの画像を作る。
+    Height は Width から自動計算される。padding_rate で少し値が変わる。
+    """
+    h_patch_num = 6
+    v_patch_num = 4
+
+    # 各種パラメータ計算
+    each_padding = int(width * padding_rate + 0.5)
+    h_padding_total = each_padding * (h_patch_num + 1)
+    h_patch_width_total = width - h_padding_total
+    patch_height = h_patch_width_total // h_patch_num
+    height = patch_height * v_patch_num + each_padding * (v_patch_num + 1)
+    patch_width_list = equal_devision(h_patch_width_total, h_patch_num)
+
+    # パッチを並べる
+    img = np.zeros((height, width, 3))
+    for v_idx in range(v_patch_num):
+        h_pos_st = each_padding
+        v_pos_st = each_padding + v_idx * (patch_height + each_padding)
+        for h_idx in range(h_patch_num):
+            rgb_idx = v_idx * h_patch_num + h_idx
+            pos = (h_pos_st, v_pos_st)
+            patch_img = np.ones((patch_height, patch_width_list[h_idx], 3))\
+                * rgb[rgb_idx]
+            merge(img, patch_img, pos)
+            h_pos_st += (patch_width_list[h_idx] + each_padding)
+
+    return img
+
+
+def calc_st_pos_for_centering(bg_size, fg_size):
+    """
+    Calculate start postion for centering.
+
+    Parameters
+    ----------
+    bg_size : touple(int)
+        (width, height) of the background image.
+
+    fg_size : touple(int)
+        (width, height) of the foreground image.
+
+    Returns
+    -------
+    touple (int)
+        (st_pos_h, st_pos_v)
+
+    Examples
+    --------
+    >>> calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480))
+    >>> (640, 300)
+    """
+    bg_width = bg_size[0]
+    bg_height = bg_size[1]
+
+    fg_width = fg_size[0]
+    fg_height = fg_size[1]
+
+    st_pos_h = bg_width // 2 - fg_width // 2
+    st_pos_v = bg_height // 2 - fg_height // 2
+
+    return (st_pos_h, st_pos_v)
+
+
+def get_size_from_image(img):
+    """
+    `calc_st_pos_for_centering()` の引数計算が面倒だったので関数化。
+    """
+    return (img.shape[1], img.shape[0])
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
-    _plot_same_lstar_radial_color_patch_data(
-        lstar=58, chroma=32.5, outmost_num=7,
-        color_space=BT709_COLOURSPACE,
-        transfer_function=tf.GAMMA24)
+    # _plot_same_lstar_radial_color_patch_data(
+    #     lstar=58, chroma=32.5, outmost_num=7,
+    #     color_space=BT709_COLOURSPACE,
+    #     transfer_function=tf.GAMMA24)
     # calc_rad_patch_idx2(outmost_num=9, current_num=7)
     # print(convert_luminance_to_color_value(100, tf.ST2084))
+    # print(generate_color_checker_rgb_value(target_white=[0.3127, 0.3290]))
+    print(calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480)))
