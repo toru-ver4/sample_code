@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+    # -*- coding: utf-8 -*-
 """
 CIELAB の Gamut Boundary データの補間
 =====================================
@@ -28,7 +28,7 @@ __all__ = []
 
 
 BT709_BOUNDARY = "./boundary_data/Chroma_BT709_l_256_h_256.npy"
-BT2020_BOUNDAY = "./boundary_data/Chroma_BT2020_l_256_h_256.npy"
+BT2020_BOUNDARY = "./boundary_data/Chroma_BT2020_l_256_h_256.npy"
 L_CUSP_NAME = "./L_CUSP.npy"
 L_FOCAL_NAME = "./L_FOCAL.npy"
 C_FOCAL_NAME = "./C_FOCAL.npy"
@@ -54,7 +54,7 @@ def plot_lc_plane_specific_hue(hue=0/360*2*np.pi):
     hue_list = np.ones_like(lstar) * hue
     lh = np.dstack([lstar, hue_list])
     lut_bt709 = np.load(BT709_BOUNDARY)
-    lut_bt2020 = np.load(BT2020_BOUNDAY)
+    lut_bt2020 = np.load(BT2020_BOUNDARY)
     chroma_bt709 = icd.bilinear_interpolation(lh, lut_bt709)
     chroma_bt2020 = icd.bilinear_interpolation(lh, lut_bt2020)
 
@@ -196,7 +196,7 @@ def calc_cusp_in_lc_plane(hue, lh_lut):
     touple
         (L*star, Chroma). It is the coordinate of the Cusp.
 
-    """
+        """
     l_sample = np.linspace(0, 100, L_SEARCH_SAMPLE)
     h_sample = np.ones_like(l_sample) * hue
     lh_sample = np.dstack((l_sample, h_sample))
@@ -300,7 +300,7 @@ def get_dips_value_around_300(l_cusp):
 
 def calc_l_cusp():
     inner_lut = np.load(BT709_BOUNDARY)
-    outer_lut = np.load(BT2020_BOUNDAY)
+    outer_lut = np.load(BT2020_BOUNDARY)
     l_cusp = []
     h_sample = C_SEARCH_SAMPLE
     hue_list = np.linspace(0, 2*np.pi, h_sample)
@@ -472,7 +472,7 @@ def _debug_plot_c_focal(c_focal):
 
 def calc_c_focal():
     inner_lut = np.load(BT709_BOUNDARY)
-    outer_lut = np.load(BT2020_BOUNDAY)
+    outer_lut = np.load(BT2020_BOUNDARY)
 
     c_focal = []
     h_sample = C_SEARCH_SAMPLE
