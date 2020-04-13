@@ -80,8 +80,8 @@ def convert_cl_value_to_rgb_gamma24(cl_value, hue):
 
 
 def _debug_plot_lightness_mapping_specific_hue(
-        hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp, src_cl_value,
-        l_cusp, l_focal, c_focal):
+        hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
+        src_cl_value, dst_cl_value, l_cusp, l_focal, c_focal):
     ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(14, 8),
@@ -123,11 +123,28 @@ def _debug_plot_lightness_mapping_specific_hue(
 
     # src, dst data
     src_cl_rgb = convert_cl_value_to_rgb_gamma24(src_cl_value, hue)
+    dst_cl_rgb = convert_cl_value_to_rgb_gamma24(dst_cl_value, hue)
     ax1.scatter(src_cl_value[..., 0], src_cl_value[..., 1], s=150,
                 c=src_cl_rgb[0], label="src", zorder=3)
+    ax1.scatter(dst_cl_value[..., 0], dst_cl_value[..., 1], s=150,
+                c=dst_cl_rgb[0], label="dst", zorder=3)
+
+    # annotation settings
+    arrowprops = dict(
+        facecolor='#000000', shrink=0.0, headwidth=8, headlength=10,
+        width=1, alpha=0.8)
+    for idx in range(len(src_cl_value)):
+        color = (1 - np.max(src_cl_rgb[0, idx]))
+        arrowprops['facecolor'] = np.array((color, color, color))
+        ax1.annotate(
+            "", xy=(dst_cl_value[idx, 0], dst_cl_value[idx, 1]),
+            xytext=(src_cl_value[idx, 0], src_cl_value[idx, 1]),
+            xycoords='data', textcoords='data', ha='left', va='bottom',
+            arrowprops=arrowprops)
     graph_name = f"./figure/lm_test_HUE_{hue/2/np.pi*360:.1f}.png"
     plt.legend(loc='upper right')
-    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    # plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    plt.savefig(graph_name)  # オプション付けるとエラーになるので外した
     plt.show()
 
 
@@ -137,6 +154,56 @@ def calc_value_from_hue_1dlut(val, lut):
     y = f(val)
 
     return y
+
+
+def lightness_mapping_to_l_focal(l_out, c_out, c_map, l_focal):
+    return ((l_out - l_focal) * c_map) / c_out + l_focal
+
+
+def lightness_mapping_from_c_focal(l_out, c_out, c_map, c_focal):
+    return (l_out * (c_out - c_map)) / (c_focal - c_out) + l_out
+
+
+def _lightness_mapping_trial(src_cl, l_focal, c_focal):
+    """
+    とりあえず Lightness Mapping の雰囲気を確認する用の実装
+
+    * Cmap は一律で Cout * 0.5 に設定してみる
+
+    Parameters
+    ----------
+    src_cl : array_like (2d array, shape is N x 2)
+        target Chroma, Lightness value.
+        src_cl[..., 0]: Chroma
+        src_cl[..., 1]: Lightness
+    l_focal : float
+        L_focal value
+
+    Returns
+    -------
+    array_like (2d array, shape is N x 2)
+        Chroma-Ligheness Value after lightness mapping.
+    """
+    l_out = src_cl[..., 1]
+    c_out = src_cl[..., 0]
+    c_map = c_out * 0.7
+
+    # どっちの数式を使うかの判定
+    l_map = np.where(
+        l_out >= (-l_focal * c_out) / c_focal + l_focal,
+        lightness_mapping_to_l_focal(l_out, c_out, c_map, l_focal),
+        lightness_mapping_from_c_focal(l_out, c_out, c_map, c_focal)
+    )
+
+    dst_cl = np.dstack((c_map, l_map))[0]
+
+    return dst_cl
+
+
+def calc_c_map():
+    """
+    
+    """
 
 
 def _try_lightness_mapping_specific_hue(hue=30/360*2*np.pi):
@@ -161,18 +228,35 @@ def _try_lightness_mapping_specific_hue(hue=30/360*2*np.pi):
 
     # テストデータ準備
     src_cl_value = make_src_cl_value(src_sample=11, cl_outer=cl_outer)
+    dst_cl_value = _lightness_mapping_trial(src_cl_value, l_focal, c_focal)
 
     _debug_plot_lightness_mapping_specific_hue(
-        hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp, src_cl_value,
-        l_cusp, l_focal, c_focal)
+        hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
+        src_cl_value, dst_cl_value, l_cusp, l_focal, c_focal)
+
+
+def _check_calc_cmap_on_lc_plane():
+    """
+    L*C*平面において、Cmap が計算できるか確認する。
+    """
+    # とりあえず L*C* 平面のポリゴン準備
+
+    # L_focal, C_focal も準備
+
+    # テストポイントの src_cl_value も準備
+
+    # src_cl ごとに線分を作成、polygon との交点を算出
+
+    # 交点から Cmap を決定
 
 
 def main_func():
     # とりあえず、任意の Hue において一発 Lightness Mapping してみる
-    _try_lightness_mapping_specific_hue(hue=00/360*2*np.pi)
-    _try_lightness_mapping_specific_hue(hue=90/360*2*np.pi)
-    _try_lightness_mapping_specific_hue(hue=180/360*2*np.pi)
-    _try_lightness_mapping_specific_hue(hue=270/360*2*np.pi)
+    # _try_lightness_mapping_specific_hue(hue=00/360*2*np.pi)
+    # _try_lightness_mapping_specific_hue(hue=90/360*2*np.pi)
+    # _try_lightness_mapping_specific_hue(hue=180/360*2*np.pi)
+    # _try_lightness_mapping_specific_hue(hue=270/360*2*np.pi)
+    _check_calc_cmap_on_lc_plane()
 
 
 if __name__ == '__main__':

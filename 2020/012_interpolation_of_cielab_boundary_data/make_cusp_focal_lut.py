@@ -196,7 +196,7 @@ def calc_cusp_in_lc_plane(hue, lh_lut):
     touple
         (L*star, Chroma). It is the coordinate of the Cusp.
 
-        """
+    """
     l_sample = np.linspace(0, 100, L_SEARCH_SAMPLE)
     h_sample = np.ones_like(l_sample) * hue
     lh_sample = np.dstack((l_sample, h_sample))
