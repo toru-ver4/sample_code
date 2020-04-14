@@ -50,7 +50,6 @@ def make_src_cl_value(src_sample, cl_outer):
     入ってるデータ。
     """
     f = interpolate.interp1d(cl_outer[..., 1], cl_outer[..., 0])
-    src_sample = 11
     src_l = np.linspace(0, 100, src_sample)
     src_c = f(src_l)
     src_cl = np.dstack((src_c, src_l))[0]
@@ -204,6 +203,7 @@ def calc_c_map():
     """
     
     """
+    pass
 
 
 def _try_lightness_mapping_specific_hue(hue=30/360*2*np.pi):
@@ -235,15 +235,149 @@ def _try_lightness_mapping_specific_hue(hue=30/360*2*np.pi):
         src_cl_value, dst_cl_value, l_cusp, l_focal, c_focal)
 
 
-def _check_calc_cmap_on_lc_plane():
+def _calc_ab_coef_from_lfocal_and_cl_src(cl_src, l_focal):
+    x2 = cl_src[..., 0]
+    y2 = cl_src[..., 1]
+    x1 = 0
+    y1 = l_focal
+
+    a = (y2 - y1) / (x2 - x1)
+    b = l_focal * np.ones_like(a)
+
+    return a, b
+
+
+def _calc_ab_coef_from_cfocal_and_cl_src(cl_src, c_focal):
+    x2 = cl_src[..., 0]
+    y2 = cl_src[..., 1]
+    x1 = c_focal
+    y1 = 0
+
+    a = (y2 - y1) / (x2 - x1)
+    b = -a * x1
+
+    return a, b
+
+
+def _calc_ab_coef_from_cl_point(cl_point):
+    x_list = cl_point[..., 0]
+    y_list = cl_point[..., 1]
+
+    a = (y_list[1:] - y_list[:-1]) / (x_list[1:] - x_list[:-1])
+    b = y_list[1:] - a * x_list[1:]
+
+    return a, b
+
+
+def _debug_plot_ab_for_line(a, b, cl_src):
+    x = np.linspace(0, 220, 256)
+    y = a[:, np.newaxis] * x[np.newaxis, :] + b[:, np.newaxis]
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="Debug Plot",
+        graph_title_size=None,
+        xlabel="X Axis Label", ylabel="Y Axis Label",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=(-5, 105),
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3)
+    for ii in range(len(a)):
+        ax1.plot(x, y[ii], 'k:', lw=1)
+    ax1.plot(cl_src[..., 0], cl_src[..., 1], 'ko')
+    plt.legend(loc='upper left')
+    plt.show()
+
+
+def _debug_plot_ab_for_cl_plane(a, b, cl_point):
+    x = np.linspace(0, 220, 256)
+    y = a[:, np.newaxis] * x[np.newaxis, :] + b[:, np.newaxis]
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="Debug Plot",
+        graph_title_size=None,
+        xlabel="Chroma", ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=(-5, 105),
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3)
+    for ii in range(len(a)):
+        ax1.plot(x, y[ii], 'k:', lw=1)
+    ax1.plot(cl_point[..., 0], cl_point[..., 1], 'ko')
+    plt.legend(loc='upper left')
+    plt.show()
+
+
+def _calc_intersection_of_gamut_and_lines(cl_point, cl_src, l_focal, c_focal):
+    """
+    gamut boundary と Lines の交点を求める。
+
+    Parameters
+    ----------
+    cl_point : array_like (2d array)
+        gamut boundary data(Chroma, Lightness)
+    cl_src : array_like (2d array)
+        src chroma-lightness points.
+    l_focal : float
+        l_focal
+    c_focal : float
+        c_focal
+    """
+    # 各 sl_src と l_focal を結ぶ直線 y=ax+b の a, b の値を出す
+    a1, b1 = _calc_ab_coef_from_lfocal_and_cl_src(cl_src, l_focal)
+
+    # 各 sl_src と c_focal を結ぶ直線 y=ax+b の a, b の値を出す
+    # a1, b1 = _calc_ab_coef_from_cfocal_and_cl_src(cl_src, c_focal)
+
+    # 各 cl_point の2点間の直線 y=ax+b の a, b の値を出す
+    a2, b2 = _calc_ab_coef_from_cl_point(cl_point)
+
+    # debug plot
+    # _debug_plot_ab_for_line(a1, b1, cl_src)
+    # _debug_plot_ab_for_cl_plane(a2, b2, cl_point)
+
+
+def _check_calc_cmap_on_lc_plane(hue=30/360*2*np.pi):
     """
     L*C*平面において、Cmap が計算できるか確認する。
     """
     # とりあえず L*C* 平面のポリゴン準備
+    cl_inner = get_chroma_lightness_val_specfic_hue(hue, mcfl.BT709_BOUNDARY)
+    cl_outer =\
+        get_chroma_lightness_val_specfic_hue(hue, mcfl.BT2020_BOUNDARY)
 
-    # L_focal, C_focal も準備
+    # cusp 準備
+    lh_inner_lut = np.load(mcfl.BT709_BOUNDARY)
+    lh_outer_lut = np.load(mcfl.BT2020_BOUNDARY)
+    lcusp = mcfl.calc_l_cusp_specific_hue(hue, lh_inner_lut, lh_outer_lut)
+    inner_cusp = mcfl.calc_cusp_in_lc_plane(hue, lh_inner_lut)
+    outer_cusp = mcfl.calc_cusp_in_lc_plane(hue, lh_outer_lut)
+
+    # l_cusp, l_focal, c_focal 準備
+    l_cusp_lut = np.load(mcfl.L_CUSP_NAME)
+    l_focal_lut = np.load(mcfl.L_FOCAL_NAME)
+    c_focal_lut = np.load(mcfl.C_FOCAL_NAME)
+    l_cusp = calc_value_from_hue_1dlut(hue, l_cusp_lut)
+    l_focal = calc_value_from_hue_1dlut(hue, l_focal_lut)
+    c_focal = calc_value_from_hue_1dlut(hue, c_focal_lut)
 
     # テストポイントの src_cl_value も準備
+    src_cl_value = make_src_cl_value(src_sample=10, cl_outer=cl_outer)[1:-1]
+
+    # CL 平面のboundaryの各サンプルとの交点(C*, L*)を求める
+    _calc_intersection_of_gamut_and_lines(
+        cl_inner, src_cl_value, l_focal, c_focal)
 
     # src_cl ごとに線分を作成、polygon との交点を算出
 
