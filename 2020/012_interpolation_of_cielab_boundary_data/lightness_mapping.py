@@ -236,30 +236,51 @@ def _try_lightness_mapping_specific_hue(hue=30/360*2*np.pi):
 
 
 def _calc_ab_coef_from_lfocal_and_cl_src(cl_src, l_focal):
+    """
+    chroma-lightness のサンプル点から l_focal へと伸びる直線
+    y=ax+b の各係数 a, b を求める。
+    """
     x2 = cl_src[..., 0]
     y2 = cl_src[..., 1]
     x1 = 0
     y1 = l_focal
 
-    a = (y2 - y1) / (x2 - x1)
-    b = l_focal * np.ones_like(a)
+    a = np.where(
+        x1 != x2,
+        (y2 - y1) / (x2 - x1),
+        0
+    )
+    # b = l_focal * np.ones_like(a)
+    b = y2 - a * x2
 
     return a, b
 
 
 def _calc_ab_coef_from_cfocal_and_cl_src(cl_src, c_focal):
+    """
+    chroma-lightness のサンプル点から c_focal へと伸びる直線
+    y=ax+b の各係数 a, b を求める。
+    """
     x2 = cl_src[..., 0]
     y2 = cl_src[..., 1]
     x1 = c_focal
     y1 = 0
 
-    a = (y2 - y1) / (x2 - x1)
-    b = -a * x1
+    a = np.where(
+        x1 != x2,
+        (y2 - y1) / (x2 - x1),
+        0
+    )
+    b = y2 - a * x2
 
     return a, b
 
 
 def _calc_ab_coef_from_cl_point(cl_point):
+    """
+    y=ax+b の a, b を求める。
+    直線は隣接し合う2点を結ぶ線である。
+    """
     x_list = cl_point[..., 0]
     y_list = cl_point[..., 1]
 
@@ -319,7 +340,73 @@ def _debug_plot_ab_for_cl_plane(a, b, cl_point):
     plt.show()
 
 
-def _calc_intersection_of_gamut_and_lines(cl_point, cl_src, l_focal, c_focal):
+def _debug_plot_intersection(a1, b1, a2, b2, cl_point, cl_src, icn_x, icn_y):
+    x = np.linspace(-5, 150, 256)
+    y1 = a1[:, np.newaxis] * x[np.newaxis, :] + b1[:, np.newaxis]
+    y2 = a2[:, np.newaxis] * x[np.newaxis, :] + b2[:, np.newaxis]
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="Debug Plot",
+        graph_title_size=None,
+        xlabel="Chroma", ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=(-3, 103),
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3)
+    for ii in range(len(a1)):
+        ax1.plot(x, y1[ii], 'k:', lw=1)
+    for ii in range(len(a2)):
+        ax1.plot(x, y2[ii], '--', c=pu.BLUE, lw=1)
+    ax1.plot(icn_x[1], icn_y[1], 'x', c=pu.ORANGE, ms=15, mew=3)
+    ax1.plot(cl_point[..., 0], cl_point[..., 1], 'ko')
+    ax1.plot(cl_src[..., 0], cl_src[..., 1], 's', c=pu.RED)
+    plt.legend(loc='upper left')
+    plt.show()
+
+
+def _debug_plot_valid_intersection(
+        a1, b1, a2, b2, cl_point, cl_src, icn_x, icn_y,
+        l_focal, c_focal, hue, focal_type='C_focal'):
+    x = np.linspace(-5, c_focal, 256)
+    y1 = a1[:, np.newaxis] * x[np.newaxis, :] + b1[:, np.newaxis]
+    degree = hue / (2 * np.pi) * 360
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title=f"Debug Plot ({focal_type}, {degree:.1f}°)",
+        graph_title_size=None,
+        xlabel="Chroma", ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=(-3, 103),
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3)
+    for ii in range(len(a1)):
+        ax1.plot(x, y1[ii], 'k:', lw=1)
+    ax1.plot(cl_point[..., 0], cl_point[..., 1], 'k-', lw=2, label="BT.709")
+    ax1.plot(cl_src[..., 0], cl_src[..., 1], 's', ms=13, c=pu.RED,
+             label="BT.2020 Sample")
+    ax1.plot(icn_x, icn_y, 'x', c=pu.GREEN, ms=13, mew=5)
+    ax1.plot([0], [l_focal], 'o', c=pu.BLUE, ms=13, label="L_focal")
+    ax1.plot([c_focal], [0], 'o', c=pu.PINK, ms=13, label="C_focal")
+    plt.legend(loc='upper right')
+    fname = f"./figure/{focal_type}_{degree:.1f}.png"
+    plt.savefig(fname, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+
+
+def _calc_intersection_of_gamut_and_lines(
+        cl_point, cl_src, l_focal, c_focal, hue):
     """
     gamut boundary と Lines の交点を求める。
 
@@ -333,6 +420,8 @@ def _calc_intersection_of_gamut_and_lines(cl_point, cl_src, l_focal, c_focal):
         l_focal
     c_focal : float
         c_focal
+    hue : float
+        hue. unit is radian. for debug plot.
     """
     # 各 sl_src と l_focal を結ぶ直線 y=ax+b の a, b の値を出す
     a1, b1 = _calc_ab_coef_from_lfocal_and_cl_src(cl_src, l_focal)
@@ -341,11 +430,29 @@ def _calc_intersection_of_gamut_and_lines(cl_point, cl_src, l_focal, c_focal):
     # a1, b1 = _calc_ab_coef_from_cfocal_and_cl_src(cl_src, c_focal)
 
     # 各 cl_point の2点間の直線 y=ax+b の a, b の値を出す
+    # cl_point = cl_point[::48]
     a2, b2 = _calc_ab_coef_from_cl_point(cl_point)
+
+    # 直線群と直線群の交点を求める。
+    icn_x = (b1[:, np.newaxis] - b2[np.newaxis, :])\
+        / (a2[np.newaxis, :] - a1[:, np.newaxis])
+    icn_y = a1[:, np.newaxis] * icn_x + b1[:, np.newaxis]
+    # print(icn_x)
+
+    # 交点から有効点？を抽出
+    ok_idx = (icn_y >= cl_point[:-1, 1]) & (icn_y <= cl_point[1:, 1])
+    icn_valid_x = icn_x[ok_idx]
+    icn_valid_y = icn_y[ok_idx]
+    # print(icn_valid_x)
+    # print(icn_valid_y)
 
     # debug plot
     # _debug_plot_ab_for_line(a1, b1, cl_src)
     # _debug_plot_ab_for_cl_plane(a2, b2, cl_point)
+    # _debug_plot_intersection(a1, b1, a2, b2, cl_point, cl_src, icn_x, icn_y)
+    _debug_plot_valid_intersection(
+        a1, b1, a2, b2, cl_point, cl_src, icn_valid_x, icn_valid_y,
+        l_focal, c_focal, hue, focal_type="L_focal")
 
 
 def _check_calc_cmap_on_lc_plane(hue=30/360*2*np.pi):
@@ -373,11 +480,11 @@ def _check_calc_cmap_on_lc_plane(hue=30/360*2*np.pi):
     c_focal = calc_value_from_hue_1dlut(hue, c_focal_lut)
 
     # テストポイントの src_cl_value も準備
-    src_cl_value = make_src_cl_value(src_sample=10, cl_outer=cl_outer)[1:-1]
+    src_cl_value = make_src_cl_value(src_sample=12, cl_outer=cl_outer)
 
     # CL 平面のboundaryの各サンプルとの交点(C*, L*)を求める
     _calc_intersection_of_gamut_and_lines(
-        cl_inner, src_cl_value, l_focal, c_focal)
+        cl_inner, src_cl_value, l_focal, c_focal, hue)
 
     # src_cl ごとに線分を作成、polygon との交点を算出
 
@@ -390,7 +497,10 @@ def main_func():
     # _try_lightness_mapping_specific_hue(hue=90/360*2*np.pi)
     # _try_lightness_mapping_specific_hue(hue=180/360*2*np.pi)
     # _try_lightness_mapping_specific_hue(hue=270/360*2*np.pi)
-    _check_calc_cmap_on_lc_plane()
+    _check_calc_cmap_on_lc_plane(hue=00/360*2*np.pi)
+    _check_calc_cmap_on_lc_plane(hue=90/360*2*np.pi)
+    _check_calc_cmap_on_lc_plane(hue=180/360*2*np.pi)
+    _check_calc_cmap_on_lc_plane(hue=270/360*2*np.pi)
 
 
 if __name__ == '__main__':
