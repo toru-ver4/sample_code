@@ -405,6 +405,20 @@ def _debug_plot_valid_intersection(
     # plt.show()
 
 
+def solve_equation_for_intersection(cl_point, a1, b1, a2, b2):
+    # 1次元方程式っぽいのを解いて交点を算出
+    icn_x = (b1[:, np.newaxis] - b2[np.newaxis, :])\
+        / (a2[np.newaxis, :] - a1[:, np.newaxis])
+    icn_y = a1[:, np.newaxis] * icn_x + b1[:, np.newaxis]
+
+    # 交点から有効点？を抽出
+    ok_idx = (icn_y >= cl_point[:-1, 1]) & (icn_y <= cl_point[1:, 1])
+    icn_valid_x = icn_x[ok_idx]
+    icn_valid_y = icn_y[ok_idx]
+
+    return icn_valid_x, icn_valid_y
+
+
 def _calc_intersection_of_gamut_and_lines(
         cl_point, cl_src, l_focal, c_focal, hue):
     """
@@ -424,35 +438,33 @@ def _calc_intersection_of_gamut_and_lines(
         hue. unit is radian. for debug plot.
     """
     # 各 sl_src と l_focal を結ぶ直線 y=ax+b の a, b の値を出す
-    a1, b1 = _calc_ab_coef_from_lfocal_and_cl_src(cl_src, l_focal)
+    a1_l, b1_l = _calc_ab_coef_from_lfocal_and_cl_src(cl_src, l_focal)
 
     # 各 sl_src と c_focal を結ぶ直線 y=ax+b の a, b の値を出す
-    # a1, b1 = _calc_ab_coef_from_cfocal_and_cl_src(cl_src, c_focal)
+    a1_c, b1_c = _calc_ab_coef_from_cfocal_and_cl_src(cl_src, c_focal)
 
     # 各 cl_point の2点間の直線 y=ax+b の a, b の値を出す
     # cl_point = cl_point[::48]
     a2, b2 = _calc_ab_coef_from_cl_point(cl_point)
 
-    # 直線群と直線群の交点を求める。
-    icn_x = (b1[:, np.newaxis] - b2[np.newaxis, :])\
-        / (a2[np.newaxis, :] - a1[:, np.newaxis])
-    icn_y = a1[:, np.newaxis] * icn_x + b1[:, np.newaxis]
-    # print(icn_x)
+    # 直線群と直線群の交点を求める。(L_focal)
+    icn_valid_x_l, icn_valid_y_l = solve_equation_for_intersection(
+        cl_point, a1_l, b1_l, a2, b2)
 
-    # 交点から有効点？を抽出
-    ok_idx = (icn_y >= cl_point[:-1, 1]) & (icn_y <= cl_point[1:, 1])
-    icn_valid_x = icn_x[ok_idx]
-    icn_valid_y = icn_y[ok_idx]
-    # print(icn_valid_x)
-    # print(icn_valid_y)
+    # 直線群と直線群の交点を求める。(C_focal)
+    icn_valid_x_c, icn_valid_y_c = solve_equation_for_intersection(
+        cl_point, a1_c, b1_c, a2, b2)
 
     # debug plot
     # _debug_plot_ab_for_line(a1, b1, cl_src)
     # _debug_plot_ab_for_cl_plane(a2, b2, cl_point)
     # _debug_plot_intersection(a1, b1, a2, b2, cl_point, cl_src, icn_x, icn_y)
     _debug_plot_valid_intersection(
-        a1, b1, a2, b2, cl_point, cl_src, icn_valid_x, icn_valid_y,
+        a1_l, b1_l, a2, b2, cl_point, cl_src, icn_valid_x_l, icn_valid_y_l,
         l_focal, c_focal, hue, focal_type="L_focal")
+    _debug_plot_valid_intersection(
+        a1_c, b1_c, a2, b2, cl_point, cl_src, icn_valid_x_c, icn_valid_y_c,
+        l_focal, c_focal, hue, focal_type="C_focal")
 
 
 def _check_calc_cmap_on_lc_plane(hue=30/360*2*np.pi):
