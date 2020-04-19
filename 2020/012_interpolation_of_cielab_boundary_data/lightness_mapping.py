@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 from colour import Lab_to_XYZ, XYZ_to_RGB
 from colour.models import BT2020_COLOURSPACE
+from multiprocessing import Pool, cpu_count
 
 # import my libraries
 import plot_utility as pu
@@ -29,6 +30,10 @@ __maintainer__ = 'Toru Yoshihara'
 __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
+
+
+CHROMA_MAP_LUT_DEGREE_SAMPLE = 16
+CHROMA_MAP_LUT_HUE_SAMPLE = 256
 
 
 def get_chroma_lightness_val_specfic_hue(
@@ -412,9 +417,17 @@ def solve_equation_for_intersection(cl_point, a1, b1, a2, b2):
     icn_y = a1[:, np.newaxis] * icn_x + b1[:, np.newaxis]
 
     # 交点から有効点？を抽出
-    ok_idx = (icn_y >= cl_point[:-1, 1]) & (icn_y <= cl_point[1:, 1])
-    icn_valid_x = icn_x[ok_idx]
-    icn_valid_y = icn_y[ok_idx]
+    # print(icn_x.shape)
+    ok_src_idx_x_0 = (icn_x >= cl_point[:-1, 0]) & (icn_x <= cl_point[1:, 0])
+    ok_src_idx_x_1 = (icn_x <= cl_point[:-1, 0]) & (icn_x >= cl_point[1:, 0])
+    ok_src_idx_x = ok_src_idx_x_0 | ok_src_idx_x_1
+    ok_src_idx_y = (icn_y >= cl_point[:-1, 1]) & (icn_y <= cl_point[1:, 1])
+    ok_src_idx = ok_src_idx_x & ok_src_idx_y
+    ok_dst_idx = np.any(ok_src_idx, axis=-1)
+    icn_valid_x = np.zeros((icn_x.shape[0]))
+    icn_valid_y = np.zeros((icn_y.shape[0]))
+    icn_valid_x[ok_dst_idx] = icn_x[ok_src_idx]
+    icn_valid_y[ok_dst_idx] = icn_y[ok_src_idx]
 
     return icn_valid_x, icn_valid_y
 
@@ -503,16 +516,159 @@ def _check_calc_cmap_on_lc_plane(hue=30/360*2*np.pi):
     # 交点から Cmap を決定
 
 
+def _debug_plot_chroma_map_lut_specific_hue(
+        hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
+        l_cusp, l_focal, c_focal, icn_x, icn_y, focal_type, idx):
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(14, 8),
+        graph_title=f"HUE = {hue/2/np.pi*360:.1f}°, for {focal_type}",
+        graph_title_size=None,
+        xlabel="Chroma",
+        ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=[-3, 103],
+        xtick=None,
+        ytick=[x * 10 for x in range(11)],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.patch.set_facecolor("#E0E0E0")
+    in_color = pu.BLUE
+    ou_color = pu.RED
+    fo_color = "#A0A0A0"
+
+    # gamut boundary
+    ax1.plot(
+        cl_inner[..., 0], cl_inner[..., 1], c=in_color, label="BT.709")
+    ax1.plot(cl_outer[..., 0], cl_outer[..., 1], c=ou_color, label="BT.2020")
+
+    # gamut cusp
+    ax1.plot(inner_cusp[1], inner_cusp[0], 's', ms=10, mec='k',
+             c=in_color, label="BT.709 Cusp")
+    ax1.plot(outer_cusp[1], outer_cusp[0], 's', ms=10, mec='k',
+             c=ou_color, label="BT.2020 Cusp")
+
+    # l_cusp, l_focal, c_focal
+    ax1.plot([0], [l_cusp], 'x', ms=12, mew=4, c=in_color, label="L_cusp")
+    ax1.plot([0], [l_focal], 'x', ms=12, mew=4, c=ou_color, label="L_focal")
+    ax1.plot([c_focal], [0], '*', ms=12, mew=3, c=ou_color, label="C_focal")
+    ax1.plot([0, c_focal], [l_focal, 0], '--', c=fo_color)
+
+    # intersectionx
+    ax1.plot(icn_x, icn_y, 'o', ms=12, label="destination")
+    if focal_type == "L_focal":
+        for x, y in zip(icn_x, icn_y):
+            ax1.plot([0, x], [l_focal, y], ':', c='k')
+    elif focal_type == "C_focal":
+        for x, y in zip(icn_x, icn_y):
+            ax1.plot([c_focal, x], [0, y], ':', c='k')
+    else:
+        pass
+
+    graph_name = f"./video_src/cmap_lut_{focal_type}_{idx:04d}.png"
+    plt.legend(loc='upper right')
+    # plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    plt.savefig(graph_name)  # オプション付けるとエラーになるので外した
+    # plt.show()
+
+
+def make_chroma_map_lut_specific_hue(hue=30/360*2*np.pi, idx=0):
+    """
+    Lfocal, Cfocal を中心とする放射線状のデータが
+    どの Chroma値にマッピングされるかを示すLUTを作る。
+    """
+    # とりあえず L*C* 平面のポリゴン準備
+    cl_inner = get_chroma_lightness_val_specfic_hue(hue, mcfl.BT709_BOUNDARY)
+    cl_outer =\
+        get_chroma_lightness_val_specfic_hue(hue, mcfl.BT2020_BOUNDARY)
+
+    # cusp 準備
+    lh_inner_lut = np.load(mcfl.BT709_BOUNDARY)
+    lh_outer_lut = np.load(mcfl.BT2020_BOUNDARY)
+    lcusp = mcfl.calc_l_cusp_specific_hue(hue, lh_inner_lut, lh_outer_lut)
+    inner_cusp = mcfl.calc_cusp_in_lc_plane(hue, lh_inner_lut)
+    outer_cusp = mcfl.calc_cusp_in_lc_plane(hue, lh_outer_lut)
+
+    # l_cusp, l_focal, c_focal 準備
+    l_cusp_lut = np.load(mcfl.L_CUSP_NAME)
+    l_focal_lut = np.load(mcfl.L_FOCAL_NAME)
+    c_focal_lut = np.load(mcfl.C_FOCAL_NAME)
+    l_cusp = calc_value_from_hue_1dlut(hue, l_cusp_lut)
+    l_focal = calc_value_from_hue_1dlut(hue, l_focal_lut)
+    c_focal = calc_value_from_hue_1dlut(hue, c_focal_lut)
+
+    # Lfocal用のサンプル点作成
+    st_degree_l = -np.arctan(l_focal/c_focal)
+    ed_degree_l = np.pi/2
+    degree = np.linspace(
+        st_degree_l, ed_degree_l, CHROMA_MAP_LUT_DEGREE_SAMPLE)
+    a1_l = np.tan(degree)
+    b1_l = l_focal * np.ones_like(degree)
+
+    # Cfocal用のサンプル点作成
+    st_degree_c = np.pi + st_degree_l
+    ed_degree_c = np.pi
+    degree = np.linspace(
+        st_degree_c, ed_degree_c, CHROMA_MAP_LUT_DEGREE_SAMPLE)
+    a1_c = np.tan(degree)
+    b1_c = -a1_c * c_focal
+
+    # 各 cl_point の2点間の直線 y=ax+b の a, b の値を出す
+    # cl_inner = cl_inner[::48]
+    a2, b2 = _calc_ab_coef_from_cl_point(cl_inner)
+
+    print(np.rad2deg(hue))
+    # 直線群と直線群の交点を求める。(L_focal)
+    icn_x_l, icn_y_l = solve_equation_for_intersection(
+        cl_inner, a1_l, b1_l, a2, b2)
+    _debug_plot_chroma_map_lut_specific_hue(
+        hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
+        l_cusp, l_focal, c_focal, icn_x_l, icn_y_l, focal_type="L_focal",
+        idx=idx)
+
+    # 直線群と直線群の交点を求める。(C_focal)
+    icn_x_c, icn_y_c = solve_equation_for_intersection(
+        cl_inner, a1_c, b1_c, a2, b2)
+    _debug_plot_chroma_map_lut_specific_hue(
+        hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
+        l_cusp, l_focal, c_focal, icn_x_c, icn_y_c, focal_type="C_focal",
+        idx=idx)
+
+
+def thread_wrapper_chroa_map_lut_specific_hue(args):
+    make_chroma_map_lut_specific_hue(**args)
+
+
+def make_chroma_map_lut():
+    """
+    Lfocal, Cfocal を中心とする放射線状のデータが
+    どの Chroma値にマッピングされるかを示すLUTを作る。
+    """
+    hue_list = np.linspace(0, 2 * np.pi, 360)
+    args = []
+    for idx, hue in enumerate(hue_list):
+        make_chroma_map_lut_specific_hue(hue=hue, idx=idx)
+        args.append(dict(hue=hue, idx=idx))
+        break
+    # with Pool(cpu_count()) as pool:
+    #     pool.map(thread_wrapper_chroa_map_lut_specific_hue, args)
+
+
 def main_func():
     # とりあえず、任意の Hue において一発 Lightness Mapping してみる
     # _try_lightness_mapping_specific_hue(hue=00/360*2*np.pi)
     # _try_lightness_mapping_specific_hue(hue=90/360*2*np.pi)
     # _try_lightness_mapping_specific_hue(hue=180/360*2*np.pi)
     # _try_lightness_mapping_specific_hue(hue=270/360*2*np.pi)
-    _check_calc_cmap_on_lc_plane(hue=00/360*2*np.pi)
-    _check_calc_cmap_on_lc_plane(hue=90/360*2*np.pi)
-    _check_calc_cmap_on_lc_plane(hue=180/360*2*np.pi)
-    _check_calc_cmap_on_lc_plane(hue=270/360*2*np.pi)
+    # _check_calc_cmap_on_lc_plane(hue=00/360*2*np.pi)
+    # _check_calc_cmap_on_lc_plane(hue=90/360*2*np.pi)
+    # _check_calc_cmap_on_lc_plane(hue=180/360*2*np.pi)
+    # _check_calc_cmap_on_lc_plane(hue=270/360*2*np.pi)
+    make_chroma_map_lut()
 
 
 if __name__ == '__main__':
