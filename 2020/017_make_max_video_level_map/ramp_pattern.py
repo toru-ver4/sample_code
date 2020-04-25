@@ -120,6 +120,3 @@ if __name__ == '__main__':
     img = np.uint16(np.round(img * 0xFFFF))
     fname = f"./figure/step_ramp.tiff"
     cv2.imwrite(fname, img[..., ::-1])
-    # text_img = get_video_level_text_img(33, 1920, 10, 20)
-    # print(text_img.shape)
-    # tpg.preview_image(text_img)
