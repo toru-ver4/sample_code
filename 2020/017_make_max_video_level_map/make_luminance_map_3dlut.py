@@ -202,12 +202,23 @@ def make_3dlut_for_luminance_map(
 
     # SDRレンジの処理
     sdr_srgb_max_code_value = tf.oetf_from_luminance(
-        sdr_turbo_st_luminance, tf.SRGB)
-    sdr_normalized = y_linear[sdr_idx] / tf.PEAK_LUMINANCE[tf.SRGB]
-    sdr_turbo_st_luminance_range = sdr_normalized * sdr_srgb_max_code_value
-    sdr_code_value = tf.oetf(sdr_turbo_st_luminance_range, tf.SRGB)
+        sdr_srgb_peak_luminance, tf.SRGB)
+    # SDR も PQ で普通にエンコードしてしまう
+    sdr_pq_code_value = tf.oetf_from_luminance(y_linear[sdr_idx], tf.ST2084)
+    # これが sRGBモニターで指定の輝度となるように調整
+    sdr_pq_min_code_value = 0
+    sdr_pq_max_code_value = tf.oetf_from_luminance(
+        sdr_srgb_peak_luminance, tf.ST2084)
+    sdr_srgb_min_code_value = 0
+    sdr_pq_normalized = normalize_and_fitting(
+        sdr_pq_code_value, sdr_pq_min_code_value, sdr_pq_max_code_value,
+        sdr_srgb_min_code_value, sdr_srgb_max_code_value)
+
+    # sdr_normalized = y_linear[sdr_idx] / tf.PEAK_LUMINANCE[tf.SRGB]
+    # sdr_turbo_st_luminance_range = sdr_normalized * sdr_srgb_max_code_value
+    # sdr_code_value = tf.oetf(sdr_turbo_st_luminance_range, tf.SRGB)
     sdr_srgb_rgb = np.dstack(
-        [sdr_code_value, sdr_code_value, sdr_code_value])[0]
+        [sdr_pq_normalized, sdr_pq_normalized, sdr_pq_normalized])[0]
 
     lut_data = np.zeros_like(rgb)
     lut_data[hdr_idx] = turbo_hdr
@@ -228,7 +239,8 @@ if __name__ == '__main__':
     # calc_turbo_lut_luminance()
     # print(calc_turbo_code_value_from_luminance(78.1860129589))
     # print(calc_turbo_code_value_from_luminance(30)*1023)
-    make_3dlut_for_luminance_map(grid_num=65, sdr_turbo_st_luminance=20)
+    make_3dlut_for_luminance_map(
+        grid_num=65, sdr_turbo_st_luminance=20, sdr_srgb_peak_luminance=50)
     apply_hdr10_to_turbo_3dlut(
         src_img_name="./figure/step_ramp.tiff",
         dst_img_name="./figure/test.png",
