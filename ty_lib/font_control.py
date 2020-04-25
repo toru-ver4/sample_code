@@ -40,6 +40,28 @@ HELVETICA_DISPLAY_BLACK\
     = "./font/HelveticaNowDisplayXBlk.otf"
 
 
+def get_text_size(
+        text="0", font_size=10, font_path=NOTO_SANS_MONO_BOLD):
+    """
+    指定したテキストの width, height を求める。
+
+    example
+    =======
+    >>> width, height = self.get_text_size(
+    >>>     text="0120-777-777", font_size=10, font_path=NOTO_SANS_MONO_BOLD)
+    """
+    dummy_img_size = 4095
+    dummy_img = np.zeros((dummy_img_size, dummy_img_size, 3))
+    text_drawer = TextDrawer(
+        dummy_img, text=text, pos=(0, 0),
+        font_color=(0xFF, 0xFF, 0xFF),
+        font_size=font_size,
+        bg_transfer_functions=tf.GAMMA24,
+        font_path=font_path)
+    text_drawer.draw()
+    return text_drawer.get_text_size()
+
+
 class TextDrawer():
     def __init__(
             self, img, text="hoge", pos=(0, 0), font_color=(1.0, 1.0, 0.0),
@@ -224,3 +246,4 @@ if __name__ == '__main__':
         np.uint8(np.round(img[:, :, ::-1] * 0xFF)))
     print(tf.oetf_from_luminance(100, tf.ST2084) * 0xFF)
     print(tf.oetf_from_luminance(700, tf.ST2084) * 0xFF)
+    print(get_text_size(text="00", font_size=100))
