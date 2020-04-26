@@ -90,7 +90,8 @@ def generate_wrgb_step_ramp(step_num=65, width=1920, height=540, fontsize=20):
     """
     WRGB の 階調飛び飛び Ramp を作る。
     """
-    color_list = [[1, 1, 1], [1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    color_list = [[1, 1, 1], [1, 1, 0], [0, 1, 1], [0, 1, 0],
+                  [1, 0, 1], [1, 0, 0], [0, 0, 1]]
     bit_depth = 10
     max_value = (2 ** bit_depth) - 1
 
@@ -116,7 +117,7 @@ def generate_wrgb_step_ramp(step_num=65, width=1920, height=540, fontsize=20):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     img = generate_wrgb_step_ramp(
-        step_num=65, width=1920, height=200, fontsize=20)
+        step_num=65, width=1920, height=300, fontsize=20)
     img = np.uint16(np.round(img * 0xFFFF))
     fname = f"./figure/step_ramp.tiff"
     cv2.imwrite(fname, img[..., ::-1])

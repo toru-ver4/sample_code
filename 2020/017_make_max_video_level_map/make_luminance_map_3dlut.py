@@ -7,10 +7,11 @@
 
 # import standard libraries
 import os
+from itertools import product
 
 # import third-party libraries
 import numpy as np
-from colour import write_LUT, LUT3D
+from colour import write_LUT, read_LUT, LUT3D, write_image, read_image
 from scipy import interpolate
 from colour import RGB_luminance, RGB_COLOURSPACES
 from colour.colorimetry import ILLUMINANTS
@@ -20,7 +21,6 @@ import matplotlib.pyplot as plt
 import turbo_colormap  # https://gist.github.com/mikhailov-work/ee72ba4191942acecc03fe6da94fc73f
 import transfer_functions as tf
 import plot_utility as pu
-from apply_3dlut import apply_hdr10_to_turbo_3dlut
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -39,11 +39,15 @@ COLOR_SPACE_NAME_BT2020 = 'ITU-R BT.2020'
 COLOR_SPACE_NAME_P3_D65 = 'P3-D65'
 COLOR_SPACE_NAME_SRGB = 'sRGB'
 
+LUMINANCE_METHOD = 'luminance'
+CODE_VALUE_METHOD = 'code_value'
+
 COLOR_SPACE_NAME = COLOR_SPACE_NAME_BT2020
 
-SDR_LUMINANCE = 100
-TURBO_PEAK_LUMINANCE = 1000
 OVER_RANGE_COLOR = np.array([1.0, 0.0, 1.0])
+
+# 計算誤差とかも考慮した最大輝度
+LUMINANCE_PYSICAL_MAX = 10000
 
 
 def load_turbo_colormap():
@@ -159,89 +163,240 @@ def normalize_and_fitting(x, x_min, x_max, target_min, target_max):
     return fitting_val
 
 
+def calc_y_from_rgb_st2084(rgb_st2084, color_space_name, method):
+    rgb_linear = tf.eotf_to_luminance(rgb_st2084, tf.ST2084)
+
+    if method == LUMINANCE_METHOD:
+        primaries = RGB_COLOURSPACES[color_space_name].primaries
+        y_linear = RGB_luminance(
+            RGB=rgb_linear, primaries=primaries, whitepoint=D65)
+    elif method == CODE_VALUE_METHOD:
+        y_linear = np.max(rgb_linear, axis=-1)
+    else:
+        print("warning: invalid method.")
+        primaries = RGB_COLOURSPACES[color_space_name].primaries
+        y_linear = RGB_luminance(
+            RGB=rgb_linear, primaries=primaries, whitepoint=D65)
+
+    y_linear = np.clip(y_linear, 0, LUMINANCE_PYSICAL_MAX)
+
+    return y_linear
+
+
+def make_3dlut_file_name(
+        grid_num=65, sdr_pq_peak_luminance=100, turbo_peak_luminance=1000,
+        color_space_name=COLOR_SPACE_NAME_BT2020, method=LUMINANCE_METHOD):
+    dir_name = "./3dlut/"
+    bt2020_luminance = "LuminanceMap_for_ST2084_BT2020_D65"
+    dci_p3_luminance = "LuminanceMap_for_ST2084_DCI-P3_D65"
+    bt2020_dci_p3_codevalue = "CodeValueMap_for_ST2084"
+    map_range = f"MapRange_{sdr_pq_peak_luminance}-{turbo_peak_luminance}nits"
+    suffix = f"{grid_num}x{grid_num}x{grid_num}.cube"
+
+    if method == CODE_VALUE_METHOD:
+        main_name = bt2020_dci_p3_codevalue
+    elif method == LUMINANCE_METHOD:
+        if color_space_name == COLOR_SPACE_NAME_BT2020:
+            main_name = bt2020_luminance
+        elif color_space_name == COLOR_SPACE_NAME_P3_D65:
+            main_name = dci_p3_luminance
+        else:
+            print("warning: invalid color_space_name")
+            main_name = bt2020_luminance
+
+    file_name = dir_name + "_".join([main_name, map_range, suffix])
+
+    return file_name
+
+
 def make_3dlut_for_luminance_map(
-        grid_num=65, sdr_turbo_st_luminance=50, sdr_srgb_peak_luminance=50):
+        grid_num=65, sdr_pq_peak_luminance=100, turbo_peak_luminance=1000,
+        sdr_turbo_st_luminance=18, sdr_srgb_peak_luminance=60,
+        color_space_name=COLOR_SPACE_NAME_BT2020, method=LUMINANCE_METHOD):
     """
-    sdr_turbo_st_luminance: float
-        turbo を使い始めるところの輝度のパラメータ
-    sdr_srgb_peak_luminance: float
-        輝度マップのモノクロの絵での SDR領域のピーク輝度の設定値
+    輝度マップの3DLUTを作る。
+
+    Parameters
+    ----------
+    grid_num : int
+        3DLUT の格子点数。2^N + 1 が一般的(N=5～6)
+    sdr_pq_peak_luminance : float
+        SDR のピーク輝度を指定。100 nits or 203 nits が妥当かと。
+    turbo_peak_luminance : float
+        Turbo colormap を使って塗るHDR領域の最大輝度を指定。
+        1000 nits or 4000 nits が妥当か？
+    sdr_turbo_st_luminance : float
+        Turbo colormap 空間の中での使用開始輝度を指定。
+        sdr_pq_peak_luminance 付近が深い青だと違和感があったので、
+        少し持ち上げて明るめの青が使われるように調整している。
+    sdr_srgb_peak_luminance : float
+        SDR領域はグレーで表示するが、そのグレーのピーク輝度を
+        sRGB色空間(100nits想定)の中の何nitsの範囲にマッピングするか指定。
+        100 nits だと明るすぎて違和感があったので、やや下げて運用中。
+    color_space_name : str
+        想定するカラースペースを選択。BT.2020 or DCI-P3-D65 を想定。
+        このパラメータに依ってY成分の計算をする際の係数が変わる。
+        後述の `method` が 'luminance' の場合にのみ有効
+    method : str
+        'luminance' or 'code_value' を指定。
+        'code_value' の場合は 各ピクセルのRGBのうち最大値を使って
+        3DLUTを生成する。
     """
-    # 3DLUT の元データ準備
-    rgb = LUT3D.linear_table(grid_num)
 
-    # Linear に戻す
-    rgb_linear = tf.eotf_to_luminance(rgb, tf.ST2084)
+    """ 3DLUT の元データ準備。ST2084 の データ """
+    rgb_st2084 = LUT3D.linear_table(grid_num)
 
-    # Yを計算
-    primaries = RGB_COLOURSPACES[COLOR_SPACE_NAME].primaries
-    y_linear = RGB_luminance(
-        RGB=rgb_linear, primaries=primaries, whitepoint=D65)
+    """ Linear に戻して Y を計算 """
+    y_linear = calc_y_from_rgb_st2084(rgb_st2084, color_space_name, method)
 
-    hdr_idx = (y_linear > SDR_LUMINANCE) & (y_linear <= TURBO_PEAK_LUMINANCE)
-    over_idx = (y_linear > TURBO_PEAK_LUMINANCE)
-    sdr_idx = (y_linear <= SDR_LUMINANCE)
+    """
+    以後、3つのレンジで処理を行う。
+    1. HDRレンジ(sdr_pq_peak_luminance -- turbo_peak_luminance)
+    2. SDRレンジ(0 -- sdr_pq_peak_luminance)
+    3. 超高輝度レンジ(turbo_peak_luminance -- 10000)
+    """
+    hdr_idx = (y_linear > sdr_pq_peak_luminance)\
+        & (y_linear <= turbo_peak_luminance)
+    sdr_idx = (y_linear <= sdr_pq_peak_luminance)
+    over_idx = (y_linear > turbo_peak_luminance)
 
-    # HDRレンジの処理
-    y_hdr_pq = tf.oetf_from_luminance(y_linear[hdr_idx], tf.ST2084)
+    """ 1. HDRレンジの処理 """
+    # Turbo は Non-Linear のデータに適用するべきなので、OETF適用
+    y_hdr_pq_code_value = tf.oetf_from_luminance(y_linear[hdr_idx], tf.ST2084)
 
-    # Turbo に食わせる前に正規化をする
+    # HDRレンジのデータをTurboで変換する前に正規化を行う
+    # sdr_pq_peak_luminance が青、turbo_peak_luminance が赤になるように。
+    hdr_pq_min_code_value = tf.oetf_from_luminance(
+        sdr_pq_peak_luminance, tf.ST2084)
+    hdr_pq_max_code_value = tf.oetf_from_luminance(
+        turbo_peak_luminance, tf.ST2084)
     turbo_min_code_value = calc_turbo_code_value_from_luminance(
         sdr_turbo_st_luminance)
     turbo_max_code_value = 1.0
-    hdr_pq_min_code_value = tf.oetf_from_luminance(
-        SDR_LUMINANCE, tf.ST2084)
-    hdr_pq_max_code_value = tf.oetf_from_luminance(
-        TURBO_PEAK_LUMINANCE, tf.ST2084)
     y_hdr_pq_normalized = normalize_and_fitting(
-        y_hdr_pq, hdr_pq_min_code_value, hdr_pq_max_code_value,
+        y_hdr_pq_code_value, hdr_pq_min_code_value, hdr_pq_max_code_value,
         turbo_min_code_value, turbo_max_code_value)
 
     # 正規化した PQ の Code Value に対して Turbo を適用
     turbo_hdr = apply_turbo_colormap(y_hdr_pq_normalized)
 
-    # SDRレンジの処理
-    sdr_srgb_max_code_value = tf.oetf_from_luminance(
-        sdr_srgb_peak_luminance, tf.SRGB)
-    # SDR も PQ で普通にエンコードしてしまう
-    sdr_pq_code_value = tf.oetf_from_luminance(y_linear[sdr_idx], tf.ST2084)
-    # これが sRGBモニターで指定の輝度となるように調整
+    """ 2. SDRレンジの処理 """
+    # SDRレンジは PQでエンコードしておく
+    # こうすることで、sRGBモニターで見た時に低輝度領域の黒つぶれを防ぐ
+    # 映像は歪むが、もともと輝度マップで歪んでるので気にしない
+    y_sdr_pq_code_value = tf.oetf_from_luminance(y_linear[sdr_idx], tf.ST2084)
+
+    # sRGBモニターで低輝度のSDR領域を表示した時に
+    # 全体が暗すぎず・明るすぎずとなるように sdr_srgb_peak_luminance に正規化
     sdr_pq_min_code_value = 0
     sdr_pq_max_code_value = tf.oetf_from_luminance(
-        sdr_srgb_peak_luminance, tf.ST2084)
+        sdr_pq_peak_luminance, tf.ST2084)
     sdr_srgb_min_code_value = 0
-    sdr_pq_normalized = normalize_and_fitting(
-        sdr_pq_code_value, sdr_pq_min_code_value, sdr_pq_max_code_value,
+    sdr_srgb_max_code_value = tf.oetf_from_luminance(
+        sdr_srgb_peak_luminance, tf.SRGB)
+    y_sdr_pq_normalized = normalize_and_fitting(
+        y_sdr_pq_code_value, sdr_pq_min_code_value, sdr_pq_max_code_value,
         sdr_srgb_min_code_value, sdr_srgb_max_code_value)
 
-    # sdr_normalized = y_linear[sdr_idx] / tf.PEAK_LUMINANCE[tf.SRGB]
-    # sdr_turbo_st_luminance_range = sdr_normalized * sdr_srgb_max_code_value
-    # sdr_code_value = tf.oetf(sdr_turbo_st_luminance_range, tf.SRGB)
+    # y_sdr_pq_normalized は単色データなので束ねてRGB値にする
     sdr_srgb_rgb = np.dstack(
-        [sdr_pq_normalized, sdr_pq_normalized, sdr_pq_normalized])[0]
+        [y_sdr_pq_normalized, y_sdr_pq_normalized, y_sdr_pq_normalized])[0]
 
-    lut_data = np.zeros_like(rgb)
+    """ 計算結果を3DLUTのバッファに代入 """
+    lut_data = np.zeros_like(rgb_st2084)
     lut_data[hdr_idx] = turbo_hdr
     lut_data[sdr_idx] = sdr_srgb_rgb
+    """ 3. 超高輝度レンジの処理 """
     lut_data[over_idx] = OVER_RANGE_COLOR
 
-    lut_name = f"tf: {tf.ST2084}, gamut: {COLOR_SPACE_NAME},"\
-        + f"sdr_turbo_st_luminance: {sdr_turbo_st_luminance}"
+    """ 保存 """
+    lut_name = f"tf: {tf.ST2084}, gamut: {color_space_name},"\
+        + f"turbo_peak_luminance: {turbo_peak_luminance}"
     lut3d = LUT3D(table=lut_data, name=lut_name)
 
-    file_name = f"./3dlut/test.cube"
+    file_name = make_3dlut_file_name(
+        grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
+        turbo_peak_luminance=turbo_peak_luminance,
+        color_space_name=color_space_name, method=method)
     write_LUT(lut3d, file_name)
+
+
+def apply_3dlut_for_blog_image(
+        grid_num, sdr_pq_peak_luminance, turbo_peak_luminance,
+        color_space_name, method, src_img_name="./img/step_ramp.tiff"):
+    lut3d_file_name = make_3dlut_file_name(
+        grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
+        turbo_peak_luminance=turbo_peak_luminance,
+        color_space_name=color_space_name, method=method)
+
+    src_basename = os.path.basename(os.path.splitext(src_img_name)[0])
+    src_dir = os.path.dirname(src_img_name)
+    dst_basename = os.path.basename(os.path.splitext(lut3d_file_name)[0])
+    dst_img_name = os.path.join(
+        src_dir, dst_basename + "_" + src_basename + ".png")
+    print(dst_img_name)
+
+    hdr_img = read_image(src_img_name)
+    lut3d = read_LUT(lut3d_file_name)
+    luminance_map_img = lut3d.apply(hdr_img)
+    write_image(luminance_map_img, dst_img_name, bit_depth='uint16')
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # check_turbo_luminance()
-    # calc_turbo_lut_luminance()
-    # print(calc_turbo_code_value_from_luminance(78.1860129589))
-    # print(calc_turbo_code_value_from_luminance(30)*1023)
-    make_3dlut_for_luminance_map(
-        grid_num=65, sdr_turbo_st_luminance=20, sdr_srgb_peak_luminance=50)
-    apply_hdr10_to_turbo_3dlut(
-        src_img_name="./figure/step_ramp.tiff",
-        dst_img_name="./figure/test.png",
-        lut_3d_name="./3dlut/test.cube")
+    grid_num_list = [33, 65]
+    turbo_peak_luminance_list = [1000, 4000, 10000]
+    color_spece_name_list = [COLOR_SPACE_NAME_BT2020, COLOR_SPACE_NAME_P3_D65]
+    method_list = [LUMINANCE_METHOD, CODE_VALUE_METHOD]
+    # grid_num_list = [65]
+    # turbo_peak_luminance_list = [1000]
+    # color_spece_name_list = [COLOR_SPACE_NAME_BT2020]
+    # method_list = [LUMINANCE_METHOD]
+    sdr_pq_peak_luminance = 100
+    sdr_turbo_st_luminance = 18
+    sdr_srgb_peak_luminance = 60
+    for grid_num, turbo_peak_luminance, color_space_name, method in product(
+            grid_num_list, turbo_peak_luminance_list,
+            color_spece_name_list, method_list):
+        # 作成
+        make_3dlut_for_luminance_map(
+            grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
+            turbo_peak_luminance=turbo_peak_luminance,
+            sdr_turbo_st_luminance=sdr_turbo_st_luminance,
+            sdr_srgb_peak_luminance=sdr_srgb_peak_luminance,
+            color_space_name=color_space_name, method=method)
+        # テストパターンに適用
+        apply_3dlut_for_blog_image(
+            grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
+            turbo_peak_luminance=turbo_peak_luminance,
+            color_space_name=color_space_name, method=method,
+            src_img_name="./img/step_ramp.tiff")
+        # apply_3dlut_for_blog_image(
+        #     grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
+        #     turbo_peak_luminance=turbo_peak_luminance,
+        #     color_space_name=color_space_name, method=method,
+        #     src_img_name="./img/src_riku.tif")
+        # apply_3dlut_for_blog_image(
+        #     grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
+        #     turbo_peak_luminance=turbo_peak_luminance,
+        #     color_space_name=color_space_name, method=method,
+        #     src_img_name="./img/src_umi.tif")
+        # apply_3dlut_for_blog_image(
+        #     grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
+        #     turbo_peak_luminance=turbo_peak_luminance,
+        #     color_space_name=color_space_name, method=method,
+        #     src_img_name="./img/umi_boost.tif")
+        # apply_3dlut_for_blog_image(
+        #     grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
+        #     turbo_peak_luminance=turbo_peak_luminance,
+        #     color_space_name=color_space_name, method=method,
+        #     src_img_name="./img/riku_boost.tif")
+
+    # apply_hdr10_to_turbo_3dlut(
+    #     src_img_name="./figure/step_ramp.tiff",
+    #     dst_img_name="./figure/test.png",
+    #     lut_3d_name="./3dlut/test.cube")
+    # apply_hdr10_to_turbo_3dlut(
+    #     src_img_name="./figure/step_ramp.tiff",
+    #     dst_img_name="./figure/test_before.png",
+    #     lut_3d_name="./3dlut/PQ_BT2020_to_Turbo_sRGB.cube")
