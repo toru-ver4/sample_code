@@ -344,28 +344,28 @@ def apply_3dlut_for_blog_image(
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+    # 作成する 3DLUT のパラメータリスト作成
     grid_num_list = [33, 65]
     turbo_peak_luminance_list = [1000, 4000, 10000]
     color_spece_name_list = [COLOR_SPACE_NAME_BT2020, COLOR_SPACE_NAME_P3_D65]
     method_list = [LUMINANCE_METHOD, CODE_VALUE_METHOD]
-    # grid_num_list = [65]
-    # turbo_peak_luminance_list = [1000]
-    # color_spece_name_list = [COLOR_SPACE_NAME_BT2020]
-    # method_list = [LUMINANCE_METHOD]
     sdr_pq_peak_luminance = 100
     sdr_turbo_st_luminance = 18
     sdr_srgb_peak_luminance = 60
+
+    # itertools.product でパラメータを総当りで指定
     for grid_num, turbo_peak_luminance, color_space_name, method in product(
             grid_num_list, turbo_peak_luminance_list,
             color_spece_name_list, method_list):
-        # 作成
+        # 3DLLUT 作成
         make_3dlut_for_luminance_map(
             grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
             turbo_peak_luminance=turbo_peak_luminance,
             sdr_turbo_st_luminance=sdr_turbo_st_luminance,
             sdr_srgb_peak_luminance=sdr_srgb_peak_luminance,
             color_space_name=color_space_name, method=method)
-        # テストパターンに適用
+        # 確認のためにテストパターンに適用
         apply_3dlut_for_blog_image(
             grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
             turbo_peak_luminance=turbo_peak_luminance,
@@ -397,6 +397,6 @@ if __name__ == '__main__':
     #     dst_img_name="./figure/test.png",
     #     lut_3d_name="./3dlut/test.cube")
     # apply_hdr10_to_turbo_3dlut(
-    #     src_img_name="./figure/step_ramp.tiff",
-    #     dst_img_name="./figure/test_before.png",
+    #     src_img_name="./img/step_ramp.tiff",
+    #     dst_img_name="./figure/step_ramp_before.png",
     #     lut_3d_name="./3dlut/PQ_BT2020_to_Turbo_sRGB.cube")
