@@ -13,7 +13,8 @@ from itertools import product
 import numpy as np
 from colour import write_LUT, read_LUT, LUT3D, write_image, read_image
 from scipy import interpolate
-from colour import RGB_luminance, RGB_COLOURSPACES
+from colour import RGB_luminance, RGB_COLOURSPACES, RGB_to_RGB
+from colour.models import sRGB_COLOURSPACE
 from colour.colorimetry import ILLUMINANTS
 import matplotlib.pyplot as plt
 
@@ -185,13 +186,15 @@ def calc_y_from_rgb_st2084(rgb_st2084, color_space_name, method):
 
 def make_3dlut_file_name(
         grid_num=65, sdr_pq_peak_luminance=100, turbo_peak_luminance=1000,
-        color_space_name=COLOR_SPACE_NAME_BT2020, method=LUMINANCE_METHOD):
+        color_space_name=COLOR_SPACE_NAME_BT2020, method=LUMINANCE_METHOD,
+        out_on_hdr=False):
     dir_name = "./3dlut/"
     bt2020_luminance = "LuminanceMap_for_ST2084_BT2020_D65"
     dci_p3_luminance = "LuminanceMap_for_ST2084_DCI-P3_D65"
     bt2020_dci_p3_codevalue = "CodeValueMap_for_ST2084"
     map_range = f"MapRange_{sdr_pq_peak_luminance}-{turbo_peak_luminance}nits"
-    suffix = f"{grid_num}x{grid_num}x{grid_num}.cube"
+    suffix = f"{grid_num}x{grid_num}x{grid_num}"
+    ext = ".cube"
 
     if method == CODE_VALUE_METHOD:
         main_name = bt2020_dci_p3_codevalue
@@ -204,7 +207,13 @@ def make_3dlut_file_name(
             print("warning: invalid color_space_name")
             main_name = bt2020_luminance
 
+    if out_on_hdr:
+        on_hdr = "_on_ST2084"
+    else:
+        on_hdr = ""
+
     file_name = dir_name + "_".join([main_name, map_range, suffix])
+    file_name += on_hdr + ext
 
     return file_name
 
@@ -212,7 +221,8 @@ def make_3dlut_file_name(
 def make_3dlut_for_luminance_map(
         grid_num=65, sdr_pq_peak_luminance=100, turbo_peak_luminance=1000,
         sdr_turbo_st_luminance=18, sdr_srgb_peak_luminance=60,
-        color_space_name=COLOR_SPACE_NAME_BT2020, method=LUMINANCE_METHOD):
+        color_space_name=COLOR_SPACE_NAME_BT2020, method=LUMINANCE_METHOD,
+        out_on_hdr=False):
     """
     輝度マップの3DLUTを作る。
 
@@ -241,6 +251,9 @@ def make_3dlut_for_luminance_map(
         'luminance' or 'code_value' を指定。
         'code_value' の場合は 各ピクセルのRGBのうち最大値を使って
         3DLUTを生成する。
+    out_on_hdr : str
+        出力値を ST2084 の箱に入れるか否か。
+        True にすると ST2084 の 0～100nits にマッピングする
     """
 
     """ 3DLUT の元データ準備。ST2084 の データ """
@@ -309,6 +322,16 @@ def make_3dlut_for_luminance_map(
     """ 3. 超高輝度レンジの処理 """
     lut_data[over_idx] = OVER_RANGE_COLOR
 
+    """ Side by Side 用に sRGB on HDR の準備（オプション）"""
+    if out_on_hdr:
+        lut_data_srgb_linear = tf.eotf_to_luminance(lut_data, tf.SRGB)
+        lut_data_wcg_linear = RGB_to_RGB(
+            lut_data_srgb_linear, sRGB_COLOURSPACE,
+            RGB_COLOURSPACES[color_space_name])
+        lut_data_wcg_st2084 = tf.oetf_from_luminance(
+            lut_data_wcg_linear, tf.ST2084)
+        lut_data = lut_data_wcg_st2084
+
     """ 保存 """
     lut_name = f"tf: {tf.ST2084}, gamut: {color_space_name},"\
         + f"turbo_peak_luminance: {turbo_peak_luminance}"
@@ -317,17 +340,20 @@ def make_3dlut_for_luminance_map(
     file_name = make_3dlut_file_name(
         grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
         turbo_peak_luminance=turbo_peak_luminance,
-        color_space_name=color_space_name, method=method)
+        color_space_name=color_space_name, method=method,
+        out_on_hdr=out_on_hdr)
     write_LUT(lut3d, file_name)
 
 
 def apply_3dlut_for_blog_image(
         grid_num, sdr_pq_peak_luminance, turbo_peak_luminance,
-        color_space_name, method, src_img_name="./img/step_ramp.tiff"):
+        color_space_name, method, src_img_name="./img/step_ramp.tiff",
+        out_on_hdr=False):
     lut3d_file_name = make_3dlut_file_name(
         grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
         turbo_peak_luminance=turbo_peak_luminance,
-        color_space_name=color_space_name, method=method)
+        color_space_name=color_space_name, method=method,
+        out_on_hdr=out_on_hdr)
 
     src_basename = os.path.basename(os.path.splitext(src_img_name)[0])
     src_dir = os.path.dirname(src_img_name)
@@ -350,27 +376,35 @@ if __name__ == '__main__':
     turbo_peak_luminance_list = [1000, 4000, 10000]
     color_spece_name_list = [COLOR_SPACE_NAME_BT2020, COLOR_SPACE_NAME_P3_D65]
     method_list = [LUMINANCE_METHOD, CODE_VALUE_METHOD]
+    out_on_hdr_list = [True, False]
+    # grid_num_list = [65]
+    # turbo_peak_luminance_list = [1000]
+    # color_spece_name_list = [COLOR_SPACE_NAME_BT2020]
+    # method_list = [LUMINANCE_METHOD]
+    # out_on_hdr_list = [True, False]
     sdr_pq_peak_luminance = 100
     sdr_turbo_st_luminance = 18
     sdr_srgb_peak_luminance = 60
 
     # itertools.product でパラメータを総当りで指定
-    for grid_num, turbo_peak_luminance, color_space_name, method in product(
+    for grid_num, turbo_peak_luminance,\
+        color_space_name, method, out_on_hdr in product(
             grid_num_list, turbo_peak_luminance_list,
-            color_spece_name_list, method_list):
+            color_spece_name_list, method_list, out_on_hdr_list):
         # 3DLLUT 作成
         make_3dlut_for_luminance_map(
             grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
             turbo_peak_luminance=turbo_peak_luminance,
             sdr_turbo_st_luminance=sdr_turbo_st_luminance,
             sdr_srgb_peak_luminance=sdr_srgb_peak_luminance,
-            color_space_name=color_space_name, method=method)
+            color_space_name=color_space_name, method=method,
+            out_on_hdr=out_on_hdr)
         # 確認のためにテストパターンに適用
         apply_3dlut_for_blog_image(
             grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
             turbo_peak_luminance=turbo_peak_luminance,
             color_space_name=color_space_name, method=method,
-            src_img_name="./img/step_ramp.tiff")
+            src_img_name="./img/step_ramp.tiff", out_on_hdr=out_on_hdr)
         # apply_3dlut_for_blog_image(
         #     grid_num=grid_num, sdr_pq_peak_luminance=sdr_pq_peak_luminance,
         #     turbo_peak_luminance=turbo_peak_luminance,
