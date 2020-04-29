@@ -1075,7 +1075,8 @@ def _check_chroma_map_lut_interpolation(hue):
     # まずは cmap_lut 値の Bilinear補間
     cmap_value_l = interpolate_chroma_map_lut(
         cmap_hd_lut=cmap_lut_l, degree_min=st_degree_l,
-        degree_max=ed_degree_l, data_hd=test_degree_l)
+        degree_max=ed_degree_l, data_hd=test_hd_data_l)
+    print(cmap_value_l)
 
     # 補間して得られた cmap 値から CL平面上における座標を取得
     # icn_x_l, icn_y_l = calc_icn_xy_from_l_focal(
@@ -1137,7 +1138,7 @@ def interpolate_chroma_map_lut(cmap_hd_lut, degree_min, degree_max, data_hd):
 
     # 1. h_idx
     h_idx_float = hue_data / (2 * np.pi) * (hue_index_max)
-    h_idx_low = np.uint16(h_idx_float)
+    h_idx_low = np.int16(h_idx_float)
     h_idx_high = h_idx_low + 1
     h_idx_low = np.clip(h_idx_low, 0, hue_index_max)
     h_idx_high = np.clip(h_idx_high, 0, hue_index_max)
@@ -1150,11 +1151,14 @@ def interpolate_chroma_map_lut(cmap_hd_lut, degree_min, degree_max, data_hd):
     # 2. d_idx
     d_idx_l_float = (degree_data - degree_lmin)\
         / (degree_lmax - degree_lmin) * degree_index_max
-    d_idx_ll = np.uint16(d_idx_l_float)
+    d_idx_l_float = np.clip(d_idx_l_float, 0, degree_index_max)
+
+    d_idx_ll = np.int16(d_idx_l_float)
     d_idx_lh = d_idx_ll + 1
     d_idx_h_float = (degree_data - degree_hmin)\
         / (degree_hmax - degree_hmin) * degree_index_max
-    d_idx_hl = np.uint16(d_idx_h_float)
+    d_idx_h_float = np.clip(d_idx_h_float, 0, degree_index_max)
+    d_idx_hl = np.int16(d_idx_h_float)
     d_idx_hh = d_idx_hl + 1
     d_idx_ll = np.clip(d_idx_ll, 0, degree_index_max)
     d_idx_lh = np.clip(d_idx_lh, 0, degree_index_max)
@@ -1166,10 +1170,10 @@ def interpolate_chroma_map_lut(cmap_hd_lut, degree_min, degree_max, data_hd):
     r_high = d_idx_hh - d_idx_h_float
 
     # 4. interpolation in degree derection
-    intp_d_low = r_low * cmap_hd_lut[h_idx_low][d_idx_ll]\
-        + (1 - r_low) * cmap_hd_lut[h_idx_low][d_idx_lh]
-    intp_d_high = r_high * cmap_hd_lut[h_idx_high][d_idx_hl]\
-        + (1 - r_high) * cmap_hd_lut[h_idx_high][d_idx_hh]
+    intp_d_low = r_low * cmap_hd_lut[h_idx_low, d_idx_ll]\
+        + (1 - r_low) * cmap_hd_lut[h_idx_low, d_idx_lh]
+    intp_d_high = r_high * cmap_hd_lut[h_idx_high, d_idx_hl]\
+        + (1 - r_high) * cmap_hd_lut[h_idx_high, d_idx_hh]
 
     # 6. final_r
     final_r = h_idx_high - h_idx_float
