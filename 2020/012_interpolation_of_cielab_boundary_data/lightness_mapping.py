@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 from colour import Lab_to_XYZ, XYZ_to_RGB
 from colour.models import BT2020_COLOURSPACE
-from multiprocessing import Pool, cpu_count, Array
+from multiprocessing import Pool, cpu_count
 
 # import my libraries
 import plot_utility as pu
@@ -864,24 +864,19 @@ def make_chroma_map_lut():
 def _debug_plot_check_lightness_mapping_specific_hue(
         hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
         l_cusp, l_focal, c_focal, x_val, y_val, map_x, map_y,
-        focal_type, idx=0):
-    ax1 = pu.plot_1_graph(
+        focal_type, h_idx=0):
+    fig1, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(14, 8),
+        figsize=(16 * 0.9, 9 * 0.9),
         graph_title=f"HUE = {hue/2/np.pi*360:.1f}°, for {focal_type}",
-        graph_title_size=None,
         xlabel="Chroma",
         ylabel="Lightness",
-        axis_label_size=None,
         legend_size=17,
-        xlim=None,
-        ylim=[-33, 143],
-        xtick=None,
-        ytick=[(x - 3) * 10 for x in range(18)],
-        xtick_size=None, ytick_size=None,
-        linewidth=3,
-        minor_xtick_num=None,
-        minor_ytick_num=None)
+        xlim=[-10, 230],
+        ylim=[-3, 133],
+        xtick=[x * 20 for x in range(12)],
+        ytick=[x * 10 for x in range(14)],
+        return_figure=True)
     ax1.patch.set_facecolor("#E0E0E0")
     in_color = pu.BLUE
     ou_color = pu.RED
@@ -930,11 +925,12 @@ def _debug_plot_check_lightness_mapping_specific_hue(
             textcoords='data', ha='left', va='bottom',
             arrowprops=arrowprops)
 
-    graph_name = f"./video_src/lightness_mapping_{focal_type}_{idx:04d}.png"
+    graph_name = f"./video_src/lightness_mapping_{focal_type}_{h_idx:04d}.png"
     plt.legend(loc='upper right')
-    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
-    # plt.savefig(graph_name)  # オプション付けるとエラーになるので外した
-    plt.show()
+    # plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    plt.savefig(graph_name)  # オプション付けるとエラーになるので外した
+    # plt.show()
+    plt.close(fig1)
 
 
 def _make_debug_luminance_chroma_data_fixed_hue(
@@ -944,7 +940,7 @@ def _make_debug_luminance_chroma_data_fixed_hue(
     任意の Hue の Hue-Degree のサンプルデータを作る。
     st_degree, ed_degree を考慮
     """
-    sample_num = 7
+    sample_num = 15
     hue_idx_low_float = hue / (2 * np.pi) * (hue_sample_num - 1)
     hue_idx_low = int(hue_idx_low_float)
     hue_idx_high = hue_idx_low + 1
@@ -1031,13 +1027,14 @@ def calc_degree_from_cl_data_using_c_focal(cl_data, c_focal):
     return np.arctan(lightness / (chroma - c_focal)) + np.pi
 
 
-def _check_chroma_map_lut_interpolation(hue):
+def _check_chroma_map_lut_interpolation(hue_idx, hue):
     """
     interpolate_chroma_map_lut() の動作確認用のデバッグコード。
     1. まずはLUT上の LC平面で確認
     2. 次に補間が働く LC平面で確認
     3. 今度は補間が働く ab平面で確認
     """
+    print(hue_idx)
     # とりあえず L*C* 平面のポリゴン準備
     cl_inner = get_chroma_lightness_val_specfic_hue(hue, mcfl.BT709_BOUNDARY)
     cl_outer =\
@@ -1113,7 +1110,7 @@ def _check_chroma_map_lut_interpolation(hue):
     cmap_value_l[restore_idx_l] = test_rval_l[restore_idx_l]
     restore_idx_c = (test_rval_c > cmap_value_c)
     cmap_value_c[restore_idx_c] = test_rval_c[restore_idx_c]
-    
+
     # 補間して得られた cmap 値から CL平面上における座標を取得
     icn_x_l, icn_y_l = calc_icn_xy_from_l_focal(
         cmap_lut_val_l=cmap_value_l, degree_l=test_degree_l, l_focal=l_focal)
@@ -1124,12 +1121,12 @@ def _check_chroma_map_lut_interpolation(hue):
         hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
         l_cusp, l_focal, c_focal,
         x_val=chroma_l, y_val=lightness_l, map_x=icn_x_l, map_y=icn_y_l,
-        focal_type="L_focal", idx=0)
+        focal_type="L_focal", h_idx=hue_idx)
     _debug_plot_check_lightness_mapping_specific_hue(
         hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
         l_cusp, l_focal, c_focal,
         x_val=chroma_c, y_val=lightness_c, map_x=icn_x_c, map_y=icn_y_c,
-        focal_type="C_focal", idx=0)
+        focal_type="C_focal", h_idx=hue_idx)
 
 
 def calc_degree_min_max_for_interpolation():
@@ -1220,6 +1217,10 @@ def interpolate_chroma_map_lut(cmap_hd_lut, degree_min, degree_max, data_hd):
     return intp_data
 
 
+def thread_wrapper_check_chroma_map_lut_interpolation(args):
+    _check_chroma_map_lut_interpolation(**args)
+
+
 def main_func():
     # これが めいんるーちん
     # make_chroma_map_lut()
@@ -1236,7 +1237,16 @@ def main_func():
     # _check_calc_cmap_on_lc_plane(hue=270/360*2*np.pi)
     # _check_chroma_map_lut_data(30)
     # _check_chroma_map_lut_data(100)
-    _check_chroma_map_lut_interpolation(hue=30/360*2*np.pi)
+    hue_num = 361
+    hue_list = np.linspace(0, 2 * np.pi, hue_num, endpoint=False)
+    # _check_chroma_map_lut_interpolation(hue_idx=1, hue=hue_list[1])
+    args = []
+    for idx, hue in enumerate(hue_list):
+        # _check_chroma_map_lut_interpolation(hue_idx=idx, hue=hue)
+        d = dict(hue_idx=idx, hue=hue)
+        args.append(d)
+    with Pool(cpu_count()) as pool:
+        pool.map(thread_wrapper_check_chroma_map_lut_interpolation, args)
 
 
 if __name__ == '__main__':
