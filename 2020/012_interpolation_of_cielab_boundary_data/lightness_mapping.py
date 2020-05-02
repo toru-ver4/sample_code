@@ -865,10 +865,12 @@ def _debug_plot_check_lightness_mapping_specific_hue(
         hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
         l_cusp, l_focal, c_focal, x_val, y_val, map_x, map_y,
         focal_type, h_idx=0):
+    graph_title = f"HUE = {hue/2/np.pi*360:.1f}°, for {focal_type}"
+    graph_title += f"={c_focal:.1f}" if focal_type == "C_focal" else ""
     fig1, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(16 * 0.9, 9 * 0.9),
-        graph_title=f"HUE = {hue/2/np.pi*360:.1f}°, for {focal_type}",
+        graph_title=graph_title,
         xlabel="Chroma",
         ylabel="Lightness",
         legend_size=17,
@@ -940,7 +942,7 @@ def _make_debug_luminance_chroma_data_fixed_hue(
     任意の Hue の Hue-Degree のサンプルデータを作る。
     st_degree, ed_degree を考慮
     """
-    sample_num = 15
+    sample_num = 32
     hue_idx_low_float = hue / (2 * np.pi) * (hue_sample_num - 1)
     hue_idx_low = int(hue_idx_low_float)
     hue_idx_high = hue_idx_low + 1
@@ -967,35 +969,27 @@ def _make_debug_luminance_chroma_data_fixed_hue(
         r2 = np.ones(sample_num) * (c_focal - 75)
         rr = np.append(r1, r2).reshape((2, sample_num))
         degree_data = np.linspace(
-            st_degree - (st_degree * 0.02), ed_degree, sample_num)
+            st_degree - (st_degree * 0.00001), ed_degree, sample_num)
         chroma, lightness = calc_icn_xy_from_c_focal(
             cmap_lut_val_c=rr, degree_c=degree_data, c_focal=c_focal)
 
     return lightness.flatten(), chroma.flatten()
 
 
-def _make_debug_luminance_chroma_data_fixed_hue2(
-        hue, focal_lut, focal_type="l"):
+def _make_debug_luminance_chroma_data_fixed_hue2():
     """
     任意の Hue の Hue-Degree のサンプルデータを作る。
     st_degree, ed_degree を**考慮しない**
     """
-    sample_num = 7
+    sample_num = 31
 
     r1 = np.ones(sample_num) * 30
-    r2 = np.ones(sample_num) * 70
+    r2 = np.ones(sample_num) * 75
     rr = np.append(r1, r2).reshape((2, sample_num))
 
-    if focal_type == 'l':
-        degree_data = np.linspace(-np.pi/2, np.pi/2, sample_num)
-        l_focal = calc_value_from_hue_1dlut(hue, focal_lut)
-        chroma, lightness = calc_icn_xy_from_l_focal(
-            cmap_lut_val_l=rr, degree_l=degree_data, l_focal=l_focal)
-    elif focal_type == 'c':
-        degree_data = np.linspace(np.pi/2, np.pi, sample_num)
-        c_focal = calc_value_from_hue_1dlut(hue, focal_lut)
-        chroma, lightness = calc_icn_xy_from_c_focal(
-            cmap_lut_val_c=rr, degree_c=degree_data, c_focal=c_focal)
+    degree_data = np.linspace(-np.pi/2, np.pi/2, sample_num)
+    chroma, lightness = calc_icn_xy_from_l_focal(
+        cmap_lut_val_l=rr, degree_l=degree_data, l_focal=50)
 
     return lightness.flatten(), chroma.flatten()
 
@@ -1064,9 +1058,6 @@ def _check_chroma_map_lut_interpolation(hue_idx, hue):
     st_degree_l, ed_degree_l, st_degree_c, ed_degree_c =\
         calc_chroma_map_degree(l_focal_lut, c_focal_lut)
     cmap_lut_h_sample = cmap_lut_l.shape[0]
-    cmap_lut_d_sample = cmap_lut_l.shape[1]
-    degree_l = linspace_2d(st_degree_l, ed_degree_l, cmap_lut_d_sample)
-    degree_c = linspace_2d(st_degree_c, ed_degree_c, cmap_lut_d_sample)
 
     # とりあえず検証用のデータを準備
     # 一応、本番を想定して chroma-lightness から変換するように仕込む
@@ -1110,6 +1101,107 @@ def _check_chroma_map_lut_interpolation(hue_idx, hue):
     cmap_value_l[restore_idx_l] = test_rval_l[restore_idx_l]
     restore_idx_c = (test_rval_c > cmap_value_c)
     cmap_value_c[restore_idx_c] = test_rval_c[restore_idx_c]
+
+    # 補間して得られた cmap 値から CL平面上における座標を取得
+    icn_x_l, icn_y_l = calc_icn_xy_from_l_focal(
+        cmap_lut_val_l=cmap_value_l, degree_l=test_degree_l, l_focal=l_focal)
+    icn_x_c, icn_y_c = calc_icn_xy_from_c_focal(
+        cmap_lut_val_c=cmap_value_c, degree_c=test_degree_c, c_focal=c_focal)
+
+    _debug_plot_check_lightness_mapping_specific_hue(
+        hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
+        l_cusp, l_focal, c_focal,
+        x_val=chroma_l, y_val=lightness_l, map_x=icn_x_l, map_y=icn_y_l,
+        focal_type="L_focal", h_idx=hue_idx)
+    _debug_plot_check_lightness_mapping_specific_hue(
+        hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
+        l_cusp, l_focal, c_focal,
+        x_val=chroma_c, y_val=lightness_c, map_x=icn_x_c, map_y=icn_y_c,
+        focal_type="C_focal", h_idx=hue_idx)
+
+
+def _check_luminance_mapping_full_degree(hue_idx, hue):
+    """
+    luminance mapping を 0～180° の Degree で確認。
+    これまでは、上側・下側で分けていたが統合した試験を行う。
+    """
+    print(hue_idx)
+    # とりあえず L*C* 平面のポリゴン準備
+    cl_inner = get_chroma_lightness_val_specfic_hue(hue, mcfl.BT709_BOUNDARY)
+    cl_outer =\
+        get_chroma_lightness_val_specfic_hue(hue, mcfl.BT2020_BOUNDARY)
+
+    # cusp 準備
+    lh_inner_lut = np.load(mcfl.BT709_BOUNDARY)
+    lh_outer_lut = np.load(mcfl.BT2020_BOUNDARY)
+    lcusp = mcfl.calc_l_cusp_specific_hue(hue, lh_inner_lut, lh_outer_lut)
+    inner_cusp = mcfl.calc_cusp_in_lc_plane(hue, lh_inner_lut)
+    outer_cusp = mcfl.calc_cusp_in_lc_plane(hue, lh_outer_lut)
+
+    # l_cusp, l_focal, c_focal 準備
+    l_cusp_lut = np.load(mcfl.L_CUSP_NAME)
+    l_focal_lut = np.load(mcfl.L_FOCAL_NAME)
+    c_focal_lut = np.load(mcfl.C_FOCAL_NAME)
+    l_cusp = calc_value_from_hue_1dlut(hue, l_cusp_lut)
+    l_focal = calc_value_from_hue_1dlut(hue, l_focal_lut)
+    c_focal = calc_value_from_hue_1dlut(hue, c_focal_lut)
+
+    # Chroma Mapping の Focalからの距離の LUT データ
+    cmap_lut_l = np.load(CHROMA_MAP_LUT_LUMINANCE_NAME)
+    cmap_lut_c = np.load(CHROMA_MAP_LUT_CHROMA_NAME)
+
+    # st_degree, ed_degree を 1次元LUTの形で得る
+    # st_degree_l[hue] = 30°, ed_degree_l[hue] = 120° 的な？
+    st_degree_l, ed_degree_l, st_degree_c, ed_degree_c =\
+        calc_chroma_map_degree(l_focal_lut, c_focal_lut)
+    cmap_lut_h_sample = cmap_lut_l.shape[0]
+
+    # とりあえず検証用のデータを準備
+    # 一応、本番を想定して chroma-lightness から変換するように仕込む
+    # hue-degree --> chroma-lightness --> hue_degree --> 補間的な？
+    """ L_focal 基準データ """
+    lightness_l, chroma_l = _make_debug_luminance_chroma_data_fixed_hue2()
+    hue_array = np.ones(chroma_l.shape[0]) * hue
+    cl_data_l = np.dstack((chroma_l, lightness_l))[0]
+    test_degree_l = calc_degree_from_cl_data_using_l_focal(
+        cl_data=cl_data_l,
+        l_focal=calc_value_from_hue_1dlut(hue_array, l_focal_lut))
+    test_hd_data_l = np.dstack((hue_array, test_degree_l))[0]
+    test_rval_l = calc_rval_for_l_focal(chroma_l, lightness_l, l_focal)
+
+    """ C_focal 基準データ """
+    lightness_c, chroma_c = _make_debug_luminance_chroma_data_fixed_hue2()
+    hue_array = np.ones(chroma_l.shape[0]) * hue
+    cl_data_c = np.dstack((chroma_c, lightness_c))[0]
+    test_degree_c = calc_degree_from_cl_data_using_c_focal(
+        cl_data=cl_data_c,
+        c_focal=calc_value_from_hue_1dlut(hue_array, c_focal_lut))
+    test_hd_data_c = np.dstack((hue_array, test_degree_c))[0]
+    test_rval_c = calc_rval_for_c_focal(chroma_c, lightness_c, c_focal)
+
+    """ 出力用バッファ準備 """
+    icn_x = np.zeros_like(chroma_l)
+    icn_y = np.zeros_like(lightness_l)
+
+    # まずは cmap_lut 値の Bilinear補間
+    cmap_value_l = interpolate_chroma_map_lut(
+        cmap_hd_lut=cmap_lut_l, degree_min=st_degree_l,
+        degree_max=ed_degree_l, data_hd=test_hd_data_l)
+    cmap_value_c = interpolate_chroma_map_lut(
+        cmap_hd_lut=cmap_lut_c, degree_min=st_degree_c,
+        degree_max=ed_degree_c, data_hd=test_hd_data_c)
+
+    # 除外データは除外
+    restore_idx_l = (test_rval_l <= cmap_value_l)
+    cmap_value_l[restore_idx_l] = test_rval_l[restore_idx_l]
+    restore_idx_c = (test_rval_c > cmap_value_c)
+    cmap_value_c[restore_idx_c] = test_rval_c[restore_idx_c]
+
+    # 上側・下側のデータを後で抜き出すためのindexを計算
+    """
+    ココの実装から再開して！！！
+    """
+    
 
     # 補間して得られた cmap 値から CL平面上における座標を取得
     icn_x_l, icn_y_l = calc_icn_xy_from_l_focal(
@@ -1237,16 +1329,19 @@ def main_func():
     # _check_calc_cmap_on_lc_plane(hue=270/360*2*np.pi)
     # _check_chroma_map_lut_data(30)
     # _check_chroma_map_lut_data(100)
-    hue_num = 361
-    hue_list = np.linspace(0, 2 * np.pi, hue_num, endpoint=False)
-    # _check_chroma_map_lut_interpolation(hue_idx=1, hue=hue_list[1])
-    args = []
-    for idx, hue in enumerate(hue_list):
-        # _check_chroma_map_lut_interpolation(hue_idx=idx, hue=hue)
-        d = dict(hue_idx=idx, hue=hue)
-        args.append(d)
-    with Pool(cpu_count()) as pool:
-        pool.map(thread_wrapper_check_chroma_map_lut_interpolation, args)
+
+    # 上がわ・下側別々の Lightness Mapping の確認動画作成
+    # hue_num = 256
+    # hue_list = np.deg2rad(
+    #     np.linspace(0, 360, hue_num, endpoint=False))
+    # args = []
+    # for idx, hue in enumerate(hue_list):
+    #     # _check_chroma_map_lut_interpolation(hue_idx=idx, hue=hue)
+    #     d = dict(hue_idx=idx, hue=hue)
+    #     args.append(d)
+    # with Pool(cpu_count()) as pool:
+    #     pool.map(thread_wrapper_check_chroma_map_lut_interpolation, args)
+    _check_luminance_mapping_full_degree(hue_idx=0, hue=np.deg2rad(30))
 
 
 if __name__ == '__main__':
