@@ -14,9 +14,11 @@ import os
 # import third-party libraries
 import numpy as np
 from colour import YCbCr_to_RGB, YCBCR_WEIGHTS
+import cv2
+import matplotlib.pyplot as plt
+from scipy import linalg
 
 # import my libraries
-import cv2
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -141,10 +143,10 @@ def save_images(img_ycbcr, img_rgb):
     正規化は 1023 が 1.0 となるようにマッピングしている。
     DaVinci Resolve の内部正規化ルールとマッチするように。
     """
-    cv2.imwrite("HDTV_COLOR_BAR_YCbCr.tiff",
-                np.uint16(img_ycbcr[..., ::-1] / 0x3FF * 0xFFFF))
+    cv2.imwrite("HDTV_COLOR_BAR_Pseudo_YCbCr.tiff",
+                np.uint16(img_ycbcr[..., ::-1]))
     cv2.imwrite("HDTV_COLOR_BAR_RGB.tiff",
-                np.uint16(img_rgb[..., ::-1] / 0x3FF * 0xFFFF))
+                np.uint16(img_rgb[..., ::-1]))
 
 
 def main_func():
@@ -167,14 +169,82 @@ def main_func():
     # 横幅が1921px なので 一番右端を削る
     img_ycbcr = img_ycbcr[:, :-1, :]
 
+    # 以後は uint16 として処理を行う。
+    # ただし、940(235*(2**(10-8))) が 60160(235*(2**(16-8)))
+    # となるように正規化する
+    img_ycbcr = img_ycbcr * (2 ** (16 - 10))
+
     img_rgb = YCbCr_to_RGB(
         YCbCr=img_ycbcr, K=YCBCR_WEIGHTS['ITU-R BT.709'],
-        in_bits=10, in_legal=True, in_int=True,
-        out_bits=10, out_legal=True, out_int=True)
+        in_bits=16, in_legal=True, in_int=True,
+        out_bits=16, out_legal=True, out_int=True)
+    # img_rgb = ycbcr_to_rgb(img_ycbcr, 16, 16)
 
     save_images(img_ycbcr, img_rgb)
+
+
+# def ycbcr_to_rgb(ycbcr, in_bit=10, out_bit=10):
+#     """
+#     colour.YCbCr_to_RGB を疑って自作。
+#     結局関係無かった…俺はアホや…。
+#     """
+#     shape_for_restore = ycbcr.shape
+#     rgb_to_ycbcr_mtx = np.array([
+#         [0.2126, 0.7152, 0.0722],
+#         [-0.2126/1.8556, -0.7152/1.8556, 0.9278/1.8556],
+#         [0.7874/1.5748, -0.7152/1.5748, -0.0722/1.5748]
+#     ])
+#     mtx = linalg.inv(rgb_to_ycbcr_mtx)
+
+#     cbcr_offset = 128 * (2 ** (in_bit - 8))
+#     y_offset = 16 * (2 ** (in_bit - 8))
+#     y_normalize_val = (235 - 16) * (2 ** (in_bit - 8))
+#     cbcr_normalize_val = (240 - 16) * (2 ** (in_bit - 8))
+
+#     y = (ycbcr[..., 0] - y_offset) / y_normalize_val
+#     cb = (ycbcr[..., 1] - cbcr_offset) / cbcr_normalize_val
+#     cr = (ycbcr[..., 2] - cbcr_offset) / cbcr_normalize_val
+
+#     r = mtx[0][0] * y + mtx[0][1] * cb + mtx[0][2] * cr
+#     g = mtx[1][0] * y + mtx[1][1] * cb + mtx[1][2] * cr
+#     b = mtx[2][0] * y + mtx[2][1] * cb + mtx[2][2] * cr
+
+#     r_out = (219 * r + 16) * (2 ** (out_bit - 8))
+#     g_out = (219 * g + 16) * (2 ** (out_bit - 8))
+#     b_out = (219 * b + 16) * (2 ** (out_bit - 8))
+
+#     return np.dstack((r_out, g_out, b_out)).reshape(shape_for_restore)
+
+
+def ramp_test():
+    """
+    rampパターンが階調飛び無くキレイに書けているか確認。
+    隣接階調の差を確認して、差が1のピクセルが 940-64 個あるのを確認。
+    """
+    st = (244, 753)
+    ed = (1676, 753)
+    estimated_num = 940 - 64
+
+    img = cv2.imread(
+        "HDTV_COLOR_BAR_RGB.tiff", cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)
+    img_10bit = np.uint16(np.round(img / 60160 * 940))
+    line = img_10bit[st[1], st[0]:ed[0]]
+    rgb = np.dsplit(line[np.newaxis, :, :], 3)
+
+    diff = [x[:, 1:, :] - x[:, :-1, :] for x in rgb]
+    is_diff_equal_one = [x == 1 for x in diff]
+    true_num = [np.sum(x) for x in is_diff_equal_one]
+    print(f"true_num = {true_num}")
+    if true_num == [estimated_num, estimated_num, estimated_num]:
+        print("OK")
+    else:
+        print("NG")
+
+    [plt.plot(x.flatten()) for x in diff]
+    plt.show()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     main_func()
+    ramp_test()
