@@ -1245,9 +1245,6 @@ def _check_luminance_mapping_full_degree(hue_idx, hue):
         c_focal=calc_value_from_hue_1dlut(hue_array, c_focal_lut))
     hd_data_c = np.dstack((hue_array, test_degree_c))[0]
 
-    chroma_out = np.zeros_like(in_chroma)
-    lightness_out = np.zeros_like(in_lightness)
-
     # まずは cmap_lut 値の Bilinear補間
     cmap_value_l = interpolate_chroma_map_lut(
         cmap_hd_lut=cmap_lut_l, degree_min=st_degree_l,
@@ -1270,17 +1267,10 @@ def _check_luminance_mapping_full_degree(hue_idx, hue):
         = calc_chroma_lightness_using_length_from_c_focal(
             length=cmap_value_c, degree=test_degree_c, c_focal=c_focal)
 
-    # 上側・下側のデータを後で抜き出すためのindexを計算
-    st_degree_l_intp = calc_value_from_hue_1dlut(
-        hd_data_l[..., 0], st_degree_l)
-    upper_area_idx = (hd_data_l[..., 1] >= st_degree_l_intp)
-    lower_area_idx = np.logical_not(upper_area_idx)
-
-    # L_focal と C_focal の結果をマージ
-    chroma_out[upper_area_idx] = chroma_map_l[upper_area_idx]
-    lightness_out[upper_area_idx] = lightness_map_l[upper_area_idx]
-    chroma_out[lower_area_idx] = chroma_map_c[lower_area_idx]
-    lightness_out[lower_area_idx] = lightness_map_c[lower_area_idx]
+    # L_Focalベースと C_Focalベースの結果を統合
+    chroma_out, lightness_out = merge_lightness_mapping(
+        hd_data_l, st_degree_l,
+        chroma_map_l, lightness_map_l, chroma_map_c, lightness_map_c)
 
     _debug_plot_check_lightness_mapping_specific_hue(
         hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
@@ -1298,6 +1288,50 @@ def calc_degree_min_max_for_interpolation():
     c_focal_lut = np.load(mcfl.C_FOCAL_NAME)
     st_degree_l, ed_degree_l, st_degree_c, ed_degree_c =\
         calc_chroma_map_degree(l_focal_lut, c_focal_lut)
+
+
+def merge_lightness_mapping(
+        hd_data_l, st_degree_l,
+        chroma_map_l, lightness_map_l, chroma_map_c, lightness_map_c):
+    """
+    L_Focalベース, C_Focalベースの結果をマージする。
+    具体的には、入力の hd_data_l の degree に対して、
+    L_Focal の開始 degree よりも大きい場合は L_Focal の結果を、
+    それ意外は C_Focal の結果を使うようにしている。
+
+    Parameters
+    ----------
+    hd_data_l : array_like
+        L_focal ベースの hue-degree のデータ
+    st_degree_l : array_like
+        chroma mapping 用の hue-degree 2DLUT の各HUEに対する
+        開始 degree の入ったデータ
+    chroma_map_l : array_like
+        L_Focal ベースで Lightness Mapping したあとの Chroma値
+    lightness_map_l : array_like
+        L_Focal ベースで Lightness Mapping したあとの Lightness値
+    chroma_map_c : array_like
+        C_Focal ベースで Lightness Mapping したあとの Chroma値
+    lightness_map_c : array_like
+        C_Focal ベースで Lightness Mapping したあとの Lightness値
+    """
+    # 出力用バッファ用意
+    chroma_out = np.zeros_like(chroma_map_l)
+    lightness_out = np.zeros_like(lightness_map_l)
+
+    # 上側・下側のデータを後で抜き出すためのindexを計算
+    st_degree_l_intp = calc_value_from_hue_1dlut(
+        hd_data_l[..., 0], st_degree_l)
+    upper_area_idx = (hd_data_l[..., 1] >= st_degree_l_intp)
+    lower_area_idx = np.logical_not(upper_area_idx)
+
+    # L_focal と C_focal の結果をマージ
+    chroma_out[upper_area_idx] = chroma_map_l[upper_area_idx]
+    lightness_out[upper_area_idx] = lightness_map_l[upper_area_idx]
+    chroma_out[lower_area_idx] = chroma_map_c[lower_area_idx]
+    lightness_out[lower_area_idx] = lightness_map_c[lower_area_idx]
+
+    return chroma_out, lightness_out
 
 
 def interpolate_chroma_map_lut(cmap_hd_lut, degree_min, degree_max, data_hd):
