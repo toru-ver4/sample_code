@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import interpolate
 from colour import Lab_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab, LUT3D
+from colour import RGB_to_RGB
 from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
 from multiprocessing import Pool, cpu_count
 
@@ -1492,6 +1493,148 @@ def thread_wrapper_check_chroma_map_lut_interpolation(args):
 
 def thread_wrapper_check_lightness_mapping_full(args):
     _check_luminance_mapping_full_degree(**args)
+    
+
+def rgb_to_lab(rgb, color_space=BT2020_COLOURSPACE):
+    lab = XYZ_to_Lab(
+        RGB_to_XYZ(
+            rgb, tpg.D65_WHITE, tpg.D65_WHITE,
+            color_space.RGB_to_XYZ_matrix))
+
+    return lab
+
+
+def lab_to_hcl(lab):
+    ll = lab[..., 0]
+    aa = lab[..., 1]
+    bb = lab[..., 2]
+
+    hue = calc_hue_from_ab(aa, bb)
+    chroma = ((aa ** 2) + (bb ** 2)) ** 0.5
+
+    return np.dstack((hue, chroma, ll))[0]
+
+
+def _debug_plot_chroma_luminance_all_specific_hue(
+        src_rgb, dst_rgb, hue, h_idx, src_c, src_l, dst_c, dst_l):
+    graph_title = f"HUE = {hue/2/np.pi*360:.1f}°"
+    fig1, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(16 * 0.9, 9 * 0.9),
+        graph_title=graph_title,
+        xlabel="Chroma",
+        ylabel="Lightness",
+        legend_size=17,
+        xlim=[-10, 230],
+        ylim=[-3, 103],
+        xtick=[x * 20 for x in range(12)],
+        ytick=[x * 10 for x in range(11)],
+        return_figure=True)
+    ax1.patch.set_facecolor("#D0D0D0")
+    in_color = pu.BLUE
+    ou_color = pu.RED
+
+    cl_inner = get_chroma_lightness_val_specfic_hue(hue, mcfl.BT709_BOUNDARY)
+    cl_outer =\
+        get_chroma_lightness_val_specfic_hue(hue, mcfl.BT2020_BOUNDARY)
+    lh_inner_lut = np.load(mcfl.BT709_BOUNDARY)
+    lh_outer_lut = np.load(mcfl.BT2020_BOUNDARY)
+    inner_cusp = mcfl.calc_cusp_in_lc_plane(hue, lh_inner_lut)
+    outer_cusp = mcfl.calc_cusp_in_lc_plane(hue, lh_outer_lut)
+    l_cusp_lut = np.load(mcfl.L_CUSP_NAME)
+    l_focal_lut = np.load(mcfl.L_FOCAL_NAME)
+    c_focal_lut = np.load(mcfl.C_FOCAL_NAME)
+    l_cusp = calc_value_from_hue_1dlut(hue, l_cusp_lut)
+    l_focal = calc_value_from_hue_1dlut(hue, l_focal_lut)
+    c_focal = calc_value_from_hue_1dlut(hue, c_focal_lut)
+
+    # gamut boundary
+    ax1.plot(
+        cl_inner[..., 0], cl_inner[..., 1], c=in_color, label="BT.709")
+    ax1.plot(cl_outer[..., 0], cl_outer[..., 1], c=ou_color, label="BT.2020")
+
+    # gamut cusp
+    ax1.plot(inner_cusp[1], inner_cusp[0], 's', ms=10, mec='k',
+             c=in_color, label="BT.709 Cusp")
+    ax1.plot(outer_cusp[1], outer_cusp[0], 's', ms=10, mec='k',
+             c=ou_color, label="BT.2020 Cusp")
+
+    # l_cusp, l_focal, c_focal
+    ax1.plot([0], [l_cusp], 'x', ms=12, mew=4, c=in_color, label="L_cusp")
+    ax1.plot([0], [l_focal], 'x', ms=12, mew=4, c=ou_color, label="L_focal")
+    ax1.plot([c_focal], [0], '*', ms=12, mew=3, c=ou_color, label="C_focal")
+    ax1.plot([0, c_focal], [l_focal, 0], '--', c='k')
+
+    # data
+    ax1.scatter(src_c, src_l, c=src_rgb, s=70)
+    ax1.scatter(dst_c, dst_l, c=dst_rgb, s=50)
+
+    # annotation
+    diff = ((dst_c - src_c) ** 2 + (dst_l - src_l) ** 2) ** 0.5
+    arrowprops = dict(
+        facecolor='#333333', shrink=0.0, headwidth=5, headlength=6,
+        width=1, alpha=0.5)
+    for idx in range(len(src_c)):
+        if diff[idx] > 0.0001:
+            color = (1 - np.max(src_rgb[idx]))
+            arrowprops['facecolor'] = np.array((color, color, color))
+            st_pos = (src_c[idx], src_l[idx])
+            ed_pos = (dst_c[idx], dst_l[idx])
+            ax1.annotate(
+                "", xy=ed_pos, xytext=st_pos, xycoords='data',
+                textcoords='data', ha='left', va='bottom',
+                arrowprops=arrowprops)
+
+    graph_name = f"./video_src/lightness_mapping_ababa_{h_idx:04d}.png"
+    plt.legend(loc='upper right')
+    # plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    plt.savefig(graph_name)  # オプション付けるとエラーになるので外した
+    # plt.show()
+    plt.close(fig1)
+
+
+def thread_wrapper_debug_plot_chroma_luminance_all_specific_hue(args):
+    _debug_plot_chroma_luminance_all_specific_hue(**args)
+
+
+def _debug_plot_chroma_luminance_all_hue(
+        src_rgb_linear, dst_rgb_linear, src_hcl, dst_hcl):
+    """
+    HUE をぐるっと一周させて CL平面に結果をプロット。
+    """
+    plot_hue_sample = 361
+    src_rgb = src_rgb_linear ** (1/2.4)
+    dst_rgb_2020_linear = RGB_to_RGB(
+        dst_rgb_linear, BT709_COLOURSPACE, BT2020_COLOURSPACE)
+    dst_rgb = dst_rgb_2020_linear ** (1/2.4)
+    src_h = src_hcl[..., 0]
+    src_c = src_hcl[..., 1]
+    src_l = src_hcl[..., 2]
+    dst_h = dst_hcl[..., 0]
+    dst_c = dst_hcl[..., 1]
+    dst_l = dst_hcl[..., 2]
+
+    args = []
+    plot_hue_list = np.linspace(0, 2*np.pi, plot_hue_sample)
+    for idx in range(plot_hue_sample - 1):
+        print(np.rad2deg(plot_hue_list[idx]))
+        ok_idx\
+            = (src_h >= plot_hue_list[idx]) & (src_h < plot_hue_list[idx+1])
+        center_hue = (plot_hue_list[idx] + plot_hue_list[idx+1]) / 2
+        d = dict(
+            src_rgb=src_rgb[ok_idx], dst_rgb=dst_rgb[ok_idx],
+            hue=center_hue, h_idx=idx,
+            src_c=src_c[ok_idx], src_l=src_l[ok_idx],
+            dst_c=dst_c[ok_idx], dst_l=dst_l[ok_idx])
+        # _debug_plot_chroma_luminance_all_specific_hue(
+        #     src_rgb=src_rgb[ok_idx], dst_rgb=dst_rgb[ok_idx],
+        #     hue=center_hue, h_idx=idx,
+        #     src_c=src_c[ok_idx], src_l=src_l[ok_idx],
+        #     dst_c=dst_c[ok_idx], dst_l=dst_l[ok_idx])
+        args.append(d)
+    with Pool(cpu_count()) as pool:
+        pool.map(
+            thread_wrapper_debug_plot_chroma_luminance_all_specific_hue, args)
 
 
 def _check_luminance_mapping_1677_sample():
@@ -1499,12 +1642,21 @@ def _check_luminance_mapping_1677_sample():
     256x256x256 のサンプルに対して Luminance Mapping してみる
     """
     # ソースデータ準備
-    grid_num = 6
+    grid_num = 64
     src = LUT3D.linear_table(size=grid_num).reshape((grid_num ** 3, 3))
     src_linear = src ** 2.4
 
     # Luminance Mapping 実行
-    gamut_mapping_from_bt2020_to_bt709(src_linear)
+    dst_linear = gamut_mapping_from_bt2020_to_bt709(src_linear)
+
+    # src, dst の解析
+    src_lab = rgb_to_lab(src_linear, color_space=BT2020_COLOURSPACE)
+    dst_lab = rgb_to_lab(dst_linear, color_space=BT709_COLOURSPACE)
+    src_hcl = lab_to_hcl(src_lab)
+    dst_hcl = lab_to_hcl(dst_lab)
+
+    _debug_plot_chroma_luminance_all_hue(
+        src_linear, dst_linear, src_hcl, dst_hcl)
 
 
 def calc_hue_from_ab(aa, bb):
@@ -1696,7 +1848,7 @@ def gamut_mapping_from_bt2020_to_bt709(rgb_bt2020):
 
     rgb_bt709 = np.clip(rgb_bt709, 0.0, 1.0)
 
-    return rgb_bt709
+    return rgb_bt709[0]
 
 
 def call_experimental_functions():
