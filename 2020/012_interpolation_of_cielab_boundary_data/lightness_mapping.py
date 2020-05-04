@@ -7,13 +7,14 @@ Lightness Mapping の実行
 
 # import standard libraries
 import os
+import sys
 
 # import third-party libraries
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import interpolate
-from colour import Lab_to_XYZ, XYZ_to_RGB
-from colour.models import BT2020_COLOURSPACE
+from colour import Lab_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab, LUT3D
+from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
 from multiprocessing import Pool, cpu_count
 
 # import my libraries
@@ -753,14 +754,14 @@ def make_chroma_map_lut_specific_hue(hue=30/360*2*np.pi, idx=0):
 
 
 def calc_chroma_lightness_using_length_from_l_focal(
-        length, degree, l_focal):
+        distance, degree, l_focal):
     """
-    L_Focal からの距離(length)から chroma, lightness 値を
+    L_Focal からの距離(distance)から chroma, lightness 値を
     三角関数の計算で算出する。
 
     Parameters
     ----------
-    length : array_like
+    distance : array_like
         Chroma-Lightness 平面における L_focal からの距離の配列。
         例えば Lightness Mapping 後の距離が入ってたりする。
     degree : array_like
@@ -775,20 +776,21 @@ def calc_chroma_lightness_using_length_from_l_focal(
     lightness : array_like
         Lightness値
     """
-    chroma = length * np.cos(degree)
-    lightness = length * np.sin(degree) + l_focal
+    chroma = distance * np.cos(degree)
+    lightness = distance * np.sin(degree) + l_focal
 
     return chroma, lightness
 
 
-def calc_chroma_lightness_using_length_from_c_focal(length, degree, c_focal):
+def calc_chroma_lightness_using_length_from_c_focal(
+        distance, degree, c_focal):
     """
-    C_Focal からの距離(length)から chroma, lightness 値を
+    C_Focal からの距離(distance)から chroma, lightness 値を
     三角関数の計算で算出する。
 
     Parameters
     ----------
-    length : array_like
+    distance : array_like
         Chroma-Lightness 平面における C_focal からの距離の配列。
         例えば Lightness Mapping 後の距離が入ってたりする。
     degree : array_like
@@ -803,8 +805,8 @@ def calc_chroma_lightness_using_length_from_c_focal(length, degree, c_focal):
     lightness : array_like
         Lightness値
     """
-    chroma = length * np.cos(degree) + c_focal
-    lightness = length * np.sin(degree)
+    chroma = distance * np.cos(degree) + c_focal
+    lightness = distance * np.sin(degree)
 
     return chroma, lightness
 
@@ -843,9 +845,9 @@ def _check_chroma_map_lut_data(h_idx):
     degree_c = np.linspace(st_degree_c, ed_degree_c, degree_sample)
 
     icn_x_l, icn_y_l = calc_chroma_lightness_using_length_from_l_focal(
-        length=cmap_lut_l[h_idx], degree=degree_l, l_focal=l_focal)
+        distance=cmap_lut_l[h_idx], degree=degree_l, l_focal=l_focal)
     icn_x_c, icn_y_c = calc_chroma_lightness_using_length_from_c_focal(
-        length=cmap_lut_c[h_idx], degree=degree_c, c_focal=c_focal)
+        distance=cmap_lut_c[h_idx], degree=degree_c, c_focal=c_focal)
 
     _debug_plot_check_chroma_map_lut_specific_hue(
         hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
@@ -977,6 +979,42 @@ def _debug_plot_check_lightness_mapping_specific_hue(
     plt.close(fig1)
 
 
+def _debug_plot_ab_plane(rgb, hue, src_chroma, dst_chroma):
+    src_a = src_chroma * np.cos(hue)
+    src_b = src_chroma * np.sin(hue)
+    dst_a = dst_chroma * np.cos(hue)
+    dst_b = dst_chroma * np.sin(hue)
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="CIELAB Plane",
+        graph_title_size=None,
+        xlabel="a*", ylabel="b*",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=(-200, 200),
+        ylim=(-200, 200),
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.patch.set_facecolor("#E0E0E0")
+    ax1.scatter(dst_a, dst_b, c=rgb)
+    arrowprops = dict(
+        facecolor='#000000', shrink=0.0, headwidth=8, headlength=10,
+        width=1, alpha=0.8)
+    for idx in range(len(src_chroma)):
+        ax1.annotate(
+            "", xy=(dst_a[idx], dst_b[idx]),
+            xytext=(src_a[idx], src_b[idx]),
+            xycoords='data', textcoords='data', ha='left', va='bottom',
+            arrowprops=arrowprops)
+
+    plt.show()
+
+
 def _make_debug_luminance_chroma_data_fixed_hue(
         hue, hue_sample_num, st_degree_lut, ed_degree_lut,
         focal_lut, focal_type="l"):
@@ -1004,7 +1042,7 @@ def _make_debug_luminance_chroma_data_fixed_hue(
             ed_degree, sample_num)
         l_focal = calc_value_from_hue_1dlut(hue, focal_lut)
         chroma, lightness = calc_chroma_lightness_using_length_from_l_focal(
-            length=rr, degree=degree_data, l_focal=l_focal)
+            distance=rr, degree=degree_data, l_focal=l_focal)
     elif focal_type == 'c':
         c_focal = calc_value_from_hue_1dlut(hue, focal_lut)
         r1 = np.ones(sample_num) * c_focal
@@ -1013,7 +1051,7 @@ def _make_debug_luminance_chroma_data_fixed_hue(
         degree_data = np.linspace(
             st_degree - (st_degree * 0.00001), ed_degree, sample_num)
         chroma, lightness = calc_chroma_lightness_using_length_from_c_focal(
-            length=rr, degree=degree_data, c_focal=c_focal)
+            distance=rr, degree=degree_data, c_focal=c_focal)
 
     return lightness.flatten(), chroma.flatten()
 
@@ -1035,7 +1073,7 @@ def _make_debug_luminance_chroma_data_fixed_hue2():
     degree_outer = degree_data[1::2]
     degree_data = np.append(degree_inter, degree_outer)
     chroma, lightness = calc_chroma_lightness_using_length_from_l_focal(
-        length=rr, degree=degree_data, l_focal=50)
+        distance=rr, degree=degree_data, l_focal=50)
 
     return lightness.flatten(), chroma.flatten()
 
@@ -1152,9 +1190,9 @@ def _check_chroma_map_lut_interpolation(hue_idx, hue):
 
     # 補間して得られた cmap 値から CL平面上における座標を取得
     icn_x_l, icn_y_l = calc_chroma_lightness_using_length_from_l_focal(
-        length=cmap_value_l, degree=test_degree_l, l_focal=l_focal)
+        distance=cmap_value_l, degree=test_degree_l, l_focal=l_focal)
     icn_x_c, icn_y_c = calc_chroma_lightness_using_length_from_c_focal(
-        length=cmap_value_c, degree=test_degree_c, c_focal=c_focal)
+        distance=cmap_value_c, degree=test_degree_c, c_focal=c_focal)
 
     _debug_plot_check_lightness_mapping_specific_hue(
         hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
@@ -1169,27 +1207,63 @@ def _check_chroma_map_lut_interpolation(hue_idx, hue):
 
 
 def eliminate_inner_gamut_data_l_focal(
-        cmap_value_l, chroma, lightness, l_focal):
+        dst_distance, src_chroma, src_lightness, l_focal):
     """
     元々の Gamut の範囲内のデータは Lightness Mapping を
     しないように元のデータに戻す。
+
+    実は Lightness Mapping では Gamutの範囲内外もすべて
+    Gamut の境界線上にマッピングしてしまっている（分岐を減らすため）。
+    当然、Mapping が不要なデータは戻すべきであり、本関数ではその処理を行う。
+
+    ここでは Luminance Mapping の前後での Focal からの distance を
+    比較している。前述の通り、Luminance Mapping では Gamut の内外を問わず
+    全て Gamut の境界線上にマッピングしている。したがって、
+    `src_distance <= dst_distance` の配列のデータを元に戻せば良い。
+
+    Parameters
+    ----------
+    dst_distance : array_like
+        distance from L_focal after luminance mapping.
+    src_chroma : array_like
+        chroma value before luminance mapping.
+    lightness : array_like
+        lightness value before luminance mapping.
     """
-    len_from_l_focal = calc_distance_from_l_focal(
-        chroma, lightness, l_focal)
-    restore_idx_l = (len_from_l_focal <= cmap_value_l)
-    cmap_value_l[restore_idx_l] = len_from_l_focal[restore_idx_l]
+    src_distance = calc_distance_from_l_focal(
+        src_chroma, src_lightness, l_focal)
+    restore_idx_l = (src_distance <= dst_distance)
+    dst_distance[restore_idx_l] = src_distance[restore_idx_l]
 
 
 def eliminate_inner_gamut_data_c_focal(
-        cmap_value_c, chroma, lightness, c_focal):
+        dst_distance, src_chroma, src_lightness, c_focal):
     """
     元々の Gamut の範囲内のデータは Lightness Mapping を
     しないように元のデータに戻す。
+
+    実は Lightness Mapping では Gamutの範囲内外もすべて
+    Gamut の境界線上にマッピングしてしまっている（分岐を減らすため）。
+    当然、Mapping が不要なデータは戻すべきであり、本関数ではその処理を行う。
+
+    ここでは Luminance Mapping の前後での Focal からの distance を
+    比較している。前述の通り、Luminance Mapping では Gamut の内外を問わず
+    全て Gamut の境界線上にマッピングしている。したがって、
+    `src_distance > dst_distance` の配列のデータを元に戻せば良い。
+
+    Parameters
+    ----------
+    dst_distance : array_like
+        distance from L_focal after luminance mapping.
+    src_chroma : array_like
+        chroma value before luminance mapping.
+    lightness : array_like
+        lightness value before luminance mapping.
     """
-    len_from_c_focal = calc_distance_from_c_focal(
-        chroma, lightness, c_focal)
-    restore_idx_c = (len_from_c_focal > cmap_value_c)
-    cmap_value_c[restore_idx_c] = len_from_c_focal[restore_idx_c]
+    src_distance = calc_distance_from_c_focal(
+        src_chroma, src_lightness, c_focal)
+    restore_idx_c = (src_distance > dst_distance)
+    dst_distance[restore_idx_c] = src_distance[restore_idx_c]
 
 
 def _check_luminance_mapping_full_degree(hue_idx, hue):
@@ -1262,10 +1336,10 @@ def _check_luminance_mapping_full_degree(hue_idx, hue):
     # 補間して得られた cmap 値から CL平面上における座標を取得
     chroma_map_l, lightness_map_l\
         = calc_chroma_lightness_using_length_from_l_focal(
-            length=cmap_value_l, degree=test_degree_l, l_focal=l_focal)
+            distance=cmap_value_l, degree=test_degree_l, l_focal=l_focal)
     chroma_map_c, lightness_map_c\
         = calc_chroma_lightness_using_length_from_c_focal(
-            length=cmap_value_c, degree=test_degree_c, c_focal=c_focal)
+            distance=cmap_value_c, degree=test_degree_c, c_focal=c_focal)
 
     # L_Focalベースと C_Focalベースの結果を統合
     chroma_out, lightness_out = merge_lightness_mapping(
@@ -1420,11 +1494,212 @@ def thread_wrapper_check_lightness_mapping_full(args):
     _check_luminance_mapping_full_degree(**args)
 
 
-def main_func():
-    # これが めいんるーちん
-    # make_chroma_map_lut()
+def _check_luminance_mapping_1677_sample():
+    """
+    256x256x256 のサンプルに対して Luminance Mapping してみる
+    """
+    # ソースデータ準備
+    grid_num = 6
+    src = LUT3D.linear_table(size=grid_num).reshape((grid_num ** 3, 3))
+    src_linear = src ** 2.4
 
-    # こっから先は えくすぺりめんたるな るーちん
+    # Luminance Mapping 実行
+    gamut_mapping_from_bt2020_to_bt709(src_linear)
+
+
+def calc_hue_from_ab(aa, bb):
+    """
+    CIELAB空間で a, b の値から HUE を計算する。
+    出力の値域は [0, 2pi) である。
+
+    Examples
+    --------
+    >>> aa=np.array([1.0, 0.5, 0.0, -0.5, -1.0, -0.5, 0.0, 0.5, 0.99])*np.pi,
+    >>> bb=np.array([0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5, -0.001])*np.pi
+    >>> hue = calc_hue_from_ab(aa, bb)
+    [0.  45.  90.  135.  180.  225.  270.  315. 359.94212549]
+    """
+    hue = np.where(aa != 0, np.arctan(bb/aa), np.pi/2*np.sign(bb))
+    add_pi_idx = (aa < 0) & (bb >= 0)
+    sub_pi_idx = (aa < 0) & (bb < 0)
+    hue[add_pi_idx] = hue[add_pi_idx] + np.pi
+    hue[sub_pi_idx] = hue[sub_pi_idx] - np.pi
+
+    hue[hue < 0] = hue[hue < 0] + 2 * np.pi
+
+    return hue
+
+
+def calc_hue_degree_data_from_rgb(
+        rgb_linear, l_focal_lut, c_focal_lut,
+        rgb_color_space=BT2020_COLOURSPACE):
+    """
+    Lightness Mapping に使用する Hue-Degree 形式に変換する。
+    """
+    large_xyz = RGB_to_XYZ(
+        rgb_linear, tpg.D65_WHITE, tpg.D65_WHITE,
+        rgb_color_space.RGB_to_XYZ_matrix)
+    lab = XYZ_to_Lab(large_xyz)
+
+    lightness = lab[..., 0]
+    aa = lab[..., 1]
+    bb = lab[..., 2]
+
+    hue = calc_hue_from_ab(aa, bb)
+    chroma = ((aa ** 2) + (bb ** 2)) ** 0.5
+    # _debug_plot_ab_plane(rgb_linear, hue, chroma)
+
+    cl_data = np.dstack((chroma, lightness))[0]
+
+    degree_l = calc_degree_from_cl_data_using_l_focal(
+        cl_data=cl_data,
+        l_focal=calc_value_from_hue_1dlut(hue, l_focal_lut))
+    degree_c = calc_degree_from_cl_data_using_c_focal(
+        cl_data=cl_data,
+        c_focal=calc_value_from_hue_1dlut(hue, c_focal_lut))
+
+    hd_data_l = np.dstack((hue, degree_l))[0]
+    hd_data_c = np.dstack((hue, degree_c))[0]
+
+    return hd_data_l, hd_data_c, chroma, lightness
+
+
+def luminance_mapping_in_hd_space(
+        hd_data_l, hd_data_c, src_chroma, src_lightness,
+        l_focal_lut, c_focal_lut):
+    """
+    Hue-Degree 空間での Luminance Mapping の実行
+    """
+
+    hue = hd_data_l[..., 0]
+    l_focal = calc_value_from_hue_1dlut(hue, l_focal_lut)
+    c_focal = calc_value_from_hue_1dlut(hue, c_focal_lut)
+    """
+    cmap_lut には Mapping 先の座標情報として
+    各Focal からの distance が記録されている。
+    """
+    cmap_lut_l = np.load(CHROMA_MAP_LUT_LUMINANCE_NAME)
+    cmap_lut_c = np.load(CHROMA_MAP_LUT_CHROMA_NAME)
+
+    """
+    cmap_lut は Hue と Degree を Index として使用する。
+    このうち Hue 一律なのだが、Degree に関しては
+    各 Index に対応する Radian 値が Hue によって変動する。
+    この Radian の最小値・最大値を計算しておく。
+    あとの補間計算で使うので。
+    例えば、
+      st_degree_l[np.deg2rad(30)] --> -0.4 * pi,
+      ed_degree_l[np.deg2rad(30)] --> 0.9 * pi,
+      st_degree_l[np.deg2rad(90)] --> -0.7 * pi,
+      ed_degree_l[np.deg2rad(90)] --> 1.3 * pi,
+    みたいなイメージ。
+    """
+    st_degree_l, ed_degree_l, st_degree_c, ed_degree_c =\
+        calc_chroma_map_degree(l_focal_lut, c_focal_lut)
+
+    """
+    cmap_lut から Hue-Degree のペアに該当する
+    destination の distance を補間計算で算出する。
+    """
+    dst_distance_l = interpolate_chroma_map_lut(
+        cmap_hd_lut=cmap_lut_l, degree_min=st_degree_l,
+        degree_max=ed_degree_l, data_hd=hd_data_l)
+    dst_distance_c = interpolate_chroma_map_lut(
+        cmap_hd_lut=cmap_lut_c, degree_min=st_degree_c,
+        degree_max=ed_degree_c, data_hd=hd_data_c)
+
+    """
+    out of gamut ではないデータは処理をしないようにする
+    """
+    eliminate_inner_gamut_data_l_focal(
+        dst_distance=dst_distance_l, src_chroma=src_chroma,
+        src_lightness=src_lightness, l_focal=l_focal)
+    eliminate_inner_gamut_data_c_focal(
+        dst_distance=dst_distance_c, src_chroma=src_chroma,
+        src_lightness=src_lightness, c_focal=c_focal)
+
+    """
+    このあとの結果統合処理用に Hue-Degree --> Chroma-Lightness に
+    変換する。
+    """
+    dst_chroma_l, dst_lightness_l\
+        = calc_chroma_lightness_using_length_from_l_focal(
+            distance=dst_distance_l, degree=hd_data_l[..., 1], l_focal=l_focal)
+    dst_chroma_c, dst_lightness_c\
+        = calc_chroma_lightness_using_length_from_c_focal(
+            distance=dst_distance_c, degree=hd_data_c[..., 1], c_focal=c_focal)
+
+    """
+    L_Focalベースと C_Focalベースの結果を統合
+    """
+    dst_chroma, dst_lightness = merge_lightness_mapping(
+        hd_data_l=hd_data_l, st_degree_l=st_degree_l,
+        chroma_map_l=dst_chroma_l, lightness_map_l=dst_lightness_l,
+        chroma_map_c=dst_chroma_c, lightness_map_c=dst_lightness_c)
+
+    return dst_chroma, dst_lightness
+
+
+def calc_rgb_from_hue_chroma_lightness(
+        hue, chroma, lightness, rgb_color_space=BT709_COLOURSPACE):
+    aa = chroma * np.cos(hue)
+    bb = chroma * np.sin(hue)
+    lab = np.dstack((lightness, aa, bb))
+    large_xyz = Lab_to_XYZ(lab)
+    rgb = XYZ_to_RGB(
+        large_xyz, tpg.D65_WHITE, tpg.D65_WHITE,
+        rgb_color_space.XYZ_to_RGB_matrix)
+
+    return rgb
+
+
+def gamut_mapping_from_bt2020_to_bt709(rgb_bt2020):
+    """
+    BT2020 to BT709 の Gamut Mapping をする。
+    BT.2407 の Luminance Mapping を利用する。
+    なお、Hue Mapping は今回はやらない。
+
+    Parameters
+    ----------
+    rgb_bt2020 : array_like
+        BT.2020 のデータ。**Linear** であること。
+    """
+    # パラメータチェック。個人ツールだし強制終了で済ます。
+    if (len(rgb_bt2020.shape) != 2) and (rgb_bt2020.shape[1] != 3):
+        print("warning, rgb_bt2020 must be Nx3 format.")
+        sys.exit()
+
+    # Load LUTs
+    l_focal_lut = np.load(mcfl.L_FOCAL_NAME)
+    c_focal_lut = np.load(mcfl.C_FOCAL_NAME)
+
+    # Non-Linear RGB --> Hue Degree への変換
+    hd_data_l, hd_data_c, src_chroma, src_lightness\
+        = calc_hue_degree_data_from_rgb(
+            rgb_linear=rgb_bt2020, l_focal_lut=l_focal_lut,
+            c_focal_lut=c_focal_lut, rgb_color_space=BT2020_COLOURSPACE)
+
+    # Luminance Mapping
+    dst_chroma, dst_lightness = luminance_mapping_in_hd_space(
+        hd_data_l=hd_data_l, hd_data_c=hd_data_c,
+        src_chroma=src_chroma, src_lightness=src_lightness,
+        l_focal_lut=l_focal_lut, c_focal_lut=c_focal_lut)
+
+    # _debug_plot_ab_plane(
+    #     rgb=rgb_bt2020, hue=hd_data_l[..., 0],
+    #     src_chroma=src_chroma, dst_chroma=dst_chroma)
+
+    # Hue Degree --> Non-Linear RGB へ戻す
+    rgb_bt709 = calc_rgb_from_hue_chroma_lightness(
+        hue=hd_data_l[..., 0], chroma=dst_chroma, lightness=dst_lightness,
+        rgb_color_space=BT709_COLOURSPACE)
+
+    rgb_bt709 = np.clip(rgb_bt709, 0.0, 1.0)
+
+    return rgb_bt709
+
+
+def call_experimental_functions():
     # とりあえず、任意の Hue において一発 Lightness Mapping してみる
     # _try_lightness_mapping_specific_hue(hue=00/360*2*np.pi)
     # _try_lightness_mapping_specific_hue(hue=90/360*2*np.pi)
@@ -1462,6 +1737,21 @@ def main_func():
         pool.map(thread_wrapper_check_lightness_mapping_full, args)
 
 
+def main_func():
+    # これが めいんるーちん
+    # make_chroma_map_lut()
+
+    # こっから先は えくすぺりめんたるな るーちん
+    # call_experimental_functions()
+
+    # 256x256x256 のデータに対する動作確認
+    _check_luminance_mapping_1677_sample()
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     main_func()
+    # hue = calc_hue_from_ab(
+    #     aa=np.array([1.0, 0.3, 0.0, -0.3, -1.0, -0.3, 0.0, 0.3, 0.99]) * np.pi,
+    #     bb=np.array([0.0, 0.6, 1.0, 0.6, 0.0, -0.6, -1.0, -0.6, -0.001]) * np.pi)
+    # print(np.rad2deg(hue))
