@@ -16,6 +16,7 @@ from scipy import interpolate
 from colour import Lab_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab, LUT3D
 from colour import RGB_to_RGB
 from colour.models import BT2020_COLOURSPACE, BT709_COLOURSPACE
+from colour import read_image, write_image
 from multiprocessing import Pool, cpu_count
 
 # import my libraries
@@ -1818,8 +1819,16 @@ def gamut_mapping_from_bt2020_to_bt709(rgb_bt2020):
     """
     # パラメータチェック。個人ツールだし強制終了で済ます。
     if (len(rgb_bt2020.shape) != 2) and (rgb_bt2020.shape[1] != 3):
-        print("warning, rgb_bt2020 must be Nx3 format.")
-        sys.exit()
+        src_shape = rgb_bt2020.shape
+        shape_0 = 1
+        for shape_val in src_shape[:-1]:
+            shape_0 *= shape_val
+        rgb_bt2020 = rgb_bt2020.reshape((shape_0, 3))
+        restore_shape_flag = True
+        # print("warning, rgb_bt2020 must be Nx3 format.")
+        # sys.exit()
+    else:
+        restore_shape_flag = False
 
     # Load LUTs
     l_focal_lut = np.load(mcfl.L_FOCAL_NAME)
@@ -1848,7 +1857,10 @@ def gamut_mapping_from_bt2020_to_bt709(rgb_bt2020):
 
     rgb_bt709 = np.clip(rgb_bt709, 0.0, 1.0)
 
-    return rgb_bt709[0]
+    if restore_shape_flag:
+        return rgb_bt709.reshape((src_shape))
+    else:
+        return rgb_bt709[0]
 
 
 def call_experimental_functions():
@@ -1889,6 +1901,15 @@ def call_experimental_functions():
         pool.map(thread_wrapper_check_lightness_mapping_full, args)
 
 
+def _apply_luminance_mapping_to_image_file(
+        fname="./img/Gamma 2.4_ITU-R BT.2020_D65_1920x1080_rev04_type1.tiff"):
+    src_img = read_image(fname)
+    src_img_linear = src_img ** 2.4
+    dst_img_linear = gamut_mapping_from_bt2020_to_bt709(src_img_linear)
+    dst_img = dst_img_linear ** (1/2.4)
+    write_image(dst_img, "./img/out.png", bit_depth='uint16')
+
+
 def main_func():
     # これが めいんるーちん
     # make_chroma_map_lut()
@@ -1897,7 +1918,8 @@ def main_func():
     # call_experimental_functions()
 
     # 256x256x256 のデータに対する動作確認
-    _check_luminance_mapping_1677_sample()
+    # _check_luminance_mapping_1677_sample()
+    _apply_luminance_mapping_to_image_file()
 
 
 if __name__ == '__main__':
