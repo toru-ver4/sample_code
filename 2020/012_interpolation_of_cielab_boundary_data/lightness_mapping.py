@@ -7,7 +7,6 @@ Lightness Mapping の実行
 
 # import standard libraries
 import os
-import sys
 
 # import third-party libraries
 import numpy as np
@@ -73,7 +72,7 @@ def calc_chroma_map_degree(l_focal, c_focal):
     """
     st_degree_l = -np.arctan(l_focal/c_focal)
     ed_degree_l = np.pi/2 * np.ones_like(st_degree_l)
-    st_degree_c = np.pi + (st_degree_l * 1.05)  # 1.05 は補間エラー改善用
+    st_degree_c = np.pi + st_degree_l
     ed_degree_c = np.pi * np.ones_like(st_degree_c)
 
     return st_degree_l, ed_degree_l, st_degree_c, ed_degree_c
@@ -83,6 +82,7 @@ def calc_chroma_map_degree2(l_focal, c_focal, inner_cusp_lc):
     """
     Chroma Mapping の Destination の位置用の LUT の
     Start, End の Degree を計算。
+    当初の設計だと特定条件で誤差が生じたため、ver2 を別途作成した。
     """
     st_degree_l = -np.arctan(l_focal/c_focal)
     ed_degree_l = np.pi/2 * np.ones_like(st_degree_l)
@@ -463,6 +463,38 @@ def _debug_plot_valid_intersection(
 
 def solve_equation_for_intersection(
         cl_point, a1, b1, a2, b2, focal="L_Focal", inner_cusp=None):
+    """
+    Focal へ向かう・収束する直線と Inner Gamut Boundary の交点を求める。
+    この交点が Out of Gamut の Mapping先の値となる。
+
+    Parameters
+    ----------
+    cl_point : array_like (2d array)
+        Inner Gamut Boundary の Chroma-Lightness データ。
+        交点の方程式を解いた後で解が適切かどうかの判断で使用する。
+    a1 : array_like
+        y=ax+b の a のパラメータ。
+        Focal を中心とした直線。
+    b1 : array_like
+        y=ax+b の b のパラメータ。
+        Focal を中心とした直線。
+    a2 : array_like
+        y=ax+b の a のパラメータ。
+        Inner Gamut Boundary の隣接するサンプルを結んだ直線
+    b2 : array_like
+        y=ax+b の b のパラメータ。
+        Inner Gamut Boundary の隣接するサンプルを結んだ直線
+    focal : str
+        focal の種類を設定。C_Focal は特別処理が必要なので
+        その分岐用。
+    inner_cusp : array_like
+        C_Focal の特別処理用。
+        C_Focal の交点の方程式の解の Lightness値は、
+        Inner Gamut の Cusp よりも小さい必要がある。
+        その判別式で使用する。
+    hue : float
+        hue. unit is radian. for debug plot.
+    """
     # 1次元方程式っぽいのを解いて交点を算出
     icn_x = (b1[:, np.newaxis] - b2[np.newaxis, :])\
         / (a2[np.newaxis, :] - a1[:, np.newaxis])
@@ -1605,7 +1637,7 @@ def _debug_plot_chroma_luminance_all_specific_hue(
     diff = ((dst_c - src_c) ** 2 + (dst_l - src_l) ** 2) ** 0.5
     arrowprops = dict(
         facecolor='#333333', shrink=0.0, headwidth=5, headlength=6,
-        width=1, alpha=0.5)
+        width=1, alpha=0.3)
     for idx in range(len(src_c)):
         if diff[idx] > 0.0001:
             color = (1 - np.max(src_rgb[idx]))
@@ -1630,11 +1662,11 @@ def thread_wrapper_debug_plot_chroma_luminance_all_specific_hue(args):
 
 
 def _debug_plot_chroma_luminance_all_hue(
-        src_rgb_linear, dst_rgb_linear, src_hcl, dst_hcl):
+        src_rgb_linear, dst_rgb_linear, src_hcl, dst_hcl,
+        plot_hue_sample=32):
     """
     HUE をぐるっと一周させて CL平面に結果をプロット。
     """
-    plot_hue_sample = 361
     src_rgb = src_rgb_linear ** (1/2.4)
     dst_rgb_2020_linear = RGB_to_RGB(
         dst_rgb_linear, BT709_COLOURSPACE, BT2020_COLOURSPACE)
@@ -1674,7 +1706,8 @@ def _check_luminance_mapping_1677_sample():
     256x256x256 のサンプルに対して Luminance Mapping してみる
     """
     # ソースデータ準備
-    grid_num = 64
+    grid_num = 144
+    plot_hue_sample = 2048
     src = LUT3D.linear_table(size=grid_num).reshape((grid_num ** 3, 3))
     src_linear = src ** 2.4
 
@@ -1688,7 +1721,8 @@ def _check_luminance_mapping_1677_sample():
     dst_hcl = lab_to_hcl(dst_lab)
 
     _debug_plot_chroma_luminance_all_hue(
-        src_linear, dst_linear, src_hcl, dst_hcl)
+        src_linear, dst_linear, src_hcl, dst_hcl,
+        plot_hue_sample=plot_hue_sample)
 
 
 def calc_hue_from_ab(aa, bb):
@@ -1778,8 +1812,10 @@ def luminance_mapping_in_hd_space(
       ed_degree_l[np.deg2rad(90)] --> 1.3 * pi,
     みたいなイメージ。
     """
+    lh_inner_lut = np.load(mcfl.BT709_BOUNDARY)
+    inner_cusp_l_lut = calc_cusp_lut(lh_lut=lh_inner_lut)
     st_degree_l, ed_degree_l, st_degree_c, ed_degree_c =\
-        calc_chroma_map_degree(l_focal_lut, c_focal_lut)
+        calc_chroma_map_degree2(l_focal_lut, c_focal_lut, inner_cusp_l_lut)
 
     """
     cmap_lut から Hue-Degree のペアに該当する
@@ -1946,10 +1982,10 @@ def main_func():
     # make_chroma_map_lut()
 
     # こっから先は えくすぺりめんたるな るーちん
-    call_experimental_functions()
+    # call_experimental_functions()
 
     # 256x256x256 のデータに対する動作確認
-    # _check_luminance_mapping_1677_sample()
+    _check_luminance_mapping_1677_sample()
     # _apply_luminance_mapping_to_image_file()
 
 
