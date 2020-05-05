@@ -88,7 +88,7 @@ def calc_chroma_map_degree2(l_focal, c_focal, inner_cusp_lc):
     ed_degree_l = np.pi/2 * np.ones_like(st_degree_l)
     angle_inner_cusp = -np.arctan(
         inner_cusp_lc[..., 0] / (c_focal - inner_cusp_lc[..., 1]))
-    st_degree_c = np.pi + (angle_inner_cusp * 0.9) + (st_degree_l * 0.1)
+    st_degree_c = np.pi + (angle_inner_cusp * 0.95) + (st_degree_l * 0.05)
     ed_degree_c = np.pi * np.ones_like(st_degree_c)
 
     return st_degree_l, ed_degree_l, st_degree_c, ed_degree_c
@@ -1084,10 +1084,10 @@ def _make_debug_luminance_chroma_data_fixed_hue2():
     任意の Hue の Hue-Degree のサンプルデータを作る。
     st_degree, ed_degree を**考慮しない**
     """
-    sample_num = 31
+    sample_num = 256
 
     r1 = np.ones(sample_num) * 45
-    r2 = np.ones(sample_num) * 75
+    r2 = np.ones(sample_num) * 160
     # rr = np.append(r1, r2).reshape((2, sample_num))
     rr = np.append(r1, r2)
 
@@ -1330,8 +1330,9 @@ def _check_luminance_mapping_full_degree(hue_idx, hue):
 
     # st_degree, ed_degree を 1次元LUTの形で得る
     # st_degree_l[hue] = 30°, ed_degree_l[hue] = 120° 的な？
+    inner_cusp_l_lut = calc_cusp_lut(lh_lut=lh_inner_lut)
     st_degree_l, ed_degree_l, st_degree_c, ed_degree_c =\
-        calc_chroma_map_degree(l_focal_lut, c_focal_lut)
+        calc_chroma_map_degree2(l_focal_lut, c_focal_lut, inner_cusp_l_lut)
 
     # とりあえず検証用のデータを準備
     # 一応、本番を想定して chroma-lightness から変換するように仕込む
@@ -1363,7 +1364,7 @@ def _check_luminance_mapping_full_degree(hue_idx, hue):
     eliminate_inner_gamut_data_l_focal(
         cmap_value_l, in_chroma, in_lightness, l_focal)
     eliminate_inner_gamut_data_c_focal(
-        cmap_value_c, in_chroma, in_lightness, c_focal)        
+        cmap_value_c, in_chroma, in_lightness, c_focal)
 
     # 補間して得られた cmap 値から CL平面上における座標を取得
     chroma_map_l, lightness_map_l\
@@ -1907,28 +1908,28 @@ def call_experimental_functions():
     # _check_chroma_map_lut_data(100)
 
     # 上がわ・下側別々の Lightness Mapping の確認動画作成
+    # hue_num = 1024
+    # hue_list = np.deg2rad(
+    #     np.linspace(0, 360, hue_num, endpoint=False))
+    # args = []
+    # for idx, hue in enumerate(hue_list):
+    #     # _check_chroma_map_lut_interpolation(hue_idx=idx, hue=hue)
+    #     d = dict(hue_idx=idx, hue=hue)
+    #     args.append(d)
+    # with Pool(cpu_count()) as pool:
+    #     pool.map(thread_wrapper_check_chroma_map_lut_interpolation, args)
+
+    # 全体の動き確認
     hue_num = 1024
     hue_list = np.deg2rad(
         np.linspace(0, 360, hue_num, endpoint=False))
     args = []
     for idx, hue in enumerate(hue_list):
-        # _check_chroma_map_lut_interpolation(hue_idx=idx, hue=hue)
+        # _check_luminance_mapping_full_degree(hue_idx=idx, hue=np.deg2rad(hue))
         d = dict(hue_idx=idx, hue=hue)
         args.append(d)
     with Pool(cpu_count()) as pool:
-        pool.map(thread_wrapper_check_chroma_map_lut_interpolation, args)
-
-    # 全体の動き確認
-    # hue_num = 40
-    # hue_list = np.deg2rad(
-    #     np.linspace(0, 360, hue_num, endpoint=False))
-    # args = []
-    # for idx, hue in enumerate(hue_list):
-    #     # _check_luminance_mapping_full_degree(hue_idx=idx, hue=np.deg2rad(hue))
-    #     d = dict(hue_idx=idx, hue=hue)
-    #     args.append(d)
-    # with Pool(cpu_count()) as pool:
-    #     pool.map(thread_wrapper_check_lightness_mapping_full, args)
+        pool.map(thread_wrapper_check_lightness_mapping_full, args)
 
 
 def _apply_luminance_mapping_to_image_file(
