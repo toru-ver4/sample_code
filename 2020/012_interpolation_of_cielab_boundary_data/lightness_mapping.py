@@ -73,7 +73,7 @@ def calc_chroma_map_degree(l_focal, c_focal):
     """
     st_degree_l = -np.arctan(l_focal/c_focal)
     ed_degree_l = np.pi/2 * np.ones_like(st_degree_l)
-    st_degree_c = np.pi + st_degree_l
+    st_degree_c = np.pi + (st_degree_l * 1.05)  # 1.05 は補間エラー改善用
     ed_degree_c = np.pi * np.ones_like(st_degree_c)
 
     return st_degree_l, ed_degree_l, st_degree_c, ed_degree_c
@@ -963,8 +963,8 @@ def _debug_plot_check_lightness_mapping_specific_hue(
 
     # annotation
     arrowprops = dict(
-        facecolor='#333333', shrink=0.0, headwidth=8, headlength=10,
-        width=2)
+        facecolor='#333333', shrink=0.0, headwidth=4, headlength=5,
+        width=1)
     for idx in range(len(map_x)):
         st_pos = (x_val[idx], y_val[idx])
         ed_pos = (map_x[idx], map_y[idx])
@@ -1024,7 +1024,7 @@ def _make_debug_luminance_chroma_data_fixed_hue(
     任意の Hue の Hue-Degree のサンプルデータを作る。
     st_degree, ed_degree を考慮
     """
-    sample_num = 32
+    sample_num = 64
     hue_idx_low_float = hue / (2 * np.pi) * (hue_sample_num - 1)
     hue_idx_low = int(hue_idx_low_float)
     hue_idx_high = hue_idx_low + 1
@@ -1036,8 +1036,8 @@ def _make_debug_luminance_chroma_data_fixed_hue(
         + rate * ed_degree_lut[hue_idx_high]
 
     if focal_type == 'l':
-        r1 = np.ones(sample_num) * 30
-        r2 = np.ones(sample_num) * 75
+        r1 = np.ones(sample_num) * 10
+        r2 = np.ones(sample_num) * 200
         rr = np.append(r1, r2).reshape((2, sample_num))
         degree_data = np.linspace(
             st_degree + (np.sign(st_degree) * np.abs(st_degree) * 0.5),
@@ -1048,10 +1048,11 @@ def _make_debug_luminance_chroma_data_fixed_hue(
     elif focal_type == 'c':
         c_focal = calc_value_from_hue_1dlut(hue, focal_lut)
         r1 = np.ones(sample_num) * c_focal
-        r2 = np.ones(sample_num) * (c_focal - 75)
+        r2 = np.ones(sample_num) * (c_focal - 200)
         rr = np.append(r1, r2).reshape((2, sample_num))
-        degree_data = np.linspace(
-            st_degree - (st_degree * 0.00001), ed_degree, sample_num)
+        # degree_data = np.linspace(
+        #     st_degree - (st_degree * 0.00001), ed_degree, sample_num)
+        degree_data = np.linspace(st_degree, ed_degree, sample_num)
         chroma, lightness = calc_chroma_lightness_using_length_from_c_focal(
             distance=rr, degree=degree_data, c_focal=c_focal)
 
@@ -1877,28 +1878,28 @@ def call_experimental_functions():
     # _check_chroma_map_lut_data(100)
 
     # 上がわ・下側別々の Lightness Mapping の確認動画作成
-    # hue_num = 256
-    # hue_list = np.deg2rad(
-    #     np.linspace(0, 360, hue_num, endpoint=False))
-    # args = []
-    # for idx, hue in enumerate(hue_list):
-    #     # _check_chroma_map_lut_interpolation(hue_idx=idx, hue=hue)
-    #     d = dict(hue_idx=idx, hue=hue)
-    #     args.append(d)
-    # with Pool(cpu_count()) as pool:
-    #     pool.map(thread_wrapper_check_chroma_map_lut_interpolation, args)
-
-    # 全体の動き確認
-    hue_num = 40
+    hue_num = 1024
     hue_list = np.deg2rad(
         np.linspace(0, 360, hue_num, endpoint=False))
     args = []
     for idx, hue in enumerate(hue_list):
-        # _check_luminance_mapping_full_degree(hue_idx=idx, hue=np.deg2rad(hue))
+        # _check_chroma_map_lut_interpolation(hue_idx=idx, hue=hue)
         d = dict(hue_idx=idx, hue=hue)
         args.append(d)
     with Pool(cpu_count()) as pool:
-        pool.map(thread_wrapper_check_lightness_mapping_full, args)
+        pool.map(thread_wrapper_check_chroma_map_lut_interpolation, args)
+
+    # 全体の動き確認
+    # hue_num = 40
+    # hue_list = np.deg2rad(
+    #     np.linspace(0, 360, hue_num, endpoint=False))
+    # args = []
+    # for idx, hue in enumerate(hue_list):
+    #     # _check_luminance_mapping_full_degree(hue_idx=idx, hue=np.deg2rad(hue))
+    #     d = dict(hue_idx=idx, hue=hue)
+    #     args.append(d)
+    # with Pool(cpu_count()) as pool:
+    #     pool.map(thread_wrapper_check_lightness_mapping_full, args)
 
 
 def _apply_luminance_mapping_to_image_file(
@@ -1912,14 +1913,14 @@ def _apply_luminance_mapping_to_image_file(
 
 def main_func():
     # これが めいんるーちん
-    # make_chroma_map_lut()
+    make_chroma_map_lut()
 
     # こっから先は えくすぺりめんたるな るーちん
-    # call_experimental_functions()
+    call_experimental_functions()
 
     # 256x256x256 のデータに対する動作確認
     # _check_luminance_mapping_1677_sample()
-    _apply_luminance_mapping_to_image_file()
+    # _apply_luminance_mapping_to_image_file()
 
 
 if __name__ == '__main__':
