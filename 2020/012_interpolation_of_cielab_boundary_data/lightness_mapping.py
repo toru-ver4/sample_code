@@ -79,6 +79,21 @@ def calc_chroma_map_degree(l_focal, c_focal):
     return st_degree_l, ed_degree_l, st_degree_c, ed_degree_c
 
 
+def calc_chroma_map_degree2(l_focal, c_focal, inner_cusp_lc):
+    """
+    Chroma Mapping の Destination の位置用の LUT の
+    Start, End の Degree を計算。
+    """
+    st_degree_l = -np.arctan(l_focal/c_focal)
+    ed_degree_l = np.pi/2 * np.ones_like(st_degree_l)
+    angle_inner_cusp = -np.arctan(
+        inner_cusp_lc[..., 0] / (c_focal - inner_cusp_lc[..., 1]))
+    st_degree_c = np.pi + (angle_inner_cusp * 0.9) + (st_degree_l * 0.1)
+    ed_degree_c = np.pi * np.ones_like(st_degree_c)
+
+    return st_degree_l, ed_degree_l, st_degree_c, ed_degree_c
+
+
 def get_chroma_lightness_val_specfic_hue(
         hue=30/360*2*np.pi, lh_lut_name=mcfl.BT709_BOUNDARY):
     lh_lut = np.load(lh_lut_name)
@@ -446,7 +461,8 @@ def _debug_plot_valid_intersection(
     # plt.show()
 
 
-def solve_equation_for_intersection(cl_point, a1, b1, a2, b2):
+def solve_equation_for_intersection(
+        cl_point, a1, b1, a2, b2, focal="L_Focal", inner_cusp=None):
     # 1次元方程式っぽいのを解いて交点を算出
     icn_x = (b1[:, np.newaxis] - b2[np.newaxis, :])\
         / (a2[np.newaxis, :] - a1[:, np.newaxis])
@@ -457,7 +473,12 @@ def solve_equation_for_intersection(cl_point, a1, b1, a2, b2):
     ok_src_idx_x_0 = (icn_x >= cl_point[:-1, 0]) & (icn_x <= cl_point[1:, 0])
     ok_src_idx_x_1 = (icn_x <= cl_point[:-1, 0]) & (icn_x >= cl_point[1:, 0])
     ok_src_idx_x = ok_src_idx_x_0 | ok_src_idx_x_1
-    ok_src_idx_y = (icn_y >= cl_point[:-1, 1]) & (icn_y <= cl_point[1:, 1])
+    if focal == "L_Focal":
+        ok_src_idx_y = (icn_y >= cl_point[:-1, 1]) & (icn_y <= cl_point[1:, 1])
+    else:
+        ok_src_idx_y0 = (icn_y >= cl_point[:-1, 1]) & (icn_y <= cl_point[1:, 1])
+        ok_src_idx_y1 = (icn_y < inner_cusp)
+        ok_src_idx_y = ok_src_idx_y0 & ok_src_idx_y1
     ok_src_idx = ok_src_idx_x & ok_src_idx_y
     ok_dst_idx = np.any(ok_src_idx, axis=-1)
     icn_valid_x = np.zeros((icn_x.shape[0]))
@@ -714,7 +735,7 @@ def make_chroma_map_lut_specific_hue(hue=30/360*2*np.pi, idx=0):
     c_focal = calc_value_from_hue_1dlut(hue, c_focal_lut)
 
     st_degree_l, ed_degree_l, st_degree_c, ed_degree_c =\
-        calc_chroma_map_degree(l_focal, c_focal)
+        calc_chroma_map_degree2(l_focal, c_focal, inner_cusp)
 
     # Lfocal用のサンプル点作成
     degree = np.linspace(
@@ -732,7 +753,6 @@ def make_chroma_map_lut_specific_hue(hue=30/360*2*np.pi, idx=0):
     # cl_inner = cl_inner[::48]
     a2, b2 = _calc_ab_coef_from_cl_point(cl_inner)
 
-    print(np.rad2deg(hue))
     # 直線群と直線群の交点を求める。(L_focal)
     icn_x_l, icn_y_l = solve_equation_for_intersection(
         cl_inner, a1_l, b1_l, a2, b2)
@@ -743,7 +763,7 @@ def make_chroma_map_lut_specific_hue(hue=30/360*2*np.pi, idx=0):
 
     # 直線群と直線群の交点を求める。(C_focal)
     icn_x_c, icn_y_c = solve_equation_for_intersection(
-        cl_inner, a1_c, b1_c, a2, b2)
+        cl_inner, a1_c, b1_c, a2, b2, focal="C_Focal", inner_cusp=inner_cusp[0])
     # _debug_plot_chroma_map_lut_specific_hue(
     #     hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
     #     l_cusp, l_focal, c_focal, icn_x_c, icn_y_c, focal_type="C_focal",
@@ -1108,6 +1128,14 @@ def calc_degree_from_cl_data_using_c_focal(cl_data, c_focal):
     return np.arctan(lightness / (chroma - c_focal)) + np.pi
 
 
+def calc_cusp_lut(lh_lut):
+    cusp_chroma = np.max(lh_lut, axis=0)
+    cusp_chroma_idx = np.argmax(lh_lut, axis=0)
+    cusp_lightness = cusp_chroma_idx / (lh_lut.shape[0] - 1) * 100
+
+    return np.dstack((cusp_lightness, cusp_chroma))[0]
+
+
 def _check_chroma_map_lut_interpolation(hue_idx, hue):
     """
     interpolate_chroma_map_lut() の動作確認用のデバッグコード。
@@ -1132,6 +1160,7 @@ def _check_chroma_map_lut_interpolation(hue_idx, hue):
     l_cusp_lut = np.load(mcfl.L_CUSP_NAME)
     l_focal_lut = np.load(mcfl.L_FOCAL_NAME)
     c_focal_lut = np.load(mcfl.C_FOCAL_NAME)
+    inner_cusp_l_lut = calc_cusp_lut(lh_lut=lh_inner_lut)
     l_cusp = calc_value_from_hue_1dlut(hue, l_cusp_lut)
     l_focal = calc_value_from_hue_1dlut(hue, l_focal_lut)
     c_focal = calc_value_from_hue_1dlut(hue, c_focal_lut)
@@ -1143,7 +1172,7 @@ def _check_chroma_map_lut_interpolation(hue_idx, hue):
     # st_degree, ed_degree を 1次元LUTの形で得る
     # st_degree_l[hue] = 30°, ed_degree_l[hue] = 120° 的な？
     st_degree_l, ed_degree_l, st_degree_c, ed_degree_c =\
-        calc_chroma_map_degree(l_focal_lut, c_focal_lut)
+        calc_chroma_map_degree2(l_focal_lut, c_focal_lut, inner_cusp_l_lut)
     cmap_lut_h_sample = cmap_lut_l.shape[0]
 
     # とりあえず検証用のデータを準備
@@ -1913,7 +1942,7 @@ def _apply_luminance_mapping_to_image_file(
 
 def main_func():
     # これが めいんるーちん
-    make_chroma_map_lut()
+    # make_chroma_map_lut()
 
     # こっから先は えくすぺりめんたるな るーちん
     call_experimental_functions()

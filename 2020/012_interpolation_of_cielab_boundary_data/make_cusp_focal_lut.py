@@ -203,7 +203,7 @@ def calc_cusp_in_lc_plane(hue, lh_lut):
     chroma_for_each_l = icd.bilinear_interpolation(lh=lh_sample, lut2d=lh_lut)
     cusp_idx = np.argmax(chroma_for_each_l)
 
-    return (l_sample[cusp_idx], chroma_for_each_l[cusp_idx])
+    return np.array((l_sample[cusp_idx], chroma_for_each_l[cusp_idx]))
 
 
 def calc_l_cusp_specific_hue(hue, inner_lut, outer_lut):
