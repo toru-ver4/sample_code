@@ -748,21 +748,14 @@ def make_chroma_map_lut_specific_hue(hue=30/360*2*np.pi, idx=0):
     """
     # とりあえず L*C* 平面のポリゴン準備
     cl_inner = get_chroma_lightness_val_specfic_hue(hue, mcfl.BT709_BOUNDARY)
-    cl_outer =\
-        get_chroma_lightness_val_specfic_hue(hue, mcfl.BT2020_BOUNDARY)
 
     # cusp 準備
     lh_inner_lut = np.load(mcfl.BT709_BOUNDARY)
-    lh_outer_lut = np.load(mcfl.BT2020_BOUNDARY)
-    lcusp = mcfl.calc_l_cusp_specific_hue(hue, lh_inner_lut, lh_outer_lut)
     inner_cusp = mcfl.calc_cusp_in_lc_plane(hue, lh_inner_lut)
-    outer_cusp = mcfl.calc_cusp_in_lc_plane(hue, lh_outer_lut)
 
     # l_cusp, l_focal, c_focal 準備
-    l_cusp_lut = np.load(mcfl.L_CUSP_NAME)
     l_focal_lut = np.load(mcfl.L_FOCAL_NAME)
     c_focal_lut = np.load(mcfl.C_FOCAL_NAME)
-    l_cusp = calc_value_from_hue_1dlut(hue, l_cusp_lut)
     l_focal = calc_value_from_hue_1dlut(hue, l_focal_lut)
     c_focal = calc_value_from_hue_1dlut(hue, c_focal_lut)
 
@@ -795,7 +788,8 @@ def make_chroma_map_lut_specific_hue(hue=30/360*2*np.pi, idx=0):
 
     # 直線群と直線群の交点を求める。(C_focal)
     icn_x_c, icn_y_c = solve_equation_for_intersection(
-        cl_inner, a1_c, b1_c, a2, b2, focal="C_Focal", inner_cusp=inner_cusp[0])
+        cl_inner, a1_c, b1_c, a2, b2, focal="C_Focal",
+        inner_cusp=inner_cusp[0])
     # _debug_plot_chroma_map_lut_specific_hue(
     #     hue, cl_inner, cl_outer, lcusp, inner_cusp, outer_cusp,
     #     l_cusp, l_focal, c_focal, icn_x_c, icn_y_c, focal_type="C_focal",
