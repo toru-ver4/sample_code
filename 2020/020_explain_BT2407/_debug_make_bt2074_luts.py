@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from multiprocessing import Pool, cpu_count
 from colour import LUT3D, RGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_RGB
+from colour import RGB_COLOURSPACES
+from colour.models import BT709_COLOURSPACE
+import cv2
 
 # import my libraries
 import plot_utility as pu
@@ -20,6 +23,8 @@ import color_space as cs
 from bt2407_parameters import L_SAMPLE_NUM_MAX, H_SAMPLE_NUM_MAX,\
     GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE, GAMUT_BOUNDARY_LUT_HUE_SAMPLE,\
     get_gamut_boundary_lut_name
+from bt2047_gamut_mapping import get_chroma_lightness_val_specfic_hue
+import test_pattern_generator2 as tpg
 
 
 # information
@@ -141,28 +146,202 @@ def thread_wrapper_visualization_ab_plane_fill_color(args):
     return plot_and_save_ab_plane_fill_color(**args)
 
 
+def plot_bt709_p3_bt2020_gamut_boundary():
+    visualization_ab_plane_fill_color(
+        test_sample_grid_num=192, color_space_name=cs.BT709,
+        l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
+        h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE)
+    visualization_ab_plane_fill_color(
+        test_sample_grid_num=192, color_space_name=cs.BT2020,
+        l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
+        h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE)
+    visualization_ab_plane_fill_color(
+        test_sample_grid_num=192, color_space_name=cs.P3_D65,
+        l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
+        h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE)
+
+
+def plot_simple_cl_plane(
+        hue=np.deg2rad(30),
+        inner_color_space_name=cs.BT709,
+        outer_color_space_name=cs.BT2020,
+        chroma_min=-5, chroma_max=220, ll_min=0, ll_max=100):
+    """
+    ブログでの説明用にシンプルな Chroma Lightness平面をプロット
+    """
+    cl_inner = get_chroma_lightness_val_specfic_hue(
+        hue=hue,
+        lh_lut_name=get_gamut_boundary_lut_name(inner_color_space_name))
+    cl_outer =\
+        get_chroma_lightness_val_specfic_hue(
+            hue=hue,
+            lh_lut_name=get_gamut_boundary_lut_name(outer_color_space_name))
+
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title=f"HUE = {hue/2/np.pi*360:.1f}°",
+        graph_title_size=None,
+        xlabel="Chroma",
+        ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[chroma_min, chroma_max],
+        ylim=[ll_min, ll_max],
+        xtick=[20 * x for x in range(12)],
+        ytick=[x * 10 for x in range(11)],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.patch.set_facecolor("#E0E0E0")
+    in_color = "#707070"
+    ou_color = "#000000"
+
+    # gamut boundary
+    ax1.plot(
+        cl_inner[..., 0], cl_inner[..., 1], '--', c=in_color,
+        label=inner_color_space_name)
+    ax1.plot(
+        cl_outer[..., 0], cl_outer[..., 1], c=ou_color,
+        label=outer_color_space_name)
+
+    graph_name = f"./figures/simple_cl_plane_HUE_{hue/2/np.pi*360:.1f}.png"
+    plt.legend(loc='upper right')
+    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+
+
+def plot_filled_cl_plane(
+        hue=np.deg2rad(30), hue_idx=0,
+        color_space_name=cs.BT709,
+        chroma_min=-5, chroma_max=140, ll_min=0, ll_max=100):
+    """
+    CL平面を塗りつぶす！
+    """
+    rgb_img = make_ch_plane_color_image(
+        hue=hue, samples=1024, bg_color=0.5,
+        xmin=chroma_min, xmax=chroma_max, ymin=ll_min, ymax=ll_max,
+        cs_name=color_space_name)
+    cl_inner = get_chroma_lightness_val_specfic_hue(
+        hue=hue,
+        lh_lut_name=get_gamut_boundary_lut_name(color_space_name))
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 8),
+        graph_title=f"HUE = {np.rad2deg(hue):.1f}°",
+        graph_title_size=None,
+        xlabel="Chroma",
+        ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[chroma_min, chroma_max],
+        ylim=[ll_min, ll_max],
+        xtick=[20 * x for x in range(int(chroma_max // 20 + 1))],
+        ytick=[x * 10 for x in range(int(ll_max // 10) + 1)],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        return_figure=True)
+    in_color = "#000000"
+
+    # gamut boundary
+    ax1.plot(
+        cl_inner[..., 0], cl_inner[..., 1], '-', c=in_color, lw=3,
+        label=color_space_name)
+    ax1.imshow(
+        rgb_img, extent=(chroma_min, chroma_max, ll_min, ll_max),
+        aspect='auto')
+
+    graph_name = f"./cl_plane_seq/filled_cl_plane_"\
+        + f"{color_space_name}_{hue_idx:04d}.png"
+    plt.legend(loc='upper right')
+    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+    plt.close(fig)
+
+
+def make_ch_plane_color_image(
+        hue=np.deg2rad(40), samples=1024, bg_color=0.5,
+        xmin=0, xmax=220, ymin=0, ymax=100, cs_name=cs.BT709):
+    """
+    任意の Hue の Chroma-Lightness 平面の色画像をつくる
+    """
+    chroma = np.linspace(xmin, xmax, samples)
+    lightness = np.linspace(ymin, ymax, samples)
+    cc, ll = np.meshgrid(chroma, lightness)
+    aa = cc * np.cos(hue)
+    bb = cc * np.sin(hue)
+
+    lab = np.dstack((ll, aa, bb))
+
+    rgb = XYZ_to_RGB(
+        Lab_to_XYZ(lab), tpg.D65_WHITE, tpg.D65_WHITE,
+        RGB_COLOURSPACES[cs_name].XYZ_to_RGB_matrix)
+
+    r_ok = (rgb[..., 0] >= 0) & (rgb[..., 0] <= 1.0)
+    g_ok = (rgb[..., 1] >= 0) & (rgb[..., 1] <= 1.0)
+    b_ok = (rgb[..., 2] >= 0) & (rgb[..., 2] <= 1.0)
+    rgb_ok = (r_ok & g_ok) & b_ok
+
+    rgb[~rgb_ok] = np.ones_like(rgb[~rgb_ok]) * bg_color
+    rgb = rgb[::-1]
+
+    rgb = rgb ** (1/2.4)
+
+    return rgb
+
+
+def thread_wapper_cl_plen_filled_color(args):
+    plot_filled_cl_plane(**args)
+
+
+def make_cl_plane_filled_color(hue_sample=5):
+    hue_list = np.deg2rad(np.linspace(0, 360, hue_sample, endpoint=False))
+    lut_name = get_gamut_boundary_lut_name(cs.BT2020)
+    lh_lut = np.load(lut_name)
+    chroma_max = np.ceil(np.max(lh_lut) / 10) * 10
+
+    color_space_name_list = [cs.BT709, cs.P3_D65, cs.BT2020]
+    for color_space_name in color_space_name_list:
+        args = []
+        for idx, hue in enumerate(hue_list):
+            # plot_filled_cl_plane(
+            #     hue=hue, hue_idx=idx,
+            #     color_space_name=color_space_name,
+            #     chroma_min=0, chroma_max=chroma_max, ll_min=0, ll_max=100)
+            d = dict(
+                hue=hue, hue_idx=idx,
+                color_space_name=color_space_name,
+                chroma_min=0, chroma_max=chroma_max, ll_min=0, ll_max=100
+            )
+            args.append(d)
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wapper_cl_plen_filled_color, args)
+
+
+def make_example_patch():
+    size = 200
+
+    rgb_list = np.array([
+        [245, 85, 57], [219, 109, 83], [214, 50, 30], [216, 78, 53]])
+    fname_list = [
+        "./figures/org_r.png", "./figures/fixed_lumi.png",
+        "./figures/fixed_ch.png", "./figures/balance.png"]
+
+    img_list = [np.ones((size, size, 3), dtype=np.uint8) * rgb
+                for rgb in rgb_list]
+
+    for name, img in zip(fname_list, img_list):
+        cv2.imwrite(name, img[..., ::-1])
+
+
 def main_func():
     # 確認
-    # visualization_ab_plane_fill_color(
-    #     test_sample_grid_num=192, color_space_name=cs.BT709,
-    #     l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
-    #     h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE)
-    # visualization_ab_plane_fill_color(
-    #     test_sample_grid_num=192, color_space_name=cs.BT2020,
-    #     l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
-    #     h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE)
-    # visualization_ab_plane_fill_color(
-    #     test_sample_grid_num=192, color_space_name=cs.P3_D65,
-    #     l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
-    #     h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE)
-
-    # 任意の L* の a*b*平面用の boundary データ計算
-    # lstar = 50
-    # h_sample_num = 256
-    # fname = f"Chroma_L_{lstar}_BT709_h_{h_sample_num}.npy"
-    # chroma = np.load(fname)
-    # plot_and_save_ab_plane(1, chroma, 0, h_sample_num)
-    pass
+    # plot_bt709_p3_bt2020_gamut_boundary()
+    # plot_simple_cl_plane(hue=np.deg2rad(40))
+    # make_cl_plane_filled_color(hue_sample=360*2)
+    make_example_patch()
 
 
 if __name__ == '__main__':

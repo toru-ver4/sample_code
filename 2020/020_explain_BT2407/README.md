@@ -29,7 +29,7 @@ BT.2407 Annex2 は BT.2020 to BT.709 変換に最適化したアルゴリズム�
 
 ## 3. 結論
 
-なんとか実装した。また簡単に扱えるように 3DLUT化も行った。
+なんとか実装した。加えて簡単に扱えるように 3DLUT化も行った。
 
 (BT.2020のディスプレイが無いと判断できないのだが)作成したテストパターンへの適用結果を図1に、128x128x128のカラーパッチに対する変換結果を図2に示す。
 
@@ -51,15 +51,20 @@ BT.2407 Annex2 の Gamut Mapping について簡単に説明する。
 * Chroma Mapping
 * Hue Mapping
 
-Lightness Mapping と Chroma Mapping の概要について説明する。この2つの Mapping は CIELAB色空間から算出できる Chroma-Lightness平面上で行う。この平面上で処理を行うことにより、Gamat Mapping で CIELAB色空間での Hue がは維持される。
+続いて Lightness Mapping と Chroma Mapping の概要について説明する。この2つの Mapping は CIELAB色空間から算出できる Chroma-Lightness平面上で行う。この平面上で処理を行うことにより、Mapping の前後で CIELAB色空間での Hue は維持される。
 
-では具体的に Chroma-Lightness平面上でどう Mapping をするのか説明していく。Mapping の方法は色々と考えられる。以下の図3に例を示す。
+BT.2407 Annex2 の Mapping 方法を説明する前に、そもそも Mapping の方法にはどういったものが考えられるか例を挙げておく。以下の図3 では Chroma-Lightness平面のある点(a) を Mapping している。
 
-図3では3種類の Mapping を行っている。
-
-1. Lightness 優先
-2. Chroma 優先
-3. BT.2407 Annex2
+![zu3](./figures/mapping_ex.png)
+図3. Chroma-Lightness 平面上での Gamut Mapping の例
 
 
+図から読み取れるように BT.709 の色域外のデータを BT.709 の色域内に収める方法には色々とバリエーションが存在する。例えば (b) は Lightness の保持を最優先として、Chroma が大幅に減少したとしても Lightness を保持するようにしている。一方で (c) は Chroma を最優先して、Lightness が大幅に減少したとしても、Chroma を保持するようにしている。他にも Chroma-Lightness平面上でのユークリッド距離を最小化する、などの方法も考えることができる。
+
+さて、今回実装した BT.2407 Annex2 は (d) に示した方法となっている。(b), (c) の中間のような感じである。この座標がどのように算出されるのか以降で説明していく。
+
+### 4.2 詳細
+
+
+## 5. 実装
 

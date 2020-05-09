@@ -31,9 +31,9 @@ GAMUT_BOUNDARY_LUT_HUE_SAMPLE = 256
 
 
 def get_gamut_boundary_lut_name(
-    color_space_name=cs.BT709,
-    luminance_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
-    hue_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE):
+        color_space_name=cs.BT709,
+        luminance_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
+        hue_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE):
     name = f"./luts/GamutBoundaryLUT_{color_space_name}_"\
         + f"L_{luminance_sample_num}_H_{hue_sample_num}.npy"
     return name

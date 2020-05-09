@@ -1979,7 +1979,7 @@ def main_func():
     # call_experimental_functions()
 
     # 256x256x256 のデータに対する動作確認
-    _check_luminance_mapping_1677_sample()
+    _   check_luminance_mapping_1677_sample()
     # _apply_luminance_mapping_to_image_file()
 
 

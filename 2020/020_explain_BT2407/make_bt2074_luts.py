@@ -85,23 +85,26 @@ def make_gamut_bondary_lut(
     np.save(fname, chroma)
 
 
-def main_func():
+def make_gamut_boundary_lut_all():
     # L*a*b* 全体のデータを算出
-    # start = time.time()
-    # make_gamut_bondary_lut(color_space_name=cs.BT709)
-    # elapsed_time = time.time() - start
-    # print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+    start = time.time()
+    make_gamut_bondary_lut(color_space_name=cs.BT709)
+    elapsed_time = time.time() - start
+    print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
 
-    # start = time.time()
-    # make_gamut_bondary_lut(color_space_name=cs.BT2020)
-    # elapsed_time = time.time() - start
-    # print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+    start = time.time()
+    make_gamut_bondary_lut(color_space_name=cs.BT2020)
+    elapsed_time = time.time() - start
+    print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
 
-    # start = time.time()
-    # make_gamut_bondary_lut(color_space_name=cs.P3_D65)
-    # elapsed_time = time.time() - start
-    # print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
-    pass
+    start = time.time()
+    make_gamut_bondary_lut(color_space_name=cs.P3_D65)
+    elapsed_time = time.time() - start
+    print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+
+
+def main_func():
+    # make_gamut_boundary_lut_all()
 
 
 if __name__ == '__main__':
