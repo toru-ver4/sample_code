@@ -28,6 +28,7 @@ H_SAMPLE_NUM_MAX = 1024
 
 GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE = 1024
 GAMUT_BOUNDARY_LUT_HUE_SAMPLE = 1024
+CHROMA_MAP_DEGREE_SAMPLE_NUM = 1024
 
 DIPS_150_SAMPLE_ST_BT2020 = int(115/360 * GAMUT_BOUNDARY_LUT_HUE_SAMPLE)
 DIPS_150_SAMPLE_ED_BT2020 = int(160/360 * GAMUT_BOUNDARY_LUT_HUE_SAMPLE)
@@ -53,6 +54,18 @@ def get_gamut_boundary_lut_name(
         luminance_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
         hue_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE):
     name = f"./luts/GamutBoundaryLUT_{color_space_name}_"\
+        + f"L_{luminance_sample_num}_H_{hue_sample_num}.npy"
+    return name
+
+
+def get_chroma_map_lut_name(
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709,
+        luminance_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
+        hue_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE,
+        focal_type="Lfocal"):
+    name = f"./luts/ChromaMap{focal_type}LUT_{outer_color_space_name}_to_"\
+        + f"{inner_color_space_name}_"\
         + f"L_{luminance_sample_num}_H_{hue_sample_num}.npy"
     return name
 

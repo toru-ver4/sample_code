@@ -888,8 +888,11 @@ def main_func():
     # make_focal_lut(
     #     outer_color_space_name=cs.P3_D65,
     #     inner_color_space_name=cs.BT709)
+    # make_chroma_map_lut(
+    #     outer_color_space_name=cs.BT2020,
+    #     inner_color_space_name=cs.BT709)
     make_chroma_map_lut(
-        outer_color_space_name=cs.BT2020,
+        outer_color_space_name=cs.P3_D65,
         inner_color_space_name=cs.BT709)
     pass
 
