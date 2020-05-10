@@ -39,7 +39,7 @@ BT.2407 Annex2 は BT.2020 to BT.709 変換に最適化したアルゴリズム�
 
 ## 4. 理論
 
-### 4.1 概要
+### 4.1. 概要
 
 BT.2407 Annex2 の Gamut Mapping について簡単に説明する。
 
@@ -59,12 +59,106 @@ BT.2407 Annex2 の Mapping 方法を説明する前に、そもそも Mapping �
 図3. Chroma-Lightness 平面上での Gamut Mapping の例
 
 
-図から読み取れるように BT.709 の色域外のデータを BT.709 の色域内に収める方法には色々とバリエーションが存在する。例えば (b) は Lightness の保持を最優先として、Chroma が大幅に減少したとしても Lightness を保持するようにしている。一方で (c) は Chroma を最優先して、Lightness が大幅に減少したとしても、Chroma を保持するようにしている。他にも Chroma-Lightness平面上でのユークリッド距離を最小化する、などの方法も考えることができる。
+図から読み取れるように BT.709 の色域外のデータを BT.709 の色域内に収める方法にはバリエーションが存在する。例えば (b) は Lightness の保持を最優先として、Chroma が大幅に減少したとしても Lightness を保持するようにしている。一方で (c) は Chroma を最優先して、Lightness が大幅に減少したとしても、Chroma を保持するようにしている。他にも Chroma-Lightness平面上でのユークリッド距離を最小化する、などの方法も考えることができる。
 
 さて、今回実装した BT.2407 Annex2 は (d) に示した方法となっている。(b), (c) の中間のような感じである。この座標がどのように算出されるのか以降で説明していく。
 
-### 4.2 詳細
+### 4.2. 詳細
 
+先程の図3 の (d) に示した Mapping を実現するために、BT.2407 Annex2 では L_focal, C_focal と呼ばれる点を設定し、この点を基準として Gamut Mapping を行う。順を追って説明する。
+
+### 4.2.1. L_focal の生成
+
+L_focal を求めるには以下のステップを経由する。
+
+1. BT.709 cusp と BT.2020 cusp を計算
+2. 上記の2つの cusp から L_cusp を計算
+3. L_cusp の範囲を制限することで L_focal を生成
+
+BT.709 cusp と BT.2020 cusp はそれぞれ Chroma-Lightness平面で最も Chroma が大きい点を意味し、L_cusp は BT.709 cusp と BT.2020 cusp を通る直線と Lightness軸との交点を意味する。図4の動画を見れば、意味が通じると考える。
+
+```text
+ここに動画
+```
+
+L_cusp は L_focal の値を制限することで作られる（※）。制限した結果を図に示す。
+
+![zuho](./figures/L_focal.png)
+
+
+※制限する明確な理由はまだ自分の中では明らかになっていない。
+
+### 4.2.2. C_focal の算出
+
+次に C_focal の算出方法について説明する。C_focal は BT.709 cusp と BT.2020 cusp を通る直線と Chroma軸 との交点の絶対値である。したがって、以下のように2パターンが存在する。
+
+| パターン | 図 |
+|:-------:|:-------:|
+| (a) | ![pta](./figures/cfocal_explain_a.png)|
+| (b) | ![ptb](./figures/cfocal_explain_b.png)|
+
+(a) は Chroma軸との交点が正の値となるケース、(b) は Chroma軸との交点が負の値となるケースである。いずれにせよ絶対値を取るため最終的な C_focal は以下のようになる。なお、筆者の実装は後述するように複数のLUTを組み合わせていることもあり、量子化誤差が随所で発生する。C_focal についても量子化誤差は発生しており、これを防ぐために LPF を適用してある。ご了承頂きたい。
+
+### 4.2.3. L_focal, C_focal を基準とした Mapping 処理
+
+L_focal, C_focal が決まれば後はこの点を基準に Mapping を行えば良い。具体例を図に示す。
+
+図から分かるように、L_focal, C_focal を結ぶ直線の上側のデータは L_focal へ収束するように、下側のデータは C_focal から発散するような直線上で Mapping を行う。
+
+Mapping先は BT.709 の色域の境界である。この方法だと focal を基準とした直線上のデータは同一の Chroma, Lightness値に Mapping されるため色潰れが生じることを懸念するかもしれない。しかし色潰れが生じる可能性は極めて低い。実画像では Chroma が変化するとともに Lightness も変化するが、その変化が focal を基準とした直線に乗り続ける可能性が低いからである。この直線から外れると Mapping 後の値にも差が生じるため色潰れが生じることはない。
 
 ## 5. 実装
 
+### 5.1. 処理の大まかな流れ
+
+初めに処理の大まかな流れを説明しておく。以下の図を参照して頂きたい。
+
+
+
+処理は大きく2つに分けられる。
+
+* 入力のRGB値に依存しない処理
+* 入力のRGB値に依存する処理
+
+例えば、L_focal, C_focal の計算などは入力のRGB値に依存しない処理に該当する。これらの処理は事前に済ませておいてLUT化した。詳細は後述する。
+
+それ以外の処理は入力の RGB値に応じてた処理である。
+
+ではざっくりと流れを書き記そう。
+
+1. BT.709, BT.2020 の Gamut Boundary を算出
+2. BT.709 cusp, BT.2020 cusp の算出
+3. L_focal, C_focal の算出
+4. L_focal に収束するデータの Mapping 先の算出
+5. C_focal から発散するデータの Mapping 先の算出
+6. RGB値 を CIELAB値 に変換して Gamut Mapping を実行
+
+これらのうち、1.～5. が事前準備として LUT化しておく処理である。すなわち殆どの処理が事前の LUT作成処理であった。苦労したのは LUT の設計・作成であり、そこが完成してしまえば後は難しくなかった。
+
+### 5.2. BT.709, BT.2020 の Gamut Boundary を算出
+
+前回のブログで記した通り。ただし、この記事で書いた手法は遅すぎたため現在は別の手法を使用して算出している。
+
+少しだけ補足しておくと、ここで作成した LUT は 2DLUT である。Lightness, Hue の index を指定すると 対応する Chroma が得られる LUT となっている。
+
+### 5.3. BT.709 cusp, BT.2020 cusp の算出
+
+特記事項なし。5.2. で作った LUT から簡単に求めることが出来る。
+
+### 5.4. L_focal, C_focal の算出
+
+基本的には 5.3. で求めた BT.709 cusp, BT.2020 cusp から機械的に求めるだけで良い。ただし、5.2. で作成した Gamut Boundary の LUT の量子化誤差の影響で Hue に対して高周波成分は発生する。真の値はガタついてないと推測されるため、LPF を適用して高周波成分を除去した。結果を以下に示す。
+
+### 5.5. L_focal に収束するデータの Mapping 先の算出
+
+ここで一度、入力信号に対して具体的にどう処理をしていくのか整理する。
+
+入力の RGB 信号は RGB --> CIE 1931 XYZ --> CIELAB の順に変換される。続いて Chrom-Lightness 平面で処理できるように、Lab --> LCH 変換する。得られた Hue に相当する Chroma-Lightnes 平面を生成し平面上に点を打つ。この点が L_focal および C_focal への直線を求めて、その直線と BT.709 色域の交点にマッピングをする。
+
+## 6. 検証
+
+## 7. 考察
+
+## 8. 参考文献
+
+[1] Report ITU-R BT.2407, "Colour gamut conversion from Recommendation ITU-R BT.2020 to Recommendation ITU-R BT.709", https://www.itu.int/pub/R-REP-BT.2407

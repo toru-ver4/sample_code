@@ -1979,13 +1979,13 @@ def main_func():
     # call_experimental_functions()
 
     # 256x256x256 のデータに対する動作確認
-    _   check_luminance_mapping_1677_sample()
+    _check_luminance_mapping_1677_sample()
     # _apply_luminance_mapping_to_image_file()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    main_func()
+    # main_func()
     # hue = calc_hue_from_ab(
     #     aa=np.array([1.0, 0.3, 0.0, -0.3, -1.0, -0.3, 0.0, 0.3, 0.99]) * np.pi,
     #     bb=np.array([0.0, 0.6, 1.0, 0.6, 0.0, -0.6, -1.0, -0.6, -0.001]) * np.pi)
