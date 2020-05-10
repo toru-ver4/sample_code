@@ -78,7 +78,7 @@ def plot_and_save_ab_plane_fill_color(
         large_xyz, cs.D65, cs.D65, cs.get_xyz_to_rgb_matrix(color_space_name))
     rgb = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
 
-    ax1 = pu.plot_1_graph(
+    fig, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(10, 8),
         graph_title="CIELAB Plane L*={:.03f}".format(
@@ -93,8 +93,7 @@ def plot_and_save_ab_plane_fill_color(
         ytick=None,
         xtick_size=None, ytick_size=None,
         linewidth=3,
-        minor_xtick_num=None,
-        minor_ytick_num=None)
+        return_figure=True)
     # ax1.plot(a, b, label="L*={:.03f}".format(idx * 100 / (l_sample_num - 1)))
     ax1.patch.set_facecolor("#B0B0B0")
     # ax1.scatter(a, b, c=rgb)
@@ -104,6 +103,7 @@ def plot_and_save_ab_plane_fill_color(
     plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
     print("plot l_idx={}".format(idx))
     # plt.show()
+    plt.close(fig)
 
 
 def visualization_ab_plane_fill_color(
@@ -148,15 +148,15 @@ def thread_wrapper_visualization_ab_plane_fill_color(args):
 
 def plot_bt709_p3_bt2020_gamut_boundary():
     visualization_ab_plane_fill_color(
-        test_sample_grid_num=192, color_space_name=cs.BT709,
+        test_sample_grid_num=144, color_space_name=cs.BT709,
         l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
         h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE)
     visualization_ab_plane_fill_color(
-        test_sample_grid_num=192, color_space_name=cs.BT2020,
+        test_sample_grid_num=144, color_space_name=cs.BT2020,
         l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
         h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE)
     visualization_ab_plane_fill_color(
-        test_sample_grid_num=192, color_space_name=cs.P3_D65,
+        test_sample_grid_num=144, color_space_name=cs.P3_D65,
         l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
         h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE)
 
@@ -177,7 +177,7 @@ def plot_simple_cl_plane(
             hue=hue,
             lh_lut_name=get_gamut_boundary_lut_name(outer_color_space_name))
 
-    ax1 = pu.plot_1_graph(
+    fig, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(10, 8),
         graph_title=f"HUE = {hue/2/np.pi*360:.1f}°",
@@ -192,8 +192,7 @@ def plot_simple_cl_plane(
         ytick=[x * 10 for x in range(11)],
         xtick_size=None, ytick_size=None,
         linewidth=3,
-        minor_xtick_num=None,
-        minor_ytick_num=None)
+        return_figure=True)
     ax1.patch.set_facecolor("#E0E0E0")
     in_color = "#707070"
     ou_color = "#000000"
@@ -210,6 +209,7 @@ def plot_simple_cl_plane(
     plt.legend(loc='upper right')
     plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
     plt.show()
+    plt.close(fig)
 
 
 def plot_filled_cl_plane(
@@ -339,9 +339,9 @@ def make_example_patch():
 def main_func():
     # 確認
     # plot_bt709_p3_bt2020_gamut_boundary()
-    # plot_simple_cl_plane(hue=np.deg2rad(40))
-    # make_cl_plane_filled_color(hue_sample=360*2)
-    make_example_patch()
+    plot_simple_cl_plane(hue=np.deg2rad(270))
+    # make_cl_plane_filled_color(hue_sample=2048)
+    # make_example_patch()
 
 
 if __name__ == '__main__':

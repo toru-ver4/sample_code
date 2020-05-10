@@ -15,7 +15,9 @@ import numpy as np
 from sympy import sin, cos
 from sympy.solvers import solve
 from scipy import linalg
-from colour import xy_to_XYZ
+from colour import xy_to_XYZ, Lab_to_XYZ, XYZ_to_RGB
+from colour import RGB_COLOURSPACES
+from colour.models import BT709_COLOURSPACE
 
 # import my libraries
 import color_space as cs
@@ -177,6 +179,55 @@ def solve_chroma(
     return chroma
 
 
+def is_inner_gamut(lab, color_space_name=cs.BT709):
+    rgb = XYZ_to_RGB(
+        Lab_to_XYZ(lab), cs.D65, cs.D65,
+        RGB_COLOURSPACES[color_space_name].XYZ_to_RGB_matrix)
+    r_judge = (rgb[..., 0] >= 0) & (rgb[..., 0] <= 1)
+    g_judge = (rgb[..., 1] >= 0) & (rgb[..., 1] <= 1)
+    b_judge = (rgb[..., 2] >= 0) & (rgb[..., 2] <= 1)
+    judge = (r_judge & g_judge) & b_judge
+
+    return judge
+
+
+def solve_chroma_fast(
+        l_val, l_idx, h_val, h_idx, l_sample_num, color_space_name, **kwarg):
+    """
+    引数で与えられた L*, H に対する Chroma値を算出する。
+    ```make_chroma_array``` のループからコールされることが前提のコード。
+    """
+    if l_sample_num == 0:  # 特定の ab平面計算用の引数
+        pass
+    elif l_idx == l_sample_num - 1:  # L=100 の Chroma は 0 なので計算しない
+        return 0
+    elif l_idx == 0:   # L=0 の Chroma は 0 なので計算しない
+        return 0
+
+    r_val_init = 300
+    trial_num = 50
+
+    r_val = r_val_init
+
+    for t_idx in range(trial_num):
+        # print(f"t_idx={t_idx}, r_val={r_val}")
+        aa = r_val * np.cos(h_val)
+        bb = r_val * np.sin(h_val)
+        lab = np.array([l_val, aa, bb])
+        judge = is_inner_gamut(lab=lab, color_space_name=color_space_name)
+        # print(f"judge={judge}")
+        add_sub = r_val_init / (2 ** (t_idx + 1))
+        if judge:
+            r_val = r_val + add_sub
+        else:
+            r_val = r_val - add_sub
+
+    chroma = r_val
+    print("L*={:.2f}, H={:.2f}, C={:.3f}".format(
+            l_val, np.rad2deg(h_val), chroma))
+    return chroma
+
+
 def solve_chroma_wrapper(args):
     solve_chroma(*args)
 
@@ -290,3 +341,13 @@ def bilinear_interpolation(lh, lut2d):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    l_sample = 64
+    h_sample = 64
+    hue_list = np.deg2rad(np.linspace(0, 360, h_sample))
+    lightness_list = np.linspace(0, 100, l_sample)
+    for l_idx, l_val in enumerate(lightness_list):
+        for h_idx, h_val in enumerate(hue_list):
+            solve_chroma2(
+                l_val=l_val, l_idx=l_idx, h_val=h_val, h_idx=h_idx,
+                l_sample_num=l_sample, color_space_name=cs.BT709)
+

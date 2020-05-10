@@ -44,6 +44,12 @@ def solve_chroma_wrapper(args):
     shared_array[s_idx] = chroma
 
 
+def solve_chroma_wrapper_fast(args):
+    chroma = cl.solve_chroma_fast(**args)
+    s_idx = args['h_sample_num'] * args['l_idx'] + args['h_idx']
+    shared_array[s_idx] = chroma
+
+
 def make_chroma_array(primaries=cs.get_primaries(cs.BT709),
                       l_sample_num=L_SAMPLE_NUM_MAX,
                       h_sample_num=H_SAMPLE_NUM_MAX):
@@ -73,12 +79,53 @@ def make_chroma_array(primaries=cs.get_primaries(cs.BT709),
     return chroma
 
 
+def make_chroma_array_fast(
+        color_space_name=cs.BT709,
+        l_sample_num=L_SAMPLE_NUM_MAX,
+        h_sample_num=H_SAMPLE_NUM_MAX):
+    """
+    L*a*b* 空間における a*b*平面の境界線プロットのために、
+    各L* における 境界線の Chroma を計算する。
+    高速版。
+    """
+
+    l_vals = np.linspace(0, 100, l_sample_num)
+    h_vals = np.linspace(0, 2*np.pi, h_sample_num)
+    for l_idx, l_val in enumerate(l_vals):
+        args = []
+        for h_idx, h_val in enumerate(h_vals):
+            d = dict(
+                l_val=l_val, l_idx=l_idx, h_val=h_val, h_idx=h_idx,
+                l_sample_num=l_sample_num, h_sample_num=h_sample_num,
+                color_space_name=color_space_name)
+            args.append(d)
+        with Pool(cpu_count()) as pool:
+            pool.map(solve_chroma_wrapper_fast, args)
+
+    chroma = np.array(
+        shared_array[:l_sample_num * h_sample_num]).reshape(
+            (l_sample_num, h_sample_num))
+    return chroma
+
+
 def make_gamut_bondary_lut(
         l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
         h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE,
         color_space_name=cs.BT709):
     chroma = make_chroma_array(
         primaries=cs.get_primaries(color_space_name),
+        l_sample_num=l_sample_num, h_sample_num=h_sample_num)
+    fname = get_gamut_boundary_lut_name(
+        color_space_name, l_sample_num, h_sample_num)
+    np.save(fname, chroma)
+
+
+def make_gamut_bondary_lut_fast(
+        l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
+        h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE,
+        color_space_name=cs.BT709):
+    chroma = make_chroma_array_fast(
+        color_space_name=color_space_name,
         l_sample_num=l_sample_num, h_sample_num=h_sample_num)
     fname = get_gamut_boundary_lut_name(
         color_space_name, l_sample_num, h_sample_num)
@@ -103,8 +150,28 @@ def make_gamut_boundary_lut_all():
     print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
 
 
+def make_gamut_boundary_lut_all_fast():
+    # L*a*b* 全体のデータを算出
+    start = time.time()
+    make_gamut_bondary_lut_fast(color_space_name=cs.BT709)
+    elapsed_time = time.time() - start
+    print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+
+    start = time.time()
+    make_gamut_bondary_lut_fast(color_space_name=cs.BT2020)
+    elapsed_time = time.time() - start
+    print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+
+    start = time.time()
+    make_gamut_bondary_lut_fast(color_space_name=cs.P3_D65)
+    elapsed_time = time.time() - start
+    print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+
+
 def main_func():
     # make_gamut_boundary_lut_all()
+    # make_gamut_boundary_lut_all_fast()
+    pass
 
 
 if __name__ == '__main__':
