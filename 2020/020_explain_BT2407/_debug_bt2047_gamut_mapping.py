@@ -31,7 +31,8 @@ from bt2047_gamut_mapping import get_chroma_lightness_val_specfic_hue,\
     eliminate_inner_gamut_data_c_focal, eliminate_inner_gamut_data_l_focal,\
     interpolate_chroma_map_lut, merge_lightness_mapping
 from make_bt2047_luts import calc_value_from_hue_1dlut,\
-    calc_chroma_map_degree2, calc_l_cusp_specific_hue, calc_cusp_in_lc_plane
+    calc_chroma_map_degree2, calc_l_cusp_specific_hue, calc_cusp_in_lc_plane,\
+    _calc_ab_coef_from_cl_point, solve_equation_for_intersection
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -76,13 +77,19 @@ def print_blog_param():
 
 
 def _make_debug_luminance_chroma_data_fixed_hue(cl_outer):
-    chroma = cl_outer[..., 0]
-    lightness = cl_outer[..., 1]
-    dst_step = 32
-    step = GAMUT_BOUNDARY_LUT_HUE_SAMPLE // dst_step
+    dst_step = 64
+    degree = np.linspace(-np.pi/2, np.pi/2, dst_step)
+    a1 = np.tan(degree)
+    b1 = 50 * np.ones_like(a1)
+    a2, b2 = _calc_ab_coef_from_cl_point(cl_outer)
+    out_chroma, out_lightness = solve_equation_for_intersection(
+        cl_outer, a1, b1, a2, b2, focal="L_Focal")
+    # chroma = cl_outer[..., 0]
+    # lightness = cl_outer[..., 1]
+    # step = GAMUT_BOUNDARY_LUT_HUE_SAMPLE // dst_step
 
-    out_chroma = np.append(chroma[::step], chroma[-1])
-    out_lightness = np.append(lightness[::step], lightness[-1])
+    # out_chroma = np.append(chroma[::step], chroma[-1])
+    # out_lightness = np.append(lightness[::step], lightness[-1])
 
     return out_lightness, out_chroma
 
@@ -480,6 +487,10 @@ def main_func():
     _check_lightness_mapping_seq(
         hue_sample_num=16,
         outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709)
+    _check_lightness_mapping_seq(
+        hue_sample_num=16,
+        outer_color_space_name=cs.P3_D65,
         inner_color_space_name=cs.BT709)
 
 
