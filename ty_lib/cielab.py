@@ -188,7 +188,7 @@ def is_inner_gamut(lab, color_space_name=cs.BT709):
     b_judge = (rgb[..., 2] >= 0) & (rgb[..., 2] <= 1)
     judge = (r_judge & g_judge) & b_judge
 
-    return judge
+    return judge[0]
 
 
 def solve_chroma_fast(
@@ -225,6 +225,40 @@ def solve_chroma_fast(
     chroma = r_val
     print("L*={:.2f}, H={:.2f}, C={:.3f}".format(
             l_val, np.rad2deg(h_val), chroma))
+    return chroma
+
+
+def solve_chroma_fastest(
+        l_val, l_idx, h_vals, l_sample_num, color_space_name, **kwarg):
+    """
+    引数で与えられた L*, H に対する Chroma値を算出する。
+    ```make_chroma_array``` のループからコールされることが前提のコード。
+    """
+    if l_sample_num == 0:  # 特定の ab平面計算用の引数
+        pass
+    elif l_idx == l_sample_num - 1:  # L=100 の Chroma は 0 なので計算しない
+        return np.zeros_like(h_vals)
+    elif l_idx == 0:   # L=0 の Chroma は 0 なので計算しない
+        return np.zeros_like(h_vals)
+
+    r_val_init = 300
+    trial_num = 50
+
+    r_val = r_val_init * np.ones_like(h_vals)
+
+    for t_idx in range(trial_num):
+        # print(f"t_idx={t_idx}, r_val={r_val}")
+        aa = r_val * np.cos(h_vals)
+        bb = r_val * np.sin(h_vals)
+        lab = np.dstack((l_val * np.ones_like(aa), aa, bb))
+        ok_idx = is_inner_gamut(lab=lab, color_space_name=color_space_name)
+        # print(f"judge={judge}")
+        add_sub = r_val_init / (2 ** (t_idx + 1))
+        r_val[ok_idx] = r_val[ok_idx] + add_sub
+        r_val[~ok_idx] = r_val[~ok_idx] - add_sub
+
+    chroma = r_val
+    print(f"color_space={color_space_name}, L*={l_val}:.2f")
     return chroma
 
 
@@ -350,4 +384,3 @@ if __name__ == '__main__':
             solve_chroma2(
                 l_val=l_val, l_idx=l_idx, h_val=h_val, h_idx=h_idx,
                 l_sample_num=l_sample, color_space_name=cs.BT709)
-

@@ -52,6 +52,43 @@ shared_array2 = Array(
     size_or_initializer=L_SAMPLE_NUM_MAX*H_SAMPLE_NUM_MAX)
 
 
+def load_cusp_focal_lut(
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709):
+    # l_cusp, l_focal, c_focal 準備
+    l_cusp_lut = np.load(
+        get_l_cusp_name(
+            outer_color_space_name=outer_color_space_name,
+            inner_color_space_name=inner_color_space_name))
+    l_focal_lut = np.load(
+        get_focal_name(
+            outer_color_space_name=outer_color_space_name,
+            inner_color_space_name=inner_color_space_name,
+            focal_type="Lfocal"))
+    c_focal_lut = np.load(
+        get_focal_name(
+            outer_color_space_name=outer_color_space_name,
+            inner_color_space_name=inner_color_space_name,
+            focal_type="Cfocal"))
+
+    return l_cusp_lut, l_focal_lut, c_focal_lut
+
+
+def calc_cusp_focal_specific_hue(
+        hue=np.deg2rad(30),
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709):
+
+    l_cusp_lut, l_focal_lut, c_focal_lut = load_cusp_focal_lut(
+        outer_color_space_name=outer_color_space_name,
+        inner_color_space_name=inner_color_space_name)
+    l_cusp = calc_value_from_hue_1dlut(hue, l_cusp_lut)
+    l_focal = calc_value_from_hue_1dlut(hue, l_focal_lut)
+    c_focal = calc_value_from_hue_1dlut(hue, c_focal_lut)
+
+    return l_cusp, l_focal, c_focal
+
+
 def solve_chroma_wrapper(args):
     chroma = cl.solve_chroma(**args)
     s_idx = args['h_sample_num'] * args['l_idx'] + args['h_idx']
@@ -62,6 +99,12 @@ def solve_chroma_wrapper_fast(args):
     chroma = cl.solve_chroma_fast(**args)
     s_idx = args['h_sample_num'] * args['l_idx'] + args['h_idx']
     shared_array[s_idx] = chroma
+
+
+def solve_chroma_wrapper_fastest(args):
+    chroma = cl.solve_chroma_fastest(**args)
+    s_idx = args['h_sample_num'] * args['l_idx']
+    shared_array[s_idx:s_idx+args['h_sample_num']] = chroma
 
 
 def make_chroma_array(primaries=cs.get_primaries(cs.BT709),
@@ -122,6 +165,33 @@ def make_chroma_array_fast(
     return chroma
 
 
+def make_chroma_array_fastest(
+        color_space_name=cs.BT709,
+        l_sample_num=L_SAMPLE_NUM_MAX,
+        h_sample_num=H_SAMPLE_NUM_MAX):
+    """
+    L*a*b* 空間における a*b*平面の境界線プロットのために、
+    各L* における 境界線の Chroma を計算する。
+    高速版。
+    """
+    l_vals = np.linspace(0, 100, l_sample_num)
+    h_vals = np.linspace(0, 2*np.pi, h_sample_num)
+    args = []
+    for l_idx, l_val in enumerate(l_vals):
+        d = dict(
+            l_val=l_val, l_idx=l_idx, h_vals=h_vals,
+            l_sample_num=l_sample_num, h_sample_num=h_sample_num,
+            color_space_name=color_space_name)
+        args.append(d)
+    with Pool(cpu_count()) as pool:
+        pool.map(solve_chroma_wrapper_fastest, args)
+
+    chroma = np.array(
+        shared_array[:l_sample_num * h_sample_num]).reshape(
+            (l_sample_num, h_sample_num))
+    return chroma
+
+
 def make_gamut_bondary_lut(
         l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
         h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE,
@@ -139,6 +209,18 @@ def make_gamut_bondary_lut_fast(
         h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE,
         color_space_name=cs.BT709):
     chroma = make_chroma_array_fast(
+        color_space_name=color_space_name,
+        l_sample_num=l_sample_num, h_sample_num=h_sample_num)
+    fname = get_gamut_boundary_lut_name(
+        color_space_name, l_sample_num, h_sample_num)
+    np.save(fname, chroma)
+
+
+def make_gamut_bondary_lut_fastest(
+        l_sample_num=GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,
+        h_sample_num=GAMUT_BOUNDARY_LUT_HUE_SAMPLE,
+        color_space_name=cs.BT709):
+    chroma = make_chroma_array_fastest(
         color_space_name=color_space_name,
         l_sample_num=l_sample_num, h_sample_num=h_sample_num)
     fname = get_gamut_boundary_lut_name(
@@ -178,6 +260,24 @@ def make_gamut_boundary_lut_all_fast():
 
     start = time.time()
     make_gamut_bondary_lut_fast(color_space_name=cs.P3_D65)
+    elapsed_time = time.time() - start
+    print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+
+
+def make_gamut_boundary_lut_all_fastest():
+    # L*a*b* 全体のデータを算出
+    start = time.time()
+    make_gamut_bondary_lut_fastest(color_space_name=cs.BT709)
+    elapsed_time = time.time() - start
+    print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+
+    start = time.time()
+    make_gamut_bondary_lut_fastest(color_space_name=cs.BT2020)
+    elapsed_time = time.time() - start
+    print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+
+    start = time.time()
+    make_gamut_bondary_lut_fastest(color_space_name=cs.P3_D65)
     elapsed_time = time.time() - start
     print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
 
@@ -882,6 +982,7 @@ def make_chroma_mapping_lut(
 def main_func():
     # make_gamut_boundary_lut_all()
     # make_gamut_boundary_lut_all_fast()
+    make_gamut_boundary_lut_all_fastest()
     # make_focal_lut(
     #     outer_color_space_name=cs.BT2020,
     #     inner_color_space_name=cs.BT709)
@@ -891,9 +992,9 @@ def main_func():
     # make_chroma_map_lut(
     #     outer_color_space_name=cs.BT2020,
     #     inner_color_space_name=cs.BT709)
-    make_chroma_map_lut(
-        outer_color_space_name=cs.P3_D65,
-        inner_color_space_name=cs.BT709)
+    # make_chroma_map_lut(
+    #     outer_color_space_name=cs.P3_D65,
+    #     inner_color_space_name=cs.BT709)
     pass
 
 

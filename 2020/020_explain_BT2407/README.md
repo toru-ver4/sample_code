@@ -111,9 +111,22 @@ Mapping先は BT.709 の色域の境界である。この方法だと focal を�
 
 ### 5.1. 処理の大まかな流れ
 
-初めに処理の大まかな流れを説明しておく。以下の図を参照して頂きたい。
+初めに処理の大まかな流れを説明しておく。以下の図を参照して欲しい。
 
+1. 入力のRGB値(Gamma=2.4)を CIELAB値(Lab)、さらに LCH(Lightness, Chroma, Hue)に変換
+2. 該当する Hue 値の Chroma-Lightness平面をプロット
+3. BT.709 Cusp, BT.2020 Cusp を算出
+4. L_cusp, L_focal, C_focal を算出
+5. 入力の LCH値 から L_focal を使うのか C_focal を使うのか判別
+6. 判別した focal 基準で BT.709 の Gamut Boundary に Mapping
+7. 入力の LCH値が BT.709 の内部かを判別。内部だったらMapping結果を元に戻す。
+8. Mapping 後の LCH値から RGB値を算出し返す
 
+|項目|L_focal 基準の変換例|C_focal 基準の変換例|
+|:---:|:---:|:---:|
+|1|![hoho](./figures/degree_40_rgb.png)|![hoho](./figures/degree_270_rgb.png)|
+|2|![hofu](./figures/simple_cl_plane_HUE_40.1.png)|![hofuu](./figures/simple_cl_plane_HUE_270.0.png)
+|3～5|![zozo](./figures/simple_cl_plane_focal_HUE_40.1.png)|![zono](./figures/simple_cl_plane_focal_HUE_270.0.png)
 
 処理は大きく2つに分けられる。
 

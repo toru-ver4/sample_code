@@ -12,7 +12,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from multiprocessing import Pool, cpu_count
-from colour import LUT3D, RGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_RGB
+from colour import LUT3D, RGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_RGB,\
+    Lab_to_LCHab
 from colour import RGB_COLOURSPACES
 from colour.models import BT709_COLOURSPACE
 import cv2
@@ -28,7 +29,8 @@ from bt2047_gamut_mapping import get_chroma_lightness_val_specfic_hue,\
     calc_chroma_lightness_using_length_from_l_focal,\
     calc_chroma_lightness_using_length_from_c_focal
 from make_bt2047_luts import calc_value_from_hue_1dlut,\
-    calc_chroma_map_degree2, calc_l_cusp_specific_hue, calc_cusp_in_lc_plane
+    calc_chroma_map_degree2, calc_l_cusp_specific_hue, calc_cusp_in_lc_plane,\
+    calc_cusp_focal_specific_hue, load_cusp_focal_lut
 import test_pattern_generator2 as tpg
 
 
@@ -199,12 +201,12 @@ def plot_simple_cl_plane(
         linewidth=3,
         return_figure=True)
     ax1.patch.set_facecolor("#E0E0E0")
-    in_color = "#707070"
+    in_color = "#909090"
     ou_color = "#000000"
 
     # gamut boundary
     ax1.plot(
-        cl_inner[..., 0], cl_inner[..., 1], '--', c=in_color,
+        cl_inner[..., 0], cl_inner[..., 1], c=in_color,
         label=inner_color_space_name)
     ax1.plot(
         cl_outer[..., 0], cl_outer[..., 1], c=ou_color,
@@ -214,6 +216,161 @@ def plot_simple_cl_plane(
     plt.legend(loc='upper right')
     plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
     plt.show()
+    plt.close(fig)
+
+
+def plot_simple_cl_plane_with_in_data(
+        hue=np.deg2rad(30),
+        inner_color_space_name=cs.BT709,
+        outer_color_space_name=cs.BT2020,
+        chroma_min=-5, chroma_max=220, ll_min=0, ll_max=100,
+        rgb=np.array([1023, 0, 0])):
+    """
+    ブログでの説明用にシンプルな Chroma Lightness平面をプロット
+    入力データもプロットするよん。
+    """
+    rgb_linear = (rgb / 1023) ** 2.4
+    lch = Lab_to_LCHab(XYZ_to_Lab(RGB_to_XYZ(
+        rgb_linear, cs.D65, cs.D65,
+        RGB_COLOURSPACES[outer_color_space_name].RGB_to_XYZ_matrix)))
+    cl_inner = get_chroma_lightness_val_specfic_hue(
+        hue=hue,
+        lh_lut_name=get_gamut_boundary_lut_name(inner_color_space_name))
+    cl_outer =\
+        get_chroma_lightness_val_specfic_hue(
+            hue=hue,
+            lh_lut_name=get_gamut_boundary_lut_name(outer_color_space_name))
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title=f"HUE = {hue/2/np.pi*360:.1f}°",
+        graph_title_size=None,
+        xlabel="Chroma",
+        ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[chroma_min, chroma_max],
+        ylim=[ll_min, ll_max],
+        xtick=[20 * x for x in range(12)],
+        ytick=[x * 10 for x in range(11)],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        return_figure=True)
+    ax1.patch.set_facecolor("#E0E0E0")
+    in_color = "#909090"
+    ou_color = "#000000"
+
+    # gamut boundary
+    ax1.plot(
+        cl_inner[..., 0], cl_inner[..., 1], c=in_color,
+        label=inner_color_space_name)
+    ax1.plot(
+        cl_outer[..., 0], cl_outer[..., 1], c=ou_color,
+        label=outer_color_space_name)
+    ax1.plot(
+        lch[..., 1], lch[..., 0], 'o', c=(rgb/1023), ms=13,
+        label="src")
+
+    graph_name = f"./figures/simple_cl_plane_HUE_{hue/2/np.pi*360:.1f}.png"
+    plt.legend(loc='upper right')
+    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+    plt.close(fig)
+
+
+def plot_simple_cl_plane_with_focal_data(
+        hue=np.deg2rad(30),
+        inner_color_space_name=cs.BT709,
+        outer_color_space_name=cs.BT2020,
+        chroma_min=-5, chroma_max=220, ll_min=0, ll_max=100,
+        rgb=np.array([1023, 0, 0])):
+    """
+    ブログでの説明用にシンプルな Chroma Lightness平面をプロット
+    入力データもプロットするよん。
+    """
+    rgb_linear = (rgb / 1023) ** 2.4
+    lch = Lab_to_LCHab(XYZ_to_Lab(RGB_to_XYZ(
+        rgb_linear, cs.D65, cs.D65,
+        RGB_COLOURSPACES[outer_color_space_name].RGB_to_XYZ_matrix)))
+    cl_inner = get_chroma_lightness_val_specfic_hue(
+        hue=hue,
+        lh_lut_name=get_gamut_boundary_lut_name(inner_color_space_name))
+    cl_outer =\
+        get_chroma_lightness_val_specfic_hue(
+            hue=hue,
+            lh_lut_name=get_gamut_boundary_lut_name(outer_color_space_name))
+    l_cusp, l_focal, c_focal = calc_cusp_focal_specific_hue(
+        hue=hue,
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709)
+
+    lh_inner_lut = np.load(
+        get_gamut_boundary_lut_name(inner_color_space_name))
+    inner_cusp = calc_cusp_in_lc_plane(hue, lh_inner_lut)
+    lh_outer_lut = np.load(
+        get_gamut_boundary_lut_name(outer_color_space_name))
+    outer_cusp = calc_cusp_in_lc_plane(hue, lh_outer_lut)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title=f"HUE = {hue/2/np.pi*360:.1f}°",
+        graph_title_size=None,
+        xlabel="Chroma",
+        ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=14,
+        xlim=[chroma_min, chroma_max],
+        ylim=[ll_min, ll_max],
+        xtick=[20 * x for x in range(12)],
+        ytick=[x * 10 for x in range(11)],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        return_figure=True)
+    ax1.patch.set_facecolor("#E0E0E0")
+    in_color = "#909090"
+    ou_color = "#000000"
+    l_cups_line = "#333333"
+
+
+    # gamut boundary
+    ax1.plot(
+        cl_inner[..., 0], cl_inner[..., 1], c=in_color,
+        label=inner_color_space_name)
+    ax1.plot(
+        cl_outer[..., 0], cl_outer[..., 1], c=ou_color,
+        label=outer_color_space_name)
+    ax1.plot(
+        lch[..., 1], lch[..., 0], 'o', c=(rgb/1023), ms=13,
+        label="src")
+
+    # Cusp
+    ax1.plot(inner_cusp[1], inner_cusp[0], 's', ms=10, mec='k',
+             c=in_color, label=f"{inner_color_space_name} cusp", zorder=3)
+    ax1.plot(outer_cusp[1], outer_cusp[0], 's', ms=10, mec='k',
+             c=ou_color, label=f"{outer_color_space_name} cusp", zorder=3)
+    if inner_cusp[1] < outer_cusp[1]:
+        ax1.plot([0, outer_cusp[1]], [l_cusp, outer_cusp[0]], '--', lw=1,
+                 c=l_cups_line)
+    else:
+        ax1.plot([0, inner_cusp[1]], [l_cusp, inner_cusp[0]], '--', lw=1,
+                 c=l_cups_line)
+
+    # l_cusp, l_focal, c_focal
+    ax1.plot([0], [l_cusp], 'x', ms=12, mew=4, c=pu.BLUE, label="L_cusp",
+             zorder=3)
+    ax1.plot([0], [l_focal], 'x', ms=12, mew=4, c=pu.RED, label="L_focal",
+             zorder=3)
+    ax1.plot([c_focal], [0], '*', ms=12, mew=3, c=pu.RED, label="C_focal",
+             zorder=3)
+    ax1.plot([0, c_focal], [l_focal, 0], '--', c='k')
+
+    graph_name = f"./figures/simple_cl_plane_focal_HUE_"\
+        + f"{hue/2/np.pi*360:.1f}.png"
+    plt.legend(loc='upper right')
+    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
     plt.close(fig)
 
 
@@ -475,20 +632,49 @@ def _check_chroma_map_lut_data(
         focal_type="C_focal", idx=h_idx)
 
 
+def make_blog_figures():
+    # plot_simple_cl_plane_with_in_data(
+    #     hue=np.deg2rad(40.1),
+    #     inner_color_space_name=cs.BT709,
+    #     outer_color_space_name=cs.BT2020,
+    #     chroma_min=-5, chroma_max=220, ll_min=-3, ll_max=103,
+    #     rgb=np.array([1001, 509, 321]))
+    # plot_simple_cl_plane_with_in_data(
+    #     hue=np.deg2rad(270),
+    #     inner_color_space_name=cs.BT709,
+    #     outer_color_space_name=cs.BT2020,
+    #     chroma_min=-5, chroma_max=220, ll_min=-3, ll_max=103,
+    #     rgb=np.array([158, 421, 759]))
+    plot_simple_cl_plane_with_focal_data(
+        hue=np.deg2rad(40.1),
+        inner_color_space_name=cs.BT709,
+        outer_color_space_name=cs.BT2020,
+        chroma_min=-5, chroma_max=220, ll_min=-3, ll_max=103,
+        rgb=np.array([1001, 509, 321]))
+    plot_simple_cl_plane_with_focal_data(
+        hue=np.deg2rad(270),
+        inner_color_space_name=cs.BT709,
+        outer_color_space_name=cs.BT2020,
+        chroma_min=-5, chroma_max=220, ll_min=-3, ll_max=103,
+        rgb=np.array([158, 421, 759]))
+
+
 def main_func():
     # 確認
     # plot_bt709_p3_bt2020_gamut_boundary()
     # plot_simple_cl_plane(hue=np.deg2rad(270))
     # make_cl_plane_filled_color(hue_sample=2048)
     # make_example_patch()
+    make_blog_figures()
     # _check_chroma_map_lut_data(0, cs.BT2020, cs.BT709)
     # _check_chroma_map_lut_data(256, cs.BT2020, cs.BT709)
     # _check_chroma_map_lut_data(512, cs.BT2020, cs.BT709)
     # _check_chroma_map_lut_data(768, cs.BT2020, cs.BT709)
-    _check_chroma_map_lut_data(0, cs.P3_D65, cs.BT709)
-    _check_chroma_map_lut_data(256, cs.P3_D65, cs.BT709)
-    _check_chroma_map_lut_data(512, cs.P3_D65, cs.BT709)
-    _check_chroma_map_lut_data(768, cs.P3_D65, cs.BT709)
+    # _check_chroma_map_lut_data(0, cs.P3_D65, cs.BT709)
+    # _check_chroma_map_lut_data(256, cs.P3_D65, cs.BT709)
+    # _check_chroma_map_lut_data(512, cs.P3_D65, cs.BT709)
+    # _check_chroma_map_lut_data(768, cs.P3_D65, cs.BT709)
+    pass
 
 
 if __name__ == '__main__':
