@@ -13,9 +13,12 @@ import numpy as np
 from multiprocessing import Pool, cpu_count, Array
 import matplotlib.pyplot as plt
 from colour.models import BT709_COLOURSPACE, BT2020_COLOURSPACE
-from colour import Lab_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab, Lab_to_LCHab
+from colour import Lab_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab,\
+    Lab_to_LCHab, RGB_COLOURSPACES, RGB_to_RGB, LCHab_to_Lab
+import cv2
 
 # import my libraries
+import test_pattern_generator2 as tpg
 import color_space as cs
 import plot_utility as pu
 from bt2407_parameters import L_SAMPLE_NUM_MAX, H_SAMPLE_NUM_MAX,\
@@ -29,10 +32,12 @@ from bt2047_gamut_mapping import get_chroma_lightness_val_specfic_hue,\
     calc_degree_from_cl_data_using_l_focal,\
     calc_distance_from_c_focal, calc_distance_from_l_focal,\
     eliminate_inner_gamut_data_c_focal, eliminate_inner_gamut_data_l_focal,\
-    interpolate_chroma_map_lut, merge_lightness_mapping
+    interpolate_chroma_map_lut, merge_lightness_mapping,\
+    bt2407_gamut_mapping_for_rgb_linear
 from make_bt2047_luts import calc_value_from_hue_1dlut,\
     calc_chroma_map_degree2, calc_l_cusp_specific_hue, calc_cusp_in_lc_plane,\
-    _calc_ab_coef_from_cl_point, solve_equation_for_intersection
+    _calc_ab_coef_from_cl_point, solve_equation_for_intersection,\
+    calc_cusp_focal_specific_hue
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -77,7 +82,7 @@ def print_blog_param():
 
 
 def _make_debug_luminance_chroma_data_fixed_hue(cl_outer):
-    dst_step = 64
+    dst_step = 168
     degree = np.linspace(-np.pi/2, np.pi/2, dst_step)
     a1 = np.tan(degree)
     b1 = 50 * np.ones_like(a1)
@@ -219,7 +224,7 @@ def _check_chroma_map_lut_interpolation(
         inner_color_space_name=inner_color_space_name)
 
 
-def _check_lightness_mapping(
+def _check_lightness_mapping_specific_hue(
         hue_idx, hue,
         outer_color_space_name=cs.BT2020,
         inner_color_space_name=cs.BT709):
@@ -448,7 +453,7 @@ def thread_wrapper_check_chroma_map_lut_interpolation(args):
     _check_chroma_map_lut_interpolation(**args)
 
 
-def _check_lightness_mapping_seq(
+def _check_lightness_mapping_specific_hue_seq(
         hue_sample_num=16,
         outer_color_space_name=cs.BT2020,
         inner_color_space_name=cs.BT709):
@@ -456,7 +461,7 @@ def _check_lightness_mapping_seq(
         np.linspace(0, 360, hue_sample_num, endpoint=False))
     args = []
     for idx, hue in enumerate(hue_list):
-        # _check_lightness_mapping(
+        # _check_lightness_mapping_specific_hue(
         #     hue_idx=idx, hue=hue,
         #     outer_color_space_name=cs.BT2020,
         #     inner_color_space_name=cs.BT709)
@@ -470,7 +475,264 @@ def _check_lightness_mapping_seq(
 
 
 def thread_wrapper_check_lightness_mapping(args):
-    _check_lightness_mapping(**args)
+    _check_lightness_mapping_specific_hue(**args)
+
+
+def _debug_plot_blog_mapping_after(
+        src_rgb, dst_rgb, src_lch, dst_lch,
+        chroma_min=-5, chroma_max=220, ll_min=0, ll_max=100,
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709):
+    """
+    ブログでの説明用にシンプルな Chroma Lightness平面をプロット
+    入力データもプロットするよん。
+    """
+    hue = np.deg2rad(dst_lch[2])
+    cl_inner = get_chroma_lightness_val_specfic_hue(
+        hue=hue,
+        lh_lut_name=get_gamut_boundary_lut_name(inner_color_space_name))
+    cl_outer =\
+        get_chroma_lightness_val_specfic_hue(
+            hue=hue,
+            lh_lut_name=get_gamut_boundary_lut_name(outer_color_space_name))
+    l_cusp, l_focal, c_focal = calc_cusp_focal_specific_hue(
+        hue=hue,
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709)
+
+    lh_inner_lut = np.load(
+        get_gamut_boundary_lut_name(inner_color_space_name))
+    inner_cusp = calc_cusp_in_lc_plane(hue, lh_inner_lut)
+    lh_outer_lut = np.load(
+        get_gamut_boundary_lut_name(outer_color_space_name))
+    outer_cusp = calc_cusp_in_lc_plane(hue, lh_outer_lut)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(16 * 0.9, 9 * 1.0),
+        graph_title=f"HUE = {hue/2/np.pi*360:.1f}°",
+        graph_title_size=None,
+        xlabel="Chroma",
+        ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[chroma_min, chroma_max],
+        ylim=[ll_min, ll_max],
+        xtick=[20 * x for x in range(12)],
+        ytick=[x * 10 for x in range(11)],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        return_figure=True)
+    ax1.patch.set_facecolor("#E0E0E0")
+    in_color = "#909090"
+    ou_color = "#000000"
+    l_cups_line = "#333333"
+    fo_color = "#333333"
+
+    # gamut boundary
+    ax1.plot(
+        cl_inner[..., 0], cl_inner[..., 1], c=in_color,
+        label=inner_color_space_name)
+    ax1.plot(
+        cl_outer[..., 0], cl_outer[..., 1], c=ou_color,
+        label=outer_color_space_name)
+    ax1.plot(
+        src_lch[..., 1], src_lch[..., 0], 'o', c=src_rgb, ms=13,
+        label="src")
+    ax1.plot(
+        dst_lch[..., 1], dst_lch[..., 0], 'o', c=dst_rgb, ms=13,
+        label="dst")
+    x = dst_lch[..., 1]
+    y = dst_lch[..., 0]
+    if y >= (-l_focal * x / c_focal + l_focal):
+        aa = (y - l_focal) / x
+        bb = l_focal
+        xx = 230
+        yy = aa * xx + bb
+        ax1.plot([0, xx], [l_focal, yy], '--', lw=1, c=fo_color)
+    else:
+        aa = (y) / (x - c_focal)
+        bb = y - aa * x
+        xx = 0
+        yy = aa * xx + bb
+        ax1.plot([0, c_focal], [yy, 0], '--', lw=1, c=fo_color)
+
+    # Cusp
+    ax1.plot(inner_cusp[1], inner_cusp[0], 's', ms=10, mec='k',
+             c=in_color, label=f"{inner_color_space_name} cusp", zorder=3)
+    ax1.plot(outer_cusp[1], outer_cusp[0], 's', ms=10, mec='k',
+             c=ou_color, label=f"{outer_color_space_name} cusp", zorder=3)
+    # if inner_cusp[1] < outer_cusp[1]:
+    #     ax1.plot([0, outer_cusp[1]], [l_cusp, outer_cusp[0]], '--', lw=1,
+    #              c=l_cups_line)
+    # else:
+    #     ax1.plot([0, inner_cusp[1]], [l_cusp, inner_cusp[0]], '--', lw=1,
+    #              c=l_cups_line)
+
+    # l_cusp, l_focal, c_focal
+    ax1.plot([0], [l_cusp], 'x', ms=12, mew=4, c=pu.BLUE, label="L_cusp",
+             zorder=3)
+    ax1.plot([0], [l_focal], 'x', ms=12, mew=4, c=pu.RED, label="L_focal",
+             zorder=3)
+    ax1.plot([c_focal], [0], '*', ms=12, mew=3, c=pu.RED, label="C_focal",
+             zorder=3)
+    ax1.plot(
+        [0, c_focal], [l_focal, 0], '--', c='k', label="L_focal to C_focal")
+    if c_focal > chroma_max:
+        ax1.text(182, 0, f"C_focal = {c_focal:.1f}")
+
+    # annotation
+    fcolor = 0.8
+    fcolor = np.array([fcolor, fcolor, fcolor])
+    arrowprops = dict(
+        facecolor=fcolor, shrink=0.0, headwidth=12, headlength=15,
+        width=2)
+    st_pos = (src_lch[1], src_lch[0])
+    ed_pos = (dst_lch[1], dst_lch[0])
+    ax1.annotate(
+        "", xy=ed_pos, xytext=st_pos, xycoords='data',
+        textcoords='data', ha='left', va='bottom',
+        arrowprops=arrowprops)
+
+    graph_name = f"./figures/simple_cl_plane_mapping_HUE_"\
+        + f"{hue/2/np.pi*360:.1f}.png"
+    plt.legend(loc='upper right')
+    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+    plt.close(fig)
+
+
+def _debug_lightness_mapping_for_rgb(
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709):
+    rgb_2020_gm24_1 = np.array([1001, 509, 321])
+    rgb_2020_gm24_2 = np.array([158, 421, 759])
+    rgb_2020_gm24 = np.array([rgb_2020_gm24_1, rgb_2020_gm24_2]) / 1023
+    rgb_2020_linear = rgb_2020_gm24 ** 2.4
+
+    rgb_709 = bt2407_gamut_mapping_for_rgb_linear(
+        rgb_linear=rgb_2020_linear,
+        outer_color_space_name=outer_color_space_name,
+        inner_color_space_name=inner_color_space_name)
+
+    rgb_709_gm24 = np.round((rgb_709 ** (1/2.4) * 1023))
+    rgb_709_gm24_on_2020 = RGB_to_RGB(
+            rgb_709,
+            RGB_COLOURSPACES[inner_color_space_name],
+            RGB_COLOURSPACES[outer_color_space_name])\
+        ** (1/2.4)
+    print(rgb_709_gm24_on_2020)
+    lab_709 = XYZ_to_Lab(
+        RGB_to_XYZ(
+            rgb_709, cs.D65, cs.D65,
+            RGB_COLOURSPACES[inner_color_space_name].RGB_to_XYZ_matrix))
+    lch_709 = Lab_to_LCHab(lab_709)
+    lab_2020 = XYZ_to_Lab(
+        RGB_to_XYZ(
+            rgb_2020_linear, cs.D65, cs.D65,
+            RGB_COLOURSPACES[outer_color_space_name].RGB_to_XYZ_matrix))
+    lch_2020 = Lab_to_LCHab(lab_2020)
+
+    _debug_plot_blog_mapping_after(
+        src_rgb=rgb_2020_gm24[0], dst_rgb=rgb_709_gm24_on_2020[0],
+        src_lch=lch_2020[0], dst_lch=lch_709[0],
+        chroma_min=-5, chroma_max=220, ll_min=-3, ll_max=103,
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709)
+    _debug_plot_blog_mapping_after(
+        src_rgb=rgb_2020_gm24[1], dst_rgb=rgb_709_gm24_on_2020[1],
+        src_lch=lch_2020[1], dst_lch=lch_709[1],
+        chroma_min=-5, chroma_max=220, ll_min=-3, ll_max=103,
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709)
+
+    print(f"src_lch={lch_2020}")
+    print(f"dst_lch={lch_709}")
+    print(f"src_lab={lab_2020}")
+    print(f"dst_lab={lab_709}")
+    print(f"src_rgb={rgb_2020_gm24}")
+    print(f"dst_rgb={rgb_709_gm24}")
+
+
+def _lch_to_rgb(lch, inner_color_space_name, outer_color_space_name):
+    lab = LCHab_to_Lab(lch)
+    xyz = Lab_to_XYZ(lab)
+    rgb_2020 = XYZ_to_RGB(
+        xyz, cs.D65, cs.D65,
+        RGB_COLOURSPACES[outer_color_space_name].XYZ_to_RGB_matrix)
+    rgb_709 = XYZ_to_RGB(
+        xyz, cs.D65, cs.D65,
+        RGB_COLOURSPACES[inner_color_space_name].XYZ_to_RGB_matrix)
+
+    r_judge = (rgb_709[0] >= 0) & (rgb_709[0] <= 1)
+    g_judge = (rgb_709[1] >= 0) & (rgb_709[1] <= 1)
+    b_judge = (rgb_709[2] >= 0) & (rgb_709[2] <= 1)
+    is_in_gamut = (r_judge & g_judge) & b_judge
+
+    rgb = np.clip(rgb_2020, 0.0, 1.0)
+
+    return rgb, is_in_gamut
+
+
+def make_cielab_tp_ctrl(
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709,
+        width=1920, height=1080, h_block_num=16*3, v_block_num=9*3):
+    """
+    CIELABの横軸にHue、縦軸にChromaの
+    テストパターンを作る。
+    """
+    lh_lut = np.load(
+        get_gamut_boundary_lut_name(color_space_name=outer_color_space_name))
+    lightness_lut_sample, hue_lut_sample = lh_lut.shape
+
+    cusp_buf = []
+    l_cusp_buf = []
+    hue_list = np.linspace(0, 2*np.pi, h_block_num, endpoint=False)
+    for hue in hue_list:
+        cusp_lc_temp = calc_cusp_in_lc_plane(hue, lh_lut)
+        cusp_buf.append(cusp_lc_temp)
+        l_cusp, l_focal, c_focal = calc_cusp_focal_specific_hue(
+            hue=hue,
+            outer_color_space_name=outer_color_space_name,
+            inner_color_space_name=inner_color_space_name)
+        l_cusp_buf.append(l_cusp)
+    cusp_lc = np.array(cusp_buf)
+    l_cusp = np.array(l_cusp_buf)
+    cusp_chroma = cusp_lc[..., 1]
+    cusp_lightness = cusp_lc[..., 0]
+
+    block_width_list = tpg.equal_devision(width, h_block_num)
+    block_height_list = tpg.equal_devision(height, v_block_num)
+
+    h_buf = []
+    for h_idx in range(h_block_num):
+        block_width = block_width_list[h_idx]
+        hue = hue_list[h_idx]
+        aa = (cusp_lightness[h_idx] - l_cusp[h_idx]) / (cusp_chroma[h_idx] - 0)
+        bb = l_cusp[h_idx]
+        v_buf = []
+        for v_idx in range(v_block_num):
+            block_height = block_height_list[v_idx]
+            cc = v_idx / (v_block_num - 1) * cusp_chroma[h_idx]
+            ll = aa * cc + bb
+            lch = np.dstack((ll, cc, np.rad2deg(hue)))[0][0]
+            rgb, is_in_gamut = _lch_to_rgb(
+                lch,
+                outer_color_space_name=outer_color_space_name,
+                inner_color_space_name=inner_color_space_name)
+            temp_img = np.ones((block_height, block_width, 3))\
+                * rgb
+            if not is_in_gamut:
+                temp_img[:4, :4] = np.array([0.0, 0.0, 0.0])
+            v_buf.append(temp_img)
+            # print(f"hue={np.rad2deg(hue)}, c={cc:.2f}, l={ll:.2f}")
+            # print(f"hue={np.rad2deg(hue)}, rgb={rgb}, in={is_in_gamut}")
+        h_buf.append(np.vstack(v_buf))
+    img = np.hstack(h_buf)
+
+    fname = f"./figures/bt2020_tp_src_{width}x{height}.tiff"
+    cv2.imwrite(fname, np.uint16(np.round((img ** (1/2.4)) * 0xFFFF)))
 
 
 def main_func():
@@ -484,14 +746,22 @@ def main_func():
     #     hue_sample_num=1025,
     #     outer_color_space_name=cs.P3_D65,
     #     inner_color_space_name=cs.BT709)
-    _check_lightness_mapping_seq(
-        hue_sample_num=16,
+    # _check_lightness_mapping_specific_hue_seq(
+    #     hue_sample_num=1025,
+    #     outer_color_space_name=cs.BT2020,
+    #     inner_color_space_name=cs.BT709)
+    # _check_lightness_mapping_specific_hue_seq(
+    #     hue_sample_num=1025,
+    #     outer_color_space_name=cs.P3_D65,
+    #     inner_color_space_name=cs.BT709)
+    # _debug_lightness_mapping_for_rgb(
+    #     outer_color_space_name=cs.BT2020,
+    #     inner_color_space_name=cs.BT709)
+    make_cielab_tp_ctrl(
         outer_color_space_name=cs.BT2020,
-        inner_color_space_name=cs.BT709)
-    _check_lightness_mapping_seq(
-        hue_sample_num=16,
-        outer_color_space_name=cs.P3_D65,
-        inner_color_space_name=cs.BT709)
+        inner_color_space_name=cs.BT709,
+        width=1920, height=1080, h_block_num=16*3, v_block_num=9*3)
+    pass
 
 
 if __name__ == '__main__':

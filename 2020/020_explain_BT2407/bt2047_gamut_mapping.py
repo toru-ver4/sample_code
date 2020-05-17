@@ -11,16 +11,19 @@ import os
 # import third-party libraries
 import numpy as np
 from multiprocessing import Pool, cpu_count, Array
-
+from colour import RGB_to_XYZ, XYZ_to_Lab, Lab_to_XYZ, XYZ_to_RGB,\
+    RGB_COLOURSPACES
 
 # import my libraries
-import bt2407_parameters as btp
+from bt2407_parameters import get_chroma_map_lut_name,\
+    get_gamut_boundary_lut_name
 import color_space as cs
 from cielab import bilinear_interpolation
 
 from bt2407_parameters import GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE,\
     GAMUT_BOUNDARY_LUT_HUE_SAMPLE, get_l_cusp_name, get_focal_name
-from make_bt2047_luts import calc_value_from_hue_1dlut
+from make_bt2047_luts import calc_value_from_hue_1dlut, load_cusp_focal_lut,\
+    calc_chroma_map_degree2
 
 
 # information
@@ -284,7 +287,7 @@ def calc_cusp_lut(lh_lut):
 
 def get_chroma_lightness_val_specfic_hue(
         hue=30/360*2*np.pi,
-        lh_lut_name=btp.get_gamut_boundary_lut_name(cs.BT709)):
+        lh_lut_name=get_gamut_boundary_lut_name(cs.BT709)):
     """
     Gamut Boundary の LUT から 任意の HUE の Chroma-Lighenss を得る。
 
@@ -359,6 +362,226 @@ def calc_chroma_lightness_using_length_from_c_focal(
     lightness = distance * np.sin(degree)
 
     return chroma, lightness
+
+
+def calc_hue_from_ab(aa, bb):
+    """
+    CIELAB空間で a, b の値から HUE を計算する。
+    出力の値域は [0, 2pi) である。
+
+    Examples
+    --------
+    >>> aa=np.array([1.0, 0.5, 0.0, -0.5, -1.0, -0.5, 0.0, 0.5, 0.99])*np.pi,
+    >>> bb=np.array([0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5, -0.001])*np.pi
+    >>> hue = calc_hue_from_ab(aa, bb)
+    [0.  45.  90.  135.  180.  225.  270.  315. 359.94212549]
+    """
+    hue = np.where(aa != 0, np.arctan(bb/aa), np.pi/2*np.sign(bb))
+    add_pi_idx = (aa < 0) & (bb >= 0)
+    sub_pi_idx = (aa < 0) & (bb < 0)
+    hue[add_pi_idx] = hue[add_pi_idx] + np.pi
+    hue[sub_pi_idx] = hue[sub_pi_idx] - np.pi
+
+    hue[hue < 0] = hue[hue < 0] + 2 * np.pi
+
+    return hue
+
+
+def calc_hue_degree_data_from_rgb(
+        rgb_linear, l_focal_lut, c_focal_lut,
+        outer_color_space_name=cs.BT2020):
+    """
+    Lightness Mapping に使用する Hue-Degree 形式に変換する。
+    """
+    large_xyz = RGB_to_XYZ(
+        rgb_linear, cs.D65, cs.D65,
+        RGB_COLOURSPACES[outer_color_space_name].RGB_to_XYZ_matrix)
+    lab = XYZ_to_Lab(large_xyz)
+
+    lightness = lab[..., 0]
+    aa = lab[..., 1]
+    bb = lab[..., 2]
+
+    hue = calc_hue_from_ab(aa, bb)
+    chroma = ((aa ** 2) + (bb ** 2)) ** 0.5
+    # _debug_plot_ab_plane(rgb_linear, hue, chroma)
+
+    cl_data = np.dstack((chroma, lightness))[0]
+
+    degree_l = calc_degree_from_cl_data_using_l_focal(
+        cl_data=cl_data,
+        l_focal=calc_value_from_hue_1dlut(hue, l_focal_lut))
+    degree_c = calc_degree_from_cl_data_using_c_focal(
+        cl_data=cl_data,
+        c_focal=calc_value_from_hue_1dlut(hue, c_focal_lut))
+
+    hd_data_l = np.dstack((hue, degree_l))[0]
+    hd_data_c = np.dstack((hue, degree_c))[0]
+
+    return hd_data_l, hd_data_c, chroma, lightness
+
+
+def luminance_mapping_in_hd_space(
+        hd_data_l, hd_data_c, src_chroma, src_lightness,
+        l_focal_lut, c_focal_lut,
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709):
+    """
+    BT2407 の Gamut Mapping のコア処理部分。
+    Hue-Degree 空間での Luminance Mapping の実行
+    """
+
+    hue = hd_data_l[..., 0]
+    l_focal = calc_value_from_hue_1dlut(hue, l_focal_lut)
+    c_focal = calc_value_from_hue_1dlut(hue, c_focal_lut)
+    """
+    cmap_lut には Mapping 先の座標情報として
+    各Focal からの distance が記録されている。
+    """
+    cmap_lut_c = np.load(
+        get_chroma_map_lut_name(
+            outer_color_space_name=outer_color_space_name,
+            inner_color_space_name=inner_color_space_name,
+            focal_type="Cfocal"))
+    cmap_lut_l = np.load(
+        get_chroma_map_lut_name(
+            outer_color_space_name=outer_color_space_name,
+            inner_color_space_name=inner_color_space_name,
+            focal_type="Lfocal"))
+    """
+    cmap_lut は Hue と Degree を Index として使用する。
+    このうち Hue 一律なのだが、Degree に関しては
+    各 Index に対応する Radian 値が Hue によって変動する。
+    この Radian の最小値・最大値を計算しておく。
+    あとの補間計算で使うので。
+    例えば、
+      st_degree_l[np.deg2rad(30)] --> -0.4 * pi,
+      ed_degree_l[np.deg2rad(30)] --> 0.9 * pi,
+      st_degree_l[np.deg2rad(90)] --> -0.7 * pi,
+      ed_degree_l[np.deg2rad(90)] --> 1.3 * pi,
+    みたいなイメージ。
+    """
+    lh_inner_lut = np.load(
+        get_gamut_boundary_lut_name(inner_color_space_name))
+    inner_cusp_l_lut = calc_cusp_lut(lh_lut=lh_inner_lut)
+    st_degree_l, ed_degree_l, st_degree_c, ed_degree_c =\
+        calc_chroma_map_degree2(l_focal_lut, c_focal_lut, inner_cusp_l_lut)
+
+    """
+    cmap_lut から Hue-Degree のペアに該当する
+    destination の distance を補間計算で算出する。
+    """
+    dst_distance_l = interpolate_chroma_map_lut(
+        cmap_hd_lut=cmap_lut_l, degree_min=st_degree_l,
+        degree_max=ed_degree_l, data_hd=hd_data_l)
+    dst_distance_c = interpolate_chroma_map_lut(
+        cmap_hd_lut=cmap_lut_c, degree_min=st_degree_c,
+        degree_max=ed_degree_c, data_hd=hd_data_c)
+
+    """
+    out of gamut ではないデータは処理をしないようにする
+    """
+    eliminate_inner_gamut_data_l_focal(
+        dst_distance=dst_distance_l, src_chroma=src_chroma,
+        src_lightness=src_lightness, l_focal=l_focal)
+    eliminate_inner_gamut_data_c_focal(
+        dst_distance=dst_distance_c, src_chroma=src_chroma,
+        src_lightness=src_lightness, c_focal=c_focal)
+
+    """
+    このあとの結果統合処理用に Hue-Degree --> Chroma-Lightness に
+    変換する。
+    """
+    dst_chroma_l, dst_lightness_l\
+        = calc_chroma_lightness_using_length_from_l_focal(
+            distance=dst_distance_l, degree=hd_data_l[..., 1], l_focal=l_focal)
+    dst_chroma_c, dst_lightness_c\
+        = calc_chroma_lightness_using_length_from_c_focal(
+            distance=dst_distance_c, degree=hd_data_c[..., 1], c_focal=c_focal)
+
+    """
+    L_Focalベースと C_Focalベースの結果を統合
+    """
+    dst_chroma, dst_lightness = merge_lightness_mapping(
+        hd_data_l=hd_data_l, st_degree_l=st_degree_l,
+        chroma_map_l=dst_chroma_l, lightness_map_l=dst_lightness_l,
+        chroma_map_c=dst_chroma_c, lightness_map_c=dst_lightness_c)
+
+    return dst_chroma, dst_lightness
+
+
+def calc_rgb_from_hue_chroma_lightness(
+        hue, chroma, lightness,
+        color_space_name=cs.BT709):
+    aa = chroma * np.cos(hue)
+    bb = chroma * np.sin(hue)
+    lab = np.dstack((lightness, aa, bb))
+    large_xyz = Lab_to_XYZ(lab)
+    rgb = XYZ_to_RGB(
+        large_xyz, cs.D65, cs.D65,
+        RGB_COLOURSPACES[color_space_name].XYZ_to_RGB_matrix)
+
+    return rgb
+
+
+def bt2407_gamut_mapping_for_rgb_linear(
+        rgb_linear=(np.array([1023, 512, 256])/1023)**2.4,
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709):
+    """
+    BT.2407 の Luminance Mapping に基づいた Gamut Mapping をする。
+    なお、事前に諸々のLUTを作成しておく必要がある。
+
+    Parameters
+    ----------
+    rgb_linear : array_like
+        RGB のデータ。**Linear** であること。
+    outer_color_space_name : str
+        src の 色域の Colour Science for Python の名称。
+    inner_color_space_name : str
+        dst の 色域の Colour Science for Python の名称。
+    """
+    # shape を (N, 3) に変更。色々と処理しやすくするため。
+    if (len(rgb_linear.shape) != 2) and (rgb_linear.shape[1] != 3):
+        src_shape = rgb_linear.shape
+        shape_0 = 1
+        for shape_val in src_shape[:-1]:
+            shape_0 *= shape_val
+        src_rgb = rgb_linear.reshape((shape_0, 3))
+        restore_shape_flag = True
+    else:
+        restore_shape_flag = False
+        src_rgb = rgb_linear
+
+    # Load LUTs
+    _, l_focal_lut, c_focal_lut = load_cusp_focal_lut(
+        outer_color_space_name=outer_color_space_name,
+        inner_color_space_name=inner_color_space_name)
+
+    # Non-Linear RGB --> Hue Degree への変換
+    hd_data_l, hd_data_c, src_chroma, src_lightness\
+        = calc_hue_degree_data_from_rgb(
+            rgb_linear=src_rgb, l_focal_lut=l_focal_lut,
+            c_focal_lut=c_focal_lut,
+            outer_color_space_name=outer_color_space_name)
+
+    # Luminance Mapping
+    dst_chroma, dst_lightness = luminance_mapping_in_hd_space(
+        hd_data_l=hd_data_l, hd_data_c=hd_data_c,
+        src_chroma=src_chroma, src_lightness=src_lightness,
+        l_focal_lut=l_focal_lut, c_focal_lut=c_focal_lut)
+
+    # Hue Degree --> Non-Linear RGB へ戻す
+    rgb_dst = calc_rgb_from_hue_chroma_lightness(
+        hue=hd_data_l[..., 0], chroma=dst_chroma, lightness=dst_lightness,
+        color_space_name=inner_color_space_name)
+
+    rgb_dst = np.clip(rgb_dst, 0.0, 1.0)
+
+    if restore_shape_flag:
+        return rgb_dst.reshape((src_shape))
+    else:
+        return rgb_dst[0]
 
 
 def main_func():

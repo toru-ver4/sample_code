@@ -113,54 +113,60 @@ Mapping先は BT.709 の色域の境界である。この方法だと focal を�
 
 初めに処理の大まかな流れを説明しておく。以下の図を参照して欲しい。
 
-1. 入力のRGB値(Gamma=2.4)を CIELAB値(Lab)、さらに LCH(Lightness, Chroma, Hue)に変換
-2. 該当する Hue 値の Chroma-Lightness平面をプロット
+1. 入力のRGB(Gamma=2.4)を CIELAB(Lab), LCH(Lightness, Chroma, Hue) に変換
+2. 該当する Hue の Chroma-Lightness平面をプロット
 3. BT.709 Cusp, BT.2020 Cusp を算出
 4. L_cusp, L_focal, C_focal を算出
-5. 入力の LCH値 から L_focal を使うのか C_focal を使うのか判別
+5. 入力の LCH から L_focal を使うのか C_focal を使うのか判別
 6. 判別した focal 基準で BT.709 の Gamut Boundary に Mapping
-7. 入力の LCH値が BT.709 の内部かを判別。内部だったらMapping結果を元に戻す。
-8. Mapping 後の LCH値から RGB値を算出し返す
+7. Mapping 後の LCH から RGB(Gamma=2.4)を算出する
 
 |項目|L_focal 基準の変換例|C_focal 基準の変換例|
 |:---:|:---:|:---:|
 |1|![hoho](./figures/degree_40_rgb.png)|![hoho](./figures/degree_270_rgb.png)|
 |2|![hofu](./figures/simple_cl_plane_HUE_40.1.png)|![hofuu](./figures/simple_cl_plane_HUE_270.0.png)
-|3～5|![zozo](./figures/simple_cl_plane_focal_HUE_40.1.png)|![zono](./figures/simple_cl_plane_focal_HUE_270.0.png)
+|3, 4, 5|![zozo](./figures/simple_cl_plane_focal_HUE_40.1.png)|![zono](./figures/simple_cl_plane_focal_HUE_270.0.png)
+|6|![rame](./figures/simple_cl_plane_mapping_HUE_40.1.png)|![ramen](./figures/simple_cl_plane_mapping_HUE_270.0.png)
+|7|![shi](./figures/degree_40_rgb_after.png)|![shime](./figures/degree_270_rgb_after.png)
 
-処理は大きく2つに分けられる。
+さて、上記の処理はそれなりにボリュームのある処理である。画像の全RGB値に対してバカ正直に処理すると非常に時間がかかってしまう。
 
-* 入力のRGB値に依存しない処理
-* 入力のRGB値に依存する処理
+そこで今回の実装では Mapping処理を「入力のRGB値に依存しない処理」と「入力のRGB値に依存する処理」に分け、前者に関しては事前に計算しておき LUT化することにした。
 
-例えば、L_focal, C_focal の計算などは入力のRGB値に依存しない処理に該当する。これらの処理は事前に済ませておいてLUT化した。詳細は後述する。
+具体的には以下のLUTを作成した。
 
-それ以外の処理は入力の RGB値に応じてた処理である。
+* Gamut Boundary 2DLUT
+  * BT.709, BT.2020 の Gamut Boundary 情報の入った 2DLUT
+* L_focal 1DlUT
+  * L_focal 情報の入った 1DLUT
+* C_focal 1DLUT
+  * C_focal 情報の入った 1DLUT
+* Chroma Mapping 2DLUT for L_focal
+  * 任意の Chroma-Lightness 平面での L_local からの角度 D_l のデータに対する L_focal からの距離の入った 2DLUT
+* Chroma Mapping 2DLUT for C_focal
+  * 任意の Chroma-Lightness 平面での C_local からの角度 D_c のデータに対する C_focal からの距離の入った 2DLUT
 
-ではざっくりと流れを書き記そう。
-
-1. BT.709, BT.2020 の Gamut Boundary を算出
-2. BT.709 cusp, BT.2020 cusp の算出
-3. L_focal, C_focal の算出
-4. L_focal に収束するデータの Mapping 先の算出
-5. C_focal から発散するデータの Mapping 先の算出
-6. RGB値 を CIELAB値 に変換して Gamut Mapping を実行
-
-これらのうち、1.～5. が事前準備として LUT化しておく処理である。すなわち殆どの処理が事前の LUT作成処理であった。苦労したのは LUT の設計・作成であり、そこが完成してしまえば後は難しくなかった。
+以降では、LUTの作成および使用方法を交えながら実装内容について説明していく。
 
 ### 5.2. BT.709, BT.2020 の Gamut Boundary を算出
 
 前回のブログで記した通り。ただし、この記事で書いた手法は遅すぎたため現在は別の手法を使用して算出している。
 
-少しだけ補足しておくと、ここで作成した LUT は 2DLUT である。Lightness, Hue の index を指定すると 対応する Chroma が得られる LUT となっている。
-
 ### 5.3. BT.709 cusp, BT.2020 cusp の算出
 
-特記事項なし。5.2. で作った LUT から簡単に求めることが出来る。
+4.2.1. で説明した条件を満たす点を算出するだけであり特記事項はない。5.2. で作った LUT から簡単に求めることが出来る。
 
 ### 5.4. L_focal, C_focal の算出
 
-基本的には 5.3. で求めた BT.709 cusp, BT.2020 cusp から機械的に求めるだけで良い。ただし、5.2. で作成した Gamut Boundary の LUT の量子化誤差の影響で Hue に対して高周波成分は発生する。真の値はガタついてないと推測されるため、LPF を適用して高周波成分を除去した。結果を以下に示す。
+基本的には 5.3. で求めた BT.709 cusp, BT.2020 cusp から機械的に求めるだけで良い。
+
+ただし、5.2. で作成した Gamut Boundary の LUT の量子化誤差の影響で Hue に対して高周波成分は発生する。真の値はガタついてないと推測されるため、LPF を適用して高周波成分を除去した。また、C_focal に関しては LPF に加えて以下の2点の追加処理を実行している。
+
+1. 無限大になる値は付近の値から適当に補間
+2. 最大値を5000以下に制限
+
+
+結果を以下に示す。
 
 ### 5.5. L_focal に収束するデータの Mapping 先の算出
 

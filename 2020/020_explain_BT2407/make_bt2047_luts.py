@@ -982,7 +982,7 @@ def make_chroma_mapping_lut(
 def main_func():
     # make_gamut_boundary_lut_all()
     # make_gamut_boundary_lut_all_fast()
-    make_gamut_boundary_lut_all_fastest()
+    # make_gamut_boundary_lut_all_fastest()
     # make_focal_lut(
     #     outer_color_space_name=cs.BT2020,
     #     inner_color_space_name=cs.BT709)
