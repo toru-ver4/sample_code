@@ -16,6 +16,7 @@ from colour.models import BT709_COLOURSPACE, BT2020_COLOURSPACE
 from colour import Lab_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab,\
     Lab_to_LCHab, RGB_COLOURSPACES, RGB_to_RGB, LCHab_to_Lab
 import cv2
+from scipy import interpolate
 
 # import my libraries
 import test_pattern_generator2 as tpg
@@ -731,8 +732,116 @@ def make_cielab_tp_ctrl(
         h_buf.append(np.vstack(v_buf))
     img = np.hstack(h_buf)
 
-    fname = f"./figures/bt2020_tp_src_{width}x{height}.tiff"
-    cv2.imwrite(fname, np.uint16(np.round((img ** (1/2.4)) * 0xFFFF)))
+    fname = f"./figures/bt2020_tp_src_{width}x{height}.png"
+    cv2.imwrite(
+        fname, np.uint16(np.round((img[..., ::-1] ** (1/2.4)) * 0xFFFF)))
+
+
+def make_cielab_boundary_tp(
+        color_space_name=cs.BT709,
+        width=1920, height=1080, h_block_num=16, v_block_num=9):
+    hue_list = np.linspace(0, 2*np.pi, h_block_num, endpoint=False)
+
+    cusp_buf = []
+    lh_lut = np.load(
+        get_gamut_boundary_lut_name(color_space_name=color_space_name))
+    lightness_lut_sample, hue_lut_sample = lh_lut.shape
+    for hue in hue_list:
+        cusp_lc_temp = calc_cusp_in_lc_plane(hue, lh_lut)
+        cusp_buf.append(cusp_lc_temp)
+    cusp_lc = np.array(cusp_buf)
+    cusp_lightness_list = cusp_lc[..., 0]
+    chroma_max = np.max(cusp_lc[..., 1])
+    block_width_list = tpg.equal_devision(width, h_block_num)
+    block_height_list = tpg.equal_devision(height, v_block_num)
+
+    h_buf = []
+    for h_idx in range(h_block_num):
+        hue = hue_list[h_idx]
+        block_width = block_width_list[h_idx]
+        boundary = get_chroma_lightness_val_specfic_hue(
+            hue, get_gamut_boundary_lut_name(color_space_name))
+        v_buf = []
+        cusp_lightness = cusp_lightness_list[h_idx]
+        cx = boundary[boundary[..., 1] >= cusp_lightness][..., 0]
+        ly = boundary[boundary[..., 1] >= cusp_lightness][..., 1]
+        ll_func = interpolate.interp1d(cx, ly)
+        for v_idx in range(v_block_num):
+            block_height = block_height_list[v_idx]
+            cc = v_idx / (v_block_num - 1) * chroma_max
+            lower_ok =\
+                (boundary[..., 0] <= cc) & (boundary[..., 1] >= cusp_lightness)
+            upper_ok =\
+                (boundary[..., 0] >= cc) & (boundary[..., 1] >= cusp_lightness)
+            lower_st_idx = np.argmax(lower_ok)
+            st_idx = lower_st_idx
+            if np.sum(upper_ok == True) > 0:
+                # ll = boundary[st_idx][1]
+                ll = ll_func(cc)
+                # cc = boundary[st_idx][0]
+                lch = np.dstack((ll, cc, np.rad2deg(hue)))
+                lab = LCHab_to_Lab(lch)
+                xyz = Lab_to_XYZ(lab)
+                rgb = XYZ_to_RGB(
+                    xyz, cs.D65, cs.D65,
+                    RGB_COLOURSPACES[color_space_name].XYZ_to_RGB_matrix)
+                rgb = np.clip(rgb, 0.0, 1.0)
+                temp_img = np.ones((block_height, block_width, 3))\
+                    * rgb
+            else:
+                temp_img = np.zeros((block_height, block_width, 3))
+            v_buf.append(temp_img)
+        h_buf.append(np.vstack(v_buf))
+    img = np.hstack(h_buf)
+
+    fname = f"./figures/hue_chroma_tp_{color_space_name}_{width}x{height}.png"
+    cv2.imwrite(
+        fname, np.uint16(np.round((img[..., ::-1] ** (1/2.4)) * 0xFFFF)))
+
+
+def apply_gamaut_mapping_to_image(
+        src_img_file="./figures/bt2020_tp_src_1920x1080.tiff",
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709):
+
+    dst_basename = os.path.basename(os.path.splitext(src_img_file)[0])
+    dst_dir = os.path.dirname(src_img_file)
+    dst_img_file_709 = os.path.join(dst_dir, dst_basename + "_bt709.png")
+    dst_img_file_709_mtx = os.path.join(
+        dst_dir, dst_basename + "_bt709_mtx.png")
+    dst_img_file_2020 = os.path.join(dst_dir, dst_basename + "_bt2020.png")
+
+    rgb_gm24 = cv2.imread(src_img_file, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)
+    rgb_gm24 = rgb_gm24[..., ::-1]
+    rgb_linear = (rgb_gm24 / 0xFFFF) ** 2.4
+    rgb_dst_709_linear = bt2407_gamut_mapping_for_rgb_linear(
+        rgb_linear=rgb_linear,
+        outer_color_space_name=outer_color_space_name,
+        inner_color_space_name=inner_color_space_name)
+    rgb_dst_709_gm24 = rgb_dst_709_linear ** (1/2.4)
+
+    cv2.imwrite(
+        dst_img_file_709,
+        np.uint16(np.round(rgb_dst_709_gm24[..., ::-1] * 0xFFFF)))
+
+    rgb_dst_2020_linear = RGB_to_RGB(
+        rgb_dst_709_linear,
+        RGB_COLOURSPACES[inner_color_space_name],
+        RGB_COLOURSPACES[outer_color_space_name])
+    rgb_dst_2020_gm24 = rgb_dst_2020_linear ** (1/2.4)
+    cv2.imwrite(
+        dst_img_file_2020,
+        np.uint16(np.round(rgb_dst_2020_gm24[..., ::-1] * 0xFFFF)))
+
+    rgb_dst_709_mtx_linear = RGB_to_RGB(
+        rgb_linear,
+        RGB_COLOURSPACES[outer_color_space_name],
+        RGB_COLOURSPACES[inner_color_space_name])
+    rgb_dst_709_mtx_linear = np.clip(rgb_dst_709_mtx_linear, 0.0, 1.0)
+    rgb_dst_709_mtx_gm24 = rgb_dst_709_mtx_linear ** (1/2.4)
+    cv2.imwrite(
+        dst_img_file_709_mtx,
+        np.uint16(np.round(rgb_dst_709_mtx_gm24[..., ::-1] * 0xFFFF)))
 
 
 def main_func():
@@ -760,7 +869,18 @@ def main_func():
     make_cielab_tp_ctrl(
         outer_color_space_name=cs.BT2020,
         inner_color_space_name=cs.BT709,
-        width=1920, height=1080, h_block_num=16*3, v_block_num=9*3)
+        width=1920, height=1080,
+        h_block_num=16*2, v_block_num=int(9*2 + 0.5))
+    # make_cielab_boundary_tp(
+    #     color_space_name=cs.BT709,
+    #     width=1920, height=1080, h_block_num=16*3, v_block_num=9*3)
+    # make_cielab_boundary_tp(
+    #     color_space_name=cs.BT2020,
+    #     width=1920, height=1080, h_block_num=16*3, v_block_num=9*3)
+    apply_gamaut_mapping_to_image(
+        src_img_file="./figures/bt2020_tp_src_1920x1080.png",
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709)
     pass
 
 

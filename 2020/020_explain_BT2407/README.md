@@ -29,7 +29,32 @@ BT.2407 Annex2 は BT.2020 to BT.709 変換に最適化したアルゴリズム�
 
 ## 3. 結論
 
-なんとか実装した。加えて簡単に扱えるように 3DLUT化も行った。
+なんとか実装した。加えて簡単に扱えるように 3DLUT化も行った。効果確認用のテストパターンを図1に、図1をBT.2020 to BT.709 変換した結果を図2～図6に示す（はてなブログの画像圧縮を嫌って、Google Drive から画像を引っ張ってきています。表示に少し時間がかかる場合があります）。
+
+なお、左上に黒いポチのあるブロックは BT.709 の Color Volume 外であることを意味する
+
+* 図1：BT.2020空間での評価用テストパターン（BT.2020カバー率100%の表示デバイスでご確認下さい）
+* 図2：BT.2020空間での Gamut Mapping の実行結果（BT.2020カバー率100%の表示デバイスでご確認下さい）
+* 図3：BT.2020 to BT.709 の Gamut Mapping したものを BT.709 色域で表示したもの（一般的な BT.709色域の表示デバイスでご確認下さい）
+* 図4：BT.2020 to BT.709 を 3x3 の Matrix で変換したものを BT.709 色域で表示したもの（一般的な BT.709色域の表示デバイスでご確認下さい）
+* 図5：図1と図2をアニメーションで切り替え（BT.2020カバー率100%の表示デバイスでご確認下さい）
+* 図6：図3と図4をアニメーションで切り替え（一般的な BT.709色域の表示デバイスでご確認下さい）
+
+|  |  |
+|:--:|:--:|
+|![zu1](http://drive.google.com/uc?export=view&id=18IQMWXQNsv2dAI93ELSjDwBfYYE99Fgp)|![zu2](http://drive.google.com/uc?export=view&id=1LiLTyapJfwgJq7jvZ7PCcCG5FS5xvCmW)|
+| 図1. 効果確認用テストパターン(BT.2020, Gamma=2.4)     | 図2. 図1 を Gamut Mapping した結果(BT.2020, Gamma=2.4) |
+
+|  |  |
+|:--:|:--:|
+|![zu4](http://drive.google.com/uc?export=view&id=1U0TrpahDNex0XsM33cD87VDMllsuL-Ip)|![zu5](http://drive.google.com/uc?export=view&id=1tXa4rEgc3lG9SGEjXd4wRdQ87eHPzqvD)||
+| 図3. 図1 を Gamut Mapping した結果(BT.709, Gamma=2.4) | 図4. 図1 を 3x3 の Matrix で BT.2020 to BT.709 変換した結果(BT.709, Gamma=2.4)|
+
+| | |
+|:--:|:--:|
+|![zu3](http://drive.google.com/uc?export=view&id=1uZN3J4SBa2HLhSO5Yjw4TjAVbVl3p0Ms) |![zu6](http://drive.google.com/uc?export=view&id=1NMFysmlQ5KN7eTjRfjRo44WZAqmWNQoj) |
+|図5. 図1と図2をアニメーションで切り替え(BT.2020, Gamma=2.4) | 図6. 図3と図4をアニメーションで切り替え(BT.709, Gamma=2.4)|
+
 
 (BT.2020のディスプレイが無いと判断できないのだが)作成したテストパターンへの適用結果を図1に、128x128x128のカラーパッチに対する変換結果を図2に示す。
 
