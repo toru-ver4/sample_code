@@ -186,7 +186,7 @@ def plot_simple_cl_plane(
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(10, 8),
+        figsize=(10*0.98, 8*0.98),
         graph_title=f"HUE = {hue/2/np.pi*360:.1f}°",
         graph_title_size=None,
         xlabel="Chroma",
@@ -417,7 +417,7 @@ def plot_filled_cl_plane(
         rgb_img, extent=(chroma_min, chroma_max, ll_min, ll_max),
         aspect='auto')
 
-    graph_name = f"./cl_plane_seq/filled_cl_plane_"\
+    graph_name = f"/work/overuse/2020/020_explain_BT2407/filled_cl_plane_"\
         + f"{color_space_name}_{hue_idx:04d}.png"
     plt.legend(loc='upper right')
     plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
@@ -461,12 +461,13 @@ def thread_wapper_cl_plen_filled_color(args):
 
 
 def make_cl_plane_filled_color(hue_sample=5):
-    hue_list = np.deg2rad(np.linspace(0, 360, hue_sample, endpoint=False))
+    hue_list = np.deg2rad(np.linspace(0, 360, hue_sample, endpoint=True))
     lut_name = get_gamut_boundary_lut_name(cs.BT2020)
     lh_lut = np.load(lut_name)
     chroma_max = np.ceil(np.max(lh_lut) / 10) * 10
 
-    color_space_name_list = [cs.BT709, cs.P3_D65, cs.BT2020]
+    # color_space_name_list = [cs.BT709, cs.P3_D65, cs.BT2020]
+    color_space_name_list = [cs.BT2020]
     for color_space_name in color_space_name_list:
         args = []
         for idx, hue in enumerate(hue_list):
@@ -786,8 +787,8 @@ def thread_wrapper_plot_l_cusp_specific_hue(args):
 def main_func():
     # 確認
     # plot_bt709_p3_bt2020_gamut_boundary()
-    # plot_simple_cl_plane(hue=np.deg2rad(270))
-    # make_cl_plane_filled_color(hue_sample=2048)
+    plot_simple_cl_plane(hue=np.deg2rad(40.1))
+    # make_cl_plane_filled_color(hue_sample=360)
     # make_example_patch()
     # make_blog_figures()
     # _check_chroma_map_lut_data(0, cs.BT2020, cs.BT709)
@@ -798,10 +799,10 @@ def main_func():
     # _check_chroma_map_lut_data(256, cs.P3_D65, cs.BT709)
     # _check_chroma_map_lut_data(512, cs.P3_D65, cs.BT709)
     # _check_chroma_map_lut_data(768, cs.P3_D65, cs.BT709)
-    make_l_cusp_seq(
-        hue_sample_num=360,
-        inner_color_space_name=cs.BT709,
-        outer_color_space_name=cs.BT2020)
+    # make_l_cusp_seq(
+    #     hue_sample_num=360,
+    #     inner_color_space_name=cs.BT709,
+    #     outer_color_space_name=cs.BT2020)
     pass
 
 

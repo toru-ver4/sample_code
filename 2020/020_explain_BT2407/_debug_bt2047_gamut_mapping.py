@@ -83,7 +83,7 @@ def print_blog_param():
 
 
 def _make_debug_luminance_chroma_data_fixed_hue(cl_outer):
-    dst_step = 168
+    dst_step = 31
     degree = np.linspace(-np.pi/2, np.pi/2, dst_step)
     a1 = np.tan(degree)
     b1 = 50 * np.ones_like(a1)
@@ -352,8 +352,8 @@ def _debug_plot_check_lightness_mapping_specific_hue(
     graph_title = f"HUE = {hue/2/np.pi*360:.1f}°, for {focal_type}"
     graph_title += f"={c_focal:.1f}" if focal_type == "C_focal" else ""
     fig1, ax1 = pu.plot_1_graph(
-        fontsize=20,
-        figsize=(16 * 0.9, 9 * 0.9),
+        fontsize=22,
+        figsize=(16 * 0.9, 9 * 1.0),
         graph_title=graph_title,
         xlabel="Chroma",
         ylabel="Lightness",
@@ -362,11 +362,12 @@ def _debug_plot_check_lightness_mapping_specific_hue(
         ylim=[-3, 103],
         xtick=[x * 20 for x in range(12)],
         ytick=[x * 10 for x in range(11)],
+        linewidth=3,
         return_figure=True)
     ax1.patch.set_facecolor("#E0E0E0")
     in_color = pu.BLUE
     ou_color = pu.RED
-    fo_color = "#A0A0A0"
+    fo_color = "#808080"
     src_color = pu.GREEN
     dst_color = pu.PINK
 
@@ -396,18 +397,18 @@ def _debug_plot_check_lightness_mapping_specific_hue(
             bb = l_focal
             xx = 230
             yy = aa * xx + bb
-            ax1.plot([0, xx], [l_focal, yy], ':', c=fo_color)
+            ax1.plot([0, xx], [l_focal, yy], '--', c=fo_color, lw=1)
         else:
             aa = (y) / (x - c_focal)
             bb = y - aa * x
             xx = 0
             yy = aa * xx + bb
-            ax1.plot([0, c_focal], [yy, 0], ':', c=fo_color)
+            ax1.plot([0, c_focal], [yy, 0], '--', c=fo_color, lw=1)
 
     # annotation
     diff = ((map_x - x_val) ** 2 + (map_y - y_val) ** 2) ** 0.5
     arrowprops = dict(
-        facecolor='#333333', shrink=0.0, headwidth=4, headlength=5,
+        facecolor='#333333', shrink=0.0, headwidth=8, headlength=10,
         width=1)
     for idx in range(len(map_x)):
         if diff[idx] > 0.01:
@@ -418,7 +419,7 @@ def _debug_plot_check_lightness_mapping_specific_hue(
                 textcoords='data', ha='left', va='bottom',
                 arrowprops=arrowprops)
 
-    graph_name = f"./video_src/lightness_mapping_"\
+    graph_name = f"/work/overuse/2020/020_explain_BT2407/lightness_mapping_"\
         + f"{outer_color_space_name}_to_{inner_color_space_name}_"\
         + f"{focal_type}_{h_idx:04d}.png"
     plt.legend(loc='upper right')
@@ -595,7 +596,8 @@ def _debug_plot_blog_mapping_after(
         textcoords='data', ha='left', va='bottom',
         arrowprops=arrowprops)
 
-    graph_name = f"./figures/simple_cl_plane_mapping_HUE_"\
+    graph_name = f"/work/overuse/2020/020_explain_BT2407/"\
+        + f"simple_cl_plane_mapping_HUE_"\
         + f"{hue/2/np.pi*360:.1f}.png"
     plt.legend(loc='upper right')
     plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
@@ -846,7 +848,7 @@ def apply_gamaut_mapping_to_image(
 
 def main_func():
     # print_blog_param()
-    # _check_chroma_map_lut_interpolation(0, np.deg2rad(30))
+    # _check_chroma_map_lut_interpolation(0, np.deg2rad(40))
     # _check_upper_and_lower_mapping(
     #     hue_sample_num=1025,
     #     outer_color_space_name=cs.BT2020,
@@ -863,24 +865,32 @@ def main_func():
     #     hue_sample_num=1025,
     #     outer_color_space_name=cs.P3_D65,
     #     inner_color_space_name=cs.BT709)
-    # _debug_lightness_mapping_for_rgb(
-    #     outer_color_space_name=cs.BT2020,
-    #     inner_color_space_name=cs.BT709)
-    make_cielab_tp_ctrl(
+    _debug_lightness_mapping_for_rgb(
         outer_color_space_name=cs.BT2020,
-        inner_color_space_name=cs.BT709,
-        width=1920, height=1080,
-        h_block_num=16*2, v_block_num=int(9*2 + 0.5))
+        inner_color_space_name=cs.BT709)
+    # make_cielab_tp_ctrl(
+    #     outer_color_space_name=cs.BT2020,
+    #     inner_color_space_name=cs.BT709,
+    #     width=1920, height=1080,
+    #     h_block_num=16*2, v_block_num=int(9*2 + 0.5))
     # make_cielab_boundary_tp(
     #     color_space_name=cs.BT709,
     #     width=1920, height=1080, h_block_num=16*3, v_block_num=9*3)
     # make_cielab_boundary_tp(
     #     color_space_name=cs.BT2020,
     #     width=1920, height=1080, h_block_num=16*3, v_block_num=9*3)
-    apply_gamaut_mapping_to_image(
-        src_img_file="./figures/bt2020_tp_src_1920x1080.png",
-        outer_color_space_name=cs.BT2020,
-        inner_color_space_name=cs.BT709)
+    # apply_gamaut_mapping_to_image(
+    #     src_img_file="./figures/bt2020_tp_src_1920x1080.png",
+    #     outer_color_space_name=cs.BT2020,
+    #     inner_color_space_name=cs.BT709)
+    # _check_lightness_mapping_specific_hue(
+    #     hue_idx=0, hue=np.deg2rad(40),
+    #     outer_color_space_name=cs.BT2020,
+    #     inner_color_space_name=cs.BT709)
+    # _check_lightness_mapping_specific_hue(
+    #     hue_idx=1, hue=np.deg2rad(270),
+    #     outer_color_space_name=cs.BT2020,
+    #     inner_color_space_name=cs.BT709)
     pass
 
 

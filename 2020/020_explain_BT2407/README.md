@@ -76,11 +76,11 @@ BT.2407 Annex2 の Gamut Mapping について簡単に説明する。
 * Chroma Mapping
 * Hue Mapping
 
-続いて Lightness Mapping と Chroma Mapping の概要について説明する。この2つの Mapping は CIELAB色空間から算出できる Chroma-Lightness平面上で行う。この平面上で処理を行うことにより、Mapping の前後で CIELAB色空間での Hue は維持される。
+ここから Lightness Mapping と Chroma Mapping の概要について説明する。この2つの Mapping は CIELAB色空間から算出できる Chroma-Lightness平面上で行う。この平面上で処理を行うことにより、Mapping の前後で CIELAB色空間での Hue は維持される。
 
 BT.2407 Annex2 の Mapping 方法を説明する前に、そもそも Mapping の方法にはどういったものが考えられるか例を挙げておく。以下の図3 では Chroma-Lightness平面のある点(a) を Mapping している。
 
-![zu3](./figures/mapping_ex.png)
+![zu3](./figures/outline.png)
 図3. Chroma-Lightness 平面上での Gamut Mapping の例
 
 
@@ -103,30 +103,32 @@ L_focal を求めるには以下のステップを経由する。
 BT.709 cusp と BT.2020 cusp はそれぞれ Chroma-Lightness平面で最も Chroma が大きい点を意味し、L_cusp は BT.709 cusp と BT.2020 cusp を通る直線と Lightness軸との交点を意味する。図4の動画を見れば、意味が通じると考える。
 
 ```text
-ここに動画
+https://www.youtube.com/watch?v=eSSa-yXoudI&feature=youtu.be
 ```
 
-L_cusp は L_focal の値を制限することで作られる（※）。制限した結果を図に示す。
+L_cusp は L_focal の値を制限することで作られる（※）。制限した結果を図に示す(図はBT.2407の Figure2-4をコピペしたもの)。
 
-![zuho](./figures/L_focal.png)
+![zuho](./figures/lfocal_limit.png)
 
 
-※制限する明確な理由はまだ自分の中では明らかになっていない。
+※制限する明確な理由はまだ自分の中では明らかになっていない。が、自分の実装では制限しないと破綻が起こることは確認した。
 
 ### 4.2.2. C_focal の算出
 
 次に C_focal の算出方法について説明する。C_focal は BT.709 cusp と BT.2020 cusp を通る直線と Chroma軸 との交点の絶対値である。したがって、以下のように2パターンが存在する。
 
-| パターン | 図 |
+| パターン | 図 <br> (a)は BT.2407 の Figure A2-3 をコピペしたもの。(b) は Figure A2-3 を加工したもの|
 |:-------:|:-------:|
-| (a) | ![pta](./figures/cfocal_explain_a.png)|
-| (b) | ![ptb](./figures/cfocal_explain_b.png)|
+| (a) | ![pta](./figures/c_focal_sample_a.png)|
+| (b) | ![ptb](./figures/c_focal_sample_b.png)|
 
-(a) は Chroma軸との交点が正の値となるケース、(b) は Chroma軸との交点が負の値となるケースである。いずれにせよ絶対値を取るため最終的な C_focal は以下のようになる。なお、筆者の実装は後述するように複数のLUTを組み合わせていることもあり、量子化誤差が随所で発生する。C_focal についても量子化誤差は発生しており、これを防ぐために LPF を適用してある。ご了承頂きたい。
+(a) は Chroma軸との交点が正の値となるケース、(b) は Chroma軸との交点が負の値となるケースである。いずれにせよ絶対値を取るため最終的な C_focal は正の数のみとなる。
 
 ### 4.2.3. L_focal, C_focal を基準とした Mapping 処理
 
 L_focal, C_focal が決まれば後はこの点を基準に Mapping を行えば良い。具体例を図に示す。
+
+![mapping_sample](./figures/mapping_sample.png)
 
 図から分かるように、L_focal, C_focal を結ぶ直線の上側のデータは L_focal へ収束するように、下側のデータは C_focal から発散するような直線上で Mapping を行う。
 
