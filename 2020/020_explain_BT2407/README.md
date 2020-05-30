@@ -140,9 +140,9 @@ Mapping先は BT.709 の色域の境界である。この方法だと focal を�
 
 初めに処理の大まかな流れを説明しておく。以下の図を参照して欲しい。
 
-1. 入力のRGB(Gamma=2.4)を CIELAB(Lab), LCH(Lightness, Chroma, Hue) に変換
+1. 入力のRGB(Gamma=2.4)を Lab, LCH(Lightness, Chroma, Hue) に変換
 2. 該当する Hue の Chroma-Lightness平面をプロット
-3. BT.709 Cusp, BT.2020 Cusp を算出
+3. BT.709 cusp, BT.2020 cusp を算出
 4. L_cusp, L_focal, C_focal を算出
 5. 入力の LCH から L_focal を使うのか C_focal を使うのか判別
 6. 判別した focal 基準で BT.709 の Gamut Boundary に Mapping

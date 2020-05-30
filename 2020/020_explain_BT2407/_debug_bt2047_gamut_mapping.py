@@ -584,11 +584,11 @@ def _debug_plot_blog_mapping_after(
         ax1.text(182, 0, f"C_focal = {c_focal:.1f}")
 
     # annotation
-    fcolor = 0.8
+    fcolor = 0
     fcolor = np.array([fcolor, fcolor, fcolor])
     arrowprops = dict(
         facecolor=fcolor, shrink=0.0, headwidth=12, headlength=15,
-        width=2)
+        width=3, alpha=0.6)
     st_pos = (src_lch[1], src_lch[0])
     ed_pos = (dst_lch[1], dst_lch[0])
     ax1.annotate(
@@ -655,6 +655,7 @@ def _debug_lightness_mapping_for_rgb(
     print(f"dst_lab={lab_709}")
     print(f"src_rgb={rgb_2020_gm24}")
     print(f"dst_rgb={rgb_709_gm24}")
+    print(f"dst_rgb={rgb_709_gm24_on_2020*255}")
 
 
 def _lch_to_rgb(lch, inner_color_space_name, outer_color_space_name):
