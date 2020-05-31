@@ -152,3 +152,5 @@ venv.bak/
 2020/014_make_moving_background/bg_image_seq/*.png
 2020/015_research_aces_ot/ctl/**/*
 2020/012_interpolation_of_cielab_boundary_data/video_src/*.png
+2020/021_chroma_colormap/luts/*.npy
+2020/021_chroma_colormap/3DLUT/**
