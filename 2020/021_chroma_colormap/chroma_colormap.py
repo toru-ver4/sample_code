@@ -30,6 +30,51 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
+def calc_value_from_hue_1dlut(val, lut):
+    """
+    Lfocal や Cfocal など Hue値が入力となっている
+    1DLUTの補間計算をして出力する。
+    """
+    x = np.linspace(0, 2*np.pi, len(lut))
+    f = interpolate.interp1d(x, lut)
+    y = f(val)
+
+    return y
+
+
+def calc_cusp_lut(lh_lut):
+    """
+    Gamut Boundary の Lightness-Hue の LUTから
+    Cusp の (Lightness, Chroma) 情報が入った LUT を作る。
+
+    Parameters
+    ----------
+    lh_lut : array_like
+        Gamut Bondary の lh_lut[L_idx, H_idx] = Chroma 的なやつ。
+
+    Returns
+    -------
+    array_like
+        H_idx を入れると Lightness, Chroma が得られる LUT。
+        retun_val[h_idx, 0] => Lightness
+        retun_val[h_idx, 1] => Chroma 的な。
+    """
+    cusp_chroma = np.max(lh_lut, axis=0)
+    cusp_chroma_idx = np.argmax(lh_lut, axis=0)
+    cusp_lightness = cusp_chroma_idx / (lh_lut.shape[0] - 1) * 100
+
+    return np.dstack((cusp_lightness, cusp_chroma))[0]
+
+
+def get_gamut_boundary_lut_name(
+        color_space_name=cs.BT709,
+        luminance_sample_num=1024,
+        hue_sample_num=1024):
+    name = f"./luts/GamutBoundaryLUT_{color_space_name}_"\
+        + f"L_{luminance_sample_num}_H_{hue_sample_num}.npy"
+    return name
+
+
 def make_linear_input_rgb_value(grid_num=33, tfc=tf.GAMMA24):
     rgb_non_linear = LUT3D.linear_table(grid_num)
     rgb_non_linear = rgb_non_linear.reshape((grid_num ** 3, 3))
@@ -143,9 +188,10 @@ def apply_turbo_colormap(x):
 
 
 def save_3dlut(
-        colormap, grid_num=33, color_space_name=cs.BT709, tfc=tf.GAMMA24):
+        colormap, grid_num=33, color_space_name=cs.BT709, tfc=tf.GAMMA24,
+        revision=1):
     fname = f"./3DLUT/chroma_colormap_{tfc}_{color_space_name}_"\
-        + f"{grid_num}x{grid_num}x{grid_num}.cube"
+        + f"{grid_num}x{grid_num}x{grid_num}_rev{revision:02d}.cube"
     fname = fname.replace(" ", "_")
     colormap = colormap.reshape((grid_num, grid_num, grid_num, 3))
 
@@ -154,7 +200,7 @@ def save_3dlut(
     write_LUT(lut3d, fname)
 
 
-def make_chroma_colormap_3dlut(
+def make_chroma_colormap_3dlut_rev01(
         grid_num=33, color_space_name=cs.BT709, tfc=tf.GAMMA24):
     # 入力信号準備
     rgb_linear = make_linear_input_rgb_value(grid_num=grid_num, tfc=tfc)
@@ -175,14 +221,93 @@ def make_chroma_colormap_3dlut(
     # 結果を 3DLUT として保存
     save_3dlut(
         colormap=colormap, grid_num=grid_num,
-        color_space_name=color_space_name, tfc=tfc)
+        color_space_name=color_space_name, tfc=tfc, revision=1)
+
+
+def calc_cusp_chroma(lch, color_space_name=cs.BT709):
+    boundary_lut = np.load(
+        get_gamut_boundary_lut_name(color_space_name=cs.BT709))
+    cusp_lc_lut = calc_cusp_lut(boundary_lut)
+    cusp_chroma_lut = cusp_lc_lut[..., 1]
+    hue = np.deg2rad(lch[..., 2])
+    cusp_chroma = calc_value_from_hue_1dlut(hue, cusp_chroma_lut)
+    # for hue_value, chroma in zip(hue, cusp_chroma):
+    #     print(f"hue={np.rad2deg(hue_value):.1f}, cusp_chroma={chroma:.2f}")
+
+    return cusp_chroma
+
+
+def make_chroma_colormap_3dlut_rev02(
+        grid_num=33, color_space_name=cs.BT709, tfc=tf.GAMMA24):
+    # 入力信号準備
+    rgb_linear = make_linear_input_rgb_value(grid_num=grid_num, tfc=tfc)
+
+    # 入力信号を LCH に変換
+    lch = rgb_to_lch(rgb_linear, color_space_name=color_space_name)
+
+    # LH値の Cusp の Chroma を計算
+    dst_chroma = calc_cusp_chroma(lch=lch, color_space_name=color_space_name)
+
+    # Chroma の使用率？を計算
+    chroma_rate = calc_chroma_rate(lch=lch, dst_chroma=dst_chroma)
+
+    # Colormap 適用
+    colormap = apply_turbo_colormap(chroma_rate)
+
+    # 結果を 3DLUT として保存
+    save_3dlut(
+        colormap=colormap, grid_num=grid_num,
+        color_space_name=color_space_name, tfc=tfc, revision=2)
+
+
+def make_chroma_colormap_3dlut_rev03(
+        grid_num=33, color_space_name=cs.BT709, tfc=tf.GAMMA24):
+    # 入力信号準備
+    rgb_linear = make_linear_input_rgb_value(grid_num=grid_num, tfc=tfc)
+
+    # 入力信号を LCH に変換
+    lch = rgb_to_lch(rgb_linear, color_space_name=color_space_name)
+
+    # LH値の Cusp の Chroma を計算
+    dst_chroma = calc_cusp_chroma(lch=lch, color_space_name=color_space_name)
+
+    # Chroma の使用率？を計算
+    chroma_rate = calc_chroma_rate(lch=lch, dst_chroma=dst_chroma)
+    chroma_rate = chroma_rate ** 0.7
+
+    # Colormap 適用
+    colormap = apply_turbo_colormap(chroma_rate)
+
+    # 結果を 3DLUT として保存
+    save_3dlut(
+        colormap=colormap, grid_num=grid_num,
+        color_space_name=color_space_name, tfc=tfc, revision=3)
 
 
 def main_func():
-    make_chroma_colormap_3dlut(
-        grid_num=129, color_space_name=cs.BT709, tfc=tf.GAMMA24)
+    grid_list = [33, 65, 129]
+    for grid_num in grid_list:
+        # make_chroma_colormap_3dlut_rev01(
+        #     grid_num=grid_num, color_space_name=cs.BT709, tfc=tf.GAMMA24)
+        # make_chroma_colormap_3dlut_rev01(
+        #     grid_num=grid_num, color_space_name=cs.BT2020, tfc=tf.ST2084)
+        # make_chroma_colormap_3dlut_rev02(
+        #     grid_num=grid_num, color_space_name=cs.BT709, tfc=tf.GAMMA24)
+        # make_chroma_colormap_3dlut_rev02(
+        #     grid_num=grid_num, color_space_name=cs.BT2020, tfc=tf.ST2084)
+        make_chroma_colormap_3dlut_rev03(
+            grid_num=grid_num, color_space_name=cs.BT709, tfc=tf.GAMMA24)
+        make_chroma_colormap_3dlut_rev03(
+            grid_num=grid_num, color_space_name=cs.BT2020, tfc=tf.ST2084)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # gb_lut = np.load(
+    #     get_gamut_boundary_lut_name(color_space_name=cs.BT709))
+    # hue_list = np.linspace(0, 2*np.pi, 8, endpoint=False)
+    # for hue in hue_list:
+    #     cusp = calc_cusp_in_lc_plane(hue, gb_lut)
+    #     print(f"hue={np.rad2deg(hue):.1f}, cusp={cusp}")
+
     main_func()
