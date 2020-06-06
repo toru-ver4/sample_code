@@ -1985,7 +1985,7 @@ def main_func():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    main_func()
+    # main_func()
     # hue = calc_hue_from_ab(
     #     aa=np.array([1.0, 0.3, 0.0, -0.3, -1.0, -0.3, 0.0, 0.3, 0.99]) * np.pi,
     #     bb=np.array([0.0, 0.6, 1.0, 0.6, 0.0, -0.6, -1.0, -0.6, -0.001]) * np.pi)
