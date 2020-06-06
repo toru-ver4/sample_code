@@ -14,7 +14,8 @@ from multiprocessing import Pool, cpu_count, Array
 import matplotlib.pyplot as plt
 from colour.models import BT709_COLOURSPACE, BT2020_COLOURSPACE
 from colour import Lab_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab,\
-    Lab_to_LCHab, RGB_COLOURSPACES, RGB_to_RGB, LCHab_to_Lab
+    Lab_to_LCHab, RGB_COLOURSPACES, RGB_to_RGB, LCHab_to_Lab,\
+    write_LUT, LUT3D
 import cv2
 from scipy import interpolate
 
@@ -22,6 +23,7 @@ from scipy import interpolate
 import test_pattern_generator2 as tpg
 import color_space as cs
 import plot_utility as pu
+import transfer_functions as tf
 from bt2407_parameters import L_SAMPLE_NUM_MAX, H_SAMPLE_NUM_MAX,\
     GAMUT_BOUNDARY_LUT_LUMINANCE_SAMPLE, GAMUT_BOUNDARY_LUT_HUE_SAMPLE,\
     get_gamut_boundary_lut_name, get_l_cusp_name, get_focal_name,\
@@ -847,6 +849,30 @@ def apply_gamaut_mapping_to_image(
         np.uint16(np.round(rgb_dst_709_mtx_gm24[..., ::-1] * 0xFFFF)))
 
 
+def make_3dlut(
+        grid_num=33,
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709,
+        tfc=tf.GAMMA24):
+    src_rgb_non_linear = LUT3D.linear_table(grid_num)
+    src_rgb_non_linear = src_rgb_non_linear.reshape((1, grid_num ** 3, 3))
+    src_rgb_linear = tf.eotf(src_rgb_non_linear, tfc)
+    dst_rgb_linear = bt2407_gamut_mapping_for_rgb_linear(
+        rgb_linear=src_rgb_linear,
+        outer_color_space_name=outer_color_space_name,
+        inner_color_space_name=inner_color_space_name)
+    dst_rgb_non_linear = tf.oetf(dst_rgb_linear, tfc)
+    dst_rgb_non_linear = dst_rgb_non_linear.reshape(
+        (grid_num, grid_num, grid_num, 3))
+
+    file_name = f"./3DLUT/GamutMapping_{outer_color_space_name}_"\
+        + f"to_{inner_color_space_name}_{tfc}_"\
+        + f"{grid_num}x{grid_num}x{grid_num}.cube"
+    file_name = file_name.replace(" ", "_")
+    lut3d = LUT3D(table=dst_rgb_non_linear, name=file_name)
+    write_LUT(lut3d, file_name)
+
+
 def main_func():
     # print_blog_param()
     # _check_chroma_map_lut_interpolation(0, np.deg2rad(40))
@@ -866,9 +892,9 @@ def main_func():
     #     hue_sample_num=1025,
     #     outer_color_space_name=cs.P3_D65,
     #     inner_color_space_name=cs.BT709)
-    _debug_lightness_mapping_for_rgb(
-        outer_color_space_name=cs.BT2020,
-        inner_color_space_name=cs.BT709)
+    # _debug_lightness_mapping_for_rgb(
+    #     outer_color_space_name=cs.BT2020,
+    #     inner_color_space_name=cs.BT709)
     # make_cielab_tp_ctrl(
     #     outer_color_space_name=cs.BT2020,
     #     inner_color_space_name=cs.BT709,
@@ -892,6 +918,11 @@ def main_func():
     #     hue_idx=1, hue=np.deg2rad(270),
     #     outer_color_space_name=cs.BT2020,
     #     inner_color_space_name=cs.BT709)
+    make_3dlut(
+        grid_num=65,
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709,
+        tfc=tf.GAMMA24)
     pass
 
 

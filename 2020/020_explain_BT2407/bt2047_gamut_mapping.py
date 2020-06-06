@@ -540,6 +540,12 @@ def bt2407_gamut_mapping_for_rgb_linear(
         src の 色域の Colour Science for Python の名称。
     inner_color_space_name : str
         dst の 色域の Colour Science for Python の名称。
+
+    Returns
+    -------
+    rgb_dst : array_like
+        inner_color_space に **変換済み** の RGB値
+        ただし RGB値は **Linear** である。必要に応じて OETF を適用すること。
     """
     # shape を (N, 3) に変更。色々と処理しやすくするため。
     if (len(rgb_linear.shape) != 2) and (rgb_linear.shape[1] != 3):

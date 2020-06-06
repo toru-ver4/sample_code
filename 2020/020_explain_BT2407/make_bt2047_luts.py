@@ -576,8 +576,8 @@ def _debug_plot_l_cusp(
         linewidth=3,
         minor_xtick_num=None,
         minor_ytick_num=None)
-    ax1.plot(x, l_cusp, lw=5, label="L_cusp")
-    ax1.plot(x, low_pass, lw=3, c="#B0B0B0", label="Low Pass")
+    ax1.plot(x, l_cusp, lw=5, label="L_cusp_raw")
+    ax1.plot(x, low_pass, lw=3, c="#B0B0B0", label="Apply LPF")
     ax1.plot(x, np.ones_like(x) * dips_150, 'k--', label=f"L*={dips_150:.2f}",
              alpha=0.5)
     ax1.plot(x, np.ones_like(x) * dips_300, 'k:', label=f"L*={dips_300:.2f}",
@@ -617,9 +617,14 @@ def _debug_plot_c_focal(c_focal, low_pass, outer_color_space_name):
     # ゼロ割の欠損値を線形補間
     c_focal_interp = interpolate_where_value_is_zero(x, c_focal)
     ax1.plot(x, c_focal_interp, '-', c="#808080",
-             lw=5, label="C_focal_interpolated")
+             lw=5, label="C_focal interpolated")
 
-    ax1.plot(x, low_pass, '-', lw=3, label="Apply LPF")
+    # 上限値を制限
+    c_focal_limited = np.clip(c_focal_interp, 0.0, C_FOCAL_MAX_VALUE)
+    ax1.plot(x, c_focal_limited, '-', c=pu.GREEN,
+             lw=4, label="C_focal limited")
+
+    ax1.plot(x, low_pass, '-', lw=3, label="C_focal (Apply LPF)")
     plt.legend(loc='upper right')
     plt.savefig(
         f"./figures/C_focal_outer_gamut_{outer_color_space_name}.png",
@@ -983,9 +988,9 @@ def main_func():
     # make_gamut_boundary_lut_all()
     # make_gamut_boundary_lut_all_fast()
     # make_gamut_boundary_lut_all_fastest()
-    # make_focal_lut(
-    #     outer_color_space_name=cs.BT2020,
-    #     inner_color_space_name=cs.BT709)
+    make_focal_lut(
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709)
     # make_focal_lut(
     #     outer_color_space_name=cs.P3_D65,
     #     inner_color_space_name=cs.BT709)
