@@ -919,7 +919,17 @@ def main_func():
     #     outer_color_space_name=cs.BT2020,
     #     inner_color_space_name=cs.BT709)
     make_3dlut(
+        grid_num=33,
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709,
+        tfc=tf.GAMMA24)
+    make_3dlut(
         grid_num=65,
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709,
+        tfc=tf.GAMMA24)
+    make_3dlut(
+        grid_num=129,
         outer_color_space_name=cs.BT2020,
         inner_color_space_name=cs.BT709,
         tfc=tf.GAMMA24)

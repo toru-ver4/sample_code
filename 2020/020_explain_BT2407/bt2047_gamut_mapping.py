@@ -450,7 +450,7 @@ def luminance_mapping_in_hd_space(
             focal_type="Lfocal"))
     """
     cmap_lut は Hue と Degree を Index として使用する。
-    このうち Hue 一律なのだが、Degree に関しては
+    このうち Hue は Index との対応関係が一定だが、Degree に関しては
     各 Index に対応する Radian 値が Hue によって変動する。
     この Radian の最小値・最大値を計算しておく。
     あとの補間計算で使うので。
