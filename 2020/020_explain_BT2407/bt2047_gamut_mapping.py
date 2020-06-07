@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-BT2407 実装用の各種LUTを作成する
-===============================
-
+implementation of the gamut mapping described in Report ITU-R BT.2407 Annex2.
 """
 
 # import standard libraries
