@@ -120,4 +120,6 @@ if __name__ == '__main__':
         step_num=65, width=1920, height=300, fontsize=20)
     img = np.uint16(np.round(img * 0xFFFF))
     fname = f"./figure/step_ramp.tiff"
+    fname_png = f"./figure/step_ramp.png"
     cv2.imwrite(fname, img[..., ::-1])
+    cv2.imwrite(fname_png, img[..., ::-1])
