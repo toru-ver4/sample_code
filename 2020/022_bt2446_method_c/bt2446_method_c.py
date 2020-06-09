@@ -173,9 +173,36 @@ def bt2446_method_c_tonemapping(
     return y
 
 
+def draw_ip_wp_annotation(
+        x_min, y_min, ax1, k1, y_hdr_ip, y_hdr_ref, y_sdr_wp):
+    # annotation
+    arrowprops = dict(
+        facecolor='#333333', shrink=0.0, headwidth=8, headlength=10,
+        width=1, alpha=0.5)
+    ax1.annotate(
+        "Y_HDR,ip", xy=(y_hdr_ip, y_min), xytext=(500, y_min * 5.1),
+        xycoords='data', textcoords='data', ha='left', va='bottom',
+        arrowprops=arrowprops, fontsize=20)
+    ax1.annotate(
+        "Y_HDR,Ref", xy=(y_hdr_ref, y_min), xytext=(500, y_min * 2),
+        xycoords='data', textcoords='data', ha='left', va='bottom',
+        arrowprops=arrowprops, fontsize=20)
+
+    ax1.annotate(
+        "K1 * Y_HDR,ip", xy=(x_min, k1 * y_hdr_ip), xytext=(x_min * 4, 110),
+        xycoords='data', textcoords='data', ha='left', va='bottom',
+        arrowprops=arrowprops, fontsize=20)
+    ax1.annotate(
+        "Y_SDR,wp", xy=(x_min, y_sdr_wp), xytext=(x_min * 4, 170),
+        xycoords='data', textcoords='data', ha='left', va='bottom',
+        arrowprops=arrowprops, fontsize=20)
+
+
 def tone_map_plot_test(k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
     x_min = 1
     y_min = 1
+    y_hdr_ip, y_sdr_wp, k2, k4 = calc_tonemapping_parameters(
+        k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=y_hdr_ref)
     x = np.linspace(0, 10000, 1024)
     y = bt2446_method_c_tonemapping(
         x, k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203)
@@ -193,23 +220,15 @@ def tone_map_plot_test(k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
     # plt.show()
 
     # annotation
-    y_hdr_ip, y_sdr_wp, k2, k4 = calc_tonemapping_parameters(
-        k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=y_hdr_ref)
-    arrowprops = dict(
-        facecolor='#333333', shrink=0.0, headwidth=8, headlength=10,
-        width=1)
-    ax1.annotate(
-        "Y_HDR,ip", xy=(y_hdr_ip, 1), xytext=(y_hdr_ip * 4, 10),
-        xycoords='data', textcoords='data', ha='left', va='bottom',
-        arrowprops=arrowprops)
-    ax1.annotate(
-        "Y_HDR,Ref", xy=(y_hdr_ref, 1), xytext=(y_hdr_ref * 4, 2),
-        xycoords='data', textcoords='data', ha='left', va='bottom',
-        arrowprops=arrowprops)
+    draw_ip_wp_annotation(
+        x_min, y_min, ax1, k1, y_hdr_ip, y_hdr_ref, y_sdr_wp)
 
-    # annotation_sub
+    # auxiliary line
     ax1.plot(
         [y_hdr_ip, y_hdr_ip, x_min], [y_min, k1 * y_hdr_ip, k1 * y_hdr_ip],
+        'k--', lw=2, c='#555555')
+    ax1.plot(
+        [y_hdr_ref, y_hdr_ref, x_min], [y_min, y_sdr_wp, y_sdr_wp],
         'k--', lw=2, c='#555555')
 
     fname = f"./figures/k1_{k1:.2f}_k3_{k3:.2f}_y_sdr_ip_{y_sdr_ip:.1f}.png"
