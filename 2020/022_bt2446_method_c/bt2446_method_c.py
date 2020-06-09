@@ -16,11 +16,13 @@ import cv2
 from colour import RGB_to_XYZ, XYZ_to_RGB, RGB_COLOURSPACES,\
     XYZ_to_Lab, Lab_to_LCHab, LCHab_to_Lab, Lab_to_XYZ
 from colour.models import BT2020_COLOURSPACE
+import matplotlib.pyplot as plt
 
 # import my libraries
 import transfer_functions as tf
 import test_pattern_generator2 as tpg
 import color_space as cs
+import plot_utility as pu
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -102,9 +104,123 @@ def calc_lmax_lref(
     return lmax, lref
 
 
+def calc_tonemapping_parameters(
+        k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
+    """
+    calculate tonemapping parameters
+
+    Parameters
+    ----------
+    k1 : float
+        k1. the range is from 0.0 to 1.0?
+    k3 : float
+        k3. the range is from 0.0 to 1.0?
+    y_sdr_ip : float
+        luminance of the output SDR image at the inflection point.
+    y_hdr_ref : float
+        luminance of the input HDR image at the reference white.
+
+    Returns
+    -------
+    y_hdr_ip : float
+        luminance of the input HDR image at the inflection point.
+    y_sdr_wp : float
+        luminance of the output SDR image at the white point.
+    k2 : float
+        k2.
+    k4 : float
+        k4.
+    """
+    y_hdr_ip = y_sdr_ip / k1
+    k2 = k1 * (1 - k3) * y_hdr_ip
+    k4 = k1 * y_hdr_ip - k2 * np.log(1 - k3)
+    y_sdr_wp = k2 * np.log(y_hdr_ref / y_hdr_ip - k3) + k4
+
+    return y_hdr_ip, y_sdr_wp, k2, k4
+
+
+def bt2446_method_c_tonemapping(
+        x, k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
+    """
+    calculate tonemapping parameters
+
+    Parameters
+    ----------
+    x : array_like
+        input hdr linear data. the unit must be luminance [nits].
+    k1 : float
+        k1. the range is from 0.0 to 1.0?
+    k3 : float
+        k3. the range is from 0.0 to 1.0?
+    y_sdr_ip : float
+        luminance of the output SDR image at the inflection point.
+    y_hdr_ref : float
+        luminance of the input HDR image at the reference white.
+
+    Returns
+    -------
+    y : array_like
+        sdr linear data. the unit is luminance [nits].
+    """
+    y_hdr_ip, y_sdr_wp, k2, k4 = calc_tonemapping_parameters(
+        k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=y_hdr_ref)
+    y_hdr_ip = y_sdr_ip / k1
+    y = np.where(
+        x < y_hdr_ip,
+        x * k1,
+        k2 * np.log(x / y_hdr_ip - k3) + k4)
+
+    return y
+
+
+def tone_map_plot_test(k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
+    x_min = 1
+    y_min = 1
+    x = np.linspace(0, 10000, 1024)
+    y = bt2446_method_c_tonemapping(
+        x, k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203)
+    ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="BT.2446 Method C",
+        xlabel="HDR Luminance [cd/m2]",
+        ylabel="SDR Luminance [cd/m2]",
+        xlim=(x_min, 10000),
+        ylim=(y_min, 250),
+        linewidth=3)
+    pu.log_scale_settings(ax1)
+    ax1.plot(x, y)
+    # plt.show()
+
+    # annotation
+    y_hdr_ip, y_sdr_wp, k2, k4 = calc_tonemapping_parameters(
+        k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=y_hdr_ref)
+    arrowprops = dict(
+        facecolor='#333333', shrink=0.0, headwidth=8, headlength=10,
+        width=1)
+    ax1.annotate(
+        "Y_HDR,ip", xy=(y_hdr_ip, 1), xytext=(y_hdr_ip * 4, 10),
+        xycoords='data', textcoords='data', ha='left', va='bottom',
+        arrowprops=arrowprops)
+    ax1.annotate(
+        "Y_HDR,Ref", xy=(y_hdr_ref, 1), xytext=(y_hdr_ref * 4, 2),
+        xycoords='data', textcoords='data', ha='left', va='bottom',
+        arrowprops=arrowprops)
+
+    # annotation_sub
+    ax1.plot(
+        [y_hdr_ip, y_hdr_ip, x_min], [y_min, k1 * y_hdr_ip, k1 * y_hdr_ip],
+        'k--', lw=2, c='#555555')
+
+    fname = f"./figures/k1_{k1:.2f}_k3_{k3:.2f}_y_sdr_ip_{y_sdr_ip:.1f}.png"
+    # plt.show()
+    plt.savefig(fname, bbox_inches='tight', pad_inches=0.1)
+
+
 def experimental_func(
-        src_color_space_name=cs.BT2020, alpha=0.15, sigma=0.5,
-        tfc=tf.ST2084, hdr_ref_luminance=203, hdr_peak_luminance=1000):
+        src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+        alpha=0.15, sigma=0.5, hdr_ref_luminance=203, hdr_peak_luminance=1000,
+        k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
     img = imread_16bit_to_float("./img/step_ramp.png")
     img_linear = tf.eotf(img, tf.GAMMA24)
     img_desturated = apply_cross_talk_matrix(img=img_linear, alpha=alpha)
@@ -120,11 +236,15 @@ def experimental_func(
         xyz_hdr_cor, cs.D65, cs.D65,
         RGB_COLOURSPACES[src_color_space_name].XYZ_to_RGB_matrix)
 
-    tpg.preview_image(rgb_sdr ** (1/2.4))
+    tone_map_plot_test(
+        k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=y_hdr_ref)
+
+    # tpg.preview_image(rgb_sdr ** (1/2.4))
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     experimental_func(
-        src_color_space_name=cs.BT2020, alpha=0.2, sigma=0.5,
-        tfc=tf.ST2084, hdr_ref_luminance=203, hdr_peak_luminance=1000)
+        src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+        alpha=0.15, sigma=0.5, hdr_ref_luminance=203, hdr_peak_luminance=1000,
+        k1=0.8, k3=0.7, y_sdr_ip=50, y_hdr_ref=203)
