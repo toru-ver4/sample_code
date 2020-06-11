@@ -72,13 +72,11 @@ def get_video_level_text_img(step_num, width, bit_depth, fontsize):
     return txt_img
 
 
-def add_frame(img, frame_rate=0.03):
+def add_frame(img, frame_width):
     """
     img に frame_rate 分の余白を付けて出力する。
     余白は横幅基準で作る
     """
-    img_width = img.shape[1]
-    frame_width = int(img_width * frame_rate + 0.5)
     bg_img = np.zeros((img.shape[0] + frame_width * 2,
                        img.shape[1] + frame_width * 2, 3))
     tpg.merge(bg_img, img, pos=(frame_width, frame_width))
@@ -86,30 +84,33 @@ def add_frame(img, frame_rate=0.03):
     return bg_img
 
 
-def generate_wrgb_step_ramp(step_num=65, width=1920, height=540, fontsize=20):
+def generate_wrgb_step_ramp(
+        step_num=65, width=1920, height=540, fontsize=20, frame_rate=0.007):
     """
     WRGB の 階調飛び飛び Ramp を作る。
     """
-    color_list = [[1, 1, 1], [1, 1, 0], [0, 1, 1], [0, 1, 0],
-                  [1, 0, 1], [1, 0, 0], [0, 0, 1]]
+    color_list = [[1, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 1],
+                  [0, 1, 0], [1, 0, 1], [1, 0, 0], [0, 0, 1]]
     bit_depth = 10
     max_value = (2 ** bit_depth) - 1
+    frame_width = int(width * frame_rate + 0.5)
+    internal_width = width - 2 * frame_width
+    internal_height = height - 2 * frame_width
 
-    bar_height_list = tpg.equal_devision(height, len(color_list))
+    bar_height_list = tpg.equal_devision(internal_height, len(color_list))
     bar_img_list = []
     for color, bar_height in zip(color_list, bar_height_list):
-        color_bar = tpg.gen_step_gradation(width=width, height=bar_height,
-                                           step_num=step_num,
-                                           bit_depth=10,
-                                           color=color, direction='h')
+        color_bar = tpg.gen_step_gradation(
+            width=internal_width, height=bar_height, step_num=step_num,
+            bit_depth=10, color=color, direction='h')
         bar_img_list.append(color_bar)
     color_bar = np.vstack(bar_img_list)
 
     text_img = get_video_level_text_img(
-        step_num, width, bit_depth, fontsize) * max_value
+        step_num, internal_width, bit_depth, fontsize) * max_value
 
     color_bar = np.vstack([text_img, color_bar])
-    color_bar = add_frame(color_bar, frame_rate=0.007)
+    color_bar = add_frame(color_bar, frame_width=frame_width)
 
     return color_bar / max_value
 
@@ -117,7 +118,7 @@ def generate_wrgb_step_ramp(step_num=65, width=1920, height=540, fontsize=20):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     img = generate_wrgb_step_ramp(
-        step_num=65, width=1920, height=300, fontsize=20)
+        step_num=65, width=1920, height=240, fontsize=20)
     img = np.uint16(np.round(img * 0xFFFF))
     fname = f"./figure/step_ramp.tiff"
     fname_png = f"./figure/step_ramp.png"
