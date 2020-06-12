@@ -174,7 +174,7 @@ def bt2446_method_c_tonemapping(
 
 
 def draw_ip_wp_annotation(
-        x_min, y_min, ax1, k1, y_hdr_ip, y_hdr_ref, y_sdr_wp):
+        x_min, y_min, ax1, k1, y_hdr_ip, y_hdr_ref, y_sdr_wp, fontsize=20):
     # annotation
     arrowprops = dict(
         facecolor='#333333', shrink=0.0, headwidth=8, headlength=10,
@@ -182,20 +182,19 @@ def draw_ip_wp_annotation(
     ax1.annotate(
         "Y_HDR,ip", xy=(y_hdr_ip, y_min), xytext=(500, y_min * 5.1),
         xycoords='data', textcoords='data', ha='left', va='bottom',
-        arrowprops=arrowprops, fontsize=20)
+        arrowprops=arrowprops, fontsize=fontsize)
     ax1.annotate(
         "Y_HDR,Ref", xy=(y_hdr_ref, y_min), xytext=(500, y_min * 2),
         xycoords='data', textcoords='data', ha='left', va='bottom',
-        arrowprops=arrowprops, fontsize=20)
-
+        arrowprops=arrowprops, fontsize=fontsize)
     ax1.annotate(
         "K1 * Y_HDR,ip", xy=(x_min, k1 * y_hdr_ip), xytext=(x_min * 4, 110),
         xycoords='data', textcoords='data', ha='left', va='bottom',
-        arrowprops=arrowprops, fontsize=20)
+        arrowprops=arrowprops, fontsize=fontsize)
     ax1.annotate(
         "Y_SDR,wp", xy=(x_min, y_sdr_wp), xytext=(x_min * 4, 170),
         xycoords='data', textcoords='data', ha='left', va='bottom',
-        arrowprops=arrowprops, fontsize=20)
+        arrowprops=arrowprops, fontsize=fontsize)
 
 
 def tone_map_plot_test(k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
@@ -214,7 +213,8 @@ def tone_map_plot_test(k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
         ylabel="SDR Luminance [cd/m2]",
         xlim=(x_min, 10000),
         ylim=(y_min, 250),
-        linewidth=3)
+        linewidth=3,
+        return_figure=True)
     pu.log_scale_settings(ax1)
     ax1.plot(x, y)
     # plt.show()
@@ -231,9 +231,9 @@ def tone_map_plot_test(k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
         [y_hdr_ref, y_hdr_ref, x_min], [y_min, y_sdr_wp, y_sdr_wp],
         'k--', lw=2, c='#555555')
 
-    fname = f"./figures/k1_{k1:.2f}_k3_{k3:.2f}_y_sdr_ip_{y_sdr_ip:.1f}.png"
-    # plt.show()
-    plt.savefig(fname, bbox_inches='tight', pad_inches=0.1)
+    # fname = f"./figures/k1_{k1:.2f}_k3_{k3:.2f}_y_sdr_ip_{y_sdr_ip:.1f}.png"
+    plt.show()
+    # plt.savefig(fname, bbox_inches='tight', pad_inches=0.1)
 
 
 def experimental_func(
