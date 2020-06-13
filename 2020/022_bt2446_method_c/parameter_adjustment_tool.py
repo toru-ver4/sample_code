@@ -20,6 +20,7 @@ import numpy as np
 
 # import my libraries
 import bt2446_method_c as bmc
+import bt2446_plot as btp
 import plot_utility as pu
 from key_names import KeyNames
 from event_control import EventControl
@@ -96,6 +97,13 @@ def make_control_layout_frame():
           sg.Slider(range=(0.5, 1.0), orientation='h', size=(20, 10),
           change_submits=True, key=kns.k3_slider,
           default_value=0.7, resolution=0.01)],
+         [sg.Text("SDR Inflection Point:", size=PARAM_TEXT_SIZE,
+          justification='r'),
+          sg.Spin([size/10 for size in range(200, 1000)], initial_value=58.5,
+          change_submits=True, key=kns.sdr_ip_spin, size=(5, 1)),
+          sg.Slider(range=(20, 100), orientation='h', size=(20, 10),
+          change_submits=True, key=kns.sdr_ip_slider,
+          default_value=58.5, resolution=0.1)],
          [sg.Submit("Update", key=kns.update)]])
 
     return control_layout_frame
@@ -108,7 +116,16 @@ def make_layout():
     plot_layout = sg.Frame(
         "plot area",
         [[sg.Canvas(size=(640, 480), key=kns.curve_plot)]])
-    left_side = sg.Column([[control_layout_frame], [plot_layout]])
+
+    information_layout = sg.Frame(
+        "Information",
+        [[sg.Text("Y_HDR_ip = "),
+          sg.Text("0", key=kns.info_y_hdr_ip, size=(4, 1))],
+         [sg.Text("Y_SDR_wp = "),
+          sg.Text("0", key=kns.info_y_sdr_wp, size=(4, 1))]])
+
+    left_side = sg.Column([
+        [control_layout_frame], [plot_layout], [information_layout]])
 
     tp_frame = sg.Frame(
         "test pattern",
@@ -144,46 +161,15 @@ def draw_figure(canvas, figure, loc=(0, 0)):
     return figure_canvas_agg
 
 
-def plot_tome_curve(k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
-    x_min = 1
-    y_min = 1
-    y_hdr_ip, y_sdr_wp, k2, k4 = bmc.calc_tonemapping_parameters(
-        k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=y_hdr_ref)
-    x = np.linspace(0, 10000, 1024)
-    y = bmc.bt2446_method_c_tonemapping(
-        x, k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203)
-    fig, ax1 = pu.plot_1_graph(
-        fontsize=20,
-        figsize=(8, 6),
-        graph_title="BT.2446 Method C",
-        xlabel="HDR Luminance [cd/m2]",
-        ylabel="SDR Luminance [cd/m2]",
-        xlim=(x_min, 10000),
-        ylim=(y_min, 250),
-        linewidth=3,
-        return_figure=True)
-    pu.log_scale_settings(ax1)
-    ax1.plot(x, y)
-
-    # annotation
-    bmc.draw_ip_wp_annotation(
-        x_min, y_min, ax1, k1, y_hdr_ip, y_hdr_ref, y_sdr_wp, fontsize=16)
-
-    # auxiliary line
-    ax1.plot(
-        [y_hdr_ip, y_hdr_ip, x_min], [y_min, k1 * y_hdr_ip, k1 * y_hdr_ip],
-        'k--', lw=2, c='#555555')
-    ax1.plot(
-        [y_hdr_ref, y_hdr_ref, x_min], [y_min, y_sdr_wp, y_sdr_wp],
-        'k--', lw=2, c='#555555')
-
-    return fig, ax1
-
-
 def main_func():
     window = sg.Window(title="Scatter Diagram", layout=make_layout(),
                        finalize=True)
-    event_controller = EventControl(window)
+    # initial plot
+    fig, ax, ax_lines = btp.plot_tome_curve()
+    canvas = window[kns.curve_plot].TKCanvas
+    fig_agg = draw_figure(canvas, fig)
+
+    event_controller = EventControl(window, fig_agg, ax_lines)
     event_handler = event_controller.get_handler()
     while True:
         event, values = window.read()
