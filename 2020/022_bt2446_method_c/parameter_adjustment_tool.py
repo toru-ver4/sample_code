@@ -39,6 +39,18 @@ REF_IMG_WIDTH = 720
 class KeyNames(NamedTuple):
     update: str = 'submit_button'
     curve_plot: str = 'curve_plot'
+    hdr_ref_white_spin: str = 'hdr_ref_white_spin'
+    hdr_ref_white_slider: str = 'hdr_ref_white_slider'
+    hdr_peak_white_spin: str = 'hdr_peak_white_spin'
+    hdr_peak_white_slider: str = 'hdr_peak_white_slider'
+    cross_talk_alpha_spin: str = 'cross_talk_alpha_spin'
+    cross_talk_alpha_slider: str = 'cross_talk_alpha_slider'
+    cross_talk_sigma_spin: str = 'cross_talk_sigma_spin'
+    cross_talk_sigma_slider: str = 'cross_talk_sigma_slider'
+    k1_spin: str = "k1_sin"
+    k1_slider: str = "k1_slider"
+    k3_spin: str = "k3_sin"
+    k3_slider: str = "k3_slider"
 
 
 kns = KeyNames()
@@ -62,7 +74,44 @@ def make_dummy_image(width=REF_IMG_WIDTH, height=int(REF_IMG_WIDTH / 16 * 9)):
 def make_layout():
     control_layout = sg.Frame(
         "parameter control",
-        [[sg.Submit("Update", key=kns.update)]])
+        [[sg.Text("HDR Reference White Liminance:"),
+          sg.Spin([size for size in range(100, 300)], initial_value=203,
+          change_submits=True, key=kns.hdr_ref_white_spin),
+          sg.Slider(range=(100, 300), orientation='h', size=(20, 10),
+          change_submits=True, key=kns.hdr_ref_white_slider,
+          default_value=203)],
+         [sg.Text("HDR Peak Luminance:"),
+          sg.Spin([size for size in range(500, 10000)], initial_value=1000,
+          change_submits=True, key=kns.hdr_peak_white_spin, size=(5, 1)),
+          sg.Slider(range=(500, 10000), orientation='h', size=(20, 10),
+          change_submits=True, key=kns.hdr_peak_white_slider,
+          default_value=1000)],
+         [sg.Text("Alpha:"),
+          sg.Spin([size/100 for size in range(0, 33)], initial_value=0.15,
+          change_submits=True, key=kns.cross_talk_alpha_spin, size=(4, 1)),
+          sg.Slider(range=(0.0, 0.33), orientation='h', size=(20, 10),
+          change_submits=True, key=kns.cross_talk_alpha_slider,
+          default_value=0.15, resolution=0.01)],
+         [sg.Text("Sigma:"),
+          sg.Spin([size/100 for size in range(0, 100)], initial_value=0.5,
+          change_submits=True, key=kns.cross_talk_sigma_spin, size=(4, 1)),
+          sg.Slider(range=(0.0, 1.0), orientation='h', size=(20, 10),
+          change_submits=True, key=kns.cross_talk_sigma_slider,
+          default_value=0.5, resolution=0.01)],
+         [sg.Text("k1:"),
+          sg.Spin([size/100 for size in range(50, 100)], initial_value=0.8,
+          change_submits=True, key=kns.k1_spin, size=(4, 1)),
+          sg.Slider(range=(0.5, 1.0), orientation='h', size=(20, 10),
+          change_submits=True, key=kns.k1_slider,
+          default_value=0.8, resolution=0.01)],
+         [sg.Text("k3:"),
+          sg.Spin([size/100 for size in range(50, 100)], initial_value=0.7,
+          change_submits=True, key=kns.k3_spin, size=(4, 1)),
+          sg.Slider(range=(0.5, 1.0), orientation='h', size=(20, 10),
+          change_submits=True, key=kns.k3_slider,
+          default_value=0.7, resolution=0.01)],
+
+         [sg.Submit("Update", key=kns.update)]])
     plot_layout = sg.Frame(
         "plot area",
         [[sg.Canvas(size=(640, 480), key=kns.curve_plot)]])

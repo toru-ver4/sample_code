@@ -205,7 +205,7 @@ def tone_map_plot_test(k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
     x = np.linspace(0, 10000, 1024)
     y = bt2446_method_c_tonemapping(
         x, k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203)
-    ax1 = pu.plot_1_graph(
+    fig, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(10, 8),
         graph_title="BT.2446 Method C",
@@ -239,7 +239,7 @@ def tone_map_plot_test(k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
 def experimental_func(
         src_color_space_name=cs.BT2020, tfc=tf.ST2084,
         alpha=0.15, sigma=0.5, hdr_ref_luminance=203, hdr_peak_luminance=1000,
-        k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
+        k1=0.8, k3=0.7, y_sdr_ip=60):
     img = imread_16bit_to_float("./img/step_ramp.png")
     img_linear = tf.eotf(img, tf.GAMMA24)
     img_desturated = apply_cross_talk_matrix(img=img_linear, alpha=alpha)
@@ -256,7 +256,7 @@ def experimental_func(
         RGB_COLOURSPACES[src_color_space_name].XYZ_to_RGB_matrix)
 
     tone_map_plot_test(
-        k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=y_hdr_ref)
+        k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=hdr_ref_luminance)
 
     # tpg.preview_image(rgb_sdr ** (1/2.4))
 
@@ -266,4 +266,4 @@ if __name__ == '__main__':
     experimental_func(
         src_color_space_name=cs.BT2020, tfc=tf.ST2084,
         alpha=0.15, sigma=0.5, hdr_ref_luminance=203, hdr_peak_luminance=1000,
-        k1=0.8, k3=0.7, y_sdr_ip=50, y_hdr_ref=203)
+        k1=0.8, k3=0.7, y_sdr_ip=50)
