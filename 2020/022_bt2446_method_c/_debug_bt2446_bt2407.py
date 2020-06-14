@@ -7,6 +7,8 @@ debug
 
 # import standard libraries
 import os
+import ctypes
+import platform
 
 # import third-party libraries
 import numpy as np
@@ -35,15 +37,31 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
+def make_dpi_aware():
+    """
+    https://github.com/PySimpleGUI/PySimpleGUI/issues/1179
+    """
+    if int(platform.release()) >= 8:
+        ctypes.windll.shcore.SetProcessDpiAwareness(True)
+
+
 def main_func():
-    img_path = "./img/step_ramp_step_65.png"
+    img_path = "./img/high.png"
     hdr_img_non_linear = bmc.read_img_and_to_float(img_path)
     hdr_img_linear = tf.eotf(hdr_img_non_linear, tf.ST2084)
     sdr_img_linear = bmc.bt2446_method_c_tonemapping(hdr_img_linear)
-    # tpg.preview_image(sdr_img_linear ** (1/2.4))
+
+    tpg.preview_image(sdr_img_linear ** (1/2.4))
+
+    sdr_709_liner = bgm.bt2407_gamut_mapping_for_rgb_linear(
+        rgb_linear=sdr_img_linear,
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709)
+    tpg.preview_image(sdr_709_liner ** (1/2.4))
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    mbl.make_bt2020_to_bt709_luts()
-    # main_func()
+    make_dpi_aware()
+    # mbl.make_bt2020_to_bt709_luts()
+    main_func()

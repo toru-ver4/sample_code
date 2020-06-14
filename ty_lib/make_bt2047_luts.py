@@ -992,15 +992,15 @@ def make_lut_directory():
 def make_bt2020_to_bt709_luts():
     make_lut_directory()
     make_gamut_boundary_lut_all_fastest()
-    # make_focal_lut(
-    #     outer_color_space_name=cs.BT2020,
-    #     inner_color_space_name=cs.BT709)
-    # make_focal_lut(
-    #     outer_color_space_name=cs.BT2020,
-    #     inner_color_space_name=cs.BT709)
-    # make_chroma_map_lut(
-    #     outer_color_space_name=cs.BT2020,
-    #     inner_color_space_name=cs.BT709)
+    make_focal_lut(
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709)
+    make_focal_lut(
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709)
+    make_chroma_map_lut(
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709)
 
 
 if __name__ == '__main__':

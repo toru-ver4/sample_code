@@ -258,7 +258,7 @@ def solve_chroma_fastest(
         r_val[~ok_idx] = r_val[~ok_idx] - add_sub
 
     chroma = r_val
-    print(f"color_space={color_space_name}, L*={l_val}:.2f")
+    print(f"color_space={color_space_name}, L*={l_val}:.2f, dtype={chroma.dtype}")
     return chroma
 
 
