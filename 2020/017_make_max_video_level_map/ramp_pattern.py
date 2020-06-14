@@ -117,10 +117,15 @@ def generate_wrgb_step_ramp(
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    step_num = 33
+    height = 480
+    font_size = 30
+    width = 1920
     img = generate_wrgb_step_ramp(
-        step_num=65, width=1920, height=240, fontsize=20)
+        step_num=step_num, width=width,
+        height=height, fontsize=font_size)
     img = np.uint16(np.round(img * 0xFFFF))
-    fname = f"./figure/step_ramp.tiff"
-    fname_png = f"./figure/step_ramp.png"
+    fname = "./figure/step_ramp.tiff"
+    fname_png = f"./figure/step_ramp_step_{step_num}.png"
     cv2.imwrite(fname, img[..., ::-1])
     cv2.imwrite(fname_png, img[..., ::-1])
