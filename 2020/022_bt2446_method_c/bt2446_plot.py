@@ -46,7 +46,7 @@ def plot_tome_curve(k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
     y_hdr_ip, y_sdr_wp, k2, k4 = bmc.calc_tonemapping_parameters(
         k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=y_hdr_ref)
     x = np.linspace(0, 10000, 1024)
-    y = bmc.bt2446_method_c_tonemapping(
+    y = bmc.bt2446_method_c_tonemapping_core(
         x, k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=y_hdr_ref)
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
