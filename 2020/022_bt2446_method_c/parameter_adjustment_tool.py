@@ -104,7 +104,8 @@ def make_control_layout_frame():
           sg.Slider(range=(20, 100), orientation='h', size=(20, 10),
           change_submits=True, key=kns.sdr_ip_slider,
           default_value=58.5, resolution=0.1)],
-         [sg.Submit("Update", key=kns.update)]])
+         [sg.Submit("Update", key=kns.update)],
+         [sg.Submit("Load Images", key=kns.load_images)]])
 
     return control_layout_frame
 
@@ -178,10 +179,6 @@ def main_func():
             break
         else:
             event_handler[event](values)
-        # elif event == kns.update:
-        #     fig, ax = plot_tome_curve()
-        #     canvas = window[kns.curve_plot].TKCanvas
-        #     fig_agg = draw_figure(canvas, fig)
 
 
 if __name__ == '__main__':

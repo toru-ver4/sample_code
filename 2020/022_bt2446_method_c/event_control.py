@@ -16,6 +16,7 @@ import numpy as np
 from key_names import KeyNames
 import bt2446_method_c as bmc
 import bt2446_plot as btp
+from image_processing import ImageProcessing
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -35,6 +36,7 @@ class EventControl():
     """
     def __init__(self, window, fig_agg, ax_lines):
         self.window = window
+        self.im_pro = ImageProcessing()
         self.fig_agg = fig_agg
         self.tonecurve = ax_lines[0]
         self.hdr_ip_line = ax_lines[1]
@@ -53,7 +55,8 @@ class EventControl():
             kns.k3_spin: self.update_k3_by_spin,
             kns.k3_slider: self.update_k3_by_slider,
             kns.sdr_ip_spin: self.update_sdr_ip_by_spin,
-            kns.sdr_ip_slider: self.update_sdr_ip_by_slider
+            kns.sdr_ip_slider: self.update_sdr_ip_by_slider,
+            kns.load_images: self.load_init_images
         }
 
     def get_handler(self):
@@ -142,6 +145,43 @@ class EventControl():
     def update_sdr_ip_by_slider(self, values):
         self.window[kns.sdr_ip_spin].update(values[kns.sdr_ip_slider])
         self.update_tonecurve(values)
+
+    def load_init_images(self, values):
+        self.im_pro.read_and_concat_img()
+
+        # raw を真ん中に表示
+        concat_raw_img = self.im_pro.get_concat_raw_image()
+        concat_raw_img_8bit = self.im_pro.conv_8bit_int(concat_raw_img)
+        self.window[kns.img_tp_raw].update(
+            data=self.im_pro.conv_io_stream(
+                self.im_pro.extract_image(concat_raw_img_8bit, 0)))
+        self.window[kns.img_low_raw].update(
+            data=self.im_pro.conv_io_stream(
+                self.im_pro.extract_image(concat_raw_img_8bit, 1)))
+        self.window[kns.img_mid_raw].update(
+            data=self.im_pro.conv_io_stream(
+                self.im_pro.extract_image(concat_raw_img_8bit, 2)))
+        self.window[kns.img_high_raw].update(
+            data=self.im_pro.conv_io_stream(
+                self.im_pro.extract_image(concat_raw_img_8bit, 3)))
+
+        # colormap を右側に表示
+        self.im_pro.make_colormap_image(turbo_peak_luminance=4000)
+        color_map_img_8bit = self.im_pro.conv_8bit_int(
+            self.im_pro.get_colormap_image())
+
+        self.window[kns.img_tp_luminance].update(
+            data=self.im_pro.conv_io_stream(
+                self.im_pro.extract_image(color_map_img_8bit, 0)))
+        self.window[kns.img_low_luminance].update(
+            data=self.im_pro.conv_io_stream(
+                self.im_pro.extract_image(color_map_img_8bit, 1)))
+        self.window[kns.img_mid_luminance].update(
+            data=self.im_pro.conv_io_stream(
+                self.im_pro.extract_image(color_map_img_8bit, 2)))
+        self.window[kns.img_high_luminance].update(
+            data=self.im_pro.conv_io_stream(
+                self.im_pro.extract_image(color_map_img_8bit, 3)))
 
 
 if __name__ == '__main__':

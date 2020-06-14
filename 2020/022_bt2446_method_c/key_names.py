@@ -4,6 +4,7 @@ from typing import NamedTuple
 
 class KeyNames(NamedTuple):
     update: str = 'submit_button'
+    load_images: str = 'load_images'
     curve_plot: str = 'curve_plot'
     hdr_ref_white_spin: str = 'hdr_ref_white_spin'
     hdr_ref_white_slider: str = 'hdr_ref_white_slider'
