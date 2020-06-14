@@ -16,7 +16,6 @@ import numpy as np
 from key_names import KeyNames
 import bt2446_method_c as bmc
 import bt2446_plot as btp
-from image_processing import ImageProcessing
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -34,9 +33,9 @@ class EventControl():
     """
     event controller for parameter_adjustment_tool.
     """
-    def __init__(self, window, fig_agg, ax_lines):
+    def __init__(self, window, fig_agg, ax_lines, im_pro):
         self.window = window
-        self.im_pro = ImageProcessing()
+        self.im_pro = im_pro
         self.fig_agg = fig_agg
         self.tonecurve = ax_lines[0]
         self.hdr_ip_line = ax_lines[1]
@@ -56,7 +55,8 @@ class EventControl():
             kns.k3_slider: self.update_k3_by_slider,
             kns.sdr_ip_spin: self.update_sdr_ip_by_spin,
             kns.sdr_ip_slider: self.update_sdr_ip_by_slider,
-            kns.load_images: self.load_init_images
+            kns.load_images: self.load_init_images,
+            kns.update: self.update_sdr_images
         }
 
     def get_handler(self):
@@ -182,6 +182,33 @@ class EventControl():
         self.window[kns.img_high_luminance].update(
             data=self.im_pro.conv_io_stream(
                 self.im_pro.extract_image(color_map_img_8bit, 3)))
+
+    def update_sdr_images(self, values):
+        alpha = values[kns.cross_talk_alpha_slider]
+        sigma = values[kns.cross_talk_sigma_slider]
+        hdr_ref_luminance = values[kns.hdr_ref_white_slider]
+        hdr_peak_luminance = values[kns.hdr_peak_white_slider]
+        k1 = values[kns.k1_slider]
+        k3 = values[kns.k3_slider]
+        y_sdr_ip = values[kns.sdr_ip_slider]
+        sdr_image_8bit = self.im_pro.conv_8bit_int(
+            self.im_pro.make_sdr_image(
+                alpha=alpha, sigma=sigma, hdr_ref_luminance=hdr_ref_luminance,
+                hdr_peak_luminance=hdr_peak_luminance,
+                k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, bt2407_gamut_mapping=True))
+
+        self.window[kns.img_tp_mapping].update(
+            data=self.im_pro.conv_io_stream(
+                self.im_pro.extract_image(sdr_image_8bit, 0)))
+        self.window[kns.img_low_mapping].update(
+            data=self.im_pro.conv_io_stream(
+                self.im_pro.extract_image(sdr_image_8bit, 1)))
+        self.window[kns.img_mid_mapping].update(
+            data=self.im_pro.conv_io_stream(
+                self.im_pro.extract_image(sdr_image_8bit, 2)))
+        self.window[kns.img_high_mapping].update(
+            data=self.im_pro.conv_io_stream(
+                self.im_pro.extract_image(sdr_image_8bit, 3)))
 
 
 if __name__ == '__main__':

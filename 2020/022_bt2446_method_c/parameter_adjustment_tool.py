@@ -24,6 +24,7 @@ import bt2446_plot as btp
 import plot_utility as pu
 from key_names import KeyNames
 from event_control import EventControl
+from image_processing import ImageProcessing
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -36,7 +37,7 @@ __all__ = []
 
 
 # definition
-REF_IMG_WIDTH = 720
+REF_IMG_WIDTH = 960
 PARAM_TEXT_SIZE = (32, 1)
 kns = KeyNames()
 
@@ -49,7 +50,7 @@ def make_dpi_aware():
         ctypes.windll.shcore.SetProcessDpiAwareness(True)
 
 
-def make_dummy_image(width=REF_IMG_WIDTH, height=int(REF_IMG_WIDTH / 16 * 9)):
+def make_dummy_image(width=REF_IMG_WIDTH, height=int(REF_IMG_WIDTH / 16 * 6)):
     img = np.ones((height, width, 3)) * np.array([0.3, 0.3, 0.3])
     img_16bit = np.uint16(np.round(img * 0xFFFF))
     is_success, buffer = cv2.imencode(".png", img_16bit[..., ::-1])
@@ -170,7 +171,8 @@ def main_func():
     canvas = window[kns.curve_plot].TKCanvas
     fig_agg = draw_figure(canvas, fig)
 
-    event_controller = EventControl(window, fig_agg, ax_lines)
+    event_controller = EventControl(
+        window, fig_agg, ax_lines, ImageProcessing(REF_IMG_WIDTH))
     event_handler = event_controller.get_handler()
     while True:
         event, values = window.read()

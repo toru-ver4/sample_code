@@ -15,9 +15,11 @@ import numpy as np
 # import my libraries
 from key_names import KeyNames
 import bt2446_method_c as bmc
+import bt2047_gamut_mapping as bgm
 import transfer_functions as tf
 import test_pattern_generator2 as tpg
 import colormap as cmap
+import color_space as cs
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -67,6 +69,7 @@ class ImageProcessing():
         img_high = self.resize_to_fixed_width(
             self.read_img(self.high_image_path))
         self.raw_img = np.vstack([img_tp, img_low, img_mid, img_high])
+        self.raw_img_linear = tf.eotf(self.raw_img, tf.ST2084)
 
         # keep coordinate information
         tp_height = img_tp.shape[0]
@@ -123,6 +126,28 @@ class ImageProcessing():
 
     def get_colormap_image(self):
         return self.colormap_img
+
+    def make_sdr_image(
+            self, src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+            alpha=0.15, sigma=0.5,
+            hdr_ref_luminance=203, hdr_peak_luminance=1000,
+            k1=0.8, k3=0.7, y_sdr_ip=60, bt2407_gamut_mapping=True):
+        sdr_img_linear = bmc.bt2446_method_c_tonemapping(
+             img=self.raw_img_linear,
+             src_color_space_name=src_color_space_name,
+             tfc=tfc, alpha=alpha, sigma=sigma,
+             hdr_ref_luminance=hdr_ref_luminance,
+             hdr_peak_luminance=hdr_peak_luminance,
+             k1=k1, k3=k3, y_sdr_ip=y_sdr_ip)
+
+        if bt2407_gamut_mapping:
+            sdr_img_linear = bgm.bt2407_gamut_mapping_for_rgb_linear(
+                rgb_linear=sdr_img_linear,
+                outer_color_space_name=cs.BT2020,
+                inner_color_space_name=cs.BT709)
+        sdr_img_linear = sdr_img_linear ** (1/2.4)
+
+        return sdr_img_linear
 
 
 if __name__ == '__main__':
