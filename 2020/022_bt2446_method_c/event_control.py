@@ -39,7 +39,7 @@ class EventControl():
         self.fig_agg = fig_agg
         self.tonecurve = ax_lines[0]
         self.hdr_ip_line = ax_lines[1]
-        self.hdr_ref_line = ax_lines[2]
+        self.hdr_ref_line = ax_lines[2],
         self.handler = {
             kns.hdr_ref_white_spin: self.update_hdr_ref_white_by_spin,
             kns.hdr_ref_white_slider: self.update_hdr_ref_white_by_slider,
@@ -191,11 +191,13 @@ class EventControl():
         k1 = values[kns.k1_slider]
         k3 = values[kns.k3_slider]
         y_sdr_ip = values[kns.sdr_ip_slider]
+        bt2407_enable = values[kns.bt2407_enable]
         sdr_image_8bit = self.im_pro.conv_8bit_int(
             self.im_pro.make_sdr_image(
                 alpha=alpha, sigma=sigma, hdr_ref_luminance=hdr_ref_luminance,
                 hdr_peak_luminance=hdr_peak_luminance,
-                k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, bt2407_gamut_mapping=True))
+                k1=k1, k3=k3, y_sdr_ip=y_sdr_ip,
+                bt2407_gamut_mapping=bt2407_enable))
 
         self.window[kns.img_tp_mapping].update(
             data=self.im_pro.conv_io_stream(

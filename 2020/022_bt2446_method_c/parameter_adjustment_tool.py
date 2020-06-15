@@ -105,6 +105,8 @@ def make_control_layout_frame():
           sg.Slider(range=(20, 100), orientation='h', size=(20, 10),
           change_submits=True, key=kns.sdr_ip_slider,
           default_value=58.5, resolution=0.1)],
+         [sg.Checkbox('Enable BT.2407 Gamut Mapping', size=PARAM_TEXT_SIZE,
+          default=False, key=kns.bt2407_enable)],
          [sg.Submit("Update", key=kns.update)],
          [sg.Submit("Load Images", key=kns.load_images)]])
 
@@ -115,11 +117,11 @@ def make_layout():
 
     control_layout_frame = make_control_layout_frame()
 
-    plot_layout = sg.Frame(
+    plot_layout_frmae = sg.Frame(
         "plot area",
         [[sg.Canvas(size=(640, 480), key=kns.curve_plot)]])
 
-    information_layout = sg.Frame(
+    information_layout_frame = sg.Frame(
         "Information",
         [[sg.Text("Y_HDR_ip = "),
           sg.Text("0", key=kns.info_y_hdr_ip, size=(4, 1))],
@@ -127,7 +129,8 @@ def make_layout():
           sg.Text("0", key=kns.info_y_sdr_wp, size=(4, 1))]])
 
     left_side = sg.Column([
-        [control_layout_frame], [plot_layout], [information_layout]])
+        [control_layout_frame], [plot_layout_frmae],
+        [information_layout_frame]])
 
     tp_frame = sg.Frame(
         "test pattern",
@@ -164,8 +167,9 @@ def draw_figure(canvas, figure, loc=(0, 0)):
 
 
 def main_func():
-    window = sg.Window(title="Scatter Diagram", layout=make_layout(),
-                       finalize=True)
+    window = sg.Window(
+        title="BT2446 Parameter Adjustement Tool",
+        layout=make_layout(), finalize=True)
     # initial plot
     fig, ax, ax_lines = btp.plot_tome_curve()
     canvas = window[kns.curve_plot].TKCanvas
