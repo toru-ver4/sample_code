@@ -93,7 +93,12 @@ __all__ = []
 
 # REVISION = 2  # added sound information.
 # REVISION = 3  # added signal information at the bottom.
-REVISION = 4  # added Three types of test patterns.
+# REVISION = 4  # added Three types of test patterns.
+
+# improved chroma-subsampling chaker patterns.
+# added checker board pattern to distinguish 10bit.
+REVISION = 5
+
 
 SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
     transfer_function=tf.GAMMA24,
@@ -168,6 +173,17 @@ COUNTDOWN_COORDINATE_PARAM_24P = CountDownImageCoordinateParam(
     font_path=NOTO_SANS_MONO_EX_BOLD
 )
 
+COUNTDOWN_COORDINATE_PARAM_04P = CountDownImageCoordinateParam(
+    radius1=360,
+    radius2=320,
+    radius3=313,
+    radius4=315,
+    fps=4,
+    crosscross_line_width=4,
+    font_size=570,
+    font_path=NOTO_SANS_MONO_EX_BOLD
+)
+
 COUNTDOWN_COORDINATE_PARAM_60P = CountDownImageCoordinateParam(
     radius1=360,
     radius2=320,
@@ -205,7 +221,8 @@ def composite_sequence(
             img = bg_image.copy()
         else:
             img = np.zeros_like(bg_image)
-    fname = "./movie_seq/movie_{:}_{:}x{:}_{:}fps_{:04d}.png".format(
+    fname_prefix = "/work/overuse/2020/005_make_countdown_movie/movie_seq/"
+    fname = fname_prefix + "movie_{:}_{:}x{:}_{:}fps_{:04d}.png".format(
         dynamic_range, bg_image.shape[1], bg_image.shape[0],
         count_down_seq_maker.fps, counter)
     print(fname)
@@ -220,6 +237,9 @@ def make_countdown_movie(
         bg_color_param, bg_coordinate_param,
         cd_color_param, cd_coordinate_param,
         dynamic_range='sdr', scale_factor=1):
+    """
+    Make the sequence files.
+    """
     # background image
     bg_filename_base\
         = f"./bg_img/backgraound_{dynamic_range}_{{}}_{{}}x{{}}.tiff"
@@ -247,39 +267,46 @@ def make_countdown_movie(
     sec_list = [3, 2, 1, 0]
     sound_text_list = ["L", "R", "C", " "]
     for sec, sound_text in zip(sec_list, sound_text_list):
+        # for chroma-subsampling pattern
+        is_even_number = (sec % 2) == 0
+        bg_image_maker.is_even_number = is_even_number
+
+        # for audio L-R-C indicator
         bg_image_maker.sound_text = " "
         bg_image_maker.make()
-        bg_image_without_sound = bg_image_maker.img.copy()
+        bg_image_without_sound_indicator = bg_image_maker.img.copy()
         bg_image_maker.save()
 
         bg_image_maker.sound_text = sound_text
         bg_image_maker.make()
-        bg_image_with_sound = bg_image_maker.img.copy()
+        bg_image_with_sound_indicator = bg_image_maker.img.copy()
 
         args = []
         for frame in range(cd_coordinate_param.fps):
             if frame < int(cd_coordinate_param.fps * 0.5 + 0.5):
-                bg_image = bg_image_without_sound
+                bg_image = bg_image_without_sound_indicator
             else:
-                bg_image = bg_image_with_sound
-            args.append(dict(sec=sec, frame=frame, counter=counter,
-                             count_down_seq_maker=count_down_seq_maker,
-                             bg_image=bg_image, merge_st_pos=merge_st_pos,
-                             dynamic_range=dynamic_range))
-            # composite_sequence(
-            #     sec=sec, frame=frame, counter=counter,
-            #     count_down_seq_maker=count_down_seq_maker,
-            #     bg_image=bg_image, merge_st_pos=merge_st_pos,
-            #     dynamic_range=dynamic_range)
+                bg_image = bg_image_with_sound_indicator
+            d = dict(
+                sec=sec, frame=frame, counter=counter,
+                count_down_seq_maker=count_down_seq_maker,
+                bg_image=bg_image, merge_st_pos=merge_st_pos,
+                dynamic_range=dynamic_range)
+            args.append(d)
+            composite_sequence(**d)
             counter += 1
-        with Pool(cpu_count()) as pool:
-            pool.map(thread_wrapper_composite_sequence, args)
+        # with Pool(cpu_count()) as pool:
+        #     pool.map(thread_wrapper_composite_sequence, args)
 
 
 def make_sequence():
-    cd_coordinate_param_list = [
-        COUNTDOWN_COORDINATE_PARAM_24P, COUNTDOWN_COORDINATE_PARAM_60P]
-    for scale_factor in [1, 2]:
+    """
+    Make the multiple types of sequence files at a time.
+    """
+    # cd_coordinate_param_list = [
+    #     COUNTDOWN_COORDINATE_PARAM_24P, COUNTDOWN_COORDINATE_PARAM_60P]
+    cd_coordinate_param_list = [COUNTDOWN_COORDINATE_PARAM_04P]
+    for scale_factor in [1]:
         for cd_coordinate_param in cd_coordinate_param_list:
             make_countdown_movie(
                 bg_color_param=SDR_BG_COLOR_PARAM,
@@ -288,13 +315,13 @@ def make_sequence():
                 bg_coordinate_param=BG_COODINATE_PARAM,
                 cd_coordinate_param=cd_coordinate_param,
                 scale_factor=scale_factor)
-            make_countdown_movie(
-                bg_color_param=HDR_BG_COLOR_PARAM,
-                cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
-                dynamic_range='HDR',
-                bg_coordinate_param=BG_COODINATE_PARAM,
-                cd_coordinate_param=cd_coordinate_param,
-                scale_factor=scale_factor)
+            # make_countdown_movie(
+            #     bg_color_param=HDR_BG_COLOR_PARAM,
+            #     cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
+            #     dynamic_range='HDR',
+            #     bg_coordinate_param=BG_COODINATE_PARAM,
+            #     cd_coordinate_param=cd_coordinate_param,
+            #     scale_factor=scale_factor)
         make_countdown_sound()
 
 

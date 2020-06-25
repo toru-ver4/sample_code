@@ -31,58 +31,6 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-CHROMA = {'ITU-R BT.709': [0.467893566324554, 0.215787584674837,
-                           0.149781375011629, 0.208001181214428,
-                           0.139928129463102, 0.137355386982480,
-                           0.317511492648874, 0.754346115001794]}
-
-CHROMA_MAX_02_00 = 2.74710773964960
-CHROMA_MAX_03_00 = 4.12066160947440
-CHROMA_MAX_04_00 = 5.49421547929920
-CHROMA_MAX_05_00 = 6.86776934912400
-CHROMA_MAX_07_00 = 9.35495271612193
-CHROMA_MAX_10_00 = 11.7856223341119
-CHROMA_MAX_58_00 = 33.5436943355494
-
-# # L* = 0.5
-CHROMA = {
-    'ITU-R BT.709': [2.33946783162278, 1.07893792337419, 0.748906875058145,
-                     1.04000590607214, 0.699640647315515, 0.686776934912400,
-                     1.58755746324438, 3.77173057500899]}
-# L* = 1.0
-CHROMA = {
-    'ITU-R BT.709': [4.67893566324554, 2.15787584674837, 1.49781375011629,
-                     2.08001181214428, 1.39928129463102, 1.37355386982480,
-                     3.17511492648874, 7.54346115001794]}
-# L* = 2.0
-CHROMA = {
-    'ITU-R BT.709': [9.35787132649113, 4.31575169349677, 2.99562750023258,
-                     4.16002362428858, 2.79856258926206, 2.74710773964960,
-                     6.35022985297751, 15.0874246637395]}
-# L* = 3.0
-CHROMA = {
-    'ITU-R BT.709': [14.0368069897367, 6.47362754024514, 4.49344125034887,
-                     6.24003543643286, 4.19784388389309, 4.12066160947440,
-                     9.50625735073427, 22.9227504958066]}
-# L* = 4.0
-CHROMA = {
-    'ITU-R BT.709': [18.6952150995068, 8.63150338699351, 5.99125500046515,
-                     8.32004724857714, 5.59712517852411, 5.49421547929920,
-                     12.0357588702337, 31.0388478042729]}
-# # L* = 5.0
-CHROMA = {
-    'ITU-R BT.709': [22.4851328201947, 10.7893792337419, 7.48906875058145,
-                     10.4000590607214, 6.99640647315515, 6.86776934912400,
-                     13.9036573539259, 37.2973759306897]}
-
-
-# # L* = 10
-# CHROMA = {
-#     'ITU-R BT.709': [31.1134446845507, 21.6612897565317, 14.9393690072093,
-#                      20.7274414737387, 13.4941585448319, 11.7856223341119,
-#                      18.6662114728803, 51.6143768309843]}
-
-
 class BackgroundImageColorParam(NamedTuple):
     transfer_function: str = tf.GAMMA24
     bg_luminance: float = 18.0
@@ -215,6 +163,14 @@ class BackgroundImage():
     @frame_idx.setter
     def frame_idx(self, frame_idx):
         self.__frame_idx = frame_idx
+
+    @property
+    def is_even_number(self):
+        return self.__is_even_number
+
+    @is_even_number.setter
+    def is_even_number(self, is_even_number):
+        self.__is_even_number = is_even_number
 
     def _debug_dump_param(self):
         for key, value in self.__dict__.items():
@@ -544,32 +500,6 @@ class BackgroundImage():
         pos_v = self.limited_range_ed_pos_v + temp - height // 2
         tpg.merge(self.img, img, ((pos_h & 0xFFFE) + 1, (pos_v & 0xFFFE) + 1))
 
-    def draw_low_level_color_patch(self):
-        outmost_num = 5
-        total_width = self.lab_patch_each_size * outmost_num
-        total_height = total_width
-        img = np.zeros((total_height, total_width, 3))
-        rgb = tpg.calc_same_lstar_radial_color_patch_data(
-            lstar=7.0, chroma=CHROMA_MAX_07_00, outmost_num=outmost_num,
-            color_space=RGB_COLOURSPACES[self.gamut],
-            transfer_function=self.transfer_function)
-
-        for idx in range(outmost_num ** 2):
-            h_idx = idx % outmost_num
-            v_idx = idx // outmost_num
-            st_pos = (h_idx * self.lab_patch_each_size,
-                      v_idx * self.lab_patch_each_size)
-            temp_img = np.ones((self.lab_patch_each_size,
-                                self.lab_patch_each_size, 3))\
-                * rgb[idx][np.newaxis, np.newaxis, :]
-            tpg.merge(img, temp_img, st_pos)
-
-        pos_h = self.ramp_pos_h // 2 - total_width // 2
-        temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
-        pos_v = self.limited_range_ed_pos_v + temp - total_height // 2
-        pos = (pos_h, pos_v)
-        tpg.merge(self.img, img, pos)
-
     def make(self):
         """
         背景画像を生成する
@@ -585,8 +515,6 @@ class BackgroundImage():
         self.draw_information()
         self.draw_limited_range_text()
         self.draw_dot_dropped_text()
-        self.draw_low_level_color_patch()
-        # self.draw_low_level_color_patch(l_val=10)
 
         # tpg.preview_image(self.img)
 
