@@ -141,7 +141,7 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     info_text_font_size=25,
     limited_text_font_size=96,
     crosshatch_size=128,
-    dot_dropped_text_size=132,
+    dot_dropped_text_size=120,
     lab_patch_each_size=48
 )
 
@@ -295,6 +295,8 @@ def make_countdown_movie(
             args.append(d)
             composite_sequence(**d)
             counter += 1
+            break
+        break
         # with Pool(cpu_count()) as pool:
         #     pool.map(thread_wrapper_composite_sequence, args)
 

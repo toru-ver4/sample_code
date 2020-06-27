@@ -435,6 +435,9 @@ class BackgroundImage():
         self.limited_range_ed_pos_v = st_pos_v + height
         self.limited_range_high_center_pos_h\
             = self.width - st_pos_h - width // 2
+        self.limited_range_high_st_pos_h = self.width - st_pos_h - width
+        self.limited_range_high_ed_pos_h\
+            = self.limited_range_high_st_pos_h + width
 
     def draw_crosshatch(self):
         st_pos_v = self.height // 2
@@ -465,40 +468,59 @@ class BackgroundImage():
                 self.crosshatch_color, 1)
 
     def draw_dot_dropped_text(self):
-        # テキストを収める箱を作る
+        """
+        Make the Dot-Dropped pattern.
+        This is used to distinguish if it is 4:4:4 or 4:2:2 or 4:2:0.
+        """
+        texts = ["W", "Y", "C", "G", "M", "R", "B"]
+        text_colors = np.array(
+            [[1., 1., 1.], [1., 1., 0.], [0., 1., 1.],
+             [0., 1., 0.], [1., 0., 1.], [1., 0., 0.], [0, 0, 1.]])
+
         text_width, text_height = self.get_text_size(
             text="R", font_size=self.dot_dropped_text_size,
             font_path=self.limited_text_font_path)
-        padding = text_height // 6
-        width = text_width * 2 + padding * 3
-        height = text_height * 2 + padding * 3
-        img = np.ones((height, width, 3)) * self.obj_outline_color
-
-        texts = ["W", "R", "G", "M"]
-        text_colors = np.array(
-            [[1.0, 1.0, 1.0], [1.0, 0.0, 0.0],
-             [0.0, 1.0, 0.0], [1.0, 0.0, 1.0]])
+        padding_factor = 6
+        padding = ((text_height // padding_factor) // 2) * 2
+        width = text_width + padding * 2
+        height = text_height * len(texts) + padding * (len(texts) + 1)
+        img_even = np.ones((height, width, 3)) * self.bg_color / 2
+        img_odd = np.ones_like(img_even) * self.bg_color / 2
 
         # テキスト描画
         for idx in range(len(texts)):
             text = texts[idx]
             text_color = text_colors[idx]
-            pos_h = padding + (padding + text_width) * (idx % 2)
-            pos_v = padding + (padding + text_height) * (idx // 2)
-            text_drawer = TextDrawer(
-                img, text=text, pos=(pos_h, pos_v),
+            pos_h = padding
+            pos_v = padding + (padding + text_height) * idx
+            text_drawer_even = TextDrawer(
+                img_even, text=text, pos=(pos_h, pos_v),
                 font_color=text_color,
                 font_size=self.dot_dropped_text_size,
                 bg_transfer_functions=self.transfer_function,
                 fg_transfer_functions=self.transfer_function,
                 font_path=self.limited_text_font_path)
-            text_drawer.draw_with_dropped_dot(dot_factor=2)
+            text_drawer_even.draw_with_dropped_dot(dot_factor=3)
+
+            text_drawer_odd = TextDrawer(
+                img_odd, text=text, pos=(pos_h, pos_v),
+                font_color=text_color,
+                font_size=self.dot_dropped_text_size,
+                bg_transfer_functions=self.transfer_function,
+                fg_transfer_functions=self.transfer_function,
+                font_path=self.limited_text_font_path)
+            text_drawer_odd.draw_with_dropped_dot(dot_factor=3, offset=(1, 1))
 
         # 背景画像と合成
-        pos_h = self.limited_range_high_center_pos_h - width // 2
         temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
-        pos_v = self.limited_range_ed_pos_v + temp - height // 2
-        tpg.merge(self.img, img, ((pos_h & 0xFFFE) + 1, (pos_v & 0xFFFE) + 1))
+        pos_v = self.limited_range_ed_pos_v + temp // 2
+
+        pos_h_even = self.limited_range_high_st_pos_h
+        tpg.merge(
+            self.img, img_even, ((pos_h_even & 0xFFFE), (pos_v & 0xFFFE)))
+        pos_h_odd = self.limited_range_high_ed_pos_h - width
+        tpg.merge(
+            self.img, img_odd, ((pos_h_odd & 0xFFFE), (pos_v & 0xFFFE)))
 
     def make(self):
         """
