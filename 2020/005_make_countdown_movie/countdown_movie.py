@@ -41,6 +41,8 @@ class BackgroundImageColorParam(NamedTuple):
     gamut: str = 'ITU-R BT.709'
     text_info_luminance: float = 50.0
     crosshatch_luminance: float = 5.0
+    checker_board_levels: list = [
+        [504, 506], [506, 508], [508, 510], [510, 512]]
 
 
 class BackgroundImageCoodinateParam(NamedTuple):
@@ -65,6 +67,7 @@ class BackgroundImageCoodinateParam(NamedTuple):
     dot_dropped_text_size: float = 100
     lab_patch_each_size: int = 32
     even_odd_info_text_size: int = 10
+    checker_board_info_text_size: int = 10
 
 
 def convert_from_pillow_to_numpy(img):
@@ -97,6 +100,7 @@ class BackgroundImage():
             color_param.text_info_luminance, self.transfer_function)
         self.crosshatch_color = tpg.convert_luminance_to_color_value(
             color_param.crosshatch_luminance, self.transfer_function)
+        self.checker_board_levels = color_param.checker_board_levels
 
         # text settings
         self.__sound_text = " "
@@ -150,6 +154,8 @@ class BackgroundImage():
             = param.lab_patch_each_size * scale_factor
         self.even_odd_info_text_size\
             = param.even_odd_info_text_size * scale_factor
+        self.checker_board_info_text_size\
+            = param.checker_board_info_text_size * scale_factor
 
     @property
     def sound_text(self):
@@ -418,6 +424,7 @@ class BackgroundImage():
         st_pos_v = self.step_ramp_pos_v + self.ramp_obj_height // 2\
             - height // 2
         tpg.merge(self.img, img, pos=(st_pos_h, st_pos_v))
+        self.limited_range_low_center_pos_h = st_pos_h + width // 2
 
         # High Level(940) の描画＆合成
         img = np.ones_like(img)
@@ -543,12 +550,13 @@ class BackgroundImage():
 
         tpg.merge(self.img, left_img, (pos_h_left_img, pos_v))
         tpg.merge(self.img, right_img, (pos_h_right_img, pos_v))
+        self.dot_drop_ed_pos_v = pos_v + right_img.shape[0]
 
         # EVEN, ODD の情報をテキストとして記述
         text_width, text_height = self.get_text_size(
             text="R", font_size=self.even_odd_info_text_size,
             font_path=self.info_text_font_path)
-        info_pos_v = int(pos_v - text_height * 4)
+        info_pos_v = int(pos_v - text_height * 3.7)
         info_left_pos_h = pos_h_left_img
         info_fight_pos_h = pos_h_right_img
 
@@ -574,6 +582,51 @@ class BackgroundImage():
         )
         text_draw_left.draw()
 
+    def draw_checker_board(self):
+        """
+        Draw the checker board to distinguish
+        if it is displayed at 10 bit depth.
+        """
+        text_width, text_height = self.get_text_size(
+            text="502 vs 504", font_size=self.checker_board_info_text_size,
+            font_path=self.info_text_font_path)
+        text_v_margin = text_height * 3
+        block_num = len(self.checker_board_levels)
+        temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
+        st_pos_v = self.limited_range_ed_pos_v + temp // 2
+        total_v = self.dot_drop_ed_pos_v - st_pos_v
+        block_height = (total_v - text_v_margin * (block_num - 1)) // block_num
+        block_width = block_height
+        st_pos_h = self.limited_range_low_center_pos_h - block_width // 2
+
+        for block_idx in range(block_num):
+            # draw checker board
+            low_level = [self.checker_board_levels[block_idx][0]
+                         for x in range(3)]
+            high_level = [self.checker_board_levels[block_idx][1]
+                          for x in range(3)]
+            checker_board_img = tpg.make_tile_pattern(
+                width=block_width, height=block_height,
+                h_tile_num=4, v_tile_num=4,
+                low_level=high_level, high_level=low_level) / 1023
+            tpg.draw_outline(checker_board_img, self.obj_outline_color, 1)
+
+            pos_v = st_pos_v + block_idx * (block_height + text_v_margin)
+            tpg.merge(self.img, checker_board_img, (st_pos_h, pos_v))
+
+            # add text
+            text_pos_v = pos_v - int(text_height * 1.5)
+            text_draw_left = TextDrawer(
+                self.img, text=f"{low_level[0]} Lv, {high_level[0]} Lv",
+                pos=(st_pos_h, text_pos_v),
+                font_color=self.text_info_color,
+                font_size=self.checker_board_info_text_size,
+                bg_transfer_functions=self.transfer_function,
+                fg_transfer_functions=self.transfer_function,
+                font_path=self.info_text_font_path
+            )
+            text_draw_left.draw()
+
     def make(self):
         """
         背景画像を生成する
@@ -589,6 +642,7 @@ class BackgroundImage():
         self.draw_information()
         self.draw_limited_range_text()
         self.draw_dot_dropped_text()
+        self.draw_checker_board()
 
         # tpg.preview_image(self.img)
 
