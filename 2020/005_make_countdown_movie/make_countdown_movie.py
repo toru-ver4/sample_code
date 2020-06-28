@@ -141,7 +141,7 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     info_text_font_size=25,
     limited_text_font_size=96,
     crosshatch_size=128,
-    dot_dropped_text_size=120,
+    dot_dropped_text_size=128,
     lab_patch_each_size=48
 )
 
