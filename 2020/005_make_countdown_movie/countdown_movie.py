@@ -64,6 +64,7 @@ class BackgroundImageCoodinateParam(NamedTuple):
     crosshatch_size: int = 128
     dot_dropped_text_size: float = 100
     lab_patch_each_size: int = 32
+    even_odd_info_text_size: int = 10
 
 
 def convert_from_pillow_to_numpy(img):
@@ -147,6 +148,8 @@ class BackgroundImage():
             = param.dot_dropped_text_size * scale_factor
         self.lab_patch_each_size\
             = param.lab_patch_each_size * scale_factor
+        self.even_odd_info_text_size\
+            = param.even_odd_info_text_size * scale_factor
 
     @property
     def sound_text(self):
@@ -476,6 +479,8 @@ class BackgroundImage():
         dot_offset = (-1, -1)
 
         texts = ["W", "Y", "C", "G", "M", "R", "B"]
+        pos_info_even = "Start with\neven numbers"
+        pos_info_odd = "Start with\nodd numbers"
         text_colors = np.array(
             [[1., 1., 1.], [1., 1., 0.], [0., 1., 1.],
              [0., 1., 0.], [1., 0., 1.], [1., 0., 0.], [0, 0, 1.]])
@@ -517,17 +522,57 @@ class BackgroundImage():
 
         # 背景画像と合成
         temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
-        pos_v = self.limited_range_ed_pos_v + temp // 2
+        pos_v = pos_mask & (self.limited_range_ed_pos_v + temp // 2)
+        pos_h_left_img =\
+            pos_mask &\
+            (self.limited_range_high_center_pos_h - drop_pixel // 2 - width)
+        pos_h_right_img =\
+            pos_mask &\
+            (self.limited_range_high_center_pos_h + drop_pixel // 2)
 
-        pos_h_even =\
-            self.limited_range_high_center_pos_h - drop_pixel // 2\
-            - width
-        tpg.merge(
-            self.img, img_even, ((pos_h_even & pos_mask), (pos_v & pos_mask)))
-        pos_h_odd =\
-            self.limited_range_high_center_pos_h + drop_pixel // 2
-        tpg.merge(
-            self.img, img_odd, ((pos_h_odd & pos_mask), (pos_v & pos_mask)))
+        if not self.is_even_number:
+            left_img = img_even
+            right_img = img_odd
+            left_info = pos_info_even
+            right_info = pos_info_odd
+        else:
+            left_img = img_odd
+            right_img = img_even
+            left_info = pos_info_odd
+            right_info = pos_info_even
+
+        tpg.merge(self.img, left_img, (pos_h_left_img, pos_v))
+        tpg.merge(self.img, right_img, (pos_h_right_img, pos_v))
+
+        # EVEN, ODD の情報をテキストとして記述
+        text_width, text_height = self.get_text_size(
+            text="R", font_size=self.even_odd_info_text_size,
+            font_path=self.info_text_font_path)
+        info_pos_v = int(pos_v - text_height * 4)
+        info_left_pos_h = pos_h_left_img
+        info_fight_pos_h = pos_h_right_img
+
+        # left
+        text_draw_left = TextDrawer(
+            self.img, text=left_info, pos=(info_left_pos_h, info_pos_v),
+            font_color=self.text_info_color,
+            font_size=self.even_odd_info_text_size,
+            bg_transfer_functions=self.transfer_function,
+            fg_transfer_functions=self.transfer_function,
+            font_path=self.info_text_font_path
+        )
+        text_draw_left.draw()
+
+        # right
+        text_draw_left = TextDrawer(
+            self.img, text=right_info, pos=(info_fight_pos_h, info_pos_v),
+            font_color=self.text_info_color,
+            font_size=self.even_odd_info_text_size,
+            bg_transfer_functions=self.transfer_function,
+            fg_transfer_functions=self.transfer_function,
+            font_path=self.info_text_font_path
+        )
+        text_draw_left.draw()
 
     def make(self):
         """

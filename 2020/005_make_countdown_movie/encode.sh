@@ -1,7 +1,8 @@
 #!/bin/sh
 
 # define
-IN_FILE="/work/overuse/2020/005_make_countdown_movie/movie_seq/movie_SDR_1920x1080_4fps_0000.png"
+# IN_FILE="/work/overuse/2020/005_make_countdown_movie/movie_seq/movie_SDR_1920x1080_4fps_0000.png"
+IN_FILE="/work/overuse/2020/005_make_countdown_movie/movie_seq/movie_SDR_3840x2160_24fps_0000.png"
 MP4_FILE_444="/work/overuse/2020/005_make_countdown_movie/ffmpeg_out/444_h264.mp4"
 MP4_FILE_422="/work/overuse/2020/005_make_countdown_movie/ffmpeg_out/422_h264.mp4"
 MP4_FILE_420="/work/overuse/2020/005_make_countdown_movie/ffmpeg_out/420_h264.mp4"

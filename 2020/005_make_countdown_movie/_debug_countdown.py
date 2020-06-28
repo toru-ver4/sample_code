@@ -44,7 +44,7 @@ def check_dot_droped_pattern():
     And check the result.
     """
     # encode
-    # subprocess.run(["./encode.sh"])
+    subprocess.run(["./encode.sh"])
 
     # extract
     for still_base_name in H264_STILS:
