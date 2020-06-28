@@ -111,7 +111,8 @@ SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
     text_info_luminance=50,
     crosshatch_luminance=28.0,
     checker_board_levels=[
-        [398, 400], [400, 402], [402, 404], [404, 406]]
+        [398, 400], [400, 402], [402, 404], [404, 406]],
+    ramp_10bit_levels=[375, 425]
 )
 
 
@@ -146,7 +147,7 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     dot_dropped_text_size=133,
     lab_patch_each_size=48,
     even_odd_info_text_size=16,
-    checker_board_info_text_size=18
+    ramp_10bit_info_text_size=22
 )
 
 

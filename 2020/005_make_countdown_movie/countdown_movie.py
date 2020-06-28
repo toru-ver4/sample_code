@@ -43,6 +43,7 @@ class BackgroundImageColorParam(NamedTuple):
     crosshatch_luminance: float = 5.0
     checker_board_levels: list = [
         [504, 506], [506, 508], [508, 510], [510, 512]]
+    ramp_10bit_levels: list = [400, 425]
 
 
 class BackgroundImageCoodinateParam(NamedTuple):
@@ -67,7 +68,8 @@ class BackgroundImageCoodinateParam(NamedTuple):
     dot_dropped_text_size: float = 100
     lab_patch_each_size: int = 32
     even_odd_info_text_size: int = 10
-    checker_board_info_text_size: int = 10
+    ramp_10bit_info_text_size: int = 10
+    tp_obj_outline_width: int = 1
 
 
 def convert_from_pillow_to_numpy(img):
@@ -101,6 +103,7 @@ class BackgroundImage():
         self.crosshatch_color = tpg.convert_luminance_to_color_value(
             color_param.crosshatch_luminance, self.transfer_function)
         self.checker_board_levels = color_param.checker_board_levels
+        self.ramp_10bit_levels = color_param.ramp_10bit_levels
 
         # text settings
         self.__sound_text = " "
@@ -154,8 +157,10 @@ class BackgroundImage():
             = param.lab_patch_each_size * scale_factor
         self.even_odd_info_text_size\
             = param.even_odd_info_text_size * scale_factor
-        self.checker_board_info_text_size\
-            = param.checker_board_info_text_size * scale_factor
+        self.ramp_10bit_info_text_size\
+            = param.ramp_10bit_info_text_size * scale_factor
+        self.tp_obj_outline_width\
+            = param.tp_obj_outline_width * scale_factor
 
     @property
     def sound_text(self):
@@ -498,6 +503,7 @@ class BackgroundImage():
         padding_factor = 6
         padding = ((text_height // padding_factor) // drop_pixel) * drop_pixel
         width = text_width + padding * 2
+        self.dot_drop_width = width
         height = text_height * len(texts) + padding * (len(texts) + 1)
         img_even = np.ones((height, width, 3)) * self.bg_color / 2
         img_odd = np.ones_like(img_even) * self.bg_color / 2
@@ -588,7 +594,7 @@ class BackgroundImage():
         if it is displayed at 10 bit depth.
         """
         text_width, text_height = self.get_text_size(
-            text="502 vs 504", font_size=self.checker_board_info_text_size,
+            text="502 vs 504", font_size=self.ramp_10bit_info_text_size,
             font_path=self.info_text_font_path)
         text_v_margin = text_height * 3
         block_num = len(self.checker_board_levels)
@@ -620,12 +626,71 @@ class BackgroundImage():
                 self.img, text=f"{low_level[0]} Lv, {high_level[0]} Lv",
                 pos=(st_pos_h, text_pos_v),
                 font_color=self.text_info_color,
-                font_size=self.checker_board_info_text_size,
+                font_size=self.ramp_10bit_info_text_size,
                 bg_transfer_functions=self.transfer_function,
                 fg_transfer_functions=self.transfer_function,
                 font_path=self.info_text_font_path
             )
             text_draw_left.draw()
+
+    def draw_10bit_v_ramp(self):
+        """
+        Draw the ramp pattern to distinguish
+        if it is displayed at 10 bit depth.
+        """
+        temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
+        st_pos_v = self.limited_range_ed_pos_v + temp // 2
+        width = int(self.dot_drop_width * 1.5)
+        height = self.dot_drop_ed_pos_v - st_pos_v
+        pos_h_left_img = self.limited_range_low_center_pos_h - width\
+            - self.tp_obj_outline_width
+        pos_h_right_img = self.limited_range_low_center_pos_h\
+            + self.tp_obj_outline_width
+
+        grad = np.linspace(self.ramp_10bit_levels[0], self.ramp_10bit_levels[1], height)
+        grad = np.dstack((grad, grad, grad)).reshape((height, 1, 3))
+        ramp_base = np.ones((height, width, 3)) * grad
+        ramp_10bit = np.uint16(np.round(ramp_base)) / 1023
+        ramp_8bit = (np.uint16(np.round(ramp_base)) & 0x03FC) / 1023
+        tpg.draw_outline(
+            ramp_10bit, self.obj_outline_color, self.tp_obj_outline_width)
+        tpg.draw_outline(
+            ramp_8bit, self.obj_outline_color, self.tp_obj_outline_width)
+
+        tpg.merge(self.img, ramp_8bit, (pos_h_left_img, st_pos_v))
+        tpg.merge(self.img, ramp_10bit, (pos_h_right_img, st_pos_v))
+
+        # 8bit, 10bit の情報をテキストとして記述
+        text_width, text_height = self.get_text_size(
+            text="10bit", font_size=self.ramp_10bit_info_text_size,
+            font_path=self.info_text_font_path)
+        info_pos_v = int(st_pos_v - text_height * 1.3)
+        info_left_pos_h = pos_h_left_img
+        info_fight_pos_h = pos_h_right_img
+
+        # left
+        text_draw_left = TextDrawer(
+            self.img, text="8bit",
+            pos=(info_left_pos_h, info_pos_v),
+            font_color=self.text_info_color,
+            font_size=self.ramp_10bit_info_text_size,
+            bg_transfer_functions=self.transfer_function,
+            fg_transfer_functions=self.transfer_function,
+            font_path=self.info_text_font_path
+        )
+        text_draw_left.draw()
+
+        # right
+        text_draw_left = TextDrawer(
+            self.img, text="10bit",
+            pos=(info_fight_pos_h, info_pos_v),
+            font_color=self.text_info_color,
+            font_size=self.ramp_10bit_info_text_size,
+            bg_transfer_functions=self.transfer_function,
+            fg_transfer_functions=self.transfer_function,
+            font_path=self.info_text_font_path
+        )
+        text_draw_left.draw()
 
     def make(self):
         """
@@ -642,7 +707,8 @@ class BackgroundImage():
         self.draw_information()
         self.draw_limited_range_text()
         self.draw_dot_dropped_text()
-        self.draw_checker_board()
+        # self.draw_checker_board()
+        self.draw_10bit_v_ramp()
 
         # tpg.preview_image(self.img)
 
