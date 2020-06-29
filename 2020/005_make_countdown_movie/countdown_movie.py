@@ -588,13 +588,13 @@ class BackgroundImage():
         )
         text_draw_left.draw()
 
-    def draw_checker_board(self):
+    def draw_10bit_detection(self):
         """
         Draw the checker board to distinguish
         if it is displayed at 10 bit depth.
         """
         text_width, text_height = self.get_text_size(
-            text="502 vs 504", font_size=self.ramp_10bit_info_text_size,
+            text="10bit", font_size=self.ramp_10bit_info_text_size,
             font_path=self.info_text_font_path)
         text_v_margin = text_height * 3
         block_num = len(self.checker_board_levels)
@@ -638,59 +638,51 @@ class BackgroundImage():
         Draw the ramp pattern to distinguish
         if it is displayed at 10 bit depth.
         """
+        if not self.is_even_number:
+            bit_depth_list = [6, 8, 10]
+        else:
+            bit_depth_list = [6, 10, 8]
+        mask_list = [0x10000 - (2 ** (10 - x)) for x in bit_depth_list]
+
         temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
         st_pos_v = self.limited_range_ed_pos_v + temp // 2
-        width = int(self.dot_drop_width * 1.5)
+        total_width = int(self.dot_drop_width * 3)
+        width = total_width\
+            - self.tp_obj_outline_width * 2 * (len(bit_depth_list) - 1)
+        width = width // len(bit_depth_list)
+        width_with_margin = width + self.tp_obj_outline_width * 2
         height = self.dot_drop_ed_pos_v - st_pos_v
-        pos_h_left_img = self.limited_range_low_center_pos_h - width\
-            - self.tp_obj_outline_width
-        pos_h_right_img = self.limited_range_low_center_pos_h\
-            + self.tp_obj_outline_width
+        pos_st_h_base = self.limited_range_low_center_pos_h - total_width // 2
 
-        grad = np.linspace(self.ramp_10bit_levels[0], self.ramp_10bit_levels[1], height)
+        grad = np.linspace(
+            self.ramp_10bit_levels[0], self.ramp_10bit_levels[1], height)
         grad = np.dstack((grad, grad, grad)).reshape((height, 1, 3))
         ramp_base = np.ones((height, width, 3)) * grad
-        ramp_10bit = np.uint16(np.round(ramp_base)) / 1023
-        ramp_8bit = (np.uint16(np.round(ramp_base)) & 0x03FC) / 1023
-        tpg.draw_outline(
-            ramp_10bit, self.obj_outline_color, self.tp_obj_outline_width)
-        tpg.draw_outline(
-            ramp_8bit, self.obj_outline_color, self.tp_obj_outline_width)
 
-        tpg.merge(self.img, ramp_8bit, (pos_h_left_img, st_pos_v))
-        tpg.merge(self.img, ramp_10bit, (pos_h_right_img, st_pos_v))
-
-        # 8bit, 10bit の情報をテキストとして記述
         text_width, text_height = self.get_text_size(
             text="10bit", font_size=self.ramp_10bit_info_text_size,
             font_path=self.info_text_font_path)
         info_pos_v = int(st_pos_v - text_height * 1.3)
-        info_left_pos_h = pos_h_left_img
-        info_fight_pos_h = pos_h_right_img
 
-        # left
-        text_draw_left = TextDrawer(
-            self.img, text="8bit",
-            pos=(info_left_pos_h, info_pos_v),
-            font_color=self.text_info_color,
-            font_size=self.ramp_10bit_info_text_size,
-            bg_transfer_functions=self.transfer_function,
-            fg_transfer_functions=self.transfer_function,
-            font_path=self.info_text_font_path
-        )
-        text_draw_left.draw()
+        for idx in range(len(mask_list)):
+            ramp_xx_bit = (np.uint16(ramp_base) & mask_list[idx]) / 1023
+            tpg.draw_outline(
+                ramp_xx_bit, self.obj_outline_color, self.tp_obj_outline_width)
+            pos_st_h = pos_st_h_base + width_with_margin * idx
+            tpg.merge(self.img, ramp_xx_bit, (pos_st_h, st_pos_v))
 
-        # right
-        text_draw_left = TextDrawer(
-            self.img, text="10bit",
-            pos=(info_fight_pos_h, info_pos_v),
-            font_color=self.text_info_color,
-            font_size=self.ramp_10bit_info_text_size,
-            bg_transfer_functions=self.transfer_function,
-            fg_transfer_functions=self.transfer_function,
-            font_path=self.info_text_font_path
-        )
-        text_draw_left.draw()
+            # 8bit, 10bit の情報をテキストとして記述
+
+            text_draw_left = TextDrawer(
+                self.img, text=f"{bit_depth_list[idx]}bit",
+                pos=(pos_st_h, info_pos_v),
+                font_color=self.text_info_color,
+                font_size=self.ramp_10bit_info_text_size,
+                bg_transfer_functions=self.transfer_function,
+                fg_transfer_functions=self.transfer_function,
+                font_path=self.info_text_font_path
+            )
+            text_draw_left.draw()
 
     def make(self):
         """
@@ -707,7 +699,7 @@ class BackgroundImage():
         self.draw_information()
         self.draw_limited_range_text()
         self.draw_dot_dropped_text()
-        # self.draw_checker_board()
+        # self.draw_10bit_detection()
         self.draw_10bit_v_ramp()
 
         # tpg.preview_image(self.img)

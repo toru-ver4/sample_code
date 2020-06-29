@@ -112,7 +112,7 @@ SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
     crosshatch_luminance=28.0,
     checker_board_levels=[
         [398, 400], [400, 402], [402, 404], [404, 406]],
-    ramp_10bit_levels=[375, 425]
+    ramp_10bit_levels=[384, 448]
 )
 
 
@@ -298,12 +298,10 @@ def make_countdown_movie(
                 bg_image=bg_image, merge_st_pos=merge_st_pos,
                 dynamic_range=dynamic_range)
             args.append(d)
-            composite_sequence(**d)
+            # composite_sequence(**d)
             counter += 1
-            break
-        break
-        # with Pool(cpu_count()) as pool:
-        #     pool.map(thread_wrapper_composite_sequence, args)
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_composite_sequence, args)
 
 
 def make_sequence():
@@ -313,7 +311,7 @@ def make_sequence():
     # cd_coordinate_param_list = [
     #     COUNTDOWN_COORDINATE_PARAM_24P, COUNTDOWN_COORDINATE_PARAM_60P]
     cd_coordinate_param_list = [COUNTDOWN_COORDINATE_PARAM_24P]
-    for scale_factor in [1]:
+    for scale_factor in [1, 2]:
         for cd_coordinate_param in cd_coordinate_param_list:
             make_countdown_movie(
                 bg_color_param=SDR_BG_COLOR_PARAM,
