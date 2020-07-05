@@ -112,7 +112,8 @@ SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
     crosshatch_luminance=28.0,
     checker_board_levels=[
         [398, 400], [400, 402], [402, 404], [404, 406]],
-    ramp_10bit_levels=[384, 448]
+    ramp_10bit_levels=[384, 448],
+    dot_droped_luminance=90.0
 )
 
 
@@ -125,7 +126,9 @@ HDR_BG_COLOR_PARAM = BackgroundImageColorParam(
     step_ramp_code_values=([x * 64 for x in range(16)] + [1023]),
     gamut='ITU-R BT.2020',
     text_info_luminance=50,
-    crosshatch_luminance=28.0
+    crosshatch_luminance=28.0,
+    ramp_10bit_levels=[384, 448],
+    dot_droped_luminance=90.0
 )
 
 
@@ -173,6 +176,17 @@ COUNTDOWN_COORDINATE_PARAM_24P = CountDownImageCoordinateParam(
     radius3=313,
     radius4=315,
     fps=24,
+    crosscross_line_width=4,
+    font_size=570,
+    font_path=NOTO_SANS_MONO_EX_BOLD
+)
+
+COUNTDOWN_COORDINATE_PARAM_30P = CountDownImageCoordinateParam(
+    radius1=360,
+    radius2=320,
+    radius3=313,
+    radius4=315,
+    fps=30,
     crosscross_line_width=4,
     font_size=570,
     font_path=NOTO_SANS_MONO_EX_BOLD
@@ -308,9 +322,11 @@ def make_sequence():
     """
     Make the multiple types of sequence files at a time.
     """
-    # cd_coordinate_param_list = [
-    #     COUNTDOWN_COORDINATE_PARAM_24P, COUNTDOWN_COORDINATE_PARAM_60P]
-    cd_coordinate_param_list = [COUNTDOWN_COORDINATE_PARAM_24P]
+    cd_coordinate_param_list = [
+        COUNTDOWN_COORDINATE_PARAM_24P,
+        COUNTDOWN_COORDINATE_PARAM_30P,
+        COUNTDOWN_COORDINATE_PARAM_60P]
+    # cd_coordinate_param_list = [COUNTDOWN_COORDINATE_PARAM_04P]
     for scale_factor in [1, 2]:
         for cd_coordinate_param in cd_coordinate_param_list:
             make_countdown_movie(
@@ -320,14 +336,14 @@ def make_sequence():
                 bg_coordinate_param=BG_COODINATE_PARAM,
                 cd_coordinate_param=cd_coordinate_param,
                 scale_factor=scale_factor)
-            # make_countdown_movie(
-            #     bg_color_param=HDR_BG_COLOR_PARAM,
-            #     cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
-            #     dynamic_range='HDR',
-            #     bg_coordinate_param=BG_COODINATE_PARAM,
-            #     cd_coordinate_param=cd_coordinate_param,
-            #     scale_factor=scale_factor)
-        # make_countdown_sound()
+            make_countdown_movie(
+                bg_color_param=HDR_BG_COLOR_PARAM,
+                cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
+                dynamic_range='HDR',
+                bg_coordinate_param=BG_COODINATE_PARAM,
+                cd_coordinate_param=cd_coordinate_param,
+                scale_factor=scale_factor)
+        make_countdown_sound()
 
 
 if __name__ == '__main__':

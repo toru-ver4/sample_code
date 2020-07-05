@@ -33,9 +33,9 @@ H264_STILS = [
     "444_ProRes_stil_0001.png"]
 
 EXTRACT_ST_POS_H = 1592
-EXTRACT_ST_POS_V = 244
-EXTRACT_ED_POS_H = 1801
-EXTRACT_ED_POS_V = 977
+EXTRACT_ST_POS_V = 570
+EXTRACT_ED_POS_H = EXTRACT_ST_POS_H + 212
+EXTRACT_ED_POS_V = EXTRACT_ST_POS_V + 320
 
 
 def check_dot_droped_pattern():
@@ -56,7 +56,7 @@ def check_dot_droped_pattern():
             EXTRACT_ST_POS_V:EXTRACT_ED_POS_V,
             EXTRACT_ST_POS_H:EXTRACT_ED_POS_H]
         out_img = cv2.resize(
-            out_img, None, fx=2, fy=2, interpolation=cv2.INTER_NEAREST)
+            out_img, None, fx=4, fy=4, interpolation=cv2.INTER_NEAREST)
         cv2.imwrite(out_fname, out_img)
 
 

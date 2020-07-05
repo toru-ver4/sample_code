@@ -44,6 +44,7 @@ class BackgroundImageColorParam(NamedTuple):
     checker_board_levels: list = [
         [504, 506], [506, 508], [508, 510], [510, 512]]
     ramp_10bit_levels: list = [400, 425]
+    dot_droped_luminance: float = 90.0
 
 
 class BackgroundImageCoodinateParam(NamedTuple):
@@ -104,6 +105,8 @@ class BackgroundImage():
             color_param.crosshatch_luminance, self.transfer_function)
         self.checker_board_levels = color_param.checker_board_levels
         self.ramp_10bit_levels = color_param.ramp_10bit_levels
+        self.dot_droped_code_value = tpg.convert_luminance_to_code_value(
+            color_param.dot_droped_luminance, self.transfer_function)
 
         # text settings
         self.__sound_text = " "
@@ -495,7 +498,8 @@ class BackgroundImage():
         pos_info_odd = "Start with\nodd numbers"
         text_colors = np.array(
             [[1., 1., 1.], [1., 1., 0.], [0., 1., 1.],
-             [0., 1., 0.], [1., 0., 1.], [1., 0., 0.], [0, 0, 1.]])
+             [0., 1., 0.], [1., 0., 1.], [1., 0., 0.], [0, 0, 1.]])\
+            * self.dot_droped_code_value
 
         text_width, text_height = self.get_text_size(
             text="R", font_size=self.dot_dropped_text_size,
