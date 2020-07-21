@@ -87,9 +87,9 @@ def make_control_layout_frame():
           change_submits=True, key=kns.cross_talk_sigma_slider,
           default_value=0.5, resolution=0.01)],
          [sg.Text("k1:", size=PARAM_TEXT_SIZE, justification='r'),
-          sg.Spin([size/100 for size in range(50, 100)], initial_value=0.8,
+          sg.Spin([size/100 for size in range(10, 100)], initial_value=0.8,
           change_submits=True, key=kns.k1_spin, size=(5, 1)),
-          sg.Slider(range=(0.5, 1.0), orientation='h', size=(20, 10),
+          sg.Slider(range=(0.1, 1.0), orientation='h', size=(20, 10),
           change_submits=True, key=kns.k1_slider,
           default_value=0.8, resolution=0.01)],
          [sg.Text("k3:", size=PARAM_TEXT_SIZE, justification='r'),
@@ -189,5 +189,5 @@ def main_func():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    make_dpi_aware()
+    # make_dpi_aware()
     main_func()

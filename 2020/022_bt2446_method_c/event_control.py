@@ -16,6 +16,7 @@ import numpy as np
 from key_names import KeyNames
 import bt2446_method_c as bmc
 import bt2446_plot as btp
+import transfer_functions as tf
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -39,7 +40,7 @@ class EventControl():
         self.fig_agg = fig_agg
         self.tonecurve = ax_lines[0]
         self.hdr_ip_line = ax_lines[1]
-        self.hdr_ref_line = ax_lines[2],
+        self.hdr_ref_line = ax_lines[2]
         self.handler = {
             kns.hdr_ref_white_spin: self.update_hdr_ref_white_by_spin,
             kns.hdr_ref_white_slider: self.update_hdr_ref_white_by_slider,
@@ -67,7 +68,7 @@ class EventControl():
         k3 = values[kns.k3_slider]
         y_sdr_ip = values[kns.sdr_ip_slider]
         y_hdr_ref = values[kns.hdr_ref_white_slider]
-        x = np.linspace(0, 10000, 1024)
+        x = tf.eotf_to_luminance(np.linspace(0, 1, 1024), tf.ST2084)
         y = bmc.bt2446_method_c_tonemapping_core(
             x, k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=y_hdr_ref)
         y_hdr_ip, y_sdr_wp, k2, k4 = bmc.calc_tonemapping_parameters(

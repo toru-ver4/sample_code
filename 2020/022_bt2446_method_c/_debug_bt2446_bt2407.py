@@ -15,6 +15,7 @@ import numpy as np
 import cv2
 from colour import RGB_to_XYZ, XYZ_to_RGB, RGB_COLOURSPACES,\
     XYZ_to_Lab, Lab_to_LCHab, LCHab_to_Lab, Lab_to_XYZ, XYZ_to_xyY, xyY_to_XYZ
+from colour import read_LUT
 from colour.models import BT2020_COLOURSPACE
 import matplotlib.pyplot as plt
 
@@ -60,8 +61,23 @@ def main_func():
     tpg.preview_image(sdr_709_liner ** (1/2.4))
 
 
+def get_youtube_tonemap_line():
+    x_pq = np.linspace(0, 1, 1024)
+    x_img = np.dstack([x_pq, x_pq, x_pq])
+    lut3d = read_LUT("./luts/HDR10_to_BT709_YouTube_Rev03.cube")
+    y = lut3d.apply(x_img)
+
+    plt.plot(x_pq, y[..., 1].flatten())
+    x = tf.eotf_to_luminance(x_pq, tf.ST2084)
+    y = tf.eotf_to_luminance(y[..., 1].flatten(), tf.GAMMA24)
+    out_data = np.dstack((x, y)).reshape((1024, 2))
+    print(out_data)
+    np.save("./youtube.npy", out_data)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    make_dpi_aware()
+    # make_dpi_aware()
     # mbl.make_bt2020_to_bt709_luts()
-    main_func()
+    # main_func()
+    get_youtube_tonemap_line()
