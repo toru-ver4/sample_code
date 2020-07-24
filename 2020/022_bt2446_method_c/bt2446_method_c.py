@@ -310,9 +310,10 @@ def bt2446_method_c_tonemapping(
 
     Parameters
     ----------
-    img : array_like
+    img : ndarray
         hdr linear image data.
-        img is should be linear. the unit of the img should be nits.
+        img is should be linear. the range is 0.0 - 1.0.
+        1.0 is corresponds to 10000 nits.
     src_color_space_name : str
         the name of the color space of the src image.
     tfc : str
@@ -337,7 +338,7 @@ def bt2446_method_c_tonemapping(
 
     Returns
     -------
-    array_like
+    ndarray
         sdr linear data. data range is 0.0 -- 1.0.
     """
     img_desturated = apply_cross_talk_matrix(img=img, alpha=alpha)
@@ -373,5 +374,5 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     experimental_func(
         src_color_space_name=cs.BT2020, tfc=tf.ST2084,
-        alpha=0.15, sigma=0.5, hdr_ref_luminance=203, hdr_peak_luminance=1000,
+        alpha=0.05, sigma=0.5, hdr_ref_luminance=203, hdr_peak_luminance=1000,
         k1=0.89, k3=0.72, y_sdr_ip=45)

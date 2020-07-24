@@ -11,6 +11,7 @@ import os
 # import third-party libraries
 import cv2
 import numpy as np
+from colour import write_LUT, LUT3D
 
 # import my libraries
 from key_names import KeyNames
@@ -150,8 +151,48 @@ class ImageProcessing():
         return sdr_img_linear
 
 
+def make_3dlut(
+        src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+        alpha=0.15, sigma=0.5, gamma=2.4,
+        hdr_ref_luminance=203, hdr_peak_luminance=1000,
+        k1=0.8, k3=0.7, y_sdr_ip=60, bt2407_gamut_mapping=True,
+        grid_num=65):
+    x = LUT3D.linear_table(grid_num).reshape((1, grid_num ** 3, 3))
+    print(x.shape)
+    x_linear = tf.eotf(x, tf.ST2084)
+    sdr_img_linear = bmc.bt2446_method_c_tonemapping(
+         img=x_linear,
+         src_color_space_name=src_color_space_name,
+         tfc=tfc, alpha=alpha, sigma=sigma,
+         hdr_ref_luminance=hdr_ref_luminance,
+         hdr_peak_luminance=hdr_peak_luminance,
+         k1=k1, k3=k3, y_sdr_ip=y_sdr_ip)
+    if bt2407_gamut_mapping:
+        sdr_img_linear = bgm.bt2407_gamut_mapping_for_rgb_linear(
+            rgb_linear=sdr_img_linear,
+            outer_color_space_name=cs.BT2020,
+            inner_color_space_name=cs.BT709)
+    sdr_img_nonlinear = sdr_img_linear ** (1/gamma)
+    sdr_img_nonlinear = sdr_img_nonlinear.reshape(
+        ((grid_num, grid_num, grid_num, 3)))
+    print(sdr_img_nonlinear.shape)
+
+    lut_name = "ty tone mapping"
+    lut3d = LUT3D(table=sdr_img_nonlinear, name=lut_name)
+
+    file_name = f"./3DLUT/a_{alpha:.2f}_s_{sigma:.2f}_k1_{k1:.2f}_"\
+        + f"k3_{k3:.2f}_y_s_{y_sdr_ip}_grid_{grid_num}_gamma_{gamma:.1f}.cube"
+    write_LUT(lut3d, file_name)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # im_pro = ImageProcessing()
     # im_pro.read_and_concat_img()
     # im_pro.apply_colormap(im_pro.raw_img, 4000)
+    make_3dlut(
+        src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+        alpha=0.10, sigma=0.6, gamma=2.6,
+        hdr_ref_luminance=203, hdr_peak_luminance=1000,
+        k1=0.51, k3=0.75, y_sdr_ip=51.1, bt2407_gamut_mapping=True,
+        grid_num=65)

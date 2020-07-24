@@ -7,26 +7,19 @@ debug
 
 # import standard libraries
 import os
-import ctypes
-import platform
 
 # import third-party libraries
 import numpy as np
 import cv2
-from colour import RGB_to_XYZ, XYZ_to_RGB, RGB_COLOURSPACES,\
-    XYZ_to_Lab, Lab_to_LCHab, LCHab_to_Lab, Lab_to_XYZ, XYZ_to_xyY, xyY_to_XYZ
-from colour import read_LUT
-from colour.models import BT2020_COLOURSPACE
+from colour import read_LUT, write_LUT, LUT3D
 import matplotlib.pyplot as plt
 
 # import my libraries
 import transfer_functions as tf
 import test_pattern_generator2 as tpg
 import color_space as cs
-import plot_utility as pu
 import bt2446_method_c as bmc
 import bt2047_gamut_mapping as bgm
-import make_bt2047_luts as mbl
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -38,12 +31,23 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-def make_dpi_aware():
+def img_file_read(filename):
     """
-    https://github.com/PySimpleGUI/PySimpleGUI/issues/1179
+    OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
     """
-    if int(platform.release()) >= 8:
-        ctypes.windll.shcore.SetProcessDpiAwareness(True)
+    img = cv2.imread(filename, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)
+
+    if img is not None:
+        return img[:, :, ::-1]
+    else:
+        return img
+
+
+def img_file_write(filename, img):
+    """
+    OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
+    """
+    cv2.imwrite(filename, img[:, :, ::-1])
 
 
 def main_func():
@@ -75,9 +79,42 @@ def get_youtube_tonemap_line():
     np.save("./youtube.npy", out_data)
 
 
+def apply_bt2446_bt2407(
+        src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+        alpha=0.15, sigma=0.5,
+        hdr_ref_luminance=203, hdr_peak_luminance=1000,
+        k1=0.8, k3=0.7, y_sdr_ip=60, bt2407_gamut_mapping=True):
+
+    img = img_file_read("./_debug_img/SMPTE ST2084_ITU-R BT.2020_D65_1920x1080_rev04_type1.tiff")
+    x_linear = tf.eotf(img / 0xFFFF, tf.ST2084)
+    sdr_img_linear = bmc.bt2446_method_c_tonemapping(
+         img=x_linear,
+         src_color_space_name=src_color_space_name,
+         tfc=tfc, alpha=alpha, sigma=sigma,
+         hdr_ref_luminance=hdr_ref_luminance,
+         hdr_peak_luminance=hdr_peak_luminance,
+         k1=k1, k3=k3, y_sdr_ip=y_sdr_ip)
+    if bt2407_gamut_mapping:
+        sdr_img_linear = bgm.bt2407_gamut_mapping_for_rgb_linear(
+            rgb_linear=sdr_img_linear,
+            outer_color_space_name=cs.BT2020,
+            inner_color_space_name=cs.BT709)
+    sdr_img_nonlinear = sdr_img_linear ** (1/2.4)
+
+    out_img = np.uint16(np.round(sdr_img_nonlinear * 0xFFFF))
+    img_file_write("./_debug_img/sdr.tiff", out_img)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # make_dpi_aware()
     # mbl.make_bt2020_to_bt709_luts()
     # main_func()
-    get_youtube_tonemap_line()
+    # get_youtube_tonemap_line()
+    # apply_bt2446_bt2407(
+    #     src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+    #     alpha=0.05, sigma=0.75,
+    #     hdr_ref_luminance=203, hdr_peak_luminance=1000,
+    #     k1=0.51, k3=0.75, y_sdr_ip=51.1, bt2407_gamut_mapping=True)
+
+    lut3d = read_LUT("./3DLUT/_HDR10_to_BT709_YouTube_Rev03.cube")
+    write_LUT(lut3d, "./3DLUT/HDR10_to_BT709_YouTube_Rev03.cube")
