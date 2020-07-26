@@ -166,7 +166,7 @@ def calc_tonemapping_parameters(
 def bt2446_method_c_tonemapping_core(
         x, k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
     """
-    calculate tonemapping parameters
+    exec tone mapping.
 
     Parameters
     ----------
@@ -193,6 +193,40 @@ def bt2446_method_c_tonemapping_core(
         x < y_hdr_ip,
         x * k1,
         k2 * np.log(x / y_hdr_ip - k3) + k4)
+
+    return y
+
+
+def bt2446_method_c_inverse_tonemapping_core(
+        x, k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
+    """
+    exec inverse tone mapping
+
+    Parameters
+    ----------
+    x : array_like
+        input sdr linear data. the unit must be luminance [nits].
+    k1 : float
+        k1. the range is from 0.0 to 1.0?
+    k3 : float
+        k3. the range is from 0.0 to 1.0?
+    y_sdr_ip : float
+        luminance of the output SDR image at the inflection point.
+    y_hdr_ref : float
+        luminance of the input HDR image at the reference white.
+
+    Returns
+    -------
+    y : array_like
+        sdr linear data. the unit is luminance [nits].
+    """
+    y_hdr_ip, y_sdr_wp, k2, k4 = calc_tonemapping_parameters(
+        k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=y_hdr_ref)
+    y_hdr_ip = y_sdr_ip / k1
+    y = np.where(
+        x < y_sdr_ip,
+        x / k1,
+        y_hdr_ip * (np.exp((x - k4)/k2) + k3))
 
     return y
 
@@ -365,14 +399,33 @@ def bt2446_method_c_tonemapping(
         RGB_COLOURSPACES[src_color_space_name].XYZ_to_RGB_matrix)
     rgb_sdr_linear = apply_inverse_cross_talk_matrix(
         img=rgb_sdr_linear, alpha=alpha)
-    rgb_sdr_linear = np.clip(rgb_sdr_linear, 0.0, 1.0)
+    # rgb_sdr_linear = np.clip(rgb_sdr_linear, 0.0, 1.0)
 
     return rgb_sdr_linear
 
 
+def plot_inv_func():
+    x = np.linspace(0, 1, 64)
+    hdr_nits = tf.eotf_to_luminance(x, tf.ST2084)
+    sdr_nits = bt2446_method_c_tonemapping_core(
+        hdr_nits, k1=0.51, k3=0.75, y_sdr_ip=51.1)
+    plt.plot(hdr_nits, sdr_nits, '-o')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.show()
+
+    hdr_inv_nits = bt2446_method_c_inverse_tonemapping_core(
+        sdr_nits, k1=0.51, k3=0.75, y_sdr_ip=51.1)
+    plt.plot(hdr_nits, hdr_inv_nits, '-o')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.show()
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    experimental_func(
-        src_color_space_name=cs.BT2020, tfc=tf.ST2084,
-        alpha=0.05, sigma=0.5, hdr_ref_luminance=203, hdr_peak_luminance=1000,
-        k1=0.89, k3=0.72, y_sdr_ip=45)
+    # experimental_func(
+    #     src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+    #     alpha=0.05, sigma=0.5, hdr_ref_luminance=203, hdr_peak_luminance=1000,
+    #     k1=0.89, k3=0.72, y_sdr_ip=45)
+    plot_inv_func()
