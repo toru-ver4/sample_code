@@ -13,6 +13,7 @@ plot補助ツール群
 
 import numpy as np
 from cycler import cycler
+from matplotlib import ticker
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.ticker import AutoMinorLocator
@@ -258,6 +259,27 @@ def _check_hsv_space():
             )
         )
     plt.show()
+
+
+def log_scale_settings(ax1, grid_alpha=0.5, bg_color="#E0E0E0"):
+    """
+    https://stackoverflow.com/questions/44078409/matplotlib-semi-log-plot-minor-tick-marks-are-gone-when-range-is-large
+    """
+    # Log Scale
+    ax1.set_xscale('log', basex=10)
+    ax1.set_yscale('log', basey=10)
+    ax1.tick_params(
+        which='major', direction='in', top=True, right=True, length=8)
+    ax1.tick_params(
+        which='minor', direction='in', top=True, right=True, length=4)
+    major_locator = ticker.LogLocator(base=10, numticks=16)
+    minor_locator = ticker.LogLocator(
+        base=10, subs=[x * 0.1 for x in range(10)], numticks=16)
+    ax1.get_xaxis().set_major_locator(major_locator)
+    ax1.get_xaxis().set_minor_locator(minor_locator)
+    ax1.get_xaxis().set_major_locator(ticker.LogLocator())
+    ax1.grid(which='both', linestyle='-', alpha=grid_alpha)
+    ax1.patch.set_facecolor(bg_color)
 
 
 if __name__ == '__main__':

@@ -158,3 +158,10 @@ venv.bak/
 2020/020_explain_BT2407/luts/*.npy
 2020/021_chroma_colormap/luts/*.npy
 2020/021_chroma_colormap/3DLUT/**
+2020/022_bt2446_method_c/luts/**
+2020/022_bt2446_method_c/img/**
+2020/022_bt2446_method_c/figures/**
+2020/022_bt2446_method_c/BT2446_BT2407_HDR10_to_SDR_3DLUT/**
+2020/022_bt2446_method_c/blog_videos/**
+2020/022_bt2446_method_c/blog_img/**
+2020/022_bt2446_method_c/3DLUT/**

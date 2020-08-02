@@ -1273,15 +1273,21 @@ def draw_outline(img, fg_color, outline_width):
 
 def convert_luminance_to_color_value(luminance, transfer_function):
     """
-    輝度[cd/m2] から code value の RGB値に変換する。
-    luminance の単位は [cd/m2]。無彩色である。
+    convert from luminance [cd/m2] to rgb code values.
+
+    Parameters
+    ----------
+    lumiannce : float
+        lumiannce. the unit is cd/m2.
+    transfer_function : str
+        A transfer function's name for my "tf" module.
 
     Examples
     --------
     >>> convert_luminance_to_color_value(100, tf.GAMMA24)
-    >>> [ 1.0  1.0  1.0 ]
+    [ 1.0  1.0  1.0 ]
     >>> convert_luminance_to_color_value(100, tf.ST2084)
-    >>> [ 0.50807842  0.50807842  0.50807842 ]
+    [ 0.50807842  0.50807842  0.50807842 ]
     """
     code_value = convert_luminance_to_code_value(
         luminance, transfer_function)
@@ -1290,8 +1296,21 @@ def convert_luminance_to_color_value(luminance, transfer_function):
 
 def convert_luminance_to_code_value(luminance, transfer_function):
     """
-    輝度[cd/m2] から code value に変換する。
-    luminance の単位は [cd/m2]
+    convert from luminance [cd/m2] to code value (0.0 - 1.0).
+
+    Parameters
+    ----------
+    lumiannce : float
+        lumiannce. the unit is cd/m2.
+    transfer_function : str
+        A transfer function's name for my "tf" module.
+
+    Examples
+    --------
+    >>> convert_luminance_to_code_value(100, tf.GAMMA24)
+    1.0
+    >>> convert_luminance_to_code_value(100, tf.ST2084)
+    0.50807842
     """
     return tf.oetf_from_luminance(luminance, transfer_function)
 
@@ -1674,3 +1693,4 @@ if __name__ == '__main__':
     # print(convert_luminance_to_color_value(100, tf.ST2084))
     # print(generate_color_checker_rgb_value(target_white=[0.3127, 0.3290]))
     print(calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480)))
+    print(convert_luminance_to_code_value(100, tf.ST2084))

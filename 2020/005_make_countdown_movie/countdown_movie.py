@@ -31,58 +31,6 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-CHROMA = {'ITU-R BT.709': [0.467893566324554, 0.215787584674837,
-                           0.149781375011629, 0.208001181214428,
-                           0.139928129463102, 0.137355386982480,
-                           0.317511492648874, 0.754346115001794]}
-
-CHROMA_MAX_02_00 = 2.74710773964960
-CHROMA_MAX_03_00 = 4.12066160947440
-CHROMA_MAX_04_00 = 5.49421547929920
-CHROMA_MAX_05_00 = 6.86776934912400
-CHROMA_MAX_07_00 = 9.35495271612193
-CHROMA_MAX_10_00 = 11.7856223341119
-CHROMA_MAX_58_00 = 33.5436943355494
-
-# # L* = 0.5
-CHROMA = {
-    'ITU-R BT.709': [2.33946783162278, 1.07893792337419, 0.748906875058145,
-                     1.04000590607214, 0.699640647315515, 0.686776934912400,
-                     1.58755746324438, 3.77173057500899]}
-# L* = 1.0
-CHROMA = {
-    'ITU-R BT.709': [4.67893566324554, 2.15787584674837, 1.49781375011629,
-                     2.08001181214428, 1.39928129463102, 1.37355386982480,
-                     3.17511492648874, 7.54346115001794]}
-# L* = 2.0
-CHROMA = {
-    'ITU-R BT.709': [9.35787132649113, 4.31575169349677, 2.99562750023258,
-                     4.16002362428858, 2.79856258926206, 2.74710773964960,
-                     6.35022985297751, 15.0874246637395]}
-# L* = 3.0
-CHROMA = {
-    'ITU-R BT.709': [14.0368069897367, 6.47362754024514, 4.49344125034887,
-                     6.24003543643286, 4.19784388389309, 4.12066160947440,
-                     9.50625735073427, 22.9227504958066]}
-# L* = 4.0
-CHROMA = {
-    'ITU-R BT.709': [18.6952150995068, 8.63150338699351, 5.99125500046515,
-                     8.32004724857714, 5.59712517852411, 5.49421547929920,
-                     12.0357588702337, 31.0388478042729]}
-# # L* = 5.0
-CHROMA = {
-    'ITU-R BT.709': [22.4851328201947, 10.7893792337419, 7.48906875058145,
-                     10.4000590607214, 6.99640647315515, 6.86776934912400,
-                     13.9036573539259, 37.2973759306897]}
-
-
-# # L* = 10
-# CHROMA = {
-#     'ITU-R BT.709': [31.1134446845507, 21.6612897565317, 14.9393690072093,
-#                      20.7274414737387, 13.4941585448319, 11.7856223341119,
-#                      18.6662114728803, 51.6143768309843]}
-
-
 class BackgroundImageColorParam(NamedTuple):
     transfer_function: str = tf.GAMMA24
     bg_luminance: float = 18.0
@@ -93,6 +41,10 @@ class BackgroundImageColorParam(NamedTuple):
     gamut: str = 'ITU-R BT.709'
     text_info_luminance: float = 50.0
     crosshatch_luminance: float = 5.0
+    checker_board_levels: list = [
+        [504, 506], [506, 508], [508, 510], [510, 512]]
+    ramp_10bit_levels: list = [400, 425]
+    dot_droped_luminance: float = 90.0
 
 
 class BackgroundImageCoodinateParam(NamedTuple):
@@ -116,6 +68,9 @@ class BackgroundImageCoodinateParam(NamedTuple):
     crosshatch_size: int = 128
     dot_dropped_text_size: float = 100
     lab_patch_each_size: int = 32
+    even_odd_info_text_size: int = 10
+    ramp_10bit_info_text_size: int = 10
+    tp_obj_outline_width: int = 1
 
 
 def convert_from_pillow_to_numpy(img):
@@ -148,6 +103,10 @@ class BackgroundImage():
             color_param.text_info_luminance, self.transfer_function)
         self.crosshatch_color = tpg.convert_luminance_to_color_value(
             color_param.crosshatch_luminance, self.transfer_function)
+        self.checker_board_levels = color_param.checker_board_levels
+        self.ramp_10bit_levels = color_param.ramp_10bit_levels
+        self.dot_droped_code_value = tpg.convert_luminance_to_code_value(
+            color_param.dot_droped_luminance, self.transfer_function)
 
         # text settings
         self.__sound_text = " "
@@ -199,6 +158,12 @@ class BackgroundImage():
             = param.dot_dropped_text_size * scale_factor
         self.lab_patch_each_size\
             = param.lab_patch_each_size * scale_factor
+        self.even_odd_info_text_size\
+            = param.even_odd_info_text_size * scale_factor
+        self.ramp_10bit_info_text_size\
+            = param.ramp_10bit_info_text_size * scale_factor
+        self.tp_obj_outline_width\
+            = param.tp_obj_outline_width * scale_factor
 
     @property
     def sound_text(self):
@@ -215,6 +180,14 @@ class BackgroundImage():
     @frame_idx.setter
     def frame_idx(self, frame_idx):
         self.__frame_idx = frame_idx
+
+    @property
+    def is_even_number(self):
+        return self.__is_even_number
+
+    @is_even_number.setter
+    def is_even_number(self, is_even_number):
+        self.__is_even_number = is_even_number
 
     def _debug_dump_param(self):
         for key, value in self.__dict__.items():
@@ -442,7 +415,7 @@ class BackgroundImage():
             text=low_text, font_size=self.limited_text_font_size,
             font_path=self.limited_text_font_path)
         padding = text_height // 4
-        width = text_width + padding * 2
+        width = int(text_width + padding * 2.0)
         height = text_height + padding * 2
         img = np.zeros((height, width, 3))
 
@@ -459,6 +432,7 @@ class BackgroundImage():
         st_pos_v = self.step_ramp_pos_v + self.ramp_obj_height // 2\
             - height // 2
         tpg.merge(self.img, img, pos=(st_pos_h, st_pos_v))
+        self.limited_range_low_center_pos_h = st_pos_h + width // 2
 
         # High Level(940) の描画＆合成
         img = np.ones_like(img)
@@ -509,66 +483,210 @@ class BackgroundImage():
                 self.crosshatch_color, 1)
 
     def draw_dot_dropped_text(self):
-        # テキストを収める箱を作る
+        """
+        Make the Dot-Dropped pattern.
+        This is used to distinguish if it is 4:4:4 or 4:2:2 or 4:2:0.
+        """
+        # define
+        dot_factor = 3  # 4x4 pixel
+        drop_pixel = (2 ** dot_factor) // 2
+        pos_mask = 0x10000 - drop_pixel   # 4x4 pixel
+        dot_offset = (-1, -1)
+
+        texts = ["W", "Y", "C", "G", "M", "R", "B"]
+        pos_info_even = "Start with\neven numbers"
+        pos_info_odd = "Start with\nodd numbers"
+        text_colors = np.array(
+            [[1., 1., 1.], [1., 1., 0.], [0., 1., 1.],
+             [0., 1., 0.], [1., 0., 1.], [1., 0., 0.], [0, 0, 1.]])\
+            * self.dot_droped_code_value
+
         text_width, text_height = self.get_text_size(
             text="R", font_size=self.dot_dropped_text_size,
             font_path=self.limited_text_font_path)
-        padding = text_height // 6
-        width = text_width * 2 + padding * 3
-        height = text_height * 2 + padding * 3
-        img = np.ones((height, width, 3)) * self.obj_outline_color
-
-        texts = ["W", "R", "G", "M"]
-        text_colors = np.array(
-            [[1.0, 1.0, 1.0], [1.0, 0.0, 0.0],
-             [0.0, 1.0, 0.0], [1.0, 0.0, 1.0]])
+        padding_factor = 6
+        padding = ((text_height // padding_factor) // drop_pixel) * drop_pixel
+        width = text_width + padding * 2
+        self.dot_drop_width = width
+        height = text_height * len(texts) + padding * (len(texts) + 1)
+        img_even = np.ones((height, width, 3)) * self.bg_color / 2
+        img_odd = np.ones_like(img_even) * self.bg_color / 2
 
         # テキスト描画
         for idx in range(len(texts)):
             text = texts[idx]
             text_color = text_colors[idx]
-            pos_h = padding + (padding + text_width) * (idx % 2)
-            pos_v = padding + (padding + text_height) * (idx // 2)
-            text_drawer = TextDrawer(
-                img, text=text, pos=(pos_h, pos_v),
+            pos_h = padding
+            pos_v = pos_mask & (padding + (padding + text_height) * idx)
+            text_drawer_even = TextDrawer(
+                img_even, text=text, pos=(pos_h, pos_v),
                 font_color=text_color,
                 font_size=self.dot_dropped_text_size,
                 bg_transfer_functions=self.transfer_function,
                 fg_transfer_functions=self.transfer_function,
                 font_path=self.limited_text_font_path)
-            text_drawer.draw_with_dropped_dot(dot_factor=2)
+            text_drawer_even.draw_with_dropped_dot(dot_factor=dot_factor)
+
+            text_drawer_odd = TextDrawer(
+                img_odd, text=text, pos=(pos_h, pos_v),
+                font_color=text_color,
+                font_size=self.dot_dropped_text_size,
+                bg_transfer_functions=self.transfer_function,
+                fg_transfer_functions=self.transfer_function,
+                font_path=self.limited_text_font_path)
+            text_drawer_odd.draw_with_dropped_dot(
+                dot_factor=dot_factor, offset=dot_offset)
 
         # 背景画像と合成
-        pos_h = self.limited_range_high_center_pos_h - width // 2
         temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
-        pos_v = self.limited_range_ed_pos_v + temp - height // 2
-        tpg.merge(self.img, img, ((pos_h & 0xFFFE) + 1, (pos_v & 0xFFFE) + 1))
+        pos_v = pos_mask & (self.limited_range_ed_pos_v + temp // 2)
+        pos_h_left_img =\
+            pos_mask &\
+            (self.limited_range_high_center_pos_h - drop_pixel // 2 - width)
+        pos_h_right_img =\
+            pos_mask &\
+            (self.limited_range_high_center_pos_h + drop_pixel // 2)
 
-    def draw_low_level_color_patch(self):
-        outmost_num = 5
-        total_width = self.lab_patch_each_size * outmost_num
-        total_height = total_width
-        img = np.zeros((total_height, total_width, 3))
-        rgb = tpg.calc_same_lstar_radial_color_patch_data(
-            lstar=7.0, chroma=CHROMA_MAX_07_00, outmost_num=outmost_num,
-            color_space=RGB_COLOURSPACES[self.gamut],
-            transfer_function=self.transfer_function)
+        if not self.is_even_number:
+            left_img = img_even
+            right_img = img_odd
+            left_info = pos_info_even
+            right_info = pos_info_odd
+        else:
+            left_img = img_odd
+            right_img = img_even
+            left_info = pos_info_odd
+            right_info = pos_info_even
 
-        for idx in range(outmost_num ** 2):
-            h_idx = idx % outmost_num
-            v_idx = idx // outmost_num
-            st_pos = (h_idx * self.lab_patch_each_size,
-                      v_idx * self.lab_patch_each_size)
-            temp_img = np.ones((self.lab_patch_each_size,
-                                self.lab_patch_each_size, 3))\
-                * rgb[idx][np.newaxis, np.newaxis, :]
-            tpg.merge(img, temp_img, st_pos)
+        tpg.merge(self.img, left_img, (pos_h_left_img, pos_v))
+        tpg.merge(self.img, right_img, (pos_h_right_img, pos_v))
+        self.dot_drop_ed_pos_v = pos_v + right_img.shape[0]
 
-        pos_h = self.ramp_pos_h // 2 - total_width // 2
+        # EVEN, ODD の情報をテキストとして記述
+        text_width, text_height = self.get_text_size(
+            text="R", font_size=self.even_odd_info_text_size,
+            font_path=self.info_text_font_path)
+        info_pos_v = int(pos_v - text_height * 3.7)
+        info_left_pos_h = pos_h_left_img
+        info_fight_pos_h = pos_h_right_img
+
+        # left
+        text_draw_left = TextDrawer(
+            self.img, text=left_info, pos=(info_left_pos_h, info_pos_v),
+            font_color=self.text_info_color,
+            font_size=self.even_odd_info_text_size,
+            bg_transfer_functions=self.transfer_function,
+            fg_transfer_functions=self.transfer_function,
+            font_path=self.info_text_font_path
+        )
+        text_draw_left.draw()
+
+        # right
+        text_draw_left = TextDrawer(
+            self.img, text=right_info, pos=(info_fight_pos_h, info_pos_v),
+            font_color=self.text_info_color,
+            font_size=self.even_odd_info_text_size,
+            bg_transfer_functions=self.transfer_function,
+            fg_transfer_functions=self.transfer_function,
+            font_path=self.info_text_font_path
+        )
+        text_draw_left.draw()
+
+    def draw_10bit_detection(self):
+        """
+        Draw the checker board to distinguish
+        if it is displayed at 10 bit depth.
+        """
+        text_width, text_height = self.get_text_size(
+            text="10bit", font_size=self.ramp_10bit_info_text_size,
+            font_path=self.info_text_font_path)
+        text_v_margin = text_height * 3
+        block_num = len(self.checker_board_levels)
         temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
-        pos_v = self.limited_range_ed_pos_v + temp - total_height // 2
-        pos = (pos_h, pos_v)
-        tpg.merge(self.img, img, pos)
+        st_pos_v = self.limited_range_ed_pos_v + temp // 2
+        total_v = self.dot_drop_ed_pos_v - st_pos_v
+        block_height = (total_v - text_v_margin * (block_num - 1)) // block_num
+        block_width = block_height
+        st_pos_h = self.limited_range_low_center_pos_h - block_width // 2
+
+        for block_idx in range(block_num):
+            # draw checker board
+            low_level = [self.checker_board_levels[block_idx][0]
+                         for x in range(3)]
+            high_level = [self.checker_board_levels[block_idx][1]
+                          for x in range(3)]
+            checker_board_img = tpg.make_tile_pattern(
+                width=block_width, height=block_height,
+                h_tile_num=4, v_tile_num=4,
+                low_level=high_level, high_level=low_level) / 1023
+            tpg.draw_outline(checker_board_img, self.obj_outline_color, 1)
+
+            pos_v = st_pos_v + block_idx * (block_height + text_v_margin)
+            tpg.merge(self.img, checker_board_img, (st_pos_h, pos_v))
+
+            # add text
+            text_pos_v = pos_v - int(text_height * 1.5)
+            text_draw_left = TextDrawer(
+                self.img, text=f"{low_level[0]} Lv, {high_level[0]} Lv",
+                pos=(st_pos_h, text_pos_v),
+                font_color=self.text_info_color,
+                font_size=self.ramp_10bit_info_text_size,
+                bg_transfer_functions=self.transfer_function,
+                fg_transfer_functions=self.transfer_function,
+                font_path=self.info_text_font_path
+            )
+            text_draw_left.draw()
+
+    def draw_10bit_v_ramp(self):
+        """
+        Draw the ramp pattern to distinguish
+        if it is displayed at 10 bit depth.
+        """
+        if not self.is_even_number:
+            bit_depth_list = [6, 8, 10]
+        else:
+            bit_depth_list = [6, 10, 8]
+        mask_list = [0x10000 - (2 ** (10 - x)) for x in bit_depth_list]
+
+        temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
+        st_pos_v = self.limited_range_ed_pos_v + temp // 2
+        total_width = int(self.dot_drop_width * 3)
+        width = total_width\
+            - self.tp_obj_outline_width * 2 * (len(bit_depth_list) - 1)
+        width = width // len(bit_depth_list)
+        width_with_margin = width + self.tp_obj_outline_width * 2
+        height = self.dot_drop_ed_pos_v - st_pos_v
+        pos_st_h_base = self.limited_range_low_center_pos_h - total_width // 2
+
+        grad = np.linspace(
+            self.ramp_10bit_levels[0], self.ramp_10bit_levels[1], height)
+        grad = np.dstack((grad, grad, grad)).reshape((height, 1, 3))
+        ramp_base = np.ones((height, width, 3)) * grad
+
+        text_width, text_height = self.get_text_size(
+            text="10bit", font_size=self.ramp_10bit_info_text_size,
+            font_path=self.info_text_font_path)
+        info_pos_v = int(st_pos_v - text_height * 1.3)
+
+        for idx in range(len(mask_list)):
+            ramp_xx_bit = (np.uint16(ramp_base) & mask_list[idx]) / 1023
+            tpg.draw_outline(
+                ramp_xx_bit, self.obj_outline_color, self.tp_obj_outline_width)
+            pos_st_h = pos_st_h_base + width_with_margin * idx
+            tpg.merge(self.img, ramp_xx_bit, (pos_st_h, st_pos_v))
+
+            # 8bit, 10bit の情報をテキストとして記述
+
+            text_draw_left = TextDrawer(
+                self.img, text=f"{bit_depth_list[idx]}bit",
+                pos=(pos_st_h, info_pos_v),
+                font_color=self.text_info_color,
+                font_size=self.ramp_10bit_info_text_size,
+                bg_transfer_functions=self.transfer_function,
+                fg_transfer_functions=self.transfer_function,
+                font_path=self.info_text_font_path
+            )
+            text_draw_left.draw()
 
     def make(self):
         """
@@ -585,8 +703,8 @@ class BackgroundImage():
         self.draw_information()
         self.draw_limited_range_text()
         self.draw_dot_dropped_text()
-        self.draw_low_level_color_patch()
-        # self.draw_low_level_color_patch(l_val=10)
+        # self.draw_10bit_detection()
+        self.draw_10bit_v_ramp()
 
         # tpg.preview_image(self.img)
 

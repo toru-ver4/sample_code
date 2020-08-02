@@ -127,19 +127,42 @@ class TextDrawer():
         self.make_text_img_with_alpha()
         self.composite_text()
 
-    def draw_with_dropped_dot(self, dot_factor=0):
+    def draw_with_dropped_dot(self, dot_factor=0, offset=(0, 0)):
         """
-        ドット抜きのテキストを描画する
+        draw a dot-dropped text
+
+        Parameters
+        ----------
+        dot_factor : int
+            dot_factor = 0: no drop
+            dot_factor = 1: 1x1 px drop
+            dot_factor = 2: 2x2 px drop
+            dot_factor = 3: 4x4 px drop
+        offset : touple of int
+            A offset dot-drop starts.
         """
         self.make_text_img_with_alpha()
-        self.drop_dot(dot_factor)
+        self.drop_dot(dot_factor, offset)
         self.composite_text()
 
-    def drop_dot(self, dot_factor=0):
+    def drop_dot(self, dot_factor=0, offset=(0, 0)):
+        """
+        do the dot-dropping process.
+
+        Parameters
+        ----------
+        dot_factor : int
+            dot_factor = 0: no drop
+            dot_factor = 1: 1x1 px drop
+            dot_factor = 2: 2x2 px drop
+            dot_factor = 3: 4x4 px drop
+        offset : touple of int
+            A offset dot-drop starts.
+        """
         mod_val = 2 ** dot_factor
         div_val = mod_val // 2
-        v_idx_list = np.arange(self.text_img.shape[0])
-        h_idx_list = np.arange(self.text_img.shape[1])
+        v_idx_list = np.arange(self.text_img.shape[0]) + offset[1]
+        h_idx_list = np.arange(self.text_img.shape[1]) + offset[0]
         idx_even = (v_idx_list % mod_val // div_val == 0)[:, np.newaxis]\
             * (h_idx_list % mod_val // div_val == 0)[np.newaxis, :]
         idx_odd = (v_idx_list % mod_val // div_val == 1)[:, np.newaxis]\
@@ -195,9 +218,7 @@ class TextDrawer():
         return self.text_img.shape[1], self.text_img.shape[0]
 
 
-if __name__ == '__main__':
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
+def simple_test_noraml_draw():
     # example 1 SDR text on SDR background
     dst_img = np.ones((540, 960, 3)) * np.array([0.3, 0.3, 0.1])
     text_drawer = TextDrawer(
@@ -247,3 +268,40 @@ if __name__ == '__main__':
     print(tf.oetf_from_luminance(100, tf.ST2084) * 0xFF)
     print(tf.oetf_from_luminance(700, tf.ST2084) * 0xFF)
     print(get_text_size(text="00", font_size=100))
+
+
+def simple_test_dot_drop(dot_factor=1, offset=(0, 0)):
+    # example 1x1 drop
+    dst_img = np.ones((300, 300, 3)) * np.array([0.2, 0.2, 0.2])
+    text_drawer = TextDrawer(
+        dst_img, text="■", pos=(0, 0),
+        font_color=(1., 1., 1.), font_size=150,
+        bg_transfer_functions=tf.SRGB,
+        fg_transfer_functions=tf.SRGB)
+    text_drawer.draw_with_dropped_dot(dot_factor=dot_factor, offset=offset)
+    img = text_drawer.get_img()
+    fname = f"/work/overuse/2020/005_make_countdown_movie/"\
+        + f"dot_drop_factor-{dot_factor}_offset-{offset[0]}-{offset[1]}"\
+        + ".png"
+    cv2.imwrite(
+        fname,
+        np.uint8(np.round(img[:, :, ::-1] * 0xFF)))
+
+
+if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # simple_test_noraml_draw()
+    simple_test_dot_drop(dot_factor=1, offset=(0, 0))
+    simple_test_dot_drop(dot_factor=1, offset=(1, 0))
+    simple_test_dot_drop(dot_factor=1, offset=(0, 1))
+    simple_test_dot_drop(dot_factor=1, offset=(1, 1))
+
+    simple_test_dot_drop(dot_factor=2, offset=(0, 0))
+    simple_test_dot_drop(dot_factor=2, offset=(1, 0))
+    simple_test_dot_drop(dot_factor=2, offset=(0, 1))
+    simple_test_dot_drop(dot_factor=2, offset=(1, 1))
+
+    simple_test_dot_drop(dot_factor=3, offset=(0, 0))
+    simple_test_dot_drop(dot_factor=3, offset=(1, 0))
+    simple_test_dot_drop(dot_factor=3, offset=(0, 1))
+    simple_test_dot_drop(dot_factor=3, offset=(1, 1))
