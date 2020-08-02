@@ -26,11 +26,9 @@ __all__ = []
 
 if __name__ == '__main__':
     src_name_list = [
-        "./img/low.tif", "./img/high.tif", "./img/Chimera00216030.tif",
-        "./img/Chimera00216111.tif"]
+        "./img/test_natual_image_hdr10_umi.tif"]
     dst_name_list = [
-        "./img/low.png", "./img/high.png", "./img/middle.png",
-        "./img/dark.png"]
+        "./img/test_natual_image_hdr10_umi.png"]
 
     for src, dst in zip(src_name_list, dst_name_list):
         img = cv2.imread(src, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)

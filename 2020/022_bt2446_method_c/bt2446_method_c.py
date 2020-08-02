@@ -246,12 +246,18 @@ def draw_ip_wp_annotation(
         xycoords='data', textcoords='data', ha='left', va='bottom',
         arrowprops=arrowprops, fontsize=fontsize)
     ax1.annotate(
-        "K1 * Y_HDR,ip", xy=(x_min, k1 * y_hdr_ip), xytext=(x_min * 4, 110),
+        "Y_SDR,ip = k1* Y_HDR,ip", xy=(x_min, k1 * y_hdr_ip),
+        xytext=(x_min * 4, 80),
         xycoords='data', textcoords='data', ha='left', va='bottom',
         arrowprops=arrowprops, fontsize=fontsize)
     ax1.annotate(
-        "Y_SDR,wp", xy=(x_min, y_sdr_wp), xytext=(x_min * 4, 170),
+        "Y_SDR,wp", xy=(x_min, y_sdr_wp), xytext=(x_min * 4, 130),
         xycoords='data', textcoords='data', ha='left', va='bottom',
+        arrowprops=arrowprops, fontsize=fontsize)
+    ax1.annotate(
+        "Knee point", xy=(y_hdr_ip, k1 * y_hdr_ip),
+        xytext=(500, k1 * y_hdr_ip / 2),
+        xycoords='data', textcoords='data', ha='left', va='top',
         arrowprops=arrowprops, fontsize=fontsize)
 
 
@@ -264,13 +270,13 @@ def tone_map_plot_test(k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
     y = bt2446_method_c_tonemapping_core(
         x, k1=k1, k3=k3, y_sdr_ip=y_sdr_ip, y_hdr_ref=y_hdr_ref)
     fig, ax1 = pu.plot_1_graph(
-        fontsize=20,
+        fontsize=22,
         figsize=(10, 8),
         graph_title="BT.2446 Method C",
         xlabel="HDR Luminance [cd/m2]",
         ylabel="SDR Luminance [cd/m2]",
         xlim=(x_min, 10000),
-        ylim=(y_min, 250),
+        ylim=(y_min, 200),
         linewidth=3,
         return_figure=True)
     pu.log_scale_settings(ax1)
@@ -289,9 +295,9 @@ def tone_map_plot_test(k1=0.8, k3=0.7, y_sdr_ip=60, y_hdr_ref=203):
         [y_hdr_ref, y_hdr_ref, x_min], [y_min, y_sdr_wp, y_sdr_wp],
         'k--', lw=2, c='#555555')
 
-    # fname = f"./figures/k1_{k1:.2f}_k3_{k3:.2f}_y_sdr_ip_{y_sdr_ip:.1f}.png"
-    plt.show()
-    # plt.savefig(fname, bbox_inches='tight', pad_inches=0.1)
+    fname = f"./figures/k1_{k1:.2f}_k3_{k3:.2f}_y_sdr_ip_{y_sdr_ip:.1f}.png"
+    # plt.show()
+    plt.savefig(fname, bbox_inches='tight', pad_inches=0.1)
 
 
 def experimental_func(
@@ -399,7 +405,7 @@ def bt2446_method_c_tonemapping(
         RGB_COLOURSPACES[src_color_space_name].XYZ_to_RGB_matrix)
     rgb_sdr_linear = apply_inverse_cross_talk_matrix(
         img=rgb_sdr_linear, alpha=alpha)
-    # rgb_sdr_linear = np.clip(rgb_sdr_linear, 0.0, 1.0)
+    rgb_sdr_linear = np.clip(rgb_sdr_linear, 0.0, 1.0)
 
     return rgb_sdr_linear
 
@@ -428,4 +434,6 @@ if __name__ == '__main__':
     #     src_color_space_name=cs.BT2020, tfc=tf.ST2084,
     #     alpha=0.05, sigma=0.5, hdr_ref_luminance=203, hdr_peak_luminance=1000,
     #     k1=0.89, k3=0.72, y_sdr_ip=45)
-    plot_inv_func()
+    # plot_inv_func()
+    tone_map_plot_test(
+        k1=0.69, k3=0.74, y_sdr_ip=41.0, y_hdr_ref=203)

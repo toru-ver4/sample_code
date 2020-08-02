@@ -34,7 +34,7 @@ __all__ = []
 kns = KeyNames()
 
 
-TP_IMAGE_PATH = "./img/step_ramp_step_33.png"
+TP_IMAGE_PATH = "./img/step_ramp_step_65.png"
 LOW_IMAGE_PATH = "./img/dark.png"
 MID_IMAGE_PATH = "./img/middle.png"
 HIGH_IMAGE_PATH = "./img/high.png"
@@ -156,7 +156,7 @@ def make_3dlut(
         alpha=0.15, sigma=0.5, gamma=2.4,
         hdr_ref_luminance=203, hdr_peak_luminance=1000,
         k1=0.8, k3=0.7, y_sdr_ip=60, bt2407_gamut_mapping=True,
-        grid_num=65):
+        grid_num=65, prefix=""):
     x = LUT3D.linear_table(grid_num).reshape((1, grid_num ** 3, 3))
     print(x.shape)
     x_linear = tf.eotf(x, tf.ST2084)
@@ -180,7 +180,7 @@ def make_3dlut(
     lut_name = "ty tone mapping"
     lut3d = LUT3D(table=sdr_img_nonlinear, name=lut_name)
 
-    file_name = f"./3DLUT/a_{alpha:.2f}_s_{sigma:.2f}_k1_{k1:.2f}_"\
+    file_name = f"./3DLUT/{prefix}_a_{alpha:.2f}_s_{sigma:.2f}_k1_{k1:.2f}_"\
         + f"k3_{k3:.2f}_y_s_{y_sdr_ip}_grid_{grid_num}_gamma_{gamma:.1f}.cube"
     write_LUT(lut3d, file_name)
 
@@ -192,7 +192,13 @@ if __name__ == '__main__':
     # im_pro.apply_colormap(im_pro.raw_img, 4000)
     make_3dlut(
         src_color_space_name=cs.BT2020, tfc=tf.ST2084,
-        alpha=0.10, sigma=0.6, gamma=2.6,
+        alpha=0.10, sigma=0.6, gamma=2.4,
         hdr_ref_luminance=203, hdr_peak_luminance=1000,
-        k1=0.51, k3=0.75, y_sdr_ip=51.1, bt2407_gamut_mapping=True,
-        grid_num=65)
+        k1=0.69, k3=0.74, y_sdr_ip=49.0, bt2407_gamut_mapping=True,
+        grid_num=65, prefix="1000nits_v3")
+    make_3dlut(
+        src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+        alpha=0.10, sigma=0.6, gamma=2.4,
+        hdr_ref_luminance=203, hdr_peak_luminance=1000,
+        k1=0.69, k3=0.74, y_sdr_ip=41.0, bt2407_gamut_mapping=True,
+        grid_num=65, prefix="4000nits_v3")

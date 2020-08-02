@@ -37,7 +37,7 @@ __all__ = []
 
 
 # definition
-REF_IMG_WIDTH = 960
+REF_IMG_WIDTH = 800
 PARAM_TEXT_SIZE = (32, 1)
 kns = KeyNames()
 
@@ -169,7 +169,7 @@ def draw_figure(canvas, figure, loc=(0, 0)):
 def main_func():
     window = sg.Window(
         title="BT2446 Parameter Adjustement Tool",
-        layout=make_layout(), finalize=True)
+        layout=make_layout(), finalize=True, location=(0, 0))
     # initial plot
     fig, ax, ax_lines = btp.plot_tome_curve()
     canvas = window[kns.curve_plot].TKCanvas

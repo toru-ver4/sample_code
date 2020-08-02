@@ -344,6 +344,38 @@ def make_xyY_boundary_data(
     np.save(fname, out_buf)
 
 
+def make_xyY_boundary_data2(
+        color_space_name=cs.BT2020, white=cs.D65, y_num=1024, h_num=1024):
+    """
+    Returns
+    -------
+    ndarray
+        small x and small y for each large Y and hue.
+        the shape is (N, M, 2).
+        N is a number of large Y.
+        M is a number of Hue.
+        "2" are small x and small y.
+    """
+    mtime = MeasureExecTime()
+    mtime.start()
+    y_max = bmc.bt2446_method_c_tonemapping_core(
+        10000, k1=0.51, k3=0.75, y_sdr_ip=51.1)
+    out_buf = np.zeros((y_num, h_num, 2))
+    y_list_sdr = np.linspace(0, y_max, y_num)
+    y_list_hdr = bmc.bt2446_method_c_inverse_tonemapping_core(
+        x=y_list_sdr, k1=0.51, k3=0.75, y_sdr_ip=51.1)
+    y_list = y_list_hdr / 10000
+    for idx, large_y in enumerate(y_list):
+        print(f"make lut, largeY = {large_y:.2} nits, idx = {idx} / {y_num}")
+        out_buf[idx] = make_xyY_boundary_data_specific_Y(
+            large_y=large_y, color_space_name=color_space_name,
+            white=white, h_num=h_num)
+        mtime.lap()
+    mtime.end()
+
+    return out_buf
+
+
 def plot_xy_plane_specific_y_wrapper(args):
     plot_xy_plane_specific_y(**args)
 
@@ -443,22 +475,40 @@ def plot_xy_plane_specific_y_bt2446_with_bg_color_wrapper(args):
     plot_xy_plane_specific_y_bt2446_with_bg_color(**args)
 
 
+def plot_xyY_color_volume_seq_tm_wrapper(args):
+    plot_xyY_color_volume_seq_tm(**args)
+
+
 def plot_xy_plane_with_bt2446(y_num=Y_NUM, h_num=H_NUM):
     y_max = bmc.bt2446_method_c_tonemapping_core(
-        10000, k1=0.51, k3=0.75, y_sdr_ip=51.1)
-    print(y_max)
+        10000, k1=0.51, k3=0.75, y_sdr_ip=51.1) / 100
     y_val_list = np.linspace(0, y_max, y_num)
     args = []
     for y_idx, y_val in enumerate(y_val_list):
-        d = dict(
-            y_idx=y_idx, y_val=y_val)
+        d = dict(y_idx=y_idx, y_val=y_val)
         args.append(d)
         # plot_xy_plane_specific_y_bt2446_with_bg_color(**d)
         # if y_idx > 5:
         #     break
-    with Pool(cpu_count()) as pool:
-        pool.map(
-            plot_xy_plane_specific_y_bt2446_with_bg_color_wrapper, args)
+    # with Pool(cpu_count()) as pool:
+    #     pool.map(
+    #         plot_xy_plane_specific_y_bt2446_with_bg_color_wrapper, args)
+
+    lut = make_xyY_boundary_data2(
+        color_space_name=cs.BT2020, white=cs.D65, y_num=Y_NUM, h_num=H_NUM)
+
+    temp = tpg.equal_devision(512, 10)
+    idx_list = [0] + [np.sum(temp[:x+1]) for x in range(len(temp))]
+
+    for idx in range(len(idx_list) - 1):
+        args = []
+        base_list = y_val_list[idx_list[idx]:idx_list[idx+1]]
+        for y_idx, y_val in enumerate(base_list):
+            d = dict(y_idx=y_idx+idx_list[idx], y_val=y_val, lut=lut)
+            args.append(d)
+            # plot_xyY_color_volume_seq_tm(**d)
+        with Pool(cpu_count()) as pool:
+            pool.map(plot_xyY_color_volume_seq_tm_wrapper, args)
 
 
 def plot_xyY_color_volume_seq(y_idx, lut):
@@ -490,6 +540,42 @@ def plot_xyY_color_volume_seq(y_idx, lut):
     ax.set_xlim(0.0, 0.8)
     ax.set_ylim(0.0, 0.9)
     ax.set_zlim(0.0, 1.1)
+    ax.view_init(elev=20, azim=-120)
+    ax.scatter(x.flatten(), y.flatten(), ly.flatten(),
+               marker='o', c=rgb, zorder=1)
+    plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
+    plt.close(fig)
+
+
+def plot_xyY_color_volume_seq_tm(y_idx, y_val, lut):
+    graph_name = "/work/overuse/2020/022_bt2446/xy_plane/"\
+        + f"3d_hdr_tm_no_{y_idx:04d}.png"
+
+    x = lut[:y_idx+1, :, 0]
+    y = lut[:y_idx+1, :, 1]
+    buf = []
+    for idx in range(y_idx + 1):
+        buf.append(np.ones(H_NUM) * idx / (Y_NUM - 1))
+    ly = np.vstack((buf)).reshape(x.shape)
+    large_xyz = xyY_to_XYZ(np.dstack((x, y, ly)))
+    print(large_xyz.shape)
+    rgb = XYZ_to_RGB(
+        large_xyz, cs.D65, cs.D65, BT2020_COLOURSPACE.XYZ_to_RGB_matrix)
+    rgb = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
+    rgb = rgb.reshape(((y_idx + 1) * H_NUM, 3))
+
+    fig = plt.figure(figsize=(9, 9))
+    ax = Axes3D(fig)
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("Y")
+    large_y = y_val
+    ax.set_title(
+        f"After TM xyY Color Volume, Y = {large_y * 100:.02f} cd/m2",
+        fontsize=18)
+    ax.set_xlim(0.0, 0.8)
+    ax.set_ylim(0.0, 0.9)
+    ax.set_zlim(0.0, 1.3)
     ax.view_init(elev=20, azim=-120)
     ax.scatter(x.flatten(), y.flatten(), ly.flatten(),
                marker='o', c=rgb, zorder=1)

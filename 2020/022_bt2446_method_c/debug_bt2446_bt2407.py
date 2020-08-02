@@ -7,6 +7,7 @@ debug
 
 # import standard libraries
 import os
+import pathlib
 
 # import third-party libraries
 import numpy as np
@@ -43,11 +44,23 @@ def img_file_read(filename):
         return img
 
 
+def img_file_read_float(filename):
+    img_int = img_file_read(filename)
+    img_float = img_int / 0xFFFF
+
+    return img_float
+
+
 def img_file_write(filename, img):
     """
     OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
     """
-    cv2.imwrite(filename, img[:, :, ::-1])
+    cv2.imwrite(filename, img[:, :, ::-1], [cv2.IMWRITE_PNG_COMPRESSION, 9])
+
+
+def img_file_wirte_float_to_16bit(filename, img_float):
+    img_int = np.uint16(np.round(np.clip(img_float, 0.0, 1.0) * 0xFFFF))
+    img_file_write(filename, img_int)
 
 
 def main_func():
@@ -105,6 +118,56 @@ def apply_bt2446_bt2407(
     img_file_write("./_debug_img/sdr.tiff", out_img)
 
 
+def make_blog_result_image():
+    img_list = [
+        "./img/step_ramp_step_65.png", "./img/dark.png",
+        "./img/middle.png", "./img/high.png", "./img/umi.png"]
+    youtube_lut = read_LUT("./3DLUT/HDR10_to_BT709_YouTube_Rev03.cube")
+    luminance_lut = read_LUT(
+        "./3DLUT/LuminanceMap_for_ST2084_BT2020_D65_MapRange_100-4000nits_65x65x65.cube")
+    bt2446_1000_lut = read_LUT(
+        "./3DLUT/1000nits_v3__a_0.10_s_0.60_k1_0.69_k3_0.74_y_s_49.0_grid_65_gamma_2.4.cube")
+    bt2446_4000_lut = read_LUT(
+        "./3DLUT/4000nits_v3__a_0.10_s_0.60_k1_0.69_k3_0.74_y_s_41.0_grid_65_gamma_2.4.cube")
+    dst_dir = "./blog_img"
+
+    lut3d_list = [
+        None, youtube_lut, luminance_lut,
+        bt2446_1000_lut, bt2446_4000_lut]
+
+    for src_path in img_list:
+        path_info = pathlib.Path(src_path)
+        base_name = path_info.stem
+        ext = path_info.suffix
+
+        # make names
+        dst_name_original = os.path.join(dst_dir, base_name + ext)
+        dst_name_youtube = os.path.join(dst_dir, base_name + "_youtube" + ext)
+        dst_name_luminance_map = os.path.join(
+            dst_dir, base_name + "_luminance" + ext)
+        dst_name_bt2446_1000 = os.path.join(
+            dst_dir, base_name + "_bt2446_1000" + ext)
+        dst_name_bt2446_4000 = os.path.join(
+            dst_dir, base_name + "_bt2446_4000" + ext)
+
+        dst_name_list = [
+            dst_name_original, dst_name_youtube, dst_name_luminance_map,
+            dst_name_bt2446_1000, dst_name_bt2446_4000]
+
+        # original
+        src_img = img_file_read_float(src_path)
+
+        # apply roop
+        for lut, dst_name in zip(lut3d_list, dst_name_list):
+            print(f"converting {dst_name}")
+            if lut is not None:
+                dst_img = lut.apply(src_img)
+            else:
+                dst_img = src_img.copy()
+
+            img_file_wirte_float_to_16bit(dst_name, dst_img)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # mbl.make_bt2020_to_bt709_luts()
@@ -116,5 +179,6 @@ if __name__ == '__main__':
     #     hdr_ref_luminance=203, hdr_peak_luminance=1000,
     #     k1=0.51, k3=0.75, y_sdr_ip=51.1, bt2407_gamut_mapping=True)
 
-    lut3d = read_LUT("./3DLUT/_HDR10_to_BT709_YouTube_Rev03.cube")
-    write_LUT(lut3d, "./3DLUT/HDR10_to_BT709_YouTube_Rev03.cube")
+    # lut3d = read_LUT("./3DLUT/_HDR10_to_BT709_YouTube_Rev03.cube")
+    # write_LUT(lut3d, "./3DLUT/HDR10_to_BT709_YouTube_Rev03.cube")
+    make_blog_result_image()
