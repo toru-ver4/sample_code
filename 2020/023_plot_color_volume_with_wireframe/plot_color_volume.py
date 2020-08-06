@@ -254,15 +254,16 @@ def plot_simple_xy_plane(xyY_data):
 
 
 def plot_xyY_color_volume(
-        xyY_data, xyY_org, color_space_name=cs.BT2020):
+        xyY_reduced_data, xyY_data, y_step=1, rad_st_offet=0.0,
+        rad_rate=4.0, angle=-120, color_space_name=cs.BT2020):
     # graph_name = "/work/overuse/2020/022_bt2446/xy_plane/"\
     #     + f"3d_sdr_no_{y_idx:04d}.png"
 
-    x = xyY_data[..., 0].flatten()
-    y = xyY_data[..., 1].flatten()
+    x = xyY_reduced_data[..., 0].flatten()
+    y = xyY_reduced_data[..., 1].flatten()
     buf = []
-    for idx in range(len(xyY_data)):
-        buf.append(np.ones(xyY_data.shape[1]) * idx / (len(xyY_data) - 1))
+    for idx in range(len(xyY_reduced_data)):
+        buf.append(np.ones(xyY_reduced_data.shape[1]) * idx / (len(xyY_reduced_data) - 1))
     z = np.vstack(buf).flatten()
 
     large_xyz = xyY_to_XYZ(np.dstack((x, y, z)))
@@ -290,31 +291,29 @@ def plot_xyY_color_volume(
     ax.view_init(elev=20, azim=-120)
     ax.scatter(x, y, z, marker='o', c=rgb, zorder=1)
 
-    # for idx in range(1, len(xyY_org), 24):
-    #     x = xyY_org[idx, ..., 0].flatten()
-    #     y = xyY_org[idx, ..., 1].flatten()
-    #     z = (np.ones_like(x) * idx / (len(xyY_org) - 1)).flatten()
-
-    #     ax.scatter(x, y, z, marker='o', c=rgb, s=1)
-    # ax.plot(x, y, z)
-    st_offset_list = np.linspace(0, 1, 40, endpoint=False)
-    for st_offset in st_offset_list:
-        x, y, z = extract_screw_data(
-            xyY_org, y_step=1, rad_st_offset=st_offset, rad_rate=4.0)
-        rgb = get_rgb_from_x_y_z(x, y, z)
-        ax.scatter(x, y, z, s=1, c=rgb)
-        x, y, z = extract_screw_data(
-            xyY_org, y_step=1, rad_st_offset=st_offset, rad_rate=-4.0)
-        rgb = get_rgb_from_x_y_z(x, y, z)
-        ax.scatter(x, y, z, s=1, c=rgb)
-    angle_list = np.linspace(-120, -120+360, 360, endpoint=False)
-    for idx, angle in enumerate(angle_list):
-        ax.view_init(elev=20, azim=angle)
-        fname = f"./img_seq/angle_{idx:04d}.png"
-        print(fname)
-        plt.savefig(
-            fname, bbox_inches='tight', pad_inches=0.1)
-    # plt.show()
+    # st_offset_list = np.linspace(0, 1, 40, endpoint=False)
+    # for st_offset in st_offset_list:
+    #     x, y, z = extract_screw_data(
+    #         xyY_org, y_step=1, rad_st_offset=st_offset, rad_rate=4.0)
+    #     rgb = get_rgb_from_x_y_z(x, y, z)
+    #     ax.scatter(x, y, z, s=1, c=rgb)
+    #     x, y, z = extract_screw_data(
+    #         xyY_org, y_step=1, rad_st_offset=st_offset, rad_rate=-4.0)
+    #     rgb = get_rgb_from_x_y_z(x, y, z)
+    #     ax.scatter(x, y, z, s=1, c=rgb)
+    # angle_list = np.linspace(-120, -120+360, 360, endpoint=False)
+    # for idx, angle in enumerate(angle_list):
+    #     ax.view_init(elev=20, azim=angle)
+    #     fname = f"./img_seq/angle_{idx:04d}.png"
+    #     print(fname)
+    #     plt.savefig(
+    #         fname, bbox_inches='tight', pad_inches=0.1)
+    ax.view_init(elev=20, azim=angle)
+    fname = f"./img_seq/angle_{idx:04d}.png"
+    print(fname)
+    # plt.savefig(
+    #     fname, bbox_inches='tight', pad_inches=0.1)
+    plt.show()
     plt.close(fig)
 
 
@@ -355,11 +354,13 @@ def experimental_func():
     # print(data.shape)
     # calc_angle_from_ndarray(data=data)
     xyY_data = calc_xyY_boundary_data(
-        color_space_name=cs.BT2020, y_num=513, h_num=1024)
+        color_space_name=cs.BT2020, y_num=129, h_num=1024)
     # plot_simple_xy_plane(xyY_data)
     reduced_xyY_data = reduce_xyY_sample(xyY_data=xyY_data, reduced_sample=6)
-    plot_xyY_color_volume(xyY_data=reduced_xyY_data, xyY_org=xyY_data)
-    # extract_screw_data(xyY_data, y_step=1, rad_st_offset=0.0, rad_rate=4.2)
+    plot_xyY_color_volume(
+        xyY_data=xyY_data, xyY_reduced_data=reduced_xyY_data,
+        y_step=1, rad_st_offet=0.0, rad_rate=4.0, angle=-120,
+        color_space_name=cs.BT2020)
 
 
 if __name__ == '__main__':
