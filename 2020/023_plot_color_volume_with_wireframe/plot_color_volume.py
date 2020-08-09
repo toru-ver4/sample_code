@@ -9,6 +9,7 @@ Description.
 
 # import standard libraries
 import os
+from multiprocessing import Pool, cpu_count
 
 # import third-party libraries
 import numpy as np
@@ -118,9 +119,11 @@ def calc_angle_from_ndarray(data):
     [ 90.         135.          90.         179.99999879]
     """
     norm = calc_norm_from_ndarray(data=data)
+    norm[norm < 10 ** -12] = 0.0
     inner = calc_inner_product_from_ndarray(data=data)
 
     cos_val = inner / (norm[:-1] * norm[1:])
+    cos_val = np.nan_to_num(cos_val, nan=-1)
 
     angle = 180 - np.rad2deg(np.arccos(cos_val))
 
@@ -203,17 +206,56 @@ def calc_xyY_boundary_data(
     return out_buf
 
 
-def reduce_xyY_sample(xyY_data, reduced_sample=10):
-    reduced_xyY_data = np.zeros((len(xyY_data), reduced_sample, 2))
+def calc_xyY_boundary_data_log_scale(
+        color_space_name=cs.BT2020, white=cs.D65, y_num=1024, h_num=1024,
+        min_exposure=-2, max_exposure=2):
+    """
+    Returns
+    -------
+    ndarray
+        small x and small y for each large Y and hue.
+        the shape is (N, M, 2).
+        N is a number of large Y.
+        M is a number of Hue.
+        "2" are small x and small y.
+    """
+    fname = f"./lut/xyY_LUT_Log_YxH_{y_num}x{h_num}.npy"
+    y_list = tpg.get_log10_x_scale(
+        sample_num=y_num, min_exposure=min_exposure,
+        max_exposure=max_exposure)
+    if os.path.isfile(fname):
+        xyY_data = np.load(fname)
+        return xyY_data, y_list
+    mtime = MeasureExecTime()
+    mtime.start()
+    out_buf = np.zeros((y_num, h_num, 2))
+
+    for idx, large_y in enumerate(y_list):
+        print(f"idx = {idx} / {y_num}")
+        out_buf[idx] = make_xyY_boundary_data_specific_Y(
+            large_y=large_y, color_space_name=color_space_name,
+            white=white, h_num=h_num)
+        mtime.lap()
+    mtime.end()
+
+    np.save(fname, out_buf)
+    return out_buf, y_list
+
+
+def reduce_xyY_sample(xyY_data, threshold_angle=150):
+    out_buf = []
     for idx in range(len(xyY_data)):
         data = xyY_data[idx].copy()
         data = add_data_to_start_and_end_for_inner_product(data)
         angle = calc_angle_from_ndarray(data)
-        angle[angle < 1] = 180
-        rd_idx = np.argsort(angle)[:reduced_sample]
-        reduced_xyY_data[idx] = xyY_data[idx, rd_idx]
+        angle[angle < 2] = 180
+        # if idx == 0:
+        #     for iii, ddd in enumerate(data):
+        #         print(f"idx={iii:04d}, value={ddd}, angle={angle[iii%1024]}")
+        rd_idx = (angle < threshold_angle)
+        out_buf.append(xyY_data[idx, rd_idx])
 
-    return reduced_xyY_data
+    return out_buf
 
 
 def plot_simple_xy_plane(xyY_data):
@@ -254,66 +296,105 @@ def plot_simple_xy_plane(xyY_data):
 
 
 def plot_xyY_color_volume(
-        xyY_reduced_data, xyY_data, y_step=1, rad_st_offet=0.0,
-        rad_rate=4.0, angle=-120, color_space_name=cs.BT2020):
-    # graph_name = "/work/overuse/2020/022_bt2446/xy_plane/"\
-    #     + f"3d_sdr_no_{y_idx:04d}.png"
-
-    x = xyY_reduced_data[..., 0].flatten()
-    y = xyY_reduced_data[..., 1].flatten()
-    buf = []
-    for idx in range(len(xyY_reduced_data)):
-        buf.append(np.ones(xyY_reduced_data.shape[1]) * idx / (len(xyY_reduced_data) - 1))
-    z = np.vstack(buf).flatten()
-
-    large_xyz = xyY_to_XYZ(np.dstack((x, y, z)))
-    rgb = XYZ_to_RGB(
-        large_xyz, cs.D65, cs.D65,
-        RGB_COLOURSPACES[color_space_name].XYZ_to_RGB_matrix)
-    rgb = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
-    rgb = rgb.reshape((len(x), 3))
-
+        f_idx, xyY_reduced_data, xyY_data, y_step=1,
+        rad_rate=4.0, angle=-120, line_div=40, color_space_name=cs.BT2020):
     fig = plt.figure(figsize=(9, 9))
     ax = Axes3D(fig)
-    plt.gca().patch.set_facecolor('white')
-    ax.w_xaxis.set_pane_color((0.6, 0.6, 0.6, 1.0))
-    ax.w_yaxis.set_pane_color((0.6, 0.6, 0.6, 1.0))
-    ax.w_zaxis.set_pane_color((0.6, 0.6, 0.6, 1.0))
+    plt.gca().patch.set_facecolor("#999999")
+    ax.w_xaxis.set_pane_color((0.6, 0.6, 0.6, 0.0))
+    ax.w_yaxis.set_pane_color((0.6, 0.6, 0.6, 0.0))
+    ax.w_zaxis.set_pane_color((0.6, 0.6, 0.6, 0.0))
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("Y")
-    # ax.set_title(
-    #     f"SDR xyY Color Volume, Y = {large_y * 100:.02f} cd/m2",
-    #     fontsize=18)
+    ax.set_title("Sample", fontsize=18)
     ax.set_xlim(0.0, 0.8)
     ax.set_ylim(0.0, 0.9)
     ax.set_zlim(0.0, 1.1)
-    ax.view_init(elev=20, azim=-120)
-    ax.scatter(x, y, z, marker='o', c=rgb, zorder=1)
+    ax.grid(False)
+    ax.grid(b=True, which='major', axis='x')
+    ax.grid(b=True, which='major', axis='y')
+    ax.grid(b=False, which='major', axis='z')
 
-    # st_offset_list = np.linspace(0, 1, 40, endpoint=False)
-    # for st_offset in st_offset_list:
-    #     x, y, z = extract_screw_data(
-    #         xyY_org, y_step=1, rad_st_offset=st_offset, rad_rate=4.0)
-    #     rgb = get_rgb_from_x_y_z(x, y, z)
-    #     ax.scatter(x, y, z, s=1, c=rgb)
-    #     x, y, z = extract_screw_data(
-    #         xyY_org, y_step=1, rad_st_offset=st_offset, rad_rate=-4.0)
-    #     rgb = get_rgb_from_x_y_z(x, y, z)
-    #     ax.scatter(x, y, z, s=1, c=rgb)
-    # angle_list = np.linspace(-120, -120+360, 360, endpoint=False)
-    # for idx, angle in enumerate(angle_list):
-    #     ax.view_init(elev=20, azim=angle)
-    #     fname = f"./img_seq/angle_{idx:04d}.png"
-    #     print(fname)
-    #     plt.savefig(
-    #         fname, bbox_inches='tight', pad_inches=0.1)
+    for idx in range(len(xyY_reduced_data)):
+        x = xyY_reduced_data[idx][:, 0].flatten()
+        y = xyY_reduced_data[idx][:, 1].flatten()
+        z = np.ones_like(x) * idx / (len(xyY_reduced_data) - 1)
+        rgb = get_rgb_from_x_y_z(x, y, z)
+        ax.scatter(x, y, z, marker='o', c=rgb, zorder=1)
+
+    st_offset_list = np.linspace(0, 1, line_div, endpoint=False)
+    for st_offset in st_offset_list:
+        x, y, z = extract_screw_data(
+            xyY_data, y_step=y_step, rad_st_offset=st_offset,
+            rad_rate=rad_rate)
+        rgb = get_rgb_from_x_y_z(x, y, z)
+        ax.scatter(x, y, z, s=1, c=rgb)
+        x, y, z = extract_screw_data(
+            xyY_data, y_step=y_step, rad_st_offset=st_offset,
+            rad_rate=-rad_rate)
+        rgb = get_rgb_from_x_y_z(x, y, z)
+        ax.scatter(x, y, z, s=1, c=rgb)
     ax.view_init(elev=20, azim=angle)
-    fname = f"./img_seq/angle_{idx:04d}.png"
+    fname = "/work/overuse/2020/023_color_volume/img_seq/"\
+        + f"angle_{f_idx:04d}.png"
     print(fname)
-    # plt.savefig(
-    #     fname, bbox_inches='tight', pad_inches=0.1)
-    plt.show()
+    plt.savefig(
+        fname, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+    plt.close(fig)
+
+
+def plot_xyY_color_volume_sdr_hdr(
+        f_idx, xyY_reduced_data, xyY_data, y_list, y_step=1,
+        rad_rate=4.0, angle=-120, line_div=40, color_space_name=cs.BT2020):
+    fig = plt.figure(figsize=(9, 9))
+    ax = Axes3D(fig)
+    plt.gca().patch.set_facecolor("#999999")
+    ax.w_xaxis.set_pane_color((0.6, 0.6, 0.6, 0.0))
+    ax.w_yaxis.set_pane_color((0.6, 0.6, 0.6, 0.0))
+    ax.w_zaxis.set_pane_color((0.6, 0.6, 0.6, 0.0))
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("Y [cd/m2]")
+    ax.set_title("Sample", fontsize=18)
+    ax.set_xlim(0.0, 0.8)
+    ax.set_ylim(0.0, 0.9)
+    ax.set_zlim(0.0, 1.1)
+    ax.set_zticks([0.0, 0.33, 0.66, 1.0])
+    ax.set_zticklabels(['0.1', '1.0', '10', '100'])
+    # ax.set_zscale('log')
+    ax.grid(False)
+    ax.grid(b=True, which='major', axis='x')
+    ax.grid(b=True, which='major', axis='y')
+    ax.grid(b=True, which='major', axis='z')
+
+    for idx in range(len(xyY_reduced_data)):
+        x = xyY_reduced_data[idx][:, 0].flatten()
+        y = xyY_reduced_data[idx][:, 1].flatten()
+        z = np.ones_like(x) * idx / (len(xyY_reduced_data) - 1)
+        rgb = get_rgb_from_x_y_z(x, y, z)
+        ax.scatter(x, y, z, marker='o', c=rgb, zorder=1)
+
+    st_offset_list = np.linspace(0, 1, line_div, endpoint=False)
+    for st_offset in st_offset_list:
+        x, y, z = extract_screw_data_log_scale(
+            xyY_data, y_list, y_step=y_step, rad_st_offset=st_offset,
+            rad_rate=rad_rate)
+        rgb = get_rgb_from_x_y_z(x, y, z)
+        ax.scatter(x, y, z, s=1, c=rgb)
+        x, y, z = extract_screw_data_log_scale(
+            xyY_data, y_list, y_step=y_step, rad_st_offset=st_offset,
+            rad_rate=-rad_rate)
+        rgb = get_rgb_from_x_y_z(x, y, z)
+        ax.scatter(x, y, z, s=1, c=rgb)
+    ax.view_init(elev=16, azim=angle)
+    fname = "/work/overuse/2020/023_color_volume/img_seq/"\
+        + f"xyY_SDR_HDR_angle_{f_idx:04d}.png"
+    print(fname)
+    plt.savefig(
+        fname, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
     plt.close(fig)
 
 
@@ -328,7 +409,8 @@ def get_rgb_from_x_y_z(x, y, z, color_space_name=cs.BT2020):
     return rgb
 
 
-def extract_screw_data(xyY_data, y_step=1, rad_st_offset=0.0, rad_rate=1.5):
+def extract_screw_data(
+        xyY_data, y_step=1, rad_st_offset=0.0, rad_rate=1.5):
     large_y_num = len(xyY_data[::y_step])
     xy_sample = len(xyY_data[0])
     xy_step = tpg.equal_devision(int(large_y_num * rad_rate), xy_sample)
@@ -347,20 +429,97 @@ def extract_screw_data(xyY_data, y_step=1, rad_st_offset=0.0, rad_rate=1.5):
     return np.array(x_buf), np.array(y_buf), np.array(z_buf)
 
 
+def extract_screw_data_log_scale(
+        xyY_data, y_list, y_step=1, rad_st_offset=0.0, rad_rate=1.5):
+    large_y_num = len(xyY_data[::y_step])
+    xy_sample = len(xyY_data[0])
+    xy_step = tpg.equal_devision(int(large_y_num * rad_rate), xy_sample)
+    x_buf = []
+    y_buf = []
+    z_buf = []
+    xy_idx = int(rad_st_offset * xy_sample)
+    xy_cnt = 0
+    for idx in range(0, len(xyY_data), y_step):
+        x_buf.append(xyY_data[idx, xy_idx % xy_sample, 0])
+        y_buf.append(xyY_data[idx, xy_idx % xy_sample, 1])
+        z_buf.append(idx / (len(xyY_data) - 1))
+        xy_idx += xy_step[xy_cnt]
+        xy_cnt += 1
+
+    return np.array(x_buf), np.array(y_buf), np.array(z_buf)
+
+
+def xyY_plot_angle_test(
+        angle_num=360, y_step=1, rad_rate=4.0, line_div=65):
+    xyY_data = calc_xyY_boundary_data(
+        color_space_name=cs.BT2020, y_num=257, h_num=1024)
+    reduced_xyY_data = reduce_xyY_sample(
+        xyY_data=xyY_data, threshold_angle=130)
+
+    angale_list = np.linspace(-120, -120+360, angle_num, endpoint=False)
+    args = []
+    for idx, angle in enumerate(angale_list):
+        d = dict(
+            f_idx=idx, xyY_data=xyY_data, xyY_reduced_data=reduced_xyY_data,
+            y_step=y_step, rad_rate=rad_rate, angle=angle, line_div=line_div,
+            color_space_name=cs.BT2020)
+        # plot_xyY_color_volume(**d)
+        args.append(d)
+    with Pool(cpu_count()) as pool:
+        pool.map(plot_xyY_color_volume_wrapper, args)
+
+
+def plot_xyY_color_volume_wrapper(args):
+    plot_xyY_color_volume(**args)
+
+
+def xyY_plot_sdr_hdr_test(
+        angle_num=360, y_step=1, rad_rate=4.0, line_div=65):
+    xyY_data, y_list = calc_xyY_boundary_data_log_scale(
+        color_space_name=cs.BT2020, y_num=257, h_num=1024,
+        min_exposure=-4, max_exposure=0)
+    reduced_xyY_data = reduce_xyY_sample(
+        xyY_data=xyY_data, threshold_angle=160)
+
+    angale_list = np.linspace(-120, -120+360, angle_num, endpoint=False)
+    args = []
+    for idx, angle in enumerate(angale_list):
+        d = dict(
+            f_idx=idx, xyY_data=xyY_data, xyY_reduced_data=reduced_xyY_data,
+            y_list=y_list, y_step=y_step, rad_rate=rad_rate, angle=angle,
+            line_div=line_div, color_space_name=cs.BT2020)
+        # plot_xyY_color_volume_sdr_hdr(**d)
+        args.append(d)
+        # break
+    with Pool(cpu_count()) as pool:
+        pool.map(plot_xyY_color_volume_sdr_hdr_wrapper, args)
+
+
+def plot_xyY_color_volume_sdr_hdr_wrapper(args):
+    plot_xyY_color_volume_sdr_hdr(**args)
+
+
 def experimental_func():
     # data = np.array([
     #     [0, 0], [1, np.sqrt(3)], [0, np.sqrt(3)], [-1, 0]])
     # data = add_data_to_start_and_end_for_inner_product(data)
     # print(data.shape)
     # calc_angle_from_ndarray(data=data)
-    xyY_data = calc_xyY_boundary_data(
-        color_space_name=cs.BT2020, y_num=129, h_num=1024)
-    # plot_simple_xy_plane(xyY_data)
-    reduced_xyY_data = reduce_xyY_sample(xyY_data=xyY_data, reduced_sample=6)
-    plot_xyY_color_volume(
-        xyY_data=xyY_data, xyY_reduced_data=reduced_xyY_data,
-        y_step=1, rad_st_offet=0.0, rad_rate=4.0, angle=-120,
-        color_space_name=cs.BT2020)
+    # data = np.array(
+    #     [[0.67092612, 0.32679978], [0.6685815, 0.329], [0.6685815, 0.329]])
+    # data = add_data_to_start_and_end_for_inner_product(data)
+    # angle = calc_angle_from_ndarray(data)
+    # print(angle)
+    # xyY_data = calc_xyY_boundary_data(
+    #     color_space_name=cs.BT2020, y_num=257, h_num=1024)
+    # reduced_xyY_data = reduce_xyY_sample(
+    #     xyY_data=xyY_data, threshold_angle=130)
+    # plot_xyY_color_volume(
+    #     9999, reduced_xyY_data, xyY_data, y_step=1,
+    #     rad_rate=4.0, angle=-120, line_div=50, color_space_name=cs.BT2020)
+    # xyY_plot_angle_test(angle_num=360, y_step=1, rad_rate=8.0, line_div=65)
+    xyY_plot_sdr_hdr_test(
+        angle_num=360, y_step=1, rad_rate=4.0, line_div=65)
 
 
 if __name__ == '__main__':
