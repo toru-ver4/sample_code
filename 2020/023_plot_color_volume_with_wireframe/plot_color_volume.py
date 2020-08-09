@@ -219,7 +219,9 @@ def calc_xyY_boundary_data_log_scale(
         M is a number of Hue.
         "2" are small x and small y.
     """
-    fname = f"./lut/xyY_LUT_Log_YxH_{y_num}x{h_num}.npy"
+    fname = f"./lut/xyY_LUT_{color_space_name}_"\
+        + f"exp_{min_exposure}_to_{max_exposure}_"\
+        + f"Log_YxH_{y_num}x{h_num}.npy"
     y_list = tpg.get_log10_x_scale(
         sample_num=y_num, min_exposure=min_exposure,
         max_exposure=max_exposure)
@@ -345,9 +347,45 @@ def plot_xyY_color_volume(
     plt.close(fig)
 
 
+def plot_cross_outline(
+        line_div, xyY_data, y_step, rad_rate, ax, alpha=1.0,
+        color_space_name=cs.BT2020, min_z=0.0, max_z=1.0):
+    st_offset_list = np.linspace(0, 1, line_div, endpoint=False)
+    for st_offset in st_offset_list:
+        x, y, z = extract_screw_data_log_scale(
+            xyY_data, y_step=y_step, rad_st_offset=st_offset,
+            rad_rate=rad_rate)
+        rgb = get_rgb_from_x_y_z(x, y, z, color_space_name=color_space_name)
+        z = z * (max_z - min_z) + min_z
+        ax.scatter(x, y, z, s=1, c=rgb, alpha=alpha)
+
+        x, y, z = extract_screw_data_log_scale(
+            xyY_data, y_step=y_step, rad_st_offset=st_offset,
+            rad_rate=-rad_rate)
+        rgb = get_rgb_from_x_y_z(x, y, z, color_space_name=color_space_name)
+        z = z * (max_z - min_z) + min_z
+        ax.scatter(x, y, z, s=1, c=rgb, alpha=alpha)
+
+
+def plot_reduced_sample(
+        xyY_reduced_data, ax, alpha=1.0, color_space_name=cs.BT2020,
+        min_z=0.0, max_z=1.0):
+    for idx in range(len(xyY_reduced_data)):
+        x = xyY_reduced_data[idx][:, 0].flatten()
+        y = xyY_reduced_data[idx][:, 1].flatten()
+        z = np.ones_like(x) * idx / (len(xyY_reduced_data) - 1)
+        rgb = get_rgb_from_x_y_z(x, y, z, color_space_name=color_space_name)
+
+        z = z * (max_z - min_z) + min_z
+        ax.scatter(x, y, z, marker='o', c=rgb, zorder=1, alpha=alpha)
+
+
 def plot_xyY_color_volume_sdr_hdr(
-        f_idx, xyY_reduced_data, xyY_data, y_list, y_step=1,
-        rad_rate=4.0, angle=-120, line_div=40, color_space_name=cs.BT2020):
+        f_idx, xyY_data_hdr, xyY_reduced_data_hdr,
+        xyY_data_sdr, xyY_reduced_data_sdr, y_step=1,
+        rad_rate=4.0, angle=-120, line_div=40, color_space_name=cs.BT2020,
+        min_exposure_sdr=-4, max_exposure_sdr=0,
+        min_exposure_hdr=-8, max_exposure_hdr=0):
     fig = plt.figure(figsize=(9, 9))
     ax = Axes3D(fig)
     plt.gca().patch.set_facecolor("#999999")
@@ -357,38 +395,39 @@ def plot_xyY_color_volume_sdr_hdr(
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("Y [cd/m2]")
-    ax.set_title("Sample", fontsize=18)
+    ax.set_title("Color Volume comparison", fontsize=18)
     ax.set_xlim(0.0, 0.8)
     ax.set_ylim(0.0, 0.9)
     ax.set_zlim(0.0, 1.1)
-    ax.set_zticks([0.0, 0.33, 0.66, 1.0])
-    ax.set_zticklabels(['0.1', '1.0', '10', '100'])
+    ax.set_zticks(np.linspace(0, 1, max_exposure_hdr-min_exposure_hdr))
+    ax.set_zticklabels(
+        ['0.001', '0.01', '0.1', '1.0', '10', '100', '1000', '10000'])
     # ax.set_zscale('log')
     ax.grid(False)
     ax.grid(b=True, which='major', axis='x')
     ax.grid(b=True, which='major', axis='y')
     ax.grid(b=True, which='major', axis='z')
 
-    for idx in range(len(xyY_reduced_data)):
-        x = xyY_reduced_data[idx][:, 0].flatten()
-        y = xyY_reduced_data[idx][:, 1].flatten()
-        z = np.ones_like(x) * idx / (len(xyY_reduced_data) - 1)
-        rgb = get_rgb_from_x_y_z(x, y, z)
-        ax.scatter(x, y, z, marker='o', c=rgb, zorder=1)
+    # plot hdr
+    plot_reduced_sample(
+        xyY_reduced_data=xyY_reduced_data_hdr, ax=ax, alpha=0.15)
+    plot_cross_outline(
+        line_div=line_div, xyY_data=xyY_data_hdr, y_step=y_step,
+        rad_rate=rad_rate, ax=ax, alpha=0.15)
 
-    st_offset_list = np.linspace(0, 1, line_div, endpoint=False)
-    for st_offset in st_offset_list:
-        x, y, z = extract_screw_data_log_scale(
-            xyY_data, y_list, y_step=y_step, rad_st_offset=st_offset,
-            rad_rate=rad_rate)
-        rgb = get_rgb_from_x_y_z(x, y, z)
-        ax.scatter(x, y, z, s=1, c=rgb)
-        x, y, z = extract_screw_data_log_scale(
-            xyY_data, y_list, y_step=y_step, rad_st_offset=st_offset,
-            rad_rate=-rad_rate)
-        rgb = get_rgb_from_x_y_z(x, y, z)
-        ax.scatter(x, y, z, s=1, c=rgb)
-    ax.view_init(elev=16, azim=angle)
+    # plot sdr
+    hdr_value_list = np.linspace(0, 1, max_exposure_hdr-min_exposure_hdr)
+    sdr_max = hdr_value_list[-3]
+    sdr_min = hdr_value_list[-3 - (max_exposure_sdr - min_exposure_sdr) + 1]
+    plot_reduced_sample(
+        xyY_reduced_data=xyY_reduced_data_sdr, ax=ax,
+        color_space_name=cs.BT2020, min_z=sdr_min, max_z=sdr_max)
+    plot_cross_outline(
+        line_div=line_div//2, xyY_data=xyY_data_sdr, y_step=y_step,
+        rad_rate=rad_rate, ax=ax, color_space_name=cs.BT2020,
+        min_z=sdr_min, max_z=sdr_max)
+
+    ax.view_init(elev=20, azim=angle)
     fname = "/work/overuse/2020/023_color_volume/img_seq/"\
         + f"xyY_SDR_HDR_angle_{f_idx:04d}.png"
     print(fname)
@@ -430,7 +469,7 @@ def extract_screw_data(
 
 
 def extract_screw_data_log_scale(
-        xyY_data, y_list, y_step=1, rad_st_offset=0.0, rad_rate=1.5):
+        xyY_data, y_step=1, rad_st_offset=0.0, rad_rate=1.5):
     large_y_num = len(xyY_data[::y_step])
     xy_sample = len(xyY_data[0])
     xy_step = tpg.equal_devision(int(large_y_num * rad_rate), xy_sample)
@@ -473,21 +512,47 @@ def plot_xyY_color_volume_wrapper(args):
     plot_xyY_color_volume(**args)
 
 
-def xyY_plot_sdr_hdr_test(
-        angle_num=360, y_step=1, rad_rate=4.0, line_div=65):
-    xyY_data, y_list = calc_xyY_boundary_data_log_scale(
+def create_xyY_and_reduced_data(
         color_space_name=cs.BT2020, y_num=257, h_num=1024,
-        min_exposure=-4, max_exposure=0)
+        min_exposure=-4, max_exposure=0, threshold_angle=160):
+    xyY_data, y_list = calc_xyY_boundary_data_log_scale(
+        color_space_name=color_space_name, y_num=y_num, h_num=h_num,
+        min_exposure=min_exposure, max_exposure=max_exposure)
     reduced_xyY_data = reduce_xyY_sample(
-        xyY_data=xyY_data, threshold_angle=160)
+        xyY_data=xyY_data, threshold_angle=threshold_angle)
+
+    return xyY_data, reduced_xyY_data
+
+
+def xyY_plot_sdr_hdr_test(
+        angle_num=360, y_step=1, rad_rate=4.0, line_div=65,
+        min_exposure_sdr=-4, max_exposure_sdr=0,
+        min_exposure_hdr=-8, max_exposure_hdr=0):
+    xyY_data_sdr, reduced_xyY_data_sdr = create_xyY_and_reduced_data(
+        color_space_name=cs.BT709, y_num=257, h_num=1024,
+        min_exposure=min_exposure_sdr, max_exposure=max_exposure_sdr,
+        threshold_angle=160)
+
+    xyY_data_hdr, reduced_xyY_data_hdr = create_xyY_and_reduced_data(
+        color_space_name=cs.BT2020, y_num=257, h_num=1024,
+        min_exposure=min_exposure_hdr, max_exposure=max_exposure_hdr,
+        threshold_angle=160)
 
     angale_list = np.linspace(-120, -120+360, angle_num, endpoint=False)
     args = []
     for idx, angle in enumerate(angale_list):
         d = dict(
-            f_idx=idx, xyY_data=xyY_data, xyY_reduced_data=reduced_xyY_data,
-            y_list=y_list, y_step=y_step, rad_rate=rad_rate, angle=angle,
-            line_div=line_div, color_space_name=cs.BT2020)
+            f_idx=idx,
+            xyY_data_hdr=xyY_data_hdr,
+            xyY_reduced_data_hdr=reduced_xyY_data_hdr,
+            xyY_data_sdr=xyY_data_sdr,
+            xyY_reduced_data_sdr=reduced_xyY_data_sdr,
+            y_step=y_step, rad_rate=rad_rate, angle=angle,
+            line_div=line_div, color_space_name=cs.BT2020,
+            min_exposure_sdr=min_exposure_sdr,
+            max_exposure_sdr=max_exposure_sdr,
+            min_exposure_hdr=min_exposure_hdr,
+            max_exposure_hdr=max_exposure_hdr)
         # plot_xyY_color_volume_sdr_hdr(**d)
         args.append(d)
         # break
@@ -519,7 +584,9 @@ def experimental_func():
     #     rad_rate=4.0, angle=-120, line_div=50, color_space_name=cs.BT2020)
     # xyY_plot_angle_test(angle_num=360, y_step=1, rad_rate=8.0, line_div=65)
     xyY_plot_sdr_hdr_test(
-        angle_num=360, y_step=1, rad_rate=4.0, line_div=65)
+        angle_num=360, y_step=1, rad_rate=4.0, line_div=128,
+        min_exposure_sdr=-4, max_exposure_sdr=0,
+        min_exposure_hdr=-8, max_exposure_hdr=0)
 
 
 if __name__ == '__main__':
