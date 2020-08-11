@@ -9,6 +9,7 @@ Description.
 
 # import standard libraries
 import os
+import sys
 from multiprocessing import Pool, cpu_count
 
 # import third-party libraries
@@ -17,6 +18,10 @@ from colour import XYZ_to_RGB, xyY_to_XYZ, RGB_COLOURSPACES,\
     xyY_to_XYZ, XYZ_to_RGB
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import pyqtgraph.examples
+from pyqtgraph.Qt import QtCore, QtGui
+import pyqtgraph.opengl as gl
+import pyqtgraph.Vector as Vector
 
 # import my libraries
 import color_space as cs
@@ -32,6 +37,10 @@ __maintainer__ = 'Toru Yoshihara'
 __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
+
+
+qt_timmer_idx = 0
+w = None
 
 
 def add_data_to_start_and_end_for_inner_product(data):
@@ -347,6 +356,71 @@ def plot_xyY_color_volume(
     plt.close(fig)
 
 
+def plot_cross_outline_pyqtplot(
+        line_div, xyY_data, y_step, rad_rate, alpha=1.0,
+        color_space_name=cs.BT2020, min_z=0.0, max_z=1.0,
+        size=0.01):
+    st_offset_list = np.linspace(0, 1, line_div, endpoint=False)
+    out_buf_xyz = []
+    out_buf_rgb = []
+
+    for st_offset in st_offset_list:
+        x, y, z = extract_screw_data_log_scale(
+            xyY_data, y_step=y_step, rad_st_offset=st_offset,
+            rad_rate=rad_rate)
+        rgb = get_rgb_from_x_y_z(x, y, z, color_space_name=color_space_name)
+        rgba = add_alpha_channel_to_rgb(rgb, alpha=alpha)
+        z = z * (max_z - min_z) + min_z
+        out_buf_xyz.append(np.dstack((x, y, z)).reshape((len(x), 3)))
+        out_buf_rgb.append(rgba)
+
+        x, y, z = extract_screw_data_log_scale(
+            xyY_data, y_step=y_step, rad_st_offset=st_offset,
+            rad_rate=-rad_rate)
+        rgb = get_rgb_from_x_y_z(x, y, z, color_space_name=color_space_name)
+        rgba = add_alpha_channel_to_rgb(rgb, alpha=alpha)
+        z = z * (max_z - min_z) + min_z
+        out_buf_xyz.append(np.dstack((x, y, z)).reshape((len(x), 3)))
+        out_buf_rgb.append(rgba)
+
+    out_buf_xyz = np.vstack(out_buf_xyz)
+    out_buf_rgb = np.vstack(out_buf_rgb)
+    # out_buf_xyz[..., 0] = out_buf_xyz[..., 0] - cs.D65[0]
+    # out_buf_xyz[..., 1] = out_buf_xyz[..., 1] - cs.D65[1]
+    size_val = np.ones(out_buf_xyz.shape[0]) * size
+    sp1 = gl.GLScatterPlotItem(
+        pos=out_buf_xyz, size=size_val, color=out_buf_rgb, pxMode=False)
+
+    return sp1
+
+
+def plot_reduced_sample_pyqtplot(
+        xyY_reduced_data, alpha=1.0, color_space_name=cs.BT2020,
+        min_z=0.0, max_z=1.0, size=0.01):
+    out_buf_xyz = []
+    out_buf_rgb = []
+    for idx in range(len(xyY_reduced_data)):
+        x = xyY_reduced_data[idx][:, 0].flatten()
+        y = xyY_reduced_data[idx][:, 1].flatten()
+        z = np.ones_like(x) * idx / (len(xyY_reduced_data) - 1)
+        rgb = get_rgb_from_x_y_z(x, y, z, color_space_name=color_space_name)
+        rgba = add_alpha_channel_to_rgb(rgb, alpha=alpha)
+
+        z = z * (max_z - min_z) + min_z
+        out_buf_xyz.append(np.dstack((x, y, z)).reshape((len(x), 3)))
+        out_buf_rgb.append(rgba)
+
+    out_buf_xyz = np.vstack(out_buf_xyz)
+    # out_buf_xyz[..., 0] = out_buf_xyz[..., 0] - cs.D65[0]
+    # out_buf_xyz[..., 1] = out_buf_xyz[..., 1] - cs.D65[1]
+    out_buf_rgb = np.vstack(out_buf_rgb)
+    size_val = np.ones(out_buf_xyz.shape[0]) * size
+    sp = gl.GLScatterPlotItem(
+        pos=out_buf_xyz, size=size_val, color=out_buf_rgb, pxMode=False)
+
+    return sp
+
+
 def plot_cross_outline(
         line_div, xyY_data, y_step, rad_rate, ax, alpha=1.0,
         color_space_name=cs.BT2020, min_z=0.0, max_z=1.0):
@@ -433,8 +507,69 @@ def plot_xyY_color_volume_sdr_hdr(
     print(fname)
     plt.savefig(
         fname, bbox_inches='tight', pad_inches=0.1)
-    # plt.show()
+    plt.show()
     plt.close(fig)
+
+
+def save_each_angle(angle=-120):
+    pass
+
+
+def plot_xyY_color_volume_pyqtgraph(
+        f_idx, xyY_data_hdr, xyY_reduced_data_hdr,
+        xyY_data_sdr, xyY_reduced_data_sdr, y_step=1,
+        rad_rate=4.0, angle=-120, line_div=40, color_space_name=cs.BT2020,
+        min_exposure_sdr=-4, max_exposure_sdr=0,
+        min_exposure_hdr=-8, max_exposure_hdr=0):
+    global w
+    app = QtGui.QApplication([])
+    w = gl.GLViewWidget()
+    w.opts['distance'] = 1.7
+    w.opts['center'] = Vector(cs.D65[0], cs.D65[1], 0.5)
+    w.opts['elevation'] = 30
+    w.opts['azimuth'] = -120
+    w.show()
+    w.setWindowTitle('pyqtgraph example: GLScatterPlotItem')
+    g = gl.GLGridItem()
+    w.addItem(g)
+
+    # HDR
+    sp1 = plot_cross_outline_pyqtplot(
+        line_div=line_div, xyY_data=xyY_data_hdr, y_step=y_step,
+        rad_rate=rad_rate, alpha=0.5, size=0.005)
+    w.addItem(sp1)
+    sp2 = plot_reduced_sample_pyqtplot(
+        xyY_reduced_data=xyY_reduced_data_hdr, alpha=1.0, size=0.01)
+    w.addItem(sp2)
+
+    # SDR
+    hdr_value_list = np.linspace(0, 1, max_exposure_hdr-min_exposure_hdr)
+    sdr_max = hdr_value_list[-3]
+    sdr_min = hdr_value_list[-3 - (max_exposure_sdr - min_exposure_sdr) + 1]
+    sp3 = plot_cross_outline_pyqtplot(
+        line_div=line_div, xyY_data=xyY_data_sdr, y_step=y_step,
+        rad_rate=rad_rate, alpha=1.0, size=0.003,
+        min_z=sdr_min, max_z=sdr_max)
+    w.addItem(sp3)
+    sp4 = plot_reduced_sample_pyqtplot(
+        xyY_reduced_data=xyY_reduced_data_sdr, alpha=1.0, size=0.008,
+        min_z=sdr_min, max_z=sdr_max)
+    w.addItem(sp4)
+
+    w.initializeGL()
+    angle_list = np.linspace(-120, -120+360, 360, endpoint=False)
+
+    for idx in range(360):
+        w.opts['azimuth'] = angle_list[idx]
+        w.resizeGL(1024, 768)
+        w.paintGL()
+        fname = "/work/overuse/2020/023_color_volume/img_seq/"\
+            + f'qt_{idx:04d}.png'
+        print(f"saving {fname}.")
+        w.grabFrameBuffer().save(fname)
+
+    # if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+    #     QtGui.QApplication.instance().exec_()
 
 
 def get_rgb_from_x_y_z(x, y, z, color_space_name=cs.BT2020):
@@ -554,14 +689,47 @@ def xyY_plot_sdr_hdr_test(
             min_exposure_hdr=min_exposure_hdr,
             max_exposure_hdr=max_exposure_hdr)
         # plot_xyY_color_volume_sdr_hdr(**d)
+        plot_xyY_color_volume_pyqtgraph(**d)
         args.append(d)
-        # break
-    with Pool(cpu_count()) as pool:
-        pool.map(plot_xyY_color_volume_sdr_hdr_wrapper, args)
+        break
+    # with Pool(cpu_count()) as pool:
+    #     pool.map(plot_xyY_color_volume_sdr_hdr_wrapper, args)
 
 
 def plot_xyY_color_volume_sdr_hdr_wrapper(args):
     plot_xyY_color_volume_sdr_hdr(**args)
+
+
+def add_alpha_channel_to_rgb(rgb, alpha=1.0):
+    """
+    Add an alpha channel to rgb array.
+    This function is for pyqtgraph,
+    therefore don't use for image processing.
+
+    Example
+    -------
+    >>> x = np.linspace(0, 1, 10)
+    >>> rgb = np.dstack((x, x, x))
+    >>> add_alpha_channel_to_rgb(rgb, alpha=0.7)
+    [[[ 0.          0.          0.          0.7       ]
+      [ 0.11111111  0.11111111  0.11111111  0.7       ]
+      [ 0.22222222  0.22222222  0.22222222  0.7       ]
+      [ 0.33333333  0.33333333  0.33333333  0.7       ]
+      [ 0.44444444  0.44444444  0.44444444  0.7       ]
+      [ 0.55555556  0.55555556  0.55555556  0.7       ]
+      [ 0.66666667  0.66666667  0.66666667  0.7       ]
+      [ 0.77777778  0.77777778  0.77777778  0.7       ]
+      [ 0.88888889  0.88888889  0.88888889  0.7       ]
+      [ 1.          1.          1.          0.7       ]]]
+    """
+    after_shape = list(rgb.shape)
+    after_shape[-1] = after_shape[-1] + 1
+    rgba = np.dstack(
+        (rgb[..., 0], rgb[..., 1], rgb[..., 2],
+         np.ones_like(rgb[..., 0]) * alpha)).reshape(
+        after_shape)
+
+    return rgba
 
 
 def experimental_func():
@@ -592,3 +760,9 @@ def experimental_func():
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     experimental_func()
+    # pyqtgraph.examples.run()
+    # x = np.linspace(0, 1, 10)
+    # rgb = np.dstack((x, x, x)).reshape(1, 10, 3)
+    # rgba = add_alpha_channel_to_rgb(rgb, alpha=0.7)
+    # print(rgb.shape)
+    # print(rgba)
