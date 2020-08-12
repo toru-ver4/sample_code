@@ -22,6 +22,7 @@ import pyqtgraph.examples
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 import pyqtgraph.Vector as Vector
+import plotly
 
 # import my libraries
 import color_space as cs
@@ -689,11 +690,10 @@ def xyY_plot_sdr_hdr_test(
             min_exposure_hdr=min_exposure_hdr,
             max_exposure_hdr=max_exposure_hdr)
         # plot_xyY_color_volume_sdr_hdr(**d)
-        plot_xyY_color_volume_pyqtgraph(**d)
+        # plot_xyY_color_volume_pyqtgraph(**d)
         args.append(d)
-        break
-    # with Pool(cpu_count()) as pool:
-    #     pool.map(plot_xyY_color_volume_sdr_hdr_wrapper, args)
+    with Pool(cpu_count()) as pool:
+        pool.map(plot_xyY_color_volume_sdr_hdr_wrapper, args)
 
 
 def plot_xyY_color_volume_sdr_hdr_wrapper(args):
@@ -759,10 +759,5 @@ def experimental_func():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    experimental_func()
+    # experimental_func()
     # pyqtgraph.examples.run()
-    # x = np.linspace(0, 1, 10)
-    # rgb = np.dstack((x, x, x)).reshape(1, 10, 3)
-    # rgba = add_alpha_channel_to_rgb(rgb, alpha=0.7)
-    # print(rgb.shape)
-    # print(rgba)
