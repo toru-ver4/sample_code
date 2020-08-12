@@ -9,6 +9,7 @@
 
 import numpy as np
 import math
+import time
 
 
 def is_numpy_module(data):
@@ -125,6 +126,30 @@ def get_3d_grid_cube_format(grid_num=4):
     b_3d = b_3d.flatten()
 
     return np.dstack((r_3d, g_3d, b_3d))
+
+
+class MeasureExecTime():
+    def __init__(self):
+        self.clear_buf()
+
+    def clear_buf(self):
+        self.st_time = 0.0
+        self.lap_st = 0.0
+        self.ed_time = 00
+
+    def start(self):
+        self.st_time = time.time()
+        self.lap_st = self.st_time
+
+    def lap(self):
+        current = time.time()
+        print(f"lap time = {current - self.lap_st:.5f} [sec]")
+        self.lap_st = current
+
+    def end(self):
+        current = time.time()
+        print(f"total time = {current - self.st_time:.5f} [sec]")
+        self.clear_buf()
 
 
 if __name__ == '__main__':
