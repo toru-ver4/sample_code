@@ -165,3 +165,8 @@ venv.bak/
 2020/022_bt2446_method_c/blog_videos/**
 2020/022_bt2446_method_c/blog_img/**
 2020/022_bt2446_method_c/3DLUT/**
+
+.gitconfig
+.bash_history
+.local/**
+.vscode-server/**
