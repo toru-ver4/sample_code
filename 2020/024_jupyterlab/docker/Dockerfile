@@ -5,14 +5,30 @@ RUN mkdir -p /home/jovyan/work \
 
 RUN conda install -c conda-forge --quiet --yes \
     opencv \
-    colour-science
+    colour-science \
+    vispy
 
 RUN conda install --quiet --yes \
     flake8
 
-RUN conda install -c plotly --quiet --yes \
-    plotly=4.9.0 \
-    && \
-    conda clean --all -f -y
+ARG NB_USER="jovyan"
+ARG NB_UID="1000"
+ARG NB_GID="100"
 
-RUN jupyter labextension install jupyterlab-plotly@4.9.0
+USER root
+
+RUN apt-get update && apt-get -y install \
+    qt5-default \
+    qtbase5-dev \
+    qttools5-dev-tools
+
+RUN conda install -c conda-forge --quiet --yes \
+    pyqt \
+    nodejs \
+    ipympl=0.5.3
+
+RUN jupyter lab build -y
+
+RUN fix-permissions "/home/jovyan/abuse"
+
+USER $NB_UID
