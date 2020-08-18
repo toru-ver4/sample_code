@@ -20,15 +20,15 @@ from colour import XYZ_to_RGB, xyY_to_XYZ, RGB_COLOURSPACES,\
     xyY_to_XYZ, XYZ_to_RGB
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-import plotly.express as px
+# import plotly.express as px
 import pandas as pd
 
-import pyqtgraph.examples
-from pyqtgraph.Qt import QtCore, QtGui
-import pyqtgraph.opengl as gl
-from pyqtgraph import Vector
-from OpenGL.GL import *
-from PyQt5.QtOpenGL import QGLWidget
+# import pyqtgraph.examples
+# from pyqtgraph.Qt import QtCore, QtGui
+# import pyqtgraph.opengl as gl
+# from pyqtgraph import Vector
+# from OpenGL.GL import *
+# from PyQt5.QtOpenGL import QGLWidget
 
 # import my libraries
 import color_space as cs
@@ -524,18 +524,18 @@ def save_each_angle(angle=-120):
     pass
 
 
-class myGLViewWidget(gl.GLViewWidget):
-    def __init__(self, width=1600, height=1200):
-        super().__init__()
-        self.setMinimumSize(width, height)
-        self.setMaximumSize(width, height)
+# class myGLViewWidget(gl.GLViewWidget):
+#     def __init__(self, width=1600, height=1200):
+#         super().__init__()
+#         self.setMinimumSize(width, height)
+#         self.setMaximumSize(width, height)
 
-    def initializeGL(self):
-        self.resizeGL(self.width(), self.height())
+#     def initializeGL(self):
+#         self.resizeGL(self.width(), self.height())
 
-    def resizeGL(self, w, h):
-        print(f"resizeGL is called. w={w}, h={h}")
-        # QGLWidget.resizeGL(self, w, h)
+#     def resizeGL(self, w, h):
+#         print(f"resizeGL is called. w={w}, h={h}")
+#         # QGLWidget.resizeGL(self, w, h)
 
 
 def plot_xyY_color_volume_pyqtgraph(
@@ -753,8 +753,8 @@ def xyY_plot_sdr_hdr_test(
             max_exposure_sdr=max_exposure_sdr,
             min_exposure_hdr=min_exposure_hdr,
             max_exposure_hdr=max_exposure_hdr)
-        # plot_xyY_color_volume_sdr_hdr(**d)
-        plot_xyY_color_volume_pyqtgraph(**d)
+        plot_xyY_color_volume_sdr_hdr(**d)
+        # plot_xyY_color_volume_pyqtgraph(**d)
         # plot_xyY_color_volume_sdr_hdr_plotly(**d)
         args.append(d)
         break
