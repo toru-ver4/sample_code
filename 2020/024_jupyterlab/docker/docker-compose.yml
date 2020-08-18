@@ -1,0 +1,17 @@
+version: '3.4'
+
+services:
+    jupyter_dev:
+        image: takuver4/jupyter_dev:rev00
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment: 
+            PYTHONPATH: "/home/jovyan/work/ty_lib"
+            DISPLAY: docker.for.win.localhost:0.0
+            JUPYTER_ENABLE_LAB: "yes"
+        ports:
+            - "10000:8888"
+        volumes:
+            - C:\Users\toruv\OneDrive\work\sample_code:/home/jovyan/work
+            - D:\abuse:/home/jovyan/abuse
