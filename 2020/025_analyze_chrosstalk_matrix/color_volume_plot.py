@@ -41,14 +41,14 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-def reshape_Nx3(data):
+def reshape_to_Nx3(data):
     """
     change data's shape to (N, 3).
 
     Examples
     --------
     >>> data = np.ones((3, 5, 3))
-    >>> data2 = reshape_Nx3(data)
+    >>> data2 = reshape_to_Nx3(data)
     >>> data2.shape
     (15, 3)
     """
@@ -219,7 +219,7 @@ def simple_linear_xyY_plot():
 
     rgb = calc_rgb_from_xyY_for_mpl(
         xyY=Yxy_obj.get_as_xyY(), color_space_name=cs.BT2020)
-    x, y, z = np.dsplit(Yxy_obj.get_as_xyY(), 3)
+    x, y, z = split_tristimulus_values(Yxy_obj.get_as_xyY())
     ax.scatter(x, y, z, s=1, c=rgb)
 
     ax.view_init(elev=20, azim=-120)
@@ -281,7 +281,7 @@ def simple_linear_xyY_plot_pyqtgraph(size=0.0001):
     g = gl.GLGridItem()
     w.addItem(g)
 
-    xyY = reshape_Nx3(xyY)
+    xyY = reshape_to_Nx3(xyY)
     rgb = calc_rgb_from_xyY_for_mpl(
         xyY, color_space_name=cs.BT2020)
     rgba = add_alpha_channel_to_rgb(rgb)
@@ -310,7 +310,7 @@ def simple_linear_xyY_reduced_plot_pyqtgraph(size=0.01):
     g = gl.GLGridItem()
     w.addItem(g)
 
-    reduced_xyY = reshape_Nx3(reduced_xyY)
+    reduced_xyY = reshape_to_Nx3(reduced_xyY)
     rgb = calc_rgb_from_xyY_for_mpl(
         reduced_xyY, color_space_name=cs.BT2020)
     rgba = add_alpha_channel_to_rgb(rgb)
