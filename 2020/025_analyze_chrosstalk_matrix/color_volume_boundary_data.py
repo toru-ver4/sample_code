@@ -27,6 +27,118 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
+def split_tristimulus_values(data):
+    """
+    Examples
+    --------
+    >>> data = np.array(
+    ...     [[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    >>> split_tristimulus_values(data)
+    (array([1, 4, 7]), array([2, 5, 8]), array([3, 6, 9]))
+    """
+    x0 = data[..., 0]
+    x1 = data[..., 1]
+    x2 = data[..., 2]
+
+    return x0, x1, x2
+
+
+def add_data_to_start_and_end_for_inner_product(data):
+    """
+    Examples
+    --------
+    >>> old_data = np.array(
+    ...     [[0, 0], [2, 0], [2, 2], [1, 3], [0, 2], [-1, 1]])
+    >>> new_data = add_data_to_start_and_end_for_inner_product(old_data)
+    >>> print(old_data)
+    [[0  0] [2  0] [2  2] [1  3] [0  2] [-1  1]]
+    >>> print(new_data)
+    [[-1  1] [0  0] [2  0] [2  2] [1  3] [0  2] [-1  1] [ 0  0]]
+    """
+    temp = np.append(data[-1].reshape(1, 2), data, axis=0)
+    new_data = np.append(temp, data[0].reshape(1, 2), axis=0)
+
+    return new_data
+
+
+def calc_vector_from_ndarray(data):
+    """
+    Examles
+    -------
+    >>> data = np.array(
+    ...     [[0, 0], [2, 0], [2, 2], [1, 3], [0, 2], [-1, 1]])
+    >>> calc_vector_from_ndarray(data)
+    [[ 2  0] [ 0  2] [-1  1] [-1 -1] [-1 -1]]
+    """
+    return data[1:] - data[0:-1]
+
+
+def calc_norm_from_ndarray(data):
+    """
+    Parameters
+    ----------
+    data : ndarray
+        2-dimensional data.
+
+    Examples
+    --------
+    >>> data = np.array(
+    ...     [[0, 0], [2, 0], [2, 2], [1, 3], [0, 2], [-1, 1]])
+    >> calc_norm_from_ndarray(data)
+    [2.         2.         1.41421356 1.41421356 1.41421356]
+    """
+    vec = calc_vector_from_ndarray(data=data)
+    norm = np.sqrt((vec[..., 0] ** 2 + vec[..., 1] ** 2))
+
+    return norm
+
+
+def calc_inner_product_from_ndarray(data):
+    """
+    Parameters
+    ----------
+    data : ndarray
+        2-dimensional data.
+
+    Examples
+    --------
+    >>> data = np.array(
+    ...     [[0, 0], [2, 0], [2, 2], [1, 3], [0, 2], [-1, 1]])
+    >> calc_inner_product(data)
+    [0 2 0 2]
+    """
+    vec = calc_vector_from_ndarray(data=data)
+    inner = vec[:-1, 0] * vec[1:, 0] + vec[:-1, 1] * vec[1:, 1]
+
+    return inner
+
+
+def calc_angle_from_ndarray(data):
+    """
+    Parameters
+    ----------
+    data : ndarray
+        2-dimensional data.
+
+    Examples
+    --------
+    >>> data = np.array(
+    ...     [[0, 0], [2, 0], [2, 2], [1, 3], [0, 2], [-1, 1]])
+    >> calc_angle_from_ndarray(data)
+    [ 90.         135.          90.         179.99999879]
+    """
+    norm = calc_norm_from_ndarray(data=data)
+    norm[norm < 10 ** -12] = 0.0
+    inner = calc_inner_product_from_ndarray(data=data)
+
+    cos_val = inner / (norm[:-1] * norm[1:])
+    cos_val = np.nan_to_num(cos_val, nan=-1)
+
+    angle = 180 - np.rad2deg(np.arccos(cos_val))
+
+    return angle
+
+
 class GamutBoundaryData():
     """
     My Gamut Boundary Data.
@@ -47,11 +159,18 @@ class GamutBoundaryData():
             "3" are L, a, and b.
         """
         self.lab = lab
-        self.reduced_lab = None
-        self.outline_lab = None
+        self.reduce_sample_angle_threshold = 130
 
     def __str__(self):
         return self.lab.__str__()
+
+    def _conv_to_xyY(self, lab):
+        xyY = lab.copy()
+        xyY[..., 0] = lab[..., 1]
+        xyY[..., 1] = lab[..., 2]
+        xyY[..., 2] = lab[..., 0]
+
+        return xyY
 
     def get_as_xyY(self):
         """
@@ -63,19 +182,50 @@ class GamutBoundaryData():
         ndarray
             xyY value.
         """
-        xyY = self.lab.copy()
-        xyY[..., 0] = self.lab[..., 1]
-        xyY[..., 1] = self.lab[..., 2]
-        xyY[..., 2] = self.lab[..., 0]
-
+        xyY = self._conv_to_xyY(self.lab)
         return xyY
 
-    def _calc_reduced_data(self):
-        pass
+    def _calc_reduced_data(self, threshold_angle=None):
+        """
+        recude the self.lab data based on the angle on ab plane.
 
-    def get_reduced_data(self):
-        self._calc_reduced_data()
-        return self.reduced_lab
+        Returns
+        -------
+        array
+            array of ndarray that is Lab data of edge point.
+        """
+        if not threshold_angle:
+            threshold_angle = self.reduce_sample_angle_threshold
+        out_buf = []
+        for idx in range(len(self.lab)):
+            ab_data = self.lab[idx, :, 1:].copy()
+            ab_data = add_data_to_start_and_end_for_inner_product(ab_data)
+            angle = calc_angle_from_ndarray(ab_data)
+            angle[angle < 2] = 180  # remove noise data
+            rd_idx = (angle < threshold_angle)
+            out_buf.append(self.lab[idx, rd_idx])
+
+        return np.vstack(out_buf)
+
+    def get_reduced_data(self, threshold_angle=None):
+        """
+        Returns
+        -------
+        array
+            array of ndarray that is Lab data of edge point.
+        """
+        reduced_data = self._calc_reduced_data(threshold_angle=threshold_angle)
+        return reduced_data
+
+    def get_reduced_data_as_xyY(self, threshold_angle=None):
+        """
+        Returns
+        -------
+        array
+            array of ndarray that is Lab data of edge point.
+        """
+        reduced_data = self._calc_reduced_data(threshold_angle=threshold_angle)
+        return self._conv_to_xyY(reduced_data)
 
     def _calc_outline_data(self):
         pass
@@ -428,3 +578,7 @@ if __name__ == '__main__':
         color_space_name=cs.BT2020, white=cs.D65, y_num=4, h_num=8,
         min_exposure=-1, max_exposure=0, overwirte_lut=False)
     print(result)
+
+    data = np.array(
+        [[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    print(split_tristimulus_values(data))
