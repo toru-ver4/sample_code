@@ -53,12 +53,22 @@ class GamutBoundaryData():
     def __str__(self):
         return self.lab.__str__()
 
-    def treat_as_xyY(self):
+    def get_as_xyY(self):
         """
         treat the internal self.lab as the xyY.
-        specifically, swap the index 0 and index 2.
+        some sorting is done.
+
+        Returns
+        -------
+        ndarray
+            xyY value.
         """
-        pass
+        xyY = self.lab.copy()
+        xyY[..., 0] = self.lab[..., 1]
+        xyY[..., 1] = self.lab[..., 2]
+        xyY[..., 2] = self.lab[..., 0]
+
+        return xyY
 
     def _calc_reduced_data(self):
         pass
