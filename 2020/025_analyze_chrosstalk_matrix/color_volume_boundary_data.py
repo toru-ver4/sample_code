@@ -27,22 +27,6 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-def split_tristimulus_values(data):
-    """
-    Examples
-    --------
-    >>> data = np.array(
-    ...     [[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-    >>> split_tristimulus_values(data)
-    (array([1, 4, 7]), array([2, 5, 8]), array([3, 6, 9]))
-    """
-    x0 = data[..., 0]
-    x1 = data[..., 1]
-    x2 = data[..., 2]
-
-    return x0, x1, x2
-
-
 def add_data_to_start_and_end_for_inner_product(data):
     """
     Examples
@@ -655,7 +639,3 @@ if __name__ == '__main__':
         color_space_name=cs.BT2020, white=cs.D65, y_num=4, h_num=8,
         min_exposure=-1, max_exposure=0, overwirte_lut=False)
     print(result)
-
-    data = np.array(
-        [[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-    print(split_tristimulus_values(data))

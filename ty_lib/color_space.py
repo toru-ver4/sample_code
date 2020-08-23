@@ -22,6 +22,7 @@ import numpy as np
 from colour.colorimetry import ILLUMINANTS
 from colour import RGB_COLOURSPACES
 from colour.models import xy_to_XYZ
+from colour import xyY_to_XYZ, XYZ_to_RGB
 from colour.adaptation import chromatic_adaptation_matrix_VonKries as cat02_mtx
 from scipy import linalg
 
@@ -43,6 +44,91 @@ RED_WIDE_GAMUT_RGB = 'REDWideGamutRGB'
 DCI_P3 = 'DCI-P3'
 SRTB = 'sRGB'
 P3_D65 = 'P3-D65'
+
+
+def calc_rgb_from_xyY(xyY, color_space_name=BT709, white=D65):
+    """
+    calc rgb from xyY.
+
+    Parameters
+    ----------
+    xyY : ndarray
+        xyY values.
+    color_space_name : str
+        the name of the target color space.
+    white : ndarray
+        white point. ex: np.array([0.3127, 0.3290])
+
+    Returns
+    -------
+    ndarray
+        rgb linear value (not clipped, so negative values may be present).
+
+    Examples
+    --------
+    >>> xyY = np.array(
+    ...     [[0.3127, 0.3290, 1.0], [0.64, 0.33, 0.2], [0.30, 0.60, 0.6]])
+    >>> calc_rgb_from_xyY(
+    ...     xyY=xyY, color_space_name=cs.BT709, white=cs.D65)
+    [[  1.00000000e+00   1.00000000e+00   1.00000000e+00]
+     [  9.40561207e-01   1.66533454e-16  -1.73472348e-17]
+     [ -2.22044605e-16   8.38962916e-01  -6.93889390e-18]]
+    """
+    rgb = calc_rgb_from_XYZ(
+        xyY_to_XYZ(xyY), color_space_name=color_space_name, white=white)
+
+    return rgb
+
+
+def calc_rgb_from_XYZ(XYZ, color_space_name=BT709, white=D65):
+    """
+    calc rgb from XYZ.
+
+    Parameters
+    ----------
+    XYZ : ndarray
+        XYZ values.
+    color_space_name : str
+        the name of the target color space.
+    white : ndarray
+        white point. ex: np.array([0.3127, 0.3290])
+
+    Returns
+    -------
+    ndarray
+        rgb linear value (not clipped, so negative values may be present).
+
+    Examples
+    --------
+    >>> xyY = np.array(
+    ...     [[0.3127, 0.3290, 1.0], [0.64, 0.33, 0.2], [0.30, 0.60, 0.6]])
+    >>> calc_rgb_from_XYZ(
+    ...     XYZ=xyY_to_XYZ(xyY), color_space_name=cs.BT709, white=cs.D65)
+    [[  1.00000000e+00   1.00000000e+00   1.00000000e+00]
+     [  9.40561207e-01   1.66533454e-16  -1.73472348e-17]
+     [ -2.22044605e-16   8.38962916e-01  -6.93889390e-18]]
+    """
+    rgb = XYZ_to_RGB(
+        XYZ, white, white,
+        RGB_COLOURSPACES[color_space_name].XYZ_to_RGB_matrix)
+
+    return rgb
+
+
+def split_tristimulus_values(data):
+    """
+    Examples
+    --------
+    >>> data = np.array(
+    ...     [[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    >>> split_tristimulus_values(data)
+    (array([1, 4, 7]), array([2, 5, 8]), array([3, 6, 9]))
+    """
+    x0 = data[..., 0]
+    x1 = data[..., 1]
+    x2 = data[..., 2]
+
+    return x0, x1, x2
 
 
 def xy_to_xyz_internal(xy):
@@ -198,5 +284,21 @@ if __name__ == '__main__':
     # print(ocio_matrix_transform_mtx(ACES_AP0, BT709))
     # print(ocio_matrix_transform_mtx(BT709, ACES_AP0))
 
-    print(ocio_matrix_transform_mtx(ACES_AP0, DCI_P3))
-    print(ocio_matrix_transform_mtx(DCI_P3, ACES_AP0))
+    # print(ocio_matrix_transform_mtx(ACES_AP0, DCI_P3))
+    # print(ocio_matrix_transform_mtx(DCI_P3, ACES_AP0))
+
+    # xyY = np.array(
+    #     [[0.3127, 0.3290, 1.0], [0.64, 0.33, 0.2], [0.30, 0.60, 0.6]])
+    # result = calc_rgb_from_xyY(
+    #     xyY=xyY, color_space_name=BT709, white=D65)
+    # print(result)
+
+    # xyY = np.array(
+    #     [[0.3127, 0.3290, 1.0], [0.64, 0.33, 0.2], [0.30, 0.60, 0.6]])
+    # result = calc_rgb_from_XYZ(
+    #     XYZ=xyY_to_XYZ(xyY), color_space_name=BT709, white=D65)
+    # print(result)
+
+    # data = np.array(
+    #     [[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    # print(split_tristimulus_values(data))

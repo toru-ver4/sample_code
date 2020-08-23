@@ -12,7 +12,6 @@ plot補助ツール群
 """
 
 import numpy as np
-from cycler import cycler
 from matplotlib import ticker
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -20,6 +19,16 @@ import matplotlib.patches as patches
 from matplotlib.ticker import AutoMinorLocator
 import colorsys
 import matplotlib.font_manager as fm
+import color_space as cs
+import transfer_functions as tf
+
+try:
+    from pyqtgraph.Qt import QtGui
+    import pyqtgraph.opengl as gl
+    from pyqtgraph import Vector
+except ImportError:
+    print("RARNING: PyQtGraph is not found")
+
 
 # define
 # from https://jfly.uni-koeln.de/colorset/
@@ -58,6 +67,219 @@ for s_val in s:
                                          np.uint8(np.round(g * 0xFF)),
                                          np.uint8(np.round(b * 0xFF)))
     b_cycle.append(color)
+
+
+def reshape_to_Nx3(data):
+    """
+    change data's shape to (N, 3).
+
+    Examples
+    --------
+    >>> data = np.ones((3, 5, 3))
+    >>> data2 = reshape_to_Nx3(data)
+    >>> data2.shape
+    (15, 3)
+    """
+    return np.reshape(data, (calc_tristimulus_array_length(data), 3))
+
+
+def calc_tristimulus_array_length(data_array):
+    """
+    calcurate the array length of tristimulus ndarray.
+
+    Parameters
+    ----------
+    data_array : ndarray
+        tristimulus values
+
+    Returns
+    -------
+    int
+        length of the tristimulus array.
+
+    Examples
+    --------
+    >>> data_1 = np.ones((3, 4, 3))
+    >>> calc_tristimulus_array_length(data_array=data_1)
+    12
+    >>> data_2 = np.ones((3))
+    >>> calc_tristimulus_array_length(data_array=data_2)
+    1
+    """
+    length = 1
+    for coef in data_array.shape[:-1]:
+        length = length * coef
+
+    return length
+
+
+def calc_rgb_from_XYZ_for_mpl(
+        XYZ, color_space_name=cs.BT709, white=cs.D65, oetf_str=tf.GAMMA24):
+    """
+    calc rgb from xyY for Matplotlib.
+    the shape of returned rgb is (N, 3).
+
+    Parameters
+    ----------
+    XYZ : ndarray
+        XYZ value
+    color_space_name : str
+        the name of the target color space.
+    white : ndarray
+        white point. ex: np.array([0.3127, 0.3290])
+    oetf_str : str
+        oetf name.
+
+    Returns
+    -------
+    ndarray
+        rgb non-linear value. the shape is (N, 3).
+
+    Examples
+    --------
+    >>> xyY = np.array(
+    ...     [[[0.3127, 0.3290, 1.0],
+    ...       [0.3127, 0.3290, 0.2]],
+    ...      [[0.64, 0.33, 0.2],
+    ...       [0.30, 0.60, 0.6]]])
+    >>> calc_rgb_from_XYZ_for_mpl(
+    ...     XYZ=xyY_to_XYZ(xyY), color_space_name=cs.BT709, white=cs.D65,
+    ...     oetf_str=tf.GAMMA24)
+    [[  1.00000000e+00   1.00000000e+00   1.00000000e+00]
+     [  5.11402090e-01   5.11402090e-01   5.11402090e-01]
+     [  9.74790473e-01   2.66456071e-07   0.00000000e+00]
+     [  0.00000000e+00   9.29450257e-01   0.00000000e+00]]
+    """
+    array_length = calc_tristimulus_array_length(XYZ)
+    rgb_linear = cs.calc_rgb_from_XYZ(
+        XYZ, color_space_name=color_space_name, white=white)
+    rgb_nonlinear = tf.oetf(np.clip(rgb_linear, 0.0, 1.0), oetf_str)
+    rgb_reshape = rgb_nonlinear.reshape((array_length, 3))
+
+    return rgb_reshape
+
+
+def calc_rgb_from_xyY_for_mpl(
+        xyY, color_space_name=cs.BT709, white=cs.D65, oetf_str=tf.GAMMA24):
+    """
+    calc rgb from xyY for Matplotlib.
+    the shape of returned rgb is (N, 3).
+
+    Parameters
+    ----------
+    xyY : ndarray
+        xyY value
+    color_space_name : str
+        the name of the target color space.
+    white : ndarray
+        white point. ex: np.array([0.3127, 0.3290])
+    oetf_str : str
+        oetf name.
+
+    Returns
+    -------
+    ndarray
+        rgb non-linear value. the shape is (N, 3).
+
+    Examples
+    --------
+    >>> xyY = np.array(
+    ...     [[[0.3127, 0.3290, 1.0],
+    ...       [0.3127, 0.3290, 0.2]],
+    ...      [[0.64, 0.33, 0.2],
+    ...       [0.30, 0.60, 0.6]]])
+    >>> calc_rgb_from_xyY_for_mpl(
+    ...     xyY=xyY, color_space_name=cs.BT709, white=cs.D65,
+    ...     oetf_str=tf.GAMMA24)
+    [[  1.00000000e+00   1.00000000e+00   1.00000000e+00]
+     [  5.11402090e-01   5.11402090e-01   5.11402090e-01]
+     [  9.74790473e-01   2.66456071e-07   0.00000000e+00]
+     [  0.00000000e+00   9.29450257e-01   0.00000000e+00]]
+    """
+    array_length = calc_tristimulus_array_length(xyY)
+    rgb_linear = cs.calc_rgb_from_xyY(
+        xyY, color_space_name=color_space_name, white=white)
+    rgb_nonlinear = tf.oetf(np.clip(rgb_linear, 0.0, 1.0), oetf_str)
+    rgb_reshape = rgb_nonlinear.reshape((array_length, 3))
+
+    return rgb_reshape
+
+
+def add_alpha_channel_to_rgb(rgb, alpha=1.0):
+    """
+    Add an alpha channel to rgb array.
+    This function is for pyqtgraph,
+    therefore don't use for image processing.
+
+    Example
+    -------
+    >>> x = np.linspace(0, 1, 10)
+    >>> rgb = np.dstack((x, x, x))
+    >>> add_alpha_channel_to_rgb(rgb, alpha=0.7)
+    [[[ 0.          0.          0.          0.7       ]
+      [ 0.11111111  0.11111111  0.11111111  0.7       ]
+      [ 0.22222222  0.22222222  0.22222222  0.7       ]
+      [ 0.33333333  0.33333333  0.33333333  0.7       ]
+      [ 0.44444444  0.44444444  0.44444444  0.7       ]
+      [ 0.55555556  0.55555556  0.55555556  0.7       ]
+      [ 0.66666667  0.66666667  0.66666667  0.7       ]
+      [ 0.77777778  0.77777778  0.77777778  0.7       ]
+      [ 0.88888889  0.88888889  0.88888889  0.7       ]
+      [ 1.          1.          1.          0.7       ]]]
+    """
+    after_shape = list(rgb.shape)
+    after_shape[-1] = after_shape[-1] + 1
+    rgba = np.dstack(
+        (rgb[..., 0], rgb[..., 1], rgb[..., 2],
+         np.ones_like(rgb[..., 0]) * alpha)).reshape(
+        after_shape)
+
+    return rgba
+
+
+def plot_xyY_with_scatter3D(ax, xyY, color_space_name=cs.BT709):
+    """
+    plot xyY data with ax.scatter3D.
+
+    Parameters
+    ----------
+    ax : mpl_toolkits.mplot3d.axes3d.Axes3D
+        axis
+    xyY : ndarray
+        xyY data
+    color_space_name : str
+        the name of the target color space.
+    """
+    rgb = calc_rgb_from_xyY_for_mpl(
+        xyY=xyY, color_space_name=color_space_name)
+    x, y, z = cs.split_tristimulus_values(xyY)
+    ax.scatter3D(x, y, z, s=2, c=rgb)
+
+
+def plot_xyY_with_gl_GLScatterPlotItem(
+        w, xyY, color_space_name=cs.BT709, size=0.001):
+    """
+    plot xyY data with ax.scatter3D.
+
+    Parameters
+    ----------
+    w : GLGridItem
+        GLGridItem instance.
+    xyY : ndarray
+        xyY data
+    color_space_name : str
+        the name of the target color space.
+    size : float
+        marker size.
+    """
+    xyY_plot = reshape_to_Nx3(xyY)
+    rgb = calc_rgb_from_xyY_for_mpl(
+        xyY_plot, color_space_name=color_space_name)
+    rgba = add_alpha_channel_to_rgb(rgb)
+    size_val = np.ones(xyY_plot.shape[0]) * size
+    sp = gl.GLScatterPlotItem(
+        pos=xyY_plot, size=size_val, color=rgba, pxMode=False)
+    w.addItem(sp)
 
 
 def _set_common_parameters(fontsize, **kwargs):
@@ -281,6 +503,27 @@ def log_scale_settings(ax1, grid_alpha=0.5, bg_color="#E0E0E0"):
     ax1.get_xaxis().set_major_locator(ticker.LogLocator())
     ax1.grid(which='both', linestyle='-', alpha=grid_alpha)
     ax1.patch.set_facecolor(bg_color)
+
+
+def pyqtgraph_plot_3d_init(
+        title="Title",
+        distance=1.7,
+        center=(0.0, 0.0, 1.0),
+        elevation=30,
+        angle=-120):
+    app = QtGui.QApplication([])
+    w = gl.GLViewWidget()
+    w.opts['distance'] = distance
+    w.opts['center'] = Vector(
+        center[0], center[1], center[2])
+    w.opts['elevation'] = elevation
+    w.opts['azimuth'] = angle
+    w.show()
+    w.setWindowTitle(title)
+    g = gl.GLGridItem()
+    w.addItem(g)
+
+    return app, w
 
 
 def plot_3d_init(

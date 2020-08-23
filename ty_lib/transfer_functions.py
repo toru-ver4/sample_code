@@ -20,8 +20,6 @@ In-Out は原則 [0:1] のレンジで行う。
 import os
 import numpy as np
 import colour
-import plot_utility as pu
-import matplotlib.pyplot as plt
 
 # NAME
 GAMMA24 = 'Gamma 2.4'
