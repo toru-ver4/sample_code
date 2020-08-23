@@ -199,6 +199,23 @@ def add_alpha_channel_to_rgb(rgb, alpha=1.0):
     return rgba
 
 
+def plot_xyY_with_scatter3D(ax, xyY):
+    """
+    plot xyY data with ax.scatter3D.
+
+    Parameters
+    ----------
+    ax : mpl_toolkits.mplot3d.axes3d.Axes3D
+        axis
+    xyY : ndarray
+        xyY data
+    """
+    rgb = calc_rgb_from_xyY_for_mpl(
+        xyY=xyY, color_space_name=cs.BT2020)
+    x, y, z = split_tristimulus_values(xyY)
+    ax.scatter3D(x, y, z, s=2, c=rgb)
+
+
 def simple_linear_xyY_plot():
     Yxy_obj = calc_xyY_boundary_data(
         color_space_name=cs.BT2020, y_num=512, h_num=1024)
@@ -257,6 +274,43 @@ def simple_linear_xyY_reduced_plot():
 
     ax.view_init(elev=20, azim=-120)
     fname = "./test_3d_reduced.png"
+    print(fname)
+    plt.savefig(
+        fname, bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+    plt.close(fig)
+
+
+def simple_linear_xyY_mesh_plot():
+    gmb_obj = calc_xyY_boundary_data(
+        color_space_name=cs.BT2020, y_num=513, h_num=1024)
+    reduced_xyY = gmb_obj.get_reduced_data_as_xyY()
+    mesh_xyY = gmb_obj.get_outline_mesh_data_as_xyY(
+        ab_plane_div_num=40, rad_rate=4.0, l_step=4)
+
+    fig, ax = pu.plot_3d_init(
+        figsize=(9, 9),
+        title="Title",
+        title_font_size=18,
+        face_color=(0.1, 0.1, 0.1),
+        plane_color=(0.2, 0.2, 0.2, 1.0),
+        text_color=(0.5, 0.5, 0.5),
+        grid_color=(0.3, 0.3, 0.3),
+        x_label="X",
+        y_label="Y",
+        z_label="Z",
+        xlim=[0.0, 0.8],
+        ylim=[0.0, 0.9],
+        zlim=[0.0, 1.1])
+
+    # mesh
+    plot_xyY_with_scatter3D(ax, mesh_xyY)
+
+    # outline
+    plot_xyY_with_scatter3D(ax, reduced_xyY)
+
+    ax.view_init(elev=20, azim=-120)
+    fname = "./test_3d_mesh.png"
     print(fname)
     plt.savefig(
         fname, bbox_inches='tight', pad_inches=0.1)
@@ -323,8 +377,9 @@ def simple_linear_xyY_reduced_plot_pyqtgraph(size=0.01):
 
 
 def experimental_func():
-    simple_linear_xyY_plot()
+    # simple_linear_xyY_plot()
     # simple_linear_xyY_reduced_plot()
+    simple_linear_xyY_mesh_plot()
     # simple_linear_xyY_plot_pyqtgraph()
     # simple_linear_xyY_reduced_plot_pyqtgraph()
     # Yxy_obj = calc_xyY_boundary_data(

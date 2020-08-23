@@ -160,6 +160,9 @@ class GamutBoundaryData():
         """
         self.lab = lab
         self.reduce_sample_angle_threshold = 130
+        self.ab_plane_data_div_num = 40
+        self.rad_rate = 4.0
+        self.l_step = 1
 
     def __str__(self):
         return self.lab.__str__()
@@ -227,12 +230,86 @@ class GamutBoundaryData():
         reduced_data = self._calc_reduced_data(threshold_angle=threshold_angle)
         return self._conv_to_xyY(reduced_data)
 
-    def _calc_outline_data(self):
-        pass
+    def _calc_outline_data(
+            self, ab_plane_div_num=None, rad_rate=None, l_step=None):
+        """
+        calclurate color volume outline.
 
-    def get_outline_data(self):
-        self._calc_outline_data()
-        return self.outline_lab
+        Parameters
+        ----------
+        ab_plane_div_num : int
+            the number mesh point on each ab plane.
+        rad_rate : float
+            the speed of counterclockwise sampling.
+        l_step : int
+            step for "L" direction.
+
+        Returns
+        -------
+            array of mesh-data.
+        """
+        ab_plane_div_num = ab_plane_div_num\
+            if ab_plane_div_num else self.ab_plane_data_div_num
+        rad_rate = rad_rate if rad_rate else self.rad_rate
+        l_step = l_step if l_step else self.l_step
+        l_reduced_num = len(self.lab[::l_step])
+        ab_plane_sample_num = len(self.lab[0])
+        ab_next_idx_offset_list = tpg.equal_devision(
+            int(l_reduced_num * rad_rate), l_reduced_num)
+        rad_offset_list = np.linspace(0, 1, ab_plane_div_num, endpoint=False)
+
+        out_buf = []
+        for rad_st in rad_offset_list:
+            ab_idx = int(rad_st * ab_plane_sample_num)
+            ab_next_offset_idx = 0
+            for l_idx in range(0, len(self.lab), l_step):
+                lab_data = self.lab[l_idx, ab_idx % ab_plane_sample_num]
+                out_buf.append(lab_data)
+                ab_idx += ab_next_idx_offset_list[ab_next_offset_idx]
+                ab_next_offset_idx += 1
+
+        # inverse direction
+        ab_next_idx_offset_list = tpg.equal_devision(
+            int(l_reduced_num * -rad_rate), l_reduced_num)
+        for rad_st in rad_offset_list:
+            ab_idx = int(rad_st * ab_plane_sample_num)
+            ab_next_offset_idx = 0
+            for l_idx in range(0, len(self.lab), l_step):
+                lab_data = self.lab[l_idx, ab_idx % ab_plane_sample_num]
+                out_buf.append(lab_data)
+                ab_idx += ab_next_idx_offset_list[ab_next_offset_idx]
+                ab_next_offset_idx += 1
+        return np.vstack(out_buf)
+
+    def get_outline_mesh_data(
+            self, ab_plane_div_num=None, rad_rate=None, l_step=None):
+        """
+        calclurate color volume outline.
+
+        Parameters
+        ----------
+        ab_plane_div_num : int
+            the number mesh point on each ab plane.
+        rad_rate : float
+            the speed of counterclockwise sampling.
+        l_step : int
+            step for "L" direction.
+
+        Returns
+        -------
+            array of mesh-data.
+        """
+        outline_data = self._calc_outline_data(
+            ab_plane_div_num=ab_plane_div_num, rad_rate=rad_rate,
+            l_step=l_step)
+        return outline_data
+
+    def get_outline_mesh_data_as_xyY(
+            self, ab_plane_div_num=None, rad_rate=None, l_step=None):
+        outline_data = self._calc_outline_data(
+            ab_plane_div_num=ab_plane_div_num, rad_rate=rad_rate,
+            l_step=l_step)
+        return self._conv_to_xyY(outline_data)  
 
 
 def is_inner_gamut_xyY(xyY, color_space_name=cs.BT2020, white=cs.D65):
