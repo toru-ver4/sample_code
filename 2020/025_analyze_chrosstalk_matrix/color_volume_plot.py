@@ -202,25 +202,24 @@ def add_alpha_channel_to_rgb(rgb, alpha=1.0):
 def simple_linear_xyY_plot():
     Yxy_obj = calc_xyY_boundary_data(
         color_space_name=cs.BT2020, y_num=512, h_num=1024)
-    fig = plt.figure(figsize=(9, 9))
-    ax = Axes3D(fig)
-    plt.gca().patch.set_facecolor("#808080")
-    bg_color = (0.3, 0.3, 0.3, 0.0)
-    ax.w_xaxis.set_pane_color(bg_color)
-    ax.w_yaxis.set_pane_color(bg_color)
-    ax.w_zaxis.set_pane_color(bg_color)
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("Y")
-    ax.set_title("Sample", fontsize=18)
-    ax.set_xlim(0.0, 0.8)
-    ax.set_ylim(0.0, 0.9)
-    ax.set_zlim(0.0, 1.1)
-
+    fig, ax = pu.plot_3d_init(
+        figsize=(9, 9),
+        title="Title",
+        title_font_size=18,
+        face_color=(0.1, 0.1, 0.1),
+        plane_color=(0.2, 0.2, 0.2, 1.0),
+        text_color=(0.5, 0.5, 0.5),
+        grid_color=(0.3, 0.3, 0.3),
+        x_label="X",
+        y_label="Y",
+        z_label="Z",
+        xlim=[0.0, 0.8],
+        ylim=[0.0, 0.9],
+        zlim=[0.0, 1.1])
     rgb = calc_rgb_from_xyY_for_mpl(
         xyY=Yxy_obj.get_as_xyY(), color_space_name=cs.BT2020)
     x, y, z = split_tristimulus_values(Yxy_obj.get_as_xyY())
-    ax.scatter(x, y, z, s=1, c=rgb)
+    ax.scatter3D(x, y, z, s=1, c=rgb)
 
     ax.view_init(elev=20, azim=-120)
     fname = "./test_3d_simple.png"
@@ -236,25 +235,25 @@ def simple_linear_xyY_reduced_plot():
         color_space_name=cs.BT2020, y_num=512, h_num=1024)
     reduced_xyY = gmb_obj.get_reduced_data_as_xyY()
 
-    fig = plt.figure(figsize=(9, 9))
-    ax = Axes3D(fig)
-    plt.gca().patch.set_facecolor("#808080")
-    bg_color = (0.3, 0.3, 0.3, 0.0)
-    ax.w_xaxis.set_pane_color(bg_color)
-    ax.w_yaxis.set_pane_color(bg_color)
-    ax.w_zaxis.set_pane_color(bg_color)
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("Y")
-    ax.set_title("Sample", fontsize=18)
-    ax.set_xlim(0.0, 0.8)
-    ax.set_ylim(0.0, 0.9)
-    ax.set_zlim(0.0, 1.1)
+    fig, ax = pu.plot_3d_init(
+        figsize=(9, 9),
+        title="Title",
+        title_font_size=18,
+        face_color=(0.1, 0.1, 0.1),
+        plane_color=(0.2, 0.2, 0.2, 1.0),
+        text_color=(0.5, 0.5, 0.5),
+        grid_color=(0.3, 0.3, 0.3),
+        x_label="X",
+        y_label="Y",
+        z_label="Z",
+        xlim=[0.0, 0.8],
+        ylim=[0.0, 0.9],
+        zlim=[0.0, 1.1])
 
     rgb = calc_rgb_from_xyY_for_mpl(
         xyY=reduced_xyY, color_space_name=cs.BT2020)
     x, y, z = split_tristimulus_values(reduced_xyY)
-    ax.scatter(x, y, z, s=1, c=rgb)
+    ax.scatter3D(x, y, z, s=1, c=rgb)
 
     ax.view_init(elev=20, azim=-120)
     fname = "./test_3d_reduced.png"
@@ -324,9 +323,9 @@ def simple_linear_xyY_reduced_plot_pyqtgraph(size=0.01):
 
 
 def experimental_func():
-    # simple_linear_xyY_plot()
+    simple_linear_xyY_plot()
     # simple_linear_xyY_reduced_plot()
-    simple_linear_xyY_plot_pyqtgraph()
+    # simple_linear_xyY_plot_pyqtgraph()
     # simple_linear_xyY_reduced_plot_pyqtgraph()
     # Yxy_obj = calc_xyY_boundary_data(
     #     color_space_name=cs.BT2020, y_num=512, h_num=1024)

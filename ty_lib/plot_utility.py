@@ -15,6 +15,7 @@ import numpy as np
 from cycler import cycler
 from matplotlib import ticker
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.patches as patches
 from matplotlib.ticker import AutoMinorLocator
 import colorsys
@@ -282,6 +283,48 @@ def log_scale_settings(ax1, grid_alpha=0.5, bg_color="#E0E0E0"):
     ax1.patch.set_facecolor(bg_color)
 
 
+def plot_3d_init(
+        figsize=(9, 9),
+        title="Title",
+        title_font_size=18,
+        face_color=(0.0, 0.0, 0.0),
+        plane_color=(0.3, 0.3, 0.3, 1.0),
+        text_color=(0.5, 0.5, 0.5),
+        grid_color=None,
+        x_label="X",
+        y_label="Y",
+        z_label="Z",
+        xlim=None,
+        ylim=None,
+        zlim=None,
+        xtick=None,
+        ytick=None,
+        ztick=None):
+    plt.rcParams['grid.color'] = grid_color if grid_color else text_color
+    fig = plt.figure(figsize=figsize)
+    ax = Axes3D(fig)
+    plt.gca().patch.set_facecolor(face_color)
+    bg_color = plane_color
+    ax.w_xaxis.set_pane_color(bg_color)
+    ax.w_yaxis.set_pane_color(bg_color)
+    ax.w_zaxis.set_pane_color(bg_color)
+    ax.set_xlabel(x_label, color=text_color)
+    ax.set_ylabel(y_label, color=text_color)
+    ax.set_zlabel(z_label, color=text_color)
+    ax.set_title(title, fontsize=title_font_size, color=text_color)
+    ax.set_xticks(xtick) if xtick else None
+    ax.set_yticks(ytick) if ytick else None
+    ax.set_zticks(ztick) if ztick else None
+    ax.tick_params(axis='x', colors=text_color)
+    ax.tick_params(axis='y', colors=text_color)
+    ax.tick_params(axis='z', colors=text_color)
+    ax.set_xlim(xlim) if xlim else None
+    ax.set_ylim(ylim) if ylim else None
+    ax.set_zlim(zlim) if zlim else None
+
+    return fig, ax
+
+
 if __name__ == '__main__':
     # _check_hsv_space()
 
@@ -291,7 +334,7 @@ if __name__ == '__main__':
     gamma_list = [1.0, 1.2, 1.5, 1.9, 2.4, 3.0]
     label_list = ["gamma " + str(x) for x in gamma_list]
     y_list = [x ** gamma for gamma in gamma_list]
-    ax1 = plot_1_graph(
+    fig, ax1 = plot_1_graph(
         fontsize=20,
         figsize=(10, 8),
         graph_title="Title",
@@ -307,8 +350,9 @@ if __name__ == '__main__':
         linewidth=3,
         minor_xtick_num=None,
         minor_ytick_num=None,
-        prop_cycle=cycler(color=g_cycle))
+        return_figure=True)
     for y, label in zip(y_list, label_list):
         ax1.plot(x, y, label=label)
     plt.legend(loc='upper left')
     plt.show()
+    plt.close(fig)
