@@ -33,7 +33,7 @@ __all__ = []
 def simple_linear_xyY_plot():
     Yxy_obj = calc_xyY_boundary_data(
         color_space_name=cs.BT2020, y_num=512, h_num=1024)
-    xyY = Yxy_obj.get_as_xyY()
+    xyY = Yxy_obj.get_as_abL()
     fig, ax = pu.plot_3d_init(
         figsize=(9, 9),
         title="Title",
@@ -62,7 +62,7 @@ def simple_linear_xyY_plot():
 def simple_linear_xyY_reduced_plot():
     gmb_obj = calc_xyY_boundary_data(
         color_space_name=cs.BT2020, y_num=512, h_num=1024)
-    reduced_xyY = gmb_obj.get_reduced_data_as_xyY()
+    reduced_xyY = gmb_obj.get_reduced_data_as_abL()
 
     fig, ax = pu.plot_3d_init(
         figsize=(9, 9),
@@ -93,8 +93,8 @@ def simple_linear_xyY_reduced_plot():
 def simple_linear_xyY_mesh_plot():
     gmb_obj = calc_xyY_boundary_data(
         color_space_name=cs.BT2020, y_num=513, h_num=1024)
-    reduced_xyY = gmb_obj.get_reduced_data_as_xyY()
-    mesh_xyY = gmb_obj.get_outline_mesh_data_as_xyY(
+    reduced_xyY = gmb_obj.get_reduced_data_as_abL()
+    mesh_xyY = gmb_obj.get_outline_mesh_data_as_abL(
         ab_plane_div_num=40, rad_rate=4.0, l_step=4)
 
     fig, ax = pu.plot_3d_init(
@@ -130,7 +130,7 @@ def simple_linear_xyY_mesh_plot():
 def simple_linear_xyY_plot_pyqtgraph(size=0.0001):
     gmb_obj = calc_xyY_boundary_data(
         color_space_name=cs.BT2020, y_num=512, h_num=1024)
-    xyY = gmb_obj.get_as_xyY()
+    xyY = gmb_obj.get_as_abL()
 
     app, w = pu.pyqtgraph_plot_3d_init(
         title="Title",
@@ -148,7 +148,7 @@ def simple_linear_xyY_plot_pyqtgraph(size=0.0001):
 def simple_linear_xyY_reduced_plot_pyqtgraph(size=0.01):
     gmb_obj = calc_xyY_boundary_data(
         color_space_name=cs.BT2020, y_num=512, h_num=1024)
-    reduced_xyY = gmb_obj.get_reduced_data_as_xyY()
+    reduced_xyY = gmb_obj.get_reduced_data_as_abL()
 
     app, w = pu.pyqtgraph_plot_3d_init(
         title="Title",
@@ -166,8 +166,8 @@ def simple_linear_xyY_reduced_plot_pyqtgraph(size=0.01):
 def simple_linear_xyY_mesh_plot_pyqtgraph(size=0.01):
     gmb_obj = calc_xyY_boundary_data(
         color_space_name=cs.BT2020, y_num=512, h_num=1024)
-    reduced_xyY = gmb_obj.get_reduced_data_as_xyY()
-    mesh_xyY = gmb_obj.get_outline_mesh_data_as_xyY()
+    reduced_xyY = gmb_obj.get_reduced_data_as_abL()
+    mesh_xyY = gmb_obj.get_outline_mesh_data_as_abL()
 
     app, w = pu.pyqtgraph_plot_3d_init(
         title="Title",
@@ -186,7 +186,7 @@ def simple_linear_xyY_mesh_plot_pyqtgraph(size=0.01):
 def experimental_func():
     # simple_linear_xyY_plot()
     # simple_linear_xyY_reduced_plot()
-    # simple_linear_xyY_mesh_plot()
+    simple_linear_xyY_mesh_plot()
     # simple_linear_xyY_plot_pyqtgraph()
     # simple_linear_xyY_reduced_plot_pyqtgraph()
     # simple_linear_xyY_mesh_plot_pyqtgraph()

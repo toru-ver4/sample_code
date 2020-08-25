@@ -237,7 +237,8 @@ def add_alpha_channel_to_rgb(rgb, alpha=1.0):
     return rgba
 
 
-def plot_xyY_with_scatter3D(ax, xyY, color_space_name=cs.BT709):
+def plot_xyY_with_scatter3D(
+        ax, xyY, ms=2, color_space_name=cs.BT709, color='rgb'):
     """
     plot xyY data with ax.scatter3D.
 
@@ -247,13 +248,21 @@ def plot_xyY_with_scatter3D(ax, xyY, color_space_name=cs.BT709):
         axis
     xyY : ndarray
         xyY data
+    ms : float
+        marker size.
     color_space_name : str
         the name of the target color space.
+    color : str
+        'rgb': rgb value.
+        '#ABCDEF' : color value
     """
-    rgb = calc_rgb_from_xyY_for_mpl(
-        xyY=xyY, color_space_name=color_space_name)
+    if color == 'rgb':
+        color = calc_rgb_from_xyY_for_mpl(
+            xyY=xyY, color_space_name=color_space_name)
+    else:
+        color = color
     x, y, z = cs.split_tristimulus_values(xyY)
-    ax.scatter3D(x, y, z, s=2, c=rgb)
+    ax.scatter3D(x, y, z, s=ms, c=color)
 
 
 def plot_xyY_with_gl_GLScatterPlotItem(

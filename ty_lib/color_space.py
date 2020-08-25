@@ -22,7 +22,7 @@ import numpy as np
 from colour.colorimetry import ILLUMINANTS
 from colour import RGB_COLOURSPACES
 from colour.models import xy_to_XYZ
-from colour import xyY_to_XYZ, XYZ_to_RGB
+from colour import xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
 from colour.adaptation import chromatic_adaptation_matrix_VonKries as cat02_mtx
 from scipy import linalg
 
@@ -46,7 +46,7 @@ SRTB = 'sRGB'
 P3_D65 = 'P3-D65'
 
 
-def calc_rgb_from_xyY(xyY, color_space_name=BT709, white=D65):
+def calc_rgb_from_xyY(xyY, color_space_name, white=D65):
     """
     calc rgb from xyY.
 
@@ -80,7 +80,7 @@ def calc_rgb_from_xyY(xyY, color_space_name=BT709, white=D65):
     return rgb
 
 
-def calc_rgb_from_XYZ(XYZ, color_space_name=BT709, white=D65):
+def calc_rgb_from_XYZ(XYZ, color_space_name, white=D65):
     """
     calc rgb from XYZ.
 
@@ -113,6 +113,42 @@ def calc_rgb_from_XYZ(XYZ, color_space_name=BT709, white=D65):
         RGB_COLOURSPACES[color_space_name].XYZ_to_RGB_matrix)
 
     return rgb
+
+
+def calc_XYZ_from_rgb(rgb, color_space_name, white=D65):
+    """
+    calc XYZ from rgb.
+
+    Parameters
+    ----------
+    rgb : ndarray
+        rgb linear values.
+    color_space_name : str
+        the name of the target color space.
+    white : ndarray
+        white point. ex: np.array([0.3127, 0.3290])
+
+    Returns
+    -------
+    ndarray
+        rgb linear value (not clipped, so negative values may be present).
+
+    Examples
+    --------
+    >>> rgb = np.array(
+    ...     [[1.0, 1.0, 1.0], [0.18, 0.18, 0.18], [1.0, 0.0, 0.0]])
+    >>> XYZ = calc_XYZ_from_rgb(
+    ...     rgb=rgb, color_space_name=cs.BT709, white=cs.D65)
+    >>> XYZ_to_xyY(XYZ)
+    [[ 0.3127      0.329       1.        ]
+     [ 0.3127      0.329       0.18      ]
+     [ 0.64        0.33        0.21263901]]
+    """
+    XYZ = RGB_to_XYZ(
+        rgb, white, white,
+        RGB_COLOURSPACES[color_space_name].RGB_to_XYZ_matrix)
+
+    return XYZ
 
 
 def split_tristimulus_values(data):
@@ -302,3 +338,10 @@ if __name__ == '__main__':
     # data = np.array(
     #     [[1, 2, 3], [4, 5, 6], [7, 8, 9]])
     # print(split_tristimulus_values(data))
+
+    # from colour import XYZ_to_xyY
+    # rgb = np.array(
+    #     [[1.0, 1.0, 1.0], [0.18, 0.18, 0.18], [1.0, 0.0, 0.0]])
+    # XYZ = calc_XYZ_from_rgb(
+    #     rgb=rgb, color_space_name=BT709, white=D65)
+    # print(XYZ_to_xyY(XYZ))
