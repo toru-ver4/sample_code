@@ -72,7 +72,7 @@ def img_write(filename, img):
     """
     OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
     """
-    cv2.imwrite(filename, img[:, :, ::-1])
+    cv2.imwrite(filename, img[:, :, ::-1], [cv2.IMWRITE_PNG_COMPRESSION, 9])
 
 
 def img_wirte_float_as_16bit_int(filename, img_float):

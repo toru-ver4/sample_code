@@ -344,7 +344,7 @@ def experimental_func(
 def bt2446_method_c_tonemapping(
         img, src_color_space_name=cs.BT2020, tfc=tf.ST2084,
         alpha=0.15, sigma=0.5, hdr_ref_luminance=203, hdr_peak_luminance=1000,
-        k1=0.8, k3=0.7, y_sdr_ip=60):
+        k1=0.8, k3=0.7, y_sdr_ip=60, clip_output=True):
     """
     Apply tonemapping function described in BT.2446 Method C
 
@@ -375,6 +375,8 @@ def bt2446_method_c_tonemapping(
         parameter for tonecurve
     y_sdr_ip : float
         parameter for tonecurve
+    clip_output : bool
+        if the value is True, the data will be clipped to 0.0 - 1.0.
 
     Returns
     -------
@@ -405,7 +407,12 @@ def bt2446_method_c_tonemapping(
         RGB_COLOURSPACES[src_color_space_name].XYZ_to_RGB_matrix)
     rgb_sdr_linear = apply_inverse_cross_talk_matrix(
         img=rgb_sdr_linear, alpha=alpha)
-    rgb_sdr_linear = np.clip(rgb_sdr_linear, 0.0, 1.0)
+
+    if clip_output:
+        print("[Log][bt2446_method_c_tonemapping] clippint to 0.0 - 1.0")
+        rgb_sdr_linear = np.clip(rgb_sdr_linear, 0.0, 1.0)
+    else:
+        None
 
     return rgb_sdr_linear
 

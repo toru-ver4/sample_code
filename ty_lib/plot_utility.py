@@ -238,7 +238,8 @@ def add_alpha_channel_to_rgb(rgb, alpha=1.0):
 
 
 def plot_xyY_with_scatter3D(
-        ax, xyY, ms=2, color_space_name=cs.BT709, color='rgb'):
+        ax, xyY, ms=2, color_space_name=cs.BT709, color='rgb',
+        alpha=None):
     """
     plot xyY data with ax.scatter3D.
 
@@ -255,6 +256,8 @@ def plot_xyY_with_scatter3D(
     color : str
         'rgb': rgb value.
         '#ABCDEF' : color value
+    alpha : float
+        alpha value.
     """
     if color == 'rgb':
         color = calc_rgb_from_xyY_for_mpl(
@@ -262,7 +265,7 @@ def plot_xyY_with_scatter3D(
     else:
         color = color
     x, y, z = cs.split_tristimulus_values(xyY)
-    ax.scatter3D(x, y, z, s=ms, c=color)
+    ax.scatter3D(x, y, z, s=ms, c=color, alpha=alpha)
 
 
 def plot_xyY_with_gl_GLScatterPlotItem(
@@ -539,6 +542,7 @@ def plot_3d_init(
         figsize=(9, 9),
         title="Title",
         title_font_size=18,
+        color_preset=None,
         face_color=(0.0, 0.0, 0.0),
         plane_color=(0.3, 0.3, 0.3, 1.0),
         text_color=(0.5, 0.5, 0.5),
@@ -552,14 +556,25 @@ def plot_3d_init(
         xtick=None,
         ytick=None,
         ztick=None):
+    if color_preset == "light":
+        face_color = (0.9, 0.9, 0.9)
+        plane_color = (0.7, 0.7, 0.7, 1.0)
+        text_color = (0.1, 0.1, 0.1)
+        grid_color = (0.8, 0.8, 0.8)
+    elif color_preset == 'dark':
+        face_color = (0.1, 0.1, 0.1)
+        plane_color = (0.2, 0.2, 0.2, 1.0)
+        text_color = (0.8, 0.8, 0.8)
+        grid_color = (0.5, 0.5, 0.5)
+    else:
+        pass
     plt.rcParams['grid.color'] = grid_color if grid_color else text_color
     fig = plt.figure(figsize=figsize)
-    ax = Axes3D(fig)
     plt.gca().patch.set_facecolor(face_color)
-    bg_color = plane_color
-    ax.w_xaxis.set_pane_color(bg_color)
-    ax.w_yaxis.set_pane_color(bg_color)
-    ax.w_zaxis.set_pane_color(bg_color)
+    ax = Axes3D(fig)
+    ax.w_xaxis.set_pane_color(plane_color)
+    ax.w_yaxis.set_pane_color(plane_color)
+    ax.w_zaxis.set_pane_color(plane_color)
     ax.set_xlabel(x_label, color=text_color)
     ax.set_ylabel(y_label, color=text_color)
     ax.set_zlabel(z_label, color=text_color)
