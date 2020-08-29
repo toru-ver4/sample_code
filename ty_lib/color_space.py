@@ -22,13 +22,17 @@ import numpy as np
 from colour.colorimetry import ILLUMINANTS
 from colour import RGB_COLOURSPACES
 from colour.models import xy_to_XYZ
-from colour import xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
+from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
 from colour.adaptation import chromatic_adaptation_matrix_VonKries as cat02_mtx
 from scipy import linalg
 
 # Define
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
 D65 = ILLUMINANTS[CMFS_NAME]['D65']
+D50 = ILLUMINANTS[CMFS_NAME]['D50']
+
+D65_XYZ = xyY_to_XYZ(xy_to_xyY(D65))
+D50_XYZ = xyY_to_XYZ(xy_to_xyY(D50))
 
 # NAME
 BT709 = 'ITU-R BT.709'

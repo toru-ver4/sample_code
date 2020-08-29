@@ -269,7 +269,7 @@ def plot_xyY_with_scatter3D(
 
 
 def plot_xyY_with_gl_GLScatterPlotItem(
-        w, xyY, color_space_name=cs.BT709, size=0.001):
+        w, xyY, color_space_name=cs.BT709, size=0.001, color='rgb'):
     """
     plot xyY data with ax.scatter3D.
 
@@ -288,6 +288,8 @@ def plot_xyY_with_gl_GLScatterPlotItem(
     rgb = calc_rgb_from_xyY_for_mpl(
         xyY_plot, color_space_name=color_space_name)
     rgba = add_alpha_channel_to_rgb(rgb)
+    if color != "rgb":
+        rgba = np.ones_like(rgba) * np.array(color).reshape((1, 4))
     size_val = np.ones(xyY_plot.shape[0]) * size
     sp = gl.GLScatterPlotItem(
         pos=xyY_plot, size=size_val, color=rgba, pxMode=False)
@@ -530,6 +532,9 @@ def pyqtgraph_plot_3d_init(
         center[0], center[1], center[2])
     w.opts['elevation'] = elevation
     w.opts['azimuth'] = angle
+    # w.setBackgroundColor('g')
+    w.setBackgroundColor([0.5, 0.5, 0.5, 1.0])
+
     w.show()
     w.setWindowTitle(title)
     g = gl.GLGridItem()
