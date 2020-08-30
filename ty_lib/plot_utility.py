@@ -15,8 +15,10 @@ import numpy as np
 from matplotlib import ticker
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.proj3d import proj_transform
 import matplotlib.patches as patches
 from matplotlib.ticker import AutoMinorLocator
+from matplotlib.patches import FancyArrowPatch
 import colorsys
 import matplotlib.font_manager as fm
 import color_space as cs
@@ -239,7 +241,7 @@ def add_alpha_channel_to_rgb(rgb, alpha=1.0):
 
 def plot_xyY_with_scatter3D(
         ax, xyY, ms=2, color_space_name=cs.BT709, color='rgb',
-        alpha=None):
+        alpha=None, oetf_str=tf.GAMMA24):
     """
     plot xyY data with ax.scatter3D.
 
@@ -261,7 +263,7 @@ def plot_xyY_with_scatter3D(
     """
     if color == 'rgb':
         color = calc_rgb_from_xyY_for_mpl(
-            xyY=xyY, color_space_name=color_space_name)
+            xyY=xyY, color_space_name=color_space_name, oetf_str=oetf_str)
     else:
         color = color
     x, y, z = cs.split_tristimulus_values(xyY)
@@ -294,6 +296,28 @@ def plot_xyY_with_gl_GLScatterPlotItem(
     sp = gl.GLScatterPlotItem(
         pos=xyY_plot, size=size_val, color=rgba, pxMode=False)
     w.addItem(sp)
+
+
+class Arrow3D(FancyArrowPatch):
+    def __init__(self, x, y, z, dx, dy, dz, *args, **kwargs):
+        super().__init__((0, 0), (0, 0), *args, **kwargs)
+        self._xyz = (x, y, z)
+        self._dxdydz = (dx, dy, dz)
+
+    def draw(self, renderer):
+        x1, y1, z1 = self._xyz
+        dx, dy, dz = self._dxdydz
+        x2, y2, z2 = (x1 + dx, y1 + dy, z1 + dz)
+
+        xs, ys, zs = proj_transform((x1, x2), (y1, y2), (z1, z2), renderer.M)
+        self.set_positions((xs[0], ys[0]), (xs[1], ys[1]))
+        super().draw(renderer)
+
+
+def _arrow3D(ax, x, y, z, dx, dy, dz, *args, **kwargs):
+    '''Add an 3d arrow to an `Axes3D` instance.'''
+    arrow = Arrow3D(x, y, z, dx, dy, dz, *args, **kwargs)
+    ax.add_artist(arrow)
 
 
 def _set_common_parameters(fontsize, **kwargs):
@@ -563,9 +587,9 @@ def plot_3d_init(
         ztick=None):
     if color_preset == "light":
         face_color = (0.9, 0.9, 0.9)
-        plane_color = (0.7, 0.7, 0.7, 1.0)
+        plane_color = (0.8, 0.8, 0.8, 1.0)
         text_color = (0.1, 0.1, 0.1)
-        grid_color = (0.8, 0.8, 0.8)
+        grid_color = (0.9, 0.9, 0.9)
     elif color_preset == 'dark':
         face_color = (0.1, 0.1, 0.1)
         plane_color = (0.2, 0.2, 0.2, 1.0)
@@ -577,6 +601,7 @@ def plot_3d_init(
     fig = plt.figure(figsize=figsize)
     plt.gca().patch.set_facecolor(face_color)
     ax = Axes3D(fig)
+    ax.set_facecolor(face_color)
     ax.w_xaxis.set_pane_color(plane_color)
     ax.w_yaxis.set_pane_color(plane_color)
     ax.w_zaxis.set_pane_color(plane_color)
@@ -593,6 +618,7 @@ def plot_3d_init(
     ax.set_xlim(xlim) if xlim else None
     ax.set_ylim(ylim) if ylim else None
     ax.set_zlim(zlim) if zlim else None
+    setattr(Axes3D, 'arrow3D', _arrow3D)
 
     return fig, ax
 

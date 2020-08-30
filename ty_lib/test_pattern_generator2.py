@@ -1094,7 +1094,7 @@ def plot_color_checker_image(rgb, rgb2=None, size=(1920, 1080),
         sub_color = rgb[idx].tolist() if rgb2 is None else rgb2[idx].tolist()
         cv2.fillPoly(img_all_patch, [pts], sub_color)
 
-    preview_image(img_all_patch)
+    # preview_image(img_all_patch)
 
     return img_all_patch
 

@@ -118,9 +118,9 @@ def plot_bt2446_method_c_with_crosstalk_matrix_seq(
         text_color=(0.1, 0.1, 0.1),
         grid_color=(0.8, 0.8, 0.8),
         color_preset='light',
-        x_label="X",
-        y_label="Y",
-        z_label="Z",
+        x_label="x",
+        y_label="y",
+        z_label="Y",
         xlim=[0.0, 0.8],
         ylim=[0.0, 0.9],
         zlim=[0.0, 1.1])
@@ -151,33 +151,33 @@ def apply_bt2446_method_c_without_crosstalk_matrix(
     rgb_hdr = cs.calc_rgb_from_XYZ(
         XYZ=xyY_to_XYZ(gmb_hdr.get_as_abL()), color_space_name=cs.BT2020)
     rgb_hdr_to_sdr = bt2446_method_c_tonemapping(
-       img=rgb_hdr, src_color_space_name=cs.BT2020, tfc=tf.ST2084,
-       alpha=ctm_alpha, sigma=0.0, hdr_ref_luminance=203,
-       hdr_peak_luminance=1000, k1=0.69, k3=0.74, y_sdr_ip=41.0,
-       clip_output=False)
+        img=rgb_hdr, src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+        alpha=ctm_alpha, sigma=0.0, hdr_ref_luminance=203,
+        hdr_peak_luminance=1000, k1=0.69, k3=0.74, y_sdr_ip=41.0,
+        clip_output=False)
     XYZ_hdr_to_sdr = cs.calc_XYZ_from_rgb(
         rgb=rgb_hdr_to_sdr, color_space_name=cs.BT2020, white=cs.D65)
     gmb_hdr_to_sdr = GamutBoundaryData(
         XYZ_to_xyY(XYZ_hdr_to_sdr), Lab_to_abL_swap=True)
 
     gmb_sdr = calc_xyY_boundary_data(
-       color_space_name=cs.BT2020, white=cs.D65, y_num=y_num, h_num=h_num,
-       eotf_name=tf_for_sdr_src, overwirte_lut=False)
+        color_space_name=cs.BT2020, white=cs.D65, y_num=y_num, h_num=h_num,
+        eotf_name=tf_for_sdr_src, overwirte_lut=False)
 
     # plot_bt2446_method_c_without_crosstalk_matrix(
     #     gmb_hdr_to_sdr=gmb_hdr_to_sdr, gmb_sdr=gmb_sdr, ctm_alpha=ctm_alpha)
-    plot_bt2446_method_c_matrix_pyqtgraph(gmb_hdr_to_sdr, gmb_sdr)
+    # plot_bt2446_method_c_matrix_pyqtgraph(gmb_hdr_to_sdr, gmb_sdr)
 
-    # args = []
-    # angle_list = np.arange(360)
-    # for idx, angle in enumerate(angle_list):
-    #     d = dict(
-    #         gmb_hdr_to_sdr=gmb_hdr_to_sdr, gmb_sdr=gmb_sdr,
-    #         idx=idx, angle=angle, alpha_ctm=ctm_alpha)
-    #     # plot_bt2446_method_c_with_crosstalk_matrix_seq()
-    #     args.append(d)
-    # with Pool(cpu_count()) as pool:
-    #     pool.map(th_plot_bt2446_method_c_with_crosstalk_matrix_seq, args)
+    args = []
+    angle_list = np.arange(360)
+    for idx, angle in enumerate(angle_list):
+        d = dict(
+            gmb_hdr_to_sdr=gmb_hdr_to_sdr, gmb_sdr=gmb_sdr,
+            idx=idx, angle=angle, alpha_ctm=ctm_alpha)
+        # plot_bt2446_method_c_with_crosstalk_matrix_seq()
+        args.append(d)
+    with Pool(cpu_count()) as pool:
+        pool.map(th_plot_bt2446_method_c_with_crosstalk_matrix_seq, args)
 
 
 def th_plot_bt2446_method_c_with_crosstalk_matrix_seq(args):
@@ -214,8 +214,7 @@ def get_color_checker_xyY_value():
         L_A1=L_A, L_A2=L_A)
     xyY_D65 = XYZ_to_xyY(XYZ_D65)
 
-    # return xyY_D65
-    return xyY_D50
+    return xyY_D65
 
 
 def plot_xy_plane_displacement_seq(alpha=0.05):
@@ -293,16 +292,199 @@ def plot_xy_plane_displacement_seq(alpha=0.05):
     plt.show()
 
 
+def plot_xyY_color_volume_displacement_seq(alpha=0.20):
+    gmb_sdr = calc_xyY_boundary_data(
+       color_space_name=cs.BT2020, white=cs.D65, y_num=1025, h_num=1024,
+       eotf_name=None, overwirte_lut=False)
+    mesh_xyY_sdr = gmb_sdr.get_outline_mesh_data_as_abL(
+        ab_plane_div_num=40, rad_rate=8.0, l_step=2)
+
+    xyY = get_color_checker_xyY_value()
+    rgb = cs.calc_rgb_from_XYZ(
+        XYZ=xyY_to_XYZ(xyY), color_space_name=cs.BT2020)
+    rgb_ctm = apply_cross_talk_matrix(rgb, alpha=alpha)
+    xyY_ctm = XYZ_to_xyY(
+        cs.calc_XYZ_from_rgb(rgb=rgb_ctm, color_space_name=cs.BT2020))
+
+    angle_list = np.arange(360)
+    args = []
+    for idx, angle in enumerate(angle_list):
+        d = dict(
+            a_idx=idx, angle=angle,
+            mesh_xyY_sdr=mesh_xyY_sdr, xyY=xyY, xyY_ctm=xyY_ctm, alpha=alpha)
+        # plot_xyY_color_volume_displacement(**d)
+        args.append(d)
+    with Pool(cpu_count()) as pool:
+        pool.map(thread_wrapper_plot_xyY_color_volume_displacement, args)
+
+
+def thread_wrapper_plot_xyY_color_volume_displacement(args):
+    plot_xyY_color_volume_displacement(**args)
+
+
+def plot_xyY_color_volume_displacement(
+        a_idx, angle, mesh_xyY_sdr, xyY, xyY_ctm, alpha=0.20):
+    fig, ax = pu.plot_3d_init(
+        figsize=(9, 9),
+        title=f"xyY, alpha={alpha:.02f}, {angle}°",
+        title_font_size=18,
+        color_preset='light',
+        x_label="x",
+        y_label="y",
+        z_label="Y",
+        xlim=[0.0, 0.8],
+        ylim=[0.0, 0.9],
+        zlim=[0.0, 1.1])
+    pu.plot_xyY_with_scatter3D(
+        ax, mesh_xyY_sdr, ms=1, color='#404040', alpha=0.1)
+    pu.plot_xyY_with_scatter3D(
+        ax, xyY, ms=50, color='rgb', alpha=1.0)
+    pu.plot_xyY_with_scatter3D(
+        ax, xyY_ctm, ms=20, color='#404040', alpha=1.0)
+
+    for idx in range(len(xyY)):
+        ax.arrow3D(
+            xyY[idx, 0], xyY[idx, 1], xyY[idx, 2],
+            xyY_ctm[idx, 0] - xyY[idx, 0],
+            xyY_ctm[idx, 1] - xyY[idx, 1],
+            xyY_ctm[idx, 2] - xyY[idx, 2],
+            mutation_scale=16, facecolor='#D0D0D0',
+            arrowstyle="-|>")
+
+    ax.view_init(elev=20, azim=angle)
+    out_dir = "/work/overuse/2020/025_analyze_crosstalk_matrix/img_seq"
+    fname = f"{out_dir}/xyY_seq_a_{alpha:.02f}_{a_idx:04d}.png"
+    print(fname)
+    plt.savefig(
+        fname, bbox_inches='tight', pad_inches=0.1)
+    # plt.show()
+    plt.close(fig)
+
+
+def plot_hdr10_gamut_boundary():
+    gmb_hdr = calc_xyY_boundary_data(
+        color_space_name=cs.BT2020, white=cs.D65, y_num=1025, h_num=1024,
+        eotf_name=None, overwirte_lut=False)
+    mesh_xyY = gmb_hdr.get_outline_mesh_data_as_abL(
+        ab_plane_div_num=30, rad_rate=8, l_step=2)
+    mesh_xyY[..., 2] = mesh_xyY[..., 2] * 100  # change to the HDR range.
+
+    fig, ax = pu.plot_3d_init(
+        figsize=(9, 9),
+        title="HDR10 Gamut Boundary",
+        title_font_size=18,
+        color_preset='dark',
+        x_label="x",
+        y_label="y",
+        z_label="Y",
+        xlim=[0.0, 0.8],
+        ylim=[0.0, 0.9],
+        zlim=[0.0, 110])
+
+    # mesh
+    pu.plot_xyY_with_scatter3D(
+        ax, mesh_xyY, ms=3, color="rgb", alpha=0.3)
+
+    ax.view_init(elev=20, azim=-120)
+    fname = "./blog_img/HDR10_GamutBoundary.png"
+    print(fname)
+    plt.savefig(
+        fname, bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+    plt.close(fig)
+
+
+def plot_hdr10_to_sdr_gamut_boundary():
+    tf_for_hdr_src = tf.ST2084
+    y_num = 1025
+    h_num = 1024
+    ctm_alpha = 0.0
+    gmb_hdr = calc_xyY_boundary_data(
+       color_space_name=cs.BT2020, white=cs.D65, y_num=y_num, h_num=h_num,
+       eotf_name=tf_for_hdr_src, overwirte_lut=False)
+    rgb_hdr = cs.calc_rgb_from_XYZ(
+        XYZ=xyY_to_XYZ(gmb_hdr.get_as_abL()), color_space_name=cs.BT2020)
+    rgb_hdr_to_sdr = bt2446_method_c_tonemapping(
+       img=rgb_hdr, src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+       alpha=ctm_alpha, sigma=0.0, hdr_ref_luminance=203,
+       hdr_peak_luminance=1000, k1=0.69, k3=0.74, y_sdr_ip=41.0,
+       clip_output=False)
+    XYZ_hdr_to_sdr = cs.calc_XYZ_from_rgb(
+        rgb=rgb_hdr_to_sdr, color_space_name=cs.BT2020, white=cs.D65)
+    gmb_hdr_to_sdr = GamutBoundaryData(
+        XYZ_to_xyY(XYZ_hdr_to_sdr), Lab_to_abL_swap=True)
+    mesh_xyY = gmb_hdr_to_sdr.get_outline_mesh_data_as_abL(
+        ab_plane_div_num=40, rad_rate=16, l_step=2)
+
+    fig, ax = pu.plot_3d_init(
+        figsize=(9, 9),
+        title="Gamut Boundary after HDR10 to SDR convertion",
+        title_font_size=18,
+        color_preset='dark',
+        x_label="x",
+        y_label="y",
+        z_label="Y",
+        xlim=[0.0, 0.8],
+        ylim=[0.0, 0.9],
+        zlim=[0.0, 1.1])
+
+    # mesh
+    pu.plot_xyY_with_scatter3D(
+        ax, mesh_xyY, ms=3, color="rgb", alpha=0.3)
+
+    ax.view_init(elev=20, azim=-120)
+    fname = "./blog_img/HDR10_to_SDR_GamutBoundary.png"
+    print(fname)
+    plt.savefig(
+        fname, bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+    plt.close(fig)
+
+
+def apply_ctm_with_tp_image(luminance=100):
+    alpha_list = [0.0, 0.05, 0.10, 0.20]
+
+    for alpha in alpha_list:
+        img_sdr = tpg.img_read_as_float(
+            "./blog_img/bt2020_tp_src_1920x1080.png")
+        img_sdr = tf.eotf(img_sdr, tf.GAMMA24) * luminance / 10000
+
+        rgb_hdr_to_sdr = bt2446_method_c_tonemapping(
+            img=img_sdr, src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+            alpha=alpha, sigma=0.0, hdr_ref_luminance=203,
+            hdr_peak_luminance=1000, k1=0.69, k3=0.74, y_sdr_ip=41.0,
+            clip_output=False)
+
+        sdr_rgb_non_linear = tf.oetf(
+            np.clip(rgb_hdr_to_sdr, 0.0, 1.0), tf.GAMMA24)
+        tpg.img_wirte_float_as_16bit_int(
+            f"./blog_img/tp_ctm_{alpha:.02f}.png", sdr_rgb_non_linear)
+
+
 def make_blog_image():
-    plot_xy_plane_displacement_seq(alpha=0.10)
-    plot_xy_plane_displacement_seq(alpha=0.20)
+    # color checker on xy plane
+    # plot_xy_plane_displacement_seq(alpha=0.10)
+    # plot_xy_plane_displacement_seq(alpha=0.20)
+
+    # color checker in xyY space
+    # plot_xyY_color_volume_displacement_seq(alpha=0.10)
+    # plot_xyY_color_volume_displacement_seq(alpha=0.20)
+
+    # color volume in xyY space
+    # alpha_list = [0.0, 0.05, 0.10, 0.15, 0.20, 0.25]
+    # for alpha in alpha_list:
+    #     apply_bt2446_method_c_without_crosstalk_matrix(ctm_alpha=alpha)
+
+    # gamut boundary sample
+    plot_hdr10_gamut_boundary()
+    plot_hdr10_to_sdr_gamut_boundary()
+
+    # apply bt2446 with ctm for colorchecker.
+    # apply_ctm_with_tp_image(luminance=400)
 
 
 def main_func():
     # apply_bt2446_method_c_without_crosstalk_matrix(ctm_alpha=0.05)
-    # alpha_list = np.linspace(0, 0.2, 8)
-    # for alpha in alpha_list:
-    #     apply_bt2446_method_c_without_crosstalk_matrix(ctm_alpha=alpha)
     # calc_crosstalk_matrix_in_xyz()
     make_blog_image()
 
