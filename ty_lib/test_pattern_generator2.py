@@ -48,6 +48,38 @@ def preview_image(img, order='rgb', over_disp=False):
     cv2.destroyAllWindows()
 
 
+def img_read(filename):
+    """
+    OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
+    """
+    img = cv2.imread(filename, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)
+
+    if img is not None:
+        return img[:, :, ::-1]
+    else:
+        return img
+
+
+def img_read_as_float(filename):
+    img_int = img_read(filename)
+    img_max_value = np.iinfo(img_int.dtype).max
+    img_float = img_int / img_max_value
+
+    return img_float
+
+
+def img_write(filename, img):
+    """
+    OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
+    """
+    cv2.imwrite(filename, img[:, :, ::-1], [cv2.IMWRITE_PNG_COMPRESSION, 9])
+
+
+def img_wirte_float_as_16bit_int(filename, img_float):
+    img_int = np.uint16(np.round(np.clip(img_float, 0.0, 1.0) * 0xFFFF))
+    img_write(filename, img_int)
+
+
 def equal_devision(length, div_num):
     """
     # 概要
@@ -1062,7 +1094,7 @@ def plot_color_checker_image(rgb, rgb2=None, size=(1920, 1080),
         sub_color = rgb[idx].tolist() if rgb2 is None else rgb2[idx].tolist()
         cv2.fillPoly(img_all_patch, [pts], sub_color)
 
-    preview_image(img_all_patch)
+    # preview_image(img_all_patch)
 
     return img_all_patch
 
