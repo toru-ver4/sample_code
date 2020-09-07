@@ -166,6 +166,8 @@ venv.bak/
 2020/022_bt2446_method_c/blog_img/**
 2020/022_bt2446_method_c/3DLUT/**
 2020/024_jupyterlab/lut/**
+2020/025_analyze_chrosstalk_matrix/**/*.npy
+2020/999_sample_icc/**
 
 .gitconfig
 .bash_history
