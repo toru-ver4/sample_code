@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-
+modify and save the xml file for icc profile.
 ============================================
 
 """
@@ -41,19 +41,19 @@ const_d50_large_xyz = [96.422, 100.000, 82.521]
 const_d65_large_xyz = [95.047, 100.000, 108.883]
 
 
-def make_images(gamma_float=3.0):
-    src_color_space = cs.ACES_AP0
+# def make_images(gamma_float=3.0):
+#     src_color_space = cs.ACES_AP0
 
-    img = tpg.img_read_as_float(
-        "./img/ColorChecker_All_ITU-R BT.709_D65_BT1886_Reverse.tiff")
-    img_linear = img ** 2.4
-    img_sRGB = tf.oetf(img_linear, tf.SRGB)
-    ap1_img_linear = RGB_to_RGB(
-        img_linear,
-        RGB_COLOURSPACES[cs.BT709], RGB_COLOURSPACES[src_color_space])
-    ap1_non_linear = ap1_img_linear ** (1/gamma_float)
-    tpg.img_wirte_float_as_16bit_int("./img/ap0_img.png", ap1_non_linear)
-    tpg.img_wirte_float_as_16bit_int("./img/sRGB.png", img_sRGB)
+#     img = tpg.img_read_as_float(
+#         "./img/ColorChecker_All_ITU-R BT.709_D65_BT1886_Reverse.tiff")
+#     img_linear = img ** 2.4
+#     img_sRGB = tf.oetf(img_linear, tf.SRGB)
+#     ap1_img_linear = RGB_to_RGB(
+#         img_linear,
+#         RGB_COLOURSPACES[cs.BT709], RGB_COLOURSPACES[src_color_space])
+#     ap1_non_linear = ap1_img_linear ** (1/gamma_float)
+#     tpg.img_wirte_float_as_16bit_int("./img/ap0_img.png", ap1_non_linear)
+#     tpg.img_wirte_float_as_16bit_int("./img/sRGB.png", img_sRGB)
 
 
 def main_func():
@@ -70,8 +70,6 @@ def main_func():
     gamma_float = 3.0
     gamma = int(gamma_float * 0x8000 + 0.5)
     print(f"gamma = {gamma / 0x8000:.16f}")
-
-    make_images(gamma_float=gamma_float)
 
 
 def get_icc_tag_element(
@@ -122,6 +120,21 @@ def get_parametric_curve_element(root):
             parametric_curve_element = parent_element.find(key_tag)
 
     return parametric_curve_element
+
+
+def get_rgbXYZ_element_list(root):
+    rgbXYZ_element_list = [None, None, None]
+    parent_tag = 'XYZType'
+    key_tag = 'TagSignature'
+    target_tag = 'XYZNumber'
+    key_text_list = ['rXYZ', 'gXYZ', 'bXYZ']
+
+    for idx, key_text in enumerate(key_text_list):
+        for parent_element in root.iter(parent_tag):
+            if parent_element.find(key_tag).text == key_text:
+                rgbXYZ_element_list[idx] = parent_element.find(target_tag)
+
+    return rgbXYZ_element_list
 
 
 def get_chad_matrix_from_chad_mtx_element(chad_mtx_element):
@@ -234,7 +247,7 @@ def get_parametric_curve_params_from_element(parameteric_curve_element):
     return function_type_str, param_ndarray
 
 
-def get_parametric_curve_params_to_element(
+def set_parametric_curve_params_to_element(
         function_type_str, params, parameteric_curve_element):
     """
     Parameters
@@ -257,7 +270,7 @@ def get_parametric_curve_params_to_element(
     >>> parameteric_curve_element = get_parametric_curve_element(root)
     >>> function_type = "2"
     >>> params = np.array([2.4, 0.1, 0.2, 0.3])
-    >>> get_parametric_curve_params_to_element(
+    >>> set_parametric_curve_params_to_element(
     ...     function_type, params, parameteric_curve_element)
     >>> print(parameteric_curve_element.attrib)
     {'FunctionType': '2'}
@@ -274,6 +287,27 @@ def get_parametric_curve_params_to_element(
     param_str_array = [f"{x:.8f}" for x in params]
     buf += " ".join(param_str_array) + '\n' + foot_space
     parameteric_curve_element.text = buf
+
+
+def get_rgbXYZ_params_from_element(rgbXYZ_element_list):
+    """
+    Parameters
+    ----------
+    rgbXYZ_element_list : list
+        list of xml.etree.ElementTree.Element.
+
+    Returns
+    -------
+    ndarray
+        A 3x3 matrix that convert from src color space to the PCS.
+
+    Examples
+    --------
+    >>> tree = ET.parse("./p3-2.xml")
+    >>> root = tree.getroot()
+    >>> get_rgbXYZ_params_from_element(rgbXYZ_element_list)
+    
+    """
 
 
 def xml_parse_test():
@@ -302,10 +336,14 @@ def xml_parse_test():
 
     function_type = "2"
     params = np.array([2.4, 0.1, 0.2, 0.3])
-    get_parametric_curve_params_to_element(
+    set_parametric_curve_params_to_element(
         function_type, params, parameteric_curve_element)
     print(parameteric_curve_element.attrib)
     print(parameteric_curve_element.text)
+
+    rgb_XYZ_element_list = get_rgbXYZ_element_list(root)
+    for rgb_XYZ_element in rgb_XYZ_element_list:
+        print(rgb_XYZ_element.attrib)
 
     tree.write("test_out.xml")
 
