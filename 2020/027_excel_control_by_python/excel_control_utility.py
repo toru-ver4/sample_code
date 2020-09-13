@@ -287,5 +287,3 @@ def main_func():
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     main_func()
-    # fname = "./sample4.xlsx"
-    # print(convert_from_relative_path_to_abs_path(fname))
