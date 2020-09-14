@@ -8,6 +8,7 @@ modify and save the xml file for icc profile.
 # import standard libraries
 import os
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 # import third-party libraries
 import numpy as np
@@ -16,9 +17,6 @@ from colour.models import ACES_CG_COLOURSPACE,\
 from colour import RGB_to_RGB
 
 # import my libraries
-import color_space as cs
-import transfer_functions as tf
-import test_pattern_generator2 as tpg
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -29,47 +27,49 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
 
-const_dci_p3_xy = [[0.680, 0.320],
-                   [0.265, 0.690],
-                   [0.150, 0.060]]
 
-const_aces_ap0_xy = [[0.73470, 0.26530],
-                     [0.00000, 1.00000],
-                     [0.00010, -0.07700]]
-
-const_d50_large_xyz = [96.422, 100.000, 82.521]
-const_d65_large_xyz = [95.047, 100.000, 108.883]
+RENDERING_INTENT_ABSOLUTE = "Absolute Colorimetric"
+RENDERING_INTENT_RELATIVE = "Relative Colorimetric"
+RENDERING_INTENT_PERCEPTUAL = "Perceptual"
+RENDERING_INTENT_SATURATION = "Saturation"
 
 
-# def make_images(gamma_float=3.0):
-#     src_color_space = cs.ACES_AP0
+def get_value_from_specific_header_tag(root, header_name):
+    """
+    Example
+    -------
+    >>> tree = ET.parse("./aces_ap0_gm30.xml")
+    >>> root = tree.getroot()
+    >>> get_value_from_specific_header_tag(root, "RenderingIntent")
+    "Perceptual"
+    """
+    header_value = None
+    for element in root.iter(header_name):
+        header_value = element.text
 
-#     img = tpg.img_read_as_float(
-#         "./img/ColorChecker_All_ITU-R BT.709_D65_BT1886_Reverse.tiff")
-#     img_linear = img ** 2.4
-#     img_sRGB = tf.oetf(img_linear, tf.SRGB)
-#     ap1_img_linear = RGB_to_RGB(
-#         img_linear,
-#         RGB_COLOURSPACES[cs.BT709], RGB_COLOURSPACES[src_color_space])
-#     ap1_non_linear = ap1_img_linear ** (1/gamma_float)
-#     tpg.img_wirte_float_as_16bit_int("./img/ap0_img.png", ap1_non_linear)
-#     tpg.img_wirte_float_as_16bit_int("./img/sRGB.png", img_sRGB)
+    return header_value
 
 
-def main_func():
-    # rgb_to_xyz = RGB_COLOURSPACES[src_color_space].RGB_to_XYZ_matrix
-    rgb_to_xyz = cs.calc_rgb_to_xyz_matrix(
-        const_aces_ap0_xy, const_d65_large_xyz)
-    chromatic_adaptation = np.array(
-        [[1.04788208, 0.02291870, -0.05021667],
-         [0.02958679, 0.99047852, -0.01707458],
-         [-0.00924683, 0.01507568, 0.75167847]])
+def set_value_to_specific_header_tag(root, header_name, value):
+    """
+    Example
+    -------
+    >>> tree = ET.parse("./aces_ap0_gm30.xml")
+    >>> root = tree.getroot()
+    >>> set_value_to_specific_header_tag(
+    ...     root, "RenderingIntent", "Absolute Colorimetric")
+    >>> get_value_from_specific_header_tag(root, "RenderingIntent")
+    "Absolute Colorimetric"
+    """
+    for element in root.iter(header_name):
+        element.text = value
 
-    print(chromatic_adaptation.dot(rgb_to_xyz))
 
-    gamma_float = 3.0
-    gamma = int(gamma_float * 0x8000 + 0.5)
-    print(f"gamma = {gamma / 0x8000:.16f}")
+def create_current_date_str():
+    """
+    create "YYYY-MM-DDTHH:MM:SS" format str.
+    """
+    return datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def get_icc_tag_element(
@@ -305,13 +305,57 @@ def get_rgbXYZ_params_from_element(rgbXYZ_element_list):
     --------
     >>> tree = ET.parse("./p3-2.xml")
     >>> root = tree.getroot()
+    >>> rgb_XYZ_element_list = get_rgbXYZ_element_list(root)
     >>> get_rgbXYZ_params_from_element(rgbXYZ_element_list)
-    
+    [[ 0.51512146  0.29197693  0.15710449]
+     [ 0.24119568  0.69224548  0.0665741 ]
+     [-0.00105286  0.04188538  0.78407288]]
     """
+    src2pcs_mtx = np.zeros((3, 3))
+
+    for idx, rgb_XYZ_element in enumerate(rgbXYZ_element_list):
+        src2pcs_mtx[0][idx] = float(rgb_XYZ_element.attrib['X'])
+        src2pcs_mtx[1][idx] = float(rgb_XYZ_element.attrib['Y'])
+        src2pcs_mtx[2][idx] = float(rgb_XYZ_element.attrib['Z'])
+
+    return np.array(src2pcs_mtx)
+
+
+def set_rgbXYZ_params_to_element(src2pcs_mtx, rgb_XYZ_element_list):
+    """
+    Parameters
+    ----------
+    src2pcs_mtx : ndarray
+        A 3x3 matrix that convert from src color space to the PCS.
+    rgbXYZ_element_list : list
+        list of xml.etree.ElementTree.Element.
+
+    Returns
+    -------
+    ndarray
+        A 3x3 matrix that convert from src color space to the PCS.
+
+    Examples
+    --------
+    >>> tree = ET.parse("./p3-2.xml")
+    >>> root = tree.getroot()
+    >>> rgb_XYZ_element_list = get_rgbXYZ_element_list(root)
+    >>> src2pcs_mtx = np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]])
+    >>> set_rgbXYZ_params_to_element(src2pcs_mtx, rgb_XYZ_element_list)
+    >>> for rgb_XYZ_element in rgb_XYZ_element_list:
+    ...     print(rgb_XYZ_element.attrib)
+    {'X': '0.00000000', 'Y': '3.00000000', 'Z': '6.00000000'}
+    {'X': '1.00000000', 'Y': '4.00000000', 'Z': '7.00000000'}
+    {'X': '2.00000000', 'Y': '5.00000000', 'Z': '8.00000000'}
+    """
+    for idx, rgb_XYZ_element in enumerate(rgb_XYZ_element_list):
+        rgb_XYZ_element.attrib['X'] = f"{src2pcs_mtx[0][idx]:.08f}"
+        rgb_XYZ_element.attrib['Y'] = f"{src2pcs_mtx[1][idx]:.08f}"
+        rgb_XYZ_element.attrib['Z'] = f"{src2pcs_mtx[2][idx]:.08f}"
 
 
 def xml_parse_test():
-    tree = ET.parse("./p3-2.xml")
+    tree = ET.parse("./icc_profile_sample/p3-2.xml")
     root = tree.getroot()
     chad_mtx_element = get_chad_mtx_element(root)
     print(chad_mtx_element.text)
@@ -344,11 +388,32 @@ def xml_parse_test():
     rgb_XYZ_element_list = get_rgbXYZ_element_list(root)
     for rgb_XYZ_element in rgb_XYZ_element_list:
         print(rgb_XYZ_element.attrib)
+    src2pcs_mtx = get_rgbXYZ_params_from_element(rgb_XYZ_element_list)
+    print(src2pcs_mtx)
+    src2pcs_mtx = np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]])
+    set_rgbXYZ_params_to_element(src2pcs_mtx, rgb_XYZ_element_list)
+    for rgb_XYZ_element in rgb_XYZ_element_list:
+        print(rgb_XYZ_element.attrib)
 
+    ri = get_value_from_specific_header_tag(root, "RenderingIntent")
+    print(ri)
+    set_value_to_specific_header_tag(
+        root, "RenderingIntent", RENDERING_INTENT_PERCEPTUAL)
+    current_time_str = create_current_date_str()
+    print(current_time_str)
+
+    tree.write("test_out.xml")
+
+
+def create_sample_profile():
+    tree = ET.parse("./icc_profile_sample/p3-2.xml")
+    root = tree.getroot()
+    set_value_to_specific_header_tag(
+        root, "CreationDateTime", create_current_date_str())
     tree.write("test_out.xml")
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # main_func()
-    xml_parse_test()
+    create_sample_profile()
+    # xml_parse_test()
