@@ -406,11 +406,34 @@ def xml_parse_test():
 
 
 def create_sample_profile():
-    tree = ET.parse("./icc_profile_sample/p3-2.xml")
+    tree = ET.parse("./icc_profile_sample/base_profile_v4.xml")
     root = tree.getroot()
+
+    # Profile header
+    set_value_to_specific_header_tag(
+        root, "PreferredCMMType", "")
+    set_value_to_specific_header_tag(
+        root, "ProfileVersion", "4.30")
     set_value_to_specific_header_tag(
         root, "CreationDateTime", create_current_date_str())
-    tree.write("test_out.xml")
+    set_value_to_specific_header_tag(
+        root, "PrimaryPlatform", "MSFT")
+    set_value_to_specific_header_tag(
+        root, "DeviceManufacturer", "")
+    set_value_to_specific_header_tag(
+        root, "DeviceModel", "")
+    set_value_to_specific_header_tag(
+        root, "ProfileCreator", "")
+    set_value_to_specific_header_tag(
+        root, "ProfileID", "")
+
+    # Tag table
+    desc_element = get_desc_element(root)
+    desc_element.text = "Gamma=3.5, ACES AP0, D65"
+    cprt_element = get_cprt_element(root)
+    cprt_element.text = "Copyright 2020 Toru Yoshihara"
+
+    tree.write("test_out.xml", short_empty_elements=False)
 
 
 if __name__ == '__main__':
