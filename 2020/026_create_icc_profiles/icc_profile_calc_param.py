@@ -10,7 +10,7 @@ import os
 
 # import third-party libraries
 from colour.adaptation import chromatic_adaptation_matrix_VonKries
-from colour import xy_to_XYZ
+from colour import xy_to_XYZ, XYZ_to_xy
 
 # import my libraries
 import color_space as cs
@@ -23,6 +23,10 @@ __maintainer__ = 'Toru Yoshihara'
 __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
+
+
+PCS_D50 = XYZ_to_xy([0.9642, 1.0, 0.8249])
+D65 = cs.D65
 
 
 def calc_chromatic_adaptation_matrix(src_white=cs.D65, dst_white=cs.D50):
@@ -107,4 +111,10 @@ def main_func():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    main_func()
+    # main_func()
+    from colour import XYZ_to_xy
+    import numpy as np
+    large_xyz = np.array([0.96420288, 1.00000000, 0.82490540])
+    xy = XYZ_to_xy(large_xyz)
+    print(xy)
+    print(cs.D50)

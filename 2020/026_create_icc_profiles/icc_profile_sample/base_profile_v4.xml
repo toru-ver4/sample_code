@@ -40,10 +40,6 @@
             -0.00924683 0.01507568 0.75167847
       </Array>
     </s15Fixed16ArrayType>
-    <signatureType>
-      <TagSignature>tech</TagSignature>
-      <Signature>vidm</Signature>
-    </signatureType>
     <XYZType>
       <TagSignature>lumi</TagSignature>
       <XYZNumber X="0.00000000" Y="100.00000000" Z="0.00000000"/>

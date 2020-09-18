@@ -12,11 +12,9 @@ from datetime import datetime
 
 # import third-party libraries
 import numpy as np
-from colour.models import ACES_CG_COLOURSPACE,\
-    ACES_2065_1_COLOURSPACE, RGB_COLOURSPACES
-from colour import RGB_to_RGB
 
 # import my libraries
+import icc_profile_calc_param as ipcp
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -109,6 +107,18 @@ def get_cprt_element(root):
     return get_icc_tag_element(
         root, parent_tag="multiLocalizedUnicodeType",
         key_tag="TagSignature", key_text="cprt", target_tag="LocalizedText")
+
+
+def get_wtpt_element(root):
+    return get_icc_tag_element(
+        root, parent_tag="XYZType",
+        key_tag="TagSignature", key_text="wtpt", target_tag="XYZNumber")
+
+
+def get_lumi_element(root):
+    return get_icc_tag_element(
+        root, parent_tag="XYZType",
+        key_tag="TagSignature", key_text="lumi", target_tag="XYZNumber")
 
 
 def get_parametric_curve_element(root):
@@ -206,8 +216,8 @@ def set_chad_matrix_to_chad_mtx_element(mtx, chad_mtx_element):
     foot_space = " " * 6
     buf = "\n"
     buf += f"{head_space}{mtx[0][0]:.8f} {mtx[0][1]:.8f} {mtx[0][2]:.8f}\n"
-    buf += f"{head_space}{mtx[0][0]:.8f} {mtx[0][1]:.8f} {mtx[0][2]:.8f}\n"
-    buf += f"{head_space}{mtx[0][0]:.8f} {mtx[0][1]:.8f} {mtx[0][2]:.8f}\n"
+    buf += f"{head_space}{mtx[1][0]:.8f} {mtx[1][1]:.8f} {mtx[1][2]:.8f}\n"
+    buf += f"{head_space}{mtx[2][0]:.8f} {mtx[2][1]:.8f} {mtx[2][2]:.8f}\n"
     buf += foot_space
 
     chad_mtx_element.text = buf
@@ -354,6 +364,109 @@ def set_rgbXYZ_params_to_element(src2pcs_mtx, rgb_XYZ_element_list):
         rgb_XYZ_element.attrib['Z'] = f"{src2pcs_mtx[2][idx]:.08f}"
 
 
+def get_lumi_params_from_element(lumi_element):
+    """
+    Parameters
+    ----------
+    lumi_element : xml.etree.ElementTree.Element
+        elemnent of the lumi tag.
+
+    Returns
+    -------
+    float
+        luminance of the reference white.
+
+    Examples
+    --------
+    >>> tree = ET.parse("./p3-2.xml")
+    >>> root = tree.getroot()
+    >>> lumi_element = get_lumi_element(root)
+    >>> get_lumi_params_from_element(lumi_element)
+    100.0
+    """
+    return float(lumi_element.attrib['Y'])
+
+
+def set_lumi_params_to_element(luminance, lumi_element):
+    """
+    Parameters
+    ----------
+    luminance : float
+        luminance of the reference white.
+    lumi_element : xml.etree.ElementTree.Element
+        elemnent of the lumi tag.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> tree = ET.parse("./p3-2.xml")
+    >>> root = tree.getroot()
+    >>> lumi_element = get_lumi_element(root)
+    >>> set_lumi_params_to_element(333.3, lumi_element)
+    >>> get_lumi_params_from_element(lumi_element)
+    333.3
+    """
+    lumi_element.attrib['Y'] = f"{luminance:.8f}"
+
+
+def get_wtpt_params_from_element(wtpt_element):
+    """
+    Parameters
+    ----------
+    wtpt_element : xml.etree.ElementTree.Element
+        elemnent of the wtpt tag.
+
+    Returns
+    -------
+    ndarray
+        white point in large XYZ format.
+
+    Examples
+    --------
+    >>> tree = ET.parse("./p3-2.xml")
+    >>> root = tree.getroot()
+    >>> wtpt_element = get_wtpt_element(root)
+    >>> get_wtpt_params_from_element(wtpt_element)
+    [ 0.96420288  1.          0.8249054 ]
+    """
+    large_xyz = np.array(
+        [float(wtpt_element.attrib['X']),
+         float(wtpt_element.attrib['Y']),
+         float(wtpt_element.attrib['Z'])])
+    return large_xyz
+
+
+def set_wtpt_params_to_element(wtpt, wtpt_element):
+    """
+    Parameters
+    ----------
+    wtpt : ndarray
+        white point in large XYZ format.
+    wtpt_element : xml.etree.ElementTree.Element
+        elemnent of the wtpt tag.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> tree = ET.parse("./p3-2.xml")
+    >>> root = tree.getroot()
+    >>> wtpt_element = get_wtpt_element(root)
+    >>> wtpt = np.array([0.9, 1.0, 0.8])
+    >>> set_wtpt_params_to_element(wtpt, wtpt_element)
+    >>> get_wtpt_params_from_element(wtpt_element)
+    [ 0.90000000  1.0000000  0.80000000 ]
+    """
+    wtpt_element.attrib['X'] = f"{wtpt[0]:.8f}"
+    wtpt_element.attrib['Y'] = f"{wtpt[1]:.8f}"
+    wtpt_element.attrib['Z'] = f"{wtpt[2]:.8f}"
+
+
 def xml_parse_test():
     tree = ET.parse("./icc_profile_sample/p3-2.xml")
     root = tree.getroot()
@@ -402,6 +515,19 @@ def xml_parse_test():
     current_time_str = create_current_date_str()
     print(current_time_str)
 
+    wtpt_element = get_wtpt_element(root)
+    print(wtpt_element.attrib)
+
+    lumi_element = get_lumi_element(root)
+    print(get_lumi_params_from_element(lumi_element))
+    set_lumi_params_to_element(1000.0, lumi_element)
+
+    wtpt_element = get_wtpt_element(root)
+    print(wtpt_element.attrib)
+    print(get_wtpt_params_from_element(wtpt_element))
+    wtpt = np.array([0.123, 0.46, 0.88])
+    set_wtpt_params_to_element(wtpt, wtpt_element)
+
     tree.write("test_out.xml")
 
 
@@ -427,16 +553,22 @@ def create_sample_profile():
     set_value_to_specific_header_tag(
         root, "ProfileID", "")
 
-    # Tag table
+    # Tagged element data
     desc_element = get_desc_element(root)
     desc_element.text = "Gamma=3.5, ACES AP0, D65"
     cprt_element = get_cprt_element(root)
     cprt_element.text = "Copyright 2020 Toru Yoshihara"
+
+    chad_mtx = ipcp.calc_chromatic_adaptation_matrix(
+        src_white=ipcp.D65, dst_white=ipcp.PCS_D50)
+    chad_mtx_element = get_chad_mtx_element(root)
+    set_chad_matrix_to_chad_mtx_element(
+        mtx=chad_mtx, chad_mtx_element=chad_mtx_element)
 
     tree.write("test_out.xml", short_empty_elements=False)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    create_sample_profile()
-    # xml_parse_test()
+    # create_sample_profile()
+    xml_parse_test()
