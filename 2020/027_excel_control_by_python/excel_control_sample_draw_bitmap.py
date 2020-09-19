@@ -55,7 +55,7 @@ def load_8bit_image(fname=IMG_DATA):
 
 def crop_and_resize_image(img):
     img_crop = img[:, 327:327+1045, :]
-    scale_factor = 3
+    scale_factor = 4
     after_width = img_crop.shape[1] // scale_factor
     after_height = img_crop.shape[0] // scale_factor
     out_img = cv2.resize(
@@ -101,7 +101,7 @@ def main_func():
     # エクセルファイル新規作成
     wb = ecu.create_excel_file(excel_app=excel_app)
 
-    # シート1 に 1次元の塗りつぶしを実行
+    # シート1で画像を描画
     ws = wb.Worksheets(1)
     ws.Name = "DRAW"
     draw_banner(ws)
