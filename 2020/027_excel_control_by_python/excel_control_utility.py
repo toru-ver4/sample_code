@@ -284,6 +284,15 @@ def get_range(ws, st_pos=(0, 0), row_num=4, col_num=8):
     -------
     ???
         An Excel Range
+
+    Examples
+    --------
+    >>> row_num = 4
+    >>> col_num = 8
+    >>> cell_range = ecu.get_range(
+    ...      ws, st_pos=(2, 1), row_num=row_num, col_num=col_num)
+    >>> data = np.arange(row_num * col_num).reshape((row_num, col_num))
+    >>> cell_range.Value = data
     """
     st_cell = get_cell(ws, pos=st_pos)
     ed_cell = get_cell(ws, pos=(st_pos[0] + row_num - 1, st_pos[1] + col_num - 1))
@@ -301,7 +310,7 @@ def change_row_height(ws, height, st_pos_row, row_num):
     height : int
         height of the raw.
     st_pos_row : int
-        start position of row.
+        start position of row. 0 is the start coordinate.
     row_num : int
         number of row.
     """
@@ -325,7 +334,6 @@ def change_col_width(ws, width, st_pos_col, col_num):
     col_num : int
         number of columns.
     """
-    # range = f"{st_pos_col}:{ed_pos_col - 1}"
     cell_range = get_range(
         ws, st_pos=(0, st_pos_col), col_num=col_num)
     cell_range.ColumnWidth = width
