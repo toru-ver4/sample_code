@@ -20,46 +20,6 @@ def rgb_8bit_to_24bit(r=192, g=128, b=255):
     return r * 0x00000001 + g * 0x00000100 + b * 0x00010000
 
 
-def change_row_height(ws, height, st_pos_row, ed_pos_row):
-    """
-    Row の 高さを調整
-
-    Parameters
-    ----------
-    ws : win32com.client.CDispatch
-        excel worksheet
-    height : int
-        height of the raw.
-    st_pos_row : int
-        start position of row.
-    ed_pos_row : int
-        end position of row. It is not included.
-    """
-    range = f"{st_pos_row}:{ed_pos_row - 1}"
-    ws.Rows(range).RowHeight = height
-
-
-def change_col_width(ws, width, st_pos_col, ed_pos_col):
-    """
-    Column の 幅を調整
-
-    Parameters
-    ----------
-    ws : win32com.client.CDispatch
-        excel worksheet
-    height : int
-        height of the raw.
-    st_pos_col : int
-        start position of row.
-    ed_pos_col : int
-        end position of colmun. It is not included.
-    """
-    # range = f"{st_pos_col}:{ed_pos_col - 1}"
-    st_cell = ws.Cells(1, st_pos_col)
-    ed_cell = ws.Cells(1, ed_pos_col - 1)
-    ws.Range(st_cell, ed_cell).ColumnWidth = width
-
-
 def create_color_table_1d(
         ws, cell_num=24, st_pos_row=2, st_pos_col=3):
     """
@@ -108,8 +68,8 @@ def create_color_table_2d(
     st_pos_col : int
         start position of colmun.
     """
-    change_row_height(ws, 64, st_pos_row, st_pos_row + cell_row_num)
-    change_col_width(ws, 10, st_pos_col, st_pos_col + cell_col_num)
+    ecu.change_row_height(ws, 64, st_pos_row, cell_row_num)
+    ecu.change_col_width(ws, 10, st_pos_col, cell_col_num)
     pos_col = st_pos_col
     min_color_value = 0
     max_color_value = 255
@@ -123,6 +83,7 @@ def create_color_table_2d(
 
             pos_col = st_pos_col + c_idx
             cell = ws.Cells(pos_raw, pos_col)
+            cell = ecu.get_cell(ws, pos=(pos_raw, pos_col))
             cell.Interior.Color = color_value
 
 

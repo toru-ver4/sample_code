@@ -248,6 +248,115 @@ def save_excel_file(filename, wb, excel_app):
     excel_app.DisplayAlerts = display_alerts_backup
 
 
+def get_cell(ws, pos=(0, 0)):
+    """
+    get an Excel cell with (0, 0) as the starting coordinate.
+
+    Parameters
+    ----------
+    pos : list
+        pos[0] is row index (0 is the start point).
+        pos[1] is column index (0 is the start point).
+
+    Returns
+    -------
+    ???
+        An Excel Cell
+    """
+    return ws.Cells(pos[0] + 1, pos[1] + 1)
+
+
+def get_range(ws, st_pos=(0, 0), row_num=4, col_num=8):
+    """
+    get an Excel range with (0, 0) as the starting coordinate.
+
+    Parameters
+    ----------
+    st_pos : list
+        pos[0] is row index (0 is the start point).
+        pos[1] is column index (0 is the start point).
+    row_num : int
+        number of the rows.
+    col_num : int
+        number of the columns.
+
+    Returns
+    -------
+    ???
+        An Excel Range
+    """
+    st_cell = get_cell(ws, pos=st_pos)
+    ed_cell = get_cell(ws, pos=(st_pos[0] + row_num - 1, st_pos[1] + col_num - 1))
+    return ws.Range(st_cell, ed_cell)
+
+
+def change_row_height(ws, height, st_pos_row, row_num):
+    """
+    Row の 高さを調整
+
+    Parameters
+    ----------
+    ws : win32com.client.CDispatch
+        excel worksheet
+    height : int
+        height of the raw.
+    st_pos_row : int
+        start position of row.
+    row_num : int
+        number of row.
+    """
+    cell_range = get_range(
+        ws, st_pos=(st_pos_row, 0), row_num=row_num, col_num=1)
+    cell_range.RowHeight = height
+
+
+def change_col_width(ws, width, st_pos_col, col_num):
+    """
+    Column の 幅を調整
+
+    Parameters
+    ----------
+    ws : win32com.client.CDispatch
+        excel worksheet
+    height : int
+        height of the raw.
+    st_pos_col : int
+        start position of row.
+    col_num : int
+        number of columns.
+    """
+    # range = f"{st_pos_col}:{ed_pos_col - 1}"
+    cell_range = get_range(
+        ws, st_pos=(0, st_pos_col), col_num=col_num)
+    cell_range.ColumnWidth = width
+
+
+def maximize_excel_window(excel_app):
+    """
+    エクセルの画面を最大化する。
+
+    Parameters
+    ----------
+    excel_app : win32com.client.CDispatch
+        excel app.
+
+    Returns
+    -------
+    None
+
+    References
+    ----------
+    https://www.thinbug.com/q/56841745
+
+    Examples
+    --------
+    >>> excel_app = launch_excel_app()
+    >>> wb = open_excel_file(filename="./sample3.xlsx", excel_app=excel_app)
+    >>> maximize_excel_window(excel_app)
+    """
+    excel_app.WindowState = -4137
+
+
 def main_func():
     """
     メインの関数
