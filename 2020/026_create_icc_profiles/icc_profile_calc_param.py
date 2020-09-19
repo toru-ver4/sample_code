@@ -25,7 +25,8 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-PCS_D50 = XYZ_to_xy([0.9642, 1.0, 0.8249])
+PCS_D50_XYZ = [0.9642, 1.0, 0.8249]
+PCS_D50 = XYZ_to_xy(PCS_D50_XYZ)
 D65 = cs.D65
 
 

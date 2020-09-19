@@ -16,6 +16,7 @@ from colour import RGB_to_RGB
 import color_space as cs
 import transfer_functions as tf
 import test_pattern_generator2 as tpg
+import icc_profile_xml_control as ipxc
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -43,7 +44,13 @@ def make_images(gamma_float=3.0):
 
 
 def main_func():
-    make_images(gamma_float=3.0)
+    # make_images(gamma_float=3.0)
+    ipxc.create_simple_power_gamma_profile(
+        gamma=3.5, src_white=cs.D65,
+        src_primaries=cs.get_primaries(cs.ACES_AP0),
+        desc_str="Gamma3.5_ACES-AP0_D65",
+        cprt_str="Copyright 2020 Toru Yoshihara.",
+        output_name="Gamma3.5_ACES-AP0_D65.xml")
 
 
 if __name__ == '__main__':
