@@ -1,0 +1,67 @@
+<IccProfile>
+  <Header>
+    <PreferredCMMType>ADBE</PreferredCMMType>
+    <ProfileVersion>4.30</ProfileVersion>
+    <ProfileDeviceClass>mntr</ProfileDeviceClass>
+    <DataColourSpace>RGB </DataColourSpace>
+    <PCS>XYZ </PCS>
+    <CreationDateTime>2020-09-26T10:36:17</CreationDateTime>
+    <PrimaryPlatform>MSFT</PrimaryPlatform>
+    <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
+    <DeviceManufacturer></DeviceManufacturer>
+    <DeviceModel></DeviceModel>
+    <DeviceAttributes ReflectiveOrTransparency="reflective" GlossyOrMatte="glossy" MediaPolarity="positive" MediaColour="colour"></DeviceAttributes>
+    <RenderingIntent>Perceptual</RenderingIntent>
+    <PCSIlluminant>
+      <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"></XYZNumber>
+    </PCSIlluminant>
+    <ProfileCreator></ProfileCreator>
+    <ProfileID></ProfileID>
+  </Header>
+  <Tags>
+    <multiLocalizedUnicodeType>
+      <TagSignature>desc</TagSignature>
+      <LocalizedText LanguageCountry="enUS">Gamma3.5_ACES-AP0_D65</LocalizedText>
+    </multiLocalizedUnicodeType>
+    <multiLocalizedUnicodeType>
+      <TagSignature>cprt</TagSignature>
+      <LocalizedText LanguageCountry="enUS">Copyright 2020 Toru Yoshihara.</LocalizedText>
+    </multiLocalizedUnicodeType>
+    <XYZType>
+      <TagSignature>wtpt</TagSignature>
+      <XYZNumber X="0.96420000" Y="1.00000000" Z="0.82490000"></XYZNumber>
+    </XYZType>
+    <s15Fixed16ArrayType>
+      <TagSignature>chad</TagSignature>
+      <Array>
+            1.04788600 0.02291877 -0.05021610
+            0.02958178 0.99048352 -0.01707871
+            -0.00925188 0.01507261 0.75167813
+      </Array>
+    </s15Fixed16ArrayType>
+    <XYZType>
+      <TagSignature>lumi</TagSignature>
+      <XYZNumber X="0.00000000" Y="100.00000000" Z="0.00000000"></XYZNumber>
+    </XYZType>
+    <parametricCurveType>
+      <TagSignature>rTRC</TagSignature>
+      <TagSignature>gTRC</TagSignature>
+      <TagSignature>bTRC</TagSignature>
+      <ParametricCurve FunctionType="0">
+        3.50000000
+      </ParametricCurve>
+    </parametricCurveType>
+    <XYZType>
+      <TagSignature>rXYZ</TagSignature>
+      <XYZNumber X="1.00372859" Y="0.36802029" Z="-0.00362006"></XYZNumber>
+    </XYZType>
+    <XYZType>
+      <TagSignature>gXYZ</TagSignature>
+      <XYZNumber X="0.01683833" Y="0.72770468" Z="0.01107379"></XYZNumber>
+    </XYZType>
+    <XYZType>
+      <TagSignature>bXYZ</TagSignature>
+      <XYZNumber X="-0.05636692" Y="-0.09572496" Z="0.81744627"></XYZNumber>
+    </XYZType>
+  </Tags>
+</IccProfile>
