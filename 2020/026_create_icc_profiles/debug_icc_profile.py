@@ -52,6 +52,20 @@ def main_func():
         cprt_str="Copyright 2020 Toru Yoshihara.",
         output_name="Gamma3.5_ACES-AP0_D65.xml")
 
+    ipxc.create_simple_power_gamma_profile(
+        gamma=2.4, src_white=cs.D65,
+        src_primaries=cs.get_primaries(cs.BT709),
+        desc_str="Gamma2.4_BT.709_D65",
+        cprt_str="Copyright 2020 Toru Yoshihara.",
+        output_name="Gamma2.4_BT.709_D65.xml")
+
+    ipxc.create_simple_power_gamma_profile(
+        gamma=2.4, src_white=cs.D65,
+        src_primaries=cs.get_primaries(cs.BT2020),
+        desc_str="Gamma2.4_BT.2020_D65",
+        cprt_str="Copyright 2020 Toru Yoshihara.",
+        output_name="Gamma2.4_BT.2020_D65.xml")
+
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))

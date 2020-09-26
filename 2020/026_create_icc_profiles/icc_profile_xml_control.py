@@ -534,22 +534,12 @@ def xml_parse_test():
     tree.write("test_out.xml")
 
 
-def create_simple_power_gamma_profile(
-        gamma=2.4, src_white=np.array([0.3127, 0.3290]),
-        src_primaries=np.array([[0.680, 0.320], [0.265, 0.690], [0.15, 0.06]]),
-        desc_str="Gamam=2.4_DCI-P3_D65",
-        cprt_str="Copyright 2020 HOGEHOGE Corp.",
-        output_name="Gamam=2.4_DCI-P3_D65.xml"):
+def create_profle_header(root):
     """
-    create simple profile.
-    gamma function must be "y = x ** gamma" format.
+    create the profile header.
     """
-    tree = ET.parse("./icc_profile_sample/base_profile_v4.xml")
-    root = tree.getroot()
-
-    # Profile header
     set_value_to_specific_header_tag(
-        root, "PreferredCMMType", "")
+        root, "PreferredCMMType", "ADBE")
     set_value_to_specific_header_tag(
         root, "ProfileVersion", "4.30")
     set_value_to_specific_header_tag(
@@ -564,6 +554,23 @@ def create_simple_power_gamma_profile(
         root, "ProfileCreator", "")
     set_value_to_specific_header_tag(
         root, "ProfileID", "")
+
+
+def create_simple_power_gamma_profile(
+        gamma=2.4, src_white=np.array([0.3127, 0.3290]),
+        src_primaries=np.array([[0.680, 0.320], [0.265, 0.690], [0.15, 0.06]]),
+        desc_str="Gamam=2.4_DCI-P3_D65",
+        cprt_str="Copyright 2020 HOGEHOGE Corp.",
+        output_name="Gamam=2.4_DCI-P3_D65.xml"):
+    """
+    create simple profile.
+    gamma function must be "y = x ** gamma" format.
+    """
+    tree = ET.parse("./icc_profile_sample/base_profile_v4.xml")
+    root = tree.getroot()
+
+    # Profile header
+    create_profle_header(root)
 
     # Tagged element data
     desc_element = get_desc_element(root)
@@ -586,17 +593,17 @@ def create_simple_power_gamma_profile(
     set_wtpt_params_to_element(
         wtpt=ipcp.PCS_D50_XYZ, wtpt_element=wtpt_element)
 
-    parametric_curve_element = get_parametric_curve_element(root)
-    set_parametric_curve_params_to_element(
-        function_type_str='0', params=[gamma],
-        parameteric_curve_element=parametric_curve_element)
-
     rgbXYZ_element_list = get_rgbXYZ_element_list(root)
     src2pcs_mtx = ipcp.calc_rgb_to_xyz_mtx_included_chad_mtx(
         rgb_primaries=src_primaries,
         src_white=src_white, dst_white=ipcp.PCS_D50)
     set_rgbXYZ_params_to_element(
         src2pcs_mtx=src2pcs_mtx, rgb_XYZ_element_list=rgbXYZ_element_list)
+
+    parametric_curve_element = get_parametric_curve_element(root)
+    set_parametric_curve_params_to_element(
+        function_type_str='0', params=[gamma],
+        parameteric_curve_element=parametric_curve_element)
 
     tree.write(output_name, short_empty_elements=False)
 
