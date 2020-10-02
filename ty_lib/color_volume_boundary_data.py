@@ -745,7 +745,7 @@ def calc_Lab_boundary_data_specific_L(
     #     lab[..., 0] = 100.0
     #     return lab
 
-    r_val_init = 250
+    r_val_init = 300
     iteration_num = 32
     hue = np.linspace(0, 2*np.pi, h_num)
     rr = np.ones(h_num) * r_val_init

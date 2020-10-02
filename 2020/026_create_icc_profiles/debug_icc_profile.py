@@ -98,15 +98,15 @@ def plot_ab_plane_core(l_idx, lab, color_space_name):
         xtick_size=None, ytick_size=None,
         linewidth=3,
         return_figure=True)
-    ax1.plot(aa, bb, '-k', label=f"{color_space_name} Gamut Boundary")
+    # ax1.plot(aa, bb, '-k', label=f"{color_space_name} Gamut Boundary")
     rgb_img = make_ab_plane_color_image(
-        ll=ll, samples=1536, bg_color=0.5,
+        ll=ll, samples=2048, bg_color=0.3,
         xmin=-200, xmax=200, ymin=-200, ymax=200, cs_name=color_space_name)
     ax1.imshow(
         rgb_img, extent=(-200, 200, -200, 200), aspect='auto')
     plt.legend(loc='upper left')
     fname = "/work/overuse/2020/026_icc_profile/img_seq/"
-    fname += f"ab_plane_{color_space_name}_{l_idx:04d}.png"
+    fname += f"ab_plane_noline_{color_space_name}_{l_idx:04d}.png"
     print(fname)
     plt.savefig(fname, bbox_inches='tight', pad_inches=0.1)
     # plt.show()
@@ -117,7 +117,7 @@ def plot_ab_plane_sequence(lab_bd, color_space_name):
     lab_data = lab_bd.get()
 
     l_num = lab_data.shape[0]
-    block_num = 16
+    block_num = 96
 
     for block_idx in range(block_num):
         block_data_num = l_num // block_num
@@ -182,7 +182,8 @@ def plot_cl_plane_core(h_idx, lab, color_space_name):
     aa = lab[:, h_idx, 1]
     bb = lab[:, h_idx, 2]
     cc = ((aa ** 2) + (bb ** 2)) ** 0.5
-    cc_range_max = np.max(cc) + 10
+    cc_range_max = np.max(((lab[..., 1] ** 2) + (lab[..., 2] ** 2)) ** 0.5)\
+        + 10
     hue = h_idx / (lab.shape[1] - 1) * np.pi * 2
     title = f"CIELAB cl plane, {color_space_name}, Hue={np.rad2deg(hue):.1f}°"
     xlim_min = 0
@@ -256,20 +257,23 @@ def plot_lab_3d_sequence(lab_bd):
 
 
 def debug_lab_color_space_plot(color_space_name=cs.BT2020):
-    l_num = 256
+    l_num = 4096
     h_num = 1024
 
     lab_bd = calc_Lab_boundary_data(
         color_space_name=cs.BT2020, white=cs.D65,
         l_num=l_num, h_num=h_num, overwirte_lut=False)
 
-    # plot_ab_plane_sequence(lab_bd=lab_bd, color_space_name=color_space_name)
-    plot_cl_plane_sequence(lab_bd=lab_bd, color_space_name=color_space_name)
+    plot_ab_plane_sequence(lab_bd=lab_bd, color_space_name=color_space_name)
+    # plot_cl_plane_sequence(lab_bd=lab_bd, color_space_name=color_space_name)
     plot_lab_3d_sequence(lab_bd)
 
 
 def main_func():
-    # make_images(gamma_float=3.0)
+    # convert color checker from BT709 to ACES AP0
+    make_images(gamma_float=3.5)
+
+    # create "Gamma3.5_ACES-AP0_D65"
     ipxc.create_simple_power_gamma_profile(
         gamma=3.5, src_white=cs.D65,
         src_primaries=cs.get_primaries(cs.ACES_AP0),
@@ -277,6 +281,7 @@ def main_func():
         cprt_str="Copyright 2020 Toru Yoshihara.",
         output_name="Gamma3.5_ACES-AP0_D65.xml")
 
+    # create "Gamma2.4_BT.709_D65"
     ipxc.create_simple_power_gamma_profile(
         gamma=2.4, src_white=cs.D65,
         src_primaries=cs.get_primaries(cs.BT709),
@@ -284,6 +289,7 @@ def main_func():
         cprt_str="Copyright 2020 Toru Yoshihara.",
         output_name="Gamma2.4_BT.709_D65.xml")
 
+    # create "Gamma2.4_BT.2020_D65"
     ipxc.create_simple_power_gamma_profile(
         gamma=2.4, src_white=cs.D65,
         src_primaries=cs.get_primaries(cs.BT2020),
@@ -294,5 +300,5 @@ def main_func():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # main_func()
-    debug_lab_color_space_plot(cs.BT2020)
+    main_func()
+    # debug_lab_color_space_plot(cs.BT2020)
