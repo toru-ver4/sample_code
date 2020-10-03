@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<IccProfile>
+  <Header>
+    <PreferredCMMType>ADBE</PreferredCMMType>
+    <ProfileVersion>4.20</ProfileVersion>
+    <ProfileDeviceClass>mntr</ProfileDeviceClass>
+    <DataColourSpace>RGB </DataColourSpace>
+    <PCS>XYZ </PCS>
+    <CreationDateTime>2017-03-04T23:42:47</CreationDateTime>
+    <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"/>
+    <DeviceAttributes ReflectiveOrTransparency="reflective" GlossyOrMatte="glossy" MediaPolarity="positive" MediaColour="colour"/>
+    <RenderingIntent>Perceptual</RenderingIntent>
+    <PCSIlluminant>
+      <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"/>
+    </PCSIlluminant>
+    <ProfileCreator>ADBE</ProfileCreator>
+    <ProfileID>C772B2D26A8F2450CE0DA7AC2C511F4C</ProfileID>
+  </Header>
+  <Tags>
+    <multiLocalizedUnicodeType>
+      <TagSignature>desc</TagSignature>
+      <LocalizedText LanguageCountry="enUS"><![CDATA[image P3]]></LocalizedText>
+    </multiLocalizedUnicodeType>
+    <multiLocalizedUnicodeType>
+      <TagSignature>cprt</TagSignature>
+      <LocalizedText LanguageCountry="enUS"><![CDATA[Copyright 2017 Adobe Systems Incorporated]]></LocalizedText>
+    </multiLocalizedUnicodeType>
+    <XYZType>
+      <TagSignature>wtpt</TagSignature>
+      <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"/>
+    </XYZType>
+    <s15Fixed16ArrayType>
+      <TagSignature>chad</TagSignature>
+      <Array>
+            1.04788208 0.02291870 -0.05021667
+            0.02958679 0.99047852 -0.01707458
+            -0.00924683 0.01507568 0.75167847
+      </Array>
+    </s15Fixed16ArrayType>
+    <signatureType>
+      <TagSignature>tech</TagSignature>
+      <Signature>vidm</Signature>
+    </signatureType>
+    <XYZType>
+      <TagSignature>lumi</TagSignature>
+      <XYZNumber X="0.00000000" Y="100.00000000" Z="0.00000000"/>
+    </XYZType>
+    <parametricCurveType>
+      <TagSignature>rTRC</TagSignature>
+      <TagSignature>gTRC</TagSignature>
+      <TagSignature>bTRC</TagSignature>
+      <ParametricCurve FunctionType="3">
+        2.39999390 0.94786072 0.05213928 0.07739258 0.04045105
+      </ParametricCurve>
+    </parametricCurveType>
+    <XYZType>
+      <TagSignature>rXYZ</TagSignature>
+      <XYZNumber X="0.51512146" Y="0.24119568" Z="-0.00105286"/>
+    </XYZType>
+    <XYZType>
+      <TagSignature>gXYZ</TagSignature>
+      <XYZNumber X="0.29197693" Y="0.69224548" Z="0.04188538"/>
+    </XYZType>
+    <XYZType>
+      <TagSignature>bXYZ</TagSignature>
+      <XYZNumber X="0.15710449" Y="0.06657410" Z="0.78407288"/>
+    </XYZType>
+  </Tags>
+</IccProfile>

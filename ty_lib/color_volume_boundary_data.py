@@ -10,7 +10,8 @@ import os
 
 # import third-party libraries
 import numpy as np
-from colour import XYZ_to_RGB, xyY_to_XYZ, RGB_COLOURSPACES
+from colour import XYZ_to_RGB, xyY_to_XYZ, RGB_COLOURSPACES,\
+    Lab_to_XYZ
 
 # import my libraries
 from common import MeasureExecTime
@@ -650,26 +651,267 @@ def calc_xyY_boundary_data_log_scale(
     return GamutBoundaryData(out_buf)
 
 
+def is_inner_gamut_lab(lab, color_space_name=cs.BT2020, white=cs.D65):
+    """
+    judge the lab data is inner gamut.
+
+    Parameters
+    ----------
+    lab : ndarray
+        Lab value.
+    color_space_name : str
+        name of the target color space.
+    white : ndarray
+        white point. ex: white=np.array([0.3127, 0.3290])
+
+    Returns
+    -------
+    ndarray(bool)
+        true: Lab point is inside the gamut
+        false: Lab point is outside the gamut
+
+    Examples
+    --------
+    >>> lab = np.array(
+    ...     [[0.0, 0.0, 0.0], [21, 50, -50],
+    ...      [21, 50, 50], [52, 100, -50],
+    ...      [89, -100, 100], [89, -100, 150]])
+    >>> is_inner_gamut_lab(lab=lab, color_space_name=cs.BT2020, white=cs.D65)
+    [ True  True False  True  True False]
+    """
+    rgb = XYZ_to_RGB(
+        Lab_to_XYZ(lab), white, white,
+        RGB_COLOURSPACES[color_space_name].XYZ_to_RGB_matrix)
+    r_judge = (rgb[..., 0] >= 0) & (rgb[..., 0] <= 1)
+    g_judge = (rgb[..., 1] >= 0) & (rgb[..., 1] <= 1)
+    b_judge = (rgb[..., 2] >= 0) & (rgb[..., 2] <= 1)
+    judge = (r_judge & g_judge) & b_judge
+
+    return judge
+
+
+def calc_Lab_boundary_data_specific_L(
+        ll=50, color_space_name=cs.BT2020,
+        white=cs.D65, h_num=1024):
+    """
+    calculate the boundary data of the CIELAB color volume.
+    this function calculates for a ab plane of specific L.
+    this function search the boundary counterclockwise.
+
+    Parameters
+    ----------
+    ll : float
+        L value. 1.0 is correspond to the white.
+    color_space_name : str
+        the name of color space.
+    white : ndarray
+        white point. ex: white=np.array([0.3127, 0.3290])
+    h_num : int
+        the number of samples at the counterclockwise search point.
+
+    Returens
+    --------
+    ndarray
+        Lab values of the boundary data.
+        the shape is (h_num, 3)
+
+    Examples
+    --------
+    >>> calc_Lab_boundary_data_specific_L(
+    ...     ll=51.765, color_space_name=cs.BT2020,
+    ...     white=cs.D65, h_num=16)
+    [[  5.17650000e+01   1.08425617e+02   0.00000000e+00]
+     [  5.17650000e+01   1.07309199e+02   4.77771337e+01]
+     [  5.17650000e+01   7.79992758e+01   8.66269718e+01]
+     [  5.17650000e+01   2.69417650e+01   8.29182265e+01]
+     [  5.17650000e+01  -8.50815971e+00   8.09497323e+01]
+     [  5.17650000e+01  -4.58114147e+01   7.93476979e+01]
+     [  5.17650000e+01  -1.06809893e+02   7.76019295e+01]
+     [  5.17650000e+01  -9.34107563e+01   1.98550692e+01]
+     [  5.17650000e+01  -6.71160246e+01  -1.42659514e+01]
+     [  5.17650000e+01  -4.76267000e+01  -3.46028230e+01]
+     [  5.17650000e+01  -2.97691822e+01  -5.15617361e+01]
+     [  5.17650000e+01  -7.50152936e+00  -7.13722843e+01]
+     [  5.17650000e+01   2.65577688e+01  -8.17364079e+01]
+     [  5.17650000e+01   7.34640668e+01  -8.15901120e+01]
+     [  5.17650000e+01   1.11050239e+02  -4.94427517e+01]
+     [  5.17650000e+01   1.08425617e+02  -2.65566170e-14]]
+    """
+    if ll <= 0.0:
+        return np.zeros((h_num, 3))
+
+    # if ll >= 100.0:
+    #     lab = np.zeros((h_num, 3))
+    #     lab[..., 0] = 100.0
+    #     return lab
+
+    r_val_init = 300
+    iteration_num = 32
+    hue = np.linspace(0, 2*np.pi, h_num)
+    rr = np.ones(h_num) * r_val_init
+    ll_array = np.ones(h_num) * ll
+
+    for idx in range(iteration_num):
+        aa = rr * np.cos(hue)
+        bb = rr * np.sin(hue)
+        lab = np.dstack((ll_array, aa, bb)).reshape((h_num, 3))
+        ok_idx = is_inner_gamut_lab(
+            lab=lab, color_space_name=color_space_name, white=white)
+
+        add_sub = r_val_init / (2 ** (idx + 1))
+        rr[ok_idx] = rr[ok_idx] + add_sub
+        rr[~ok_idx] = rr[~ok_idx] - add_sub
+
+    xx = rr * np.cos(hue)
+    yy = rr * np.sin(hue)
+
+    return np.dstack((ll_array, xx, yy)).reshape((h_num, 3))
+
+
+def calc_Lab_boundary_data(
+        color_space_name=cs.BT2020, white=cs.D65, l_num=1024, h_num=1024,
+        overwirte_lut=False, eotf_name=None):
+    """
+    calculate the gamut boundary of CIELAB color volume.
+
+    Parameters
+    ----------
+    color_space_name : str
+        the name of the color space. ex: 'ITU-R BT.2020'.
+    white : ndarray
+        white point. ex: white=np.array([0.3127, 0.3290])
+    l_num : int
+        the number of samples for L.
+    h_num : int
+        the number of samples at the counterclockwise search point.
+    overwirte_lut : bool
+        whether to overwrite the LUT to recuce calculation time.
+    eotf_name : str
+        stings of eotf.
+
+    Returns
+    -------
+    GamutBoundaryData
+        this object includes L, a and b data.
+        the shape of data is (N, M, 3).
+        N is a number of large L.
+        M is a number of Hue.
+        this data a stack of ab planes.
+
+    Notes
+    -----
+    None
+
+    Examples
+    --------
+    >>> calc_Lab_boundary_data(
+    ...     color_space_name=cs.BT2020, white=cs.D65, l_num=5, h_num=8,
+    ...     overwirte_lut=True)
+    [[[  0.00000000e+00   0.00000000e+00   0.00000000e+00]
+      [  0.00000000e+00   0.00000000e+00   0.00000000e+00]
+      [  0.00000000e+00   0.00000000e+00   0.00000000e+00]
+      [  0.00000000e+00   0.00000000e+00   0.00000000e+00]
+      [  0.00000000e+00   0.00000000e+00   0.00000000e+00]
+      [  0.00000000e+00   0.00000000e+00   0.00000000e+00]
+      [  0.00000000e+00   0.00000000e+00   0.00000000e+00]
+      [  0.00000000e+00   0.00000000e+00   0.00000000e+00]]
+    
+     [[  2.50000000e+01   6.56010130e+01   0.00000000e+00]
+      [  2.50000000e+01   3.35983474e+01   4.21309950e+01]
+      [  2.50000000e+01  -9.40147175e+00   4.11905391e+01]
+      [  2.50000000e+01  -6.60217622e+01   3.17944050e+01]
+      [  2.50000000e+01  -3.35598065e+01  -1.61615510e+01]
+      [  2.50000000e+01  -8.97312285e+00  -3.93138199e+01]
+      [  2.50000000e+01   7.51547189e+01  -9.42410366e+01]
+      [  2.50000000e+01   6.56010130e+01  -1.60676141e-14]]
+    
+     [[  5.00000000e+01   1.05601631e+02   0.00000000e+00]
+      [  5.00000000e+01   6.62145600e+01   8.30304320e+01]
+      [  5.00000000e+01  -1.78279236e+01   7.81092369e+01]
+      [  5.00000000e+01  -1.06175951e+02   5.11316432e+01]
+      [  5.00000000e+01  -5.40231030e+01  -2.60161553e+01]
+      [  5.00000000e+01  -1.44445392e+01  -6.32856614e+01]
+      [  5.00000000e+01   6.74955424e+01  -8.46367331e+01]
+      [  5.00000000e+01   1.05601631e+02  -2.58649398e-14]]
+    
+     [[  7.50000000e+01   7.18753136e+01   0.00000000e+00]
+      [  7.50000000e+01   5.81043056e+01   7.28604947e+01]
+      [  7.50000000e+01  -2.49022674e+01   1.09103962e+02]
+      [  7.50000000e+01  -1.46394115e+02   7.04996899e+01]
+      [  7.50000000e+01  -7.44863996e+01  -3.58707595e+01]
+      [  7.50000000e+01  -9.64644503e+00  -4.22638371e+01]
+      [  7.50000000e+01   3.35555974e+01  -4.20773883e+01]
+      [  7.50000000e+01   7.18753136e+01  -1.76043746e-14]]
+    
+     [[  1.00000000e+02   1.16415322e-07   0.00000000e+00]
+      [  1.00000000e+02   7.25837659e-08   9.10171636e-08]
+      [  1.00000000e+02  -2.59048461e-08   1.13496547e-07]
+      [  1.00000000e+02  -1.04886581e-07   5.05107151e-08]
+      [  1.00000000e+02  -1.04886581e-07  -5.05107151e-08]
+      [  1.00000000e+02  -2.59048461e-08  -1.13496547e-07]
+      [  1.00000000e+02   7.25837659e-08  -9.10171636e-08]
+      [  1.00000000e+02   1.16415322e-07  -2.85135302e-23]]]
+    """
+    fname = f"./lut/Lab_LUT_YxH_{l_num}x{h_num}_{eotf_name}.npy"
+    if os.path.isfile(fname) and (not overwirte_lut):
+        lab_data = np.load(fname)
+        return GamutBoundaryData(lab_data)
+    mtime = MeasureExecTime()
+    mtime.start()
+    out_buf = np.zeros((l_num, h_num, 3))
+    y_list = np.linspace(0, 100, l_num)
+    if eotf_name:
+        y_list = tf.eotf(y_list, eotf_name)
+    for idx, ll in enumerate(y_list):
+        print(f"idx = {idx} / {l_num}")
+        out_buf[idx] = calc_Lab_boundary_data_specific_L(
+            ll=ll, color_space_name=color_space_name,
+            white=white, h_num=h_num)
+        mtime.lap()
+    mtime.end()
+
+    os.makedirs("./lut", exist_ok=True)
+    np.save(fname, out_buf)
+    return GamutBoundaryData(out_buf)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    xyY = np.array(
-        [[0.3127, 0.3290, 0.5], [0.3127, 0.3290, 0.999],
-         [0.3127, 0.3290, 1.5], [0.60, 0.32, 0.00],
-         [0.60, 0.32, 0.01], [0.60, 0.32, 0.5]])
-    result = is_inner_gamut_xyY(
-        xyY=xyY, color_space_name=cs.BT709, white=cs.D65)
+    # xyY = np.array(
+    #     [[0.3127, 0.3290, 0.5], [0.3127, 0.3290, 0.999],
+    #      [0.3127, 0.3290, 1.5], [0.60, 0.32, 0.00],
+    #      [0.60, 0.32, 0.01], [0.60, 0.32, 0.5]])
+    # result = is_inner_gamut_xyY(
+    #     xyY=xyY, color_space_name=cs.BT709, white=cs.D65)
 
-    np.set_printoptions(precision=3)
-    result = calc_xyY_boundary_data_specific_Y(
-        large_y=0.01, color_space_name=cs.BT709,
-        white=cs.D65, h_num=16)
+    # np.set_printoptions(precision=3)
+    # result = calc_xyY_boundary_data_specific_Y(
+    #     large_y=0.01, color_space_name=cs.BT709,
+    #     white=cs.D65, h_num=16)
 
-    result = calc_xyY_boundary_data(
-        color_space_name=cs.BT2020, white=cs.D65, y_num=5, h_num=8,
-        overwirte_lut=False)
-    print(result)
+    # result = calc_xyY_boundary_data(
+    #     color_space_name=cs.BT2020, white=cs.D65, y_num=5, h_num=8,
+    #     overwirte_lut=False)
+    # print(result)
 
-    result = calc_xyY_boundary_data_log_scale(
-        color_space_name=cs.BT2020, white=cs.D65, y_num=4, h_num=8,
-        min_exposure=-1, max_exposure=0, overwirte_lut=False)
-    print(result)
+    # result = calc_xyY_boundary_data_log_scale(
+    #     color_space_name=cs.BT2020, white=cs.D65, y_num=4, h_num=8,
+    #     min_exposure=-1, max_exposure=0, overwirte_lut=False)
+    # print(result)
+
+    # lab = np.array(
+    #     [[0.0, 0.0, 0.0], [21, 50, -50],
+    #      [21, 50, 50], [52, 100, -50],
+    #      [89, -100, 100], [89, -100, 150]])
+    # a = is_inner_gamut_lab(lab=lab, color_space_name=cs.BT2020, white=cs.D65)
+    # print(a)
+
+    # a = calc_Lab_boundary_data_specific_L(
+    #     ll=51.765, color_space_name=cs.BT2020,
+    #     white=cs.D65, h_num=16)
+    # print(a)
+
+    a = calc_Lab_boundary_data(
+        color_space_name=cs.BT2020, white=cs.D65, l_num=5, h_num=8,
+        overwirte_lut=True)
+    print(a)

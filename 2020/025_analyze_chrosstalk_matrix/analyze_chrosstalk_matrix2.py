@@ -418,7 +418,7 @@ def plot_hdr10_to_sdr_gamut_boundary():
 
     fig, ax = pu.plot_3d_init(
         figsize=(9, 9),
-        title="Gamut Boundary after HDR10 to SDR convertion",
+        title="Gamut Boundary after HDR10 to SDR conversion",
         title_font_size=18,
         color_preset='dark',
         x_label="x",
@@ -476,7 +476,7 @@ def make_blog_image():
     #     apply_bt2446_method_c_without_crosstalk_matrix(ctm_alpha=alpha)
 
     # gamut boundary sample
-    plot_hdr10_gamut_boundary()
+    # plot_hdr10_gamut_boundary()
     plot_hdr10_to_sdr_gamut_boundary()
 
     # apply bt2446 with ctm for colorchecker.
