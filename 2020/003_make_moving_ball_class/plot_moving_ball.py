@@ -35,14 +35,18 @@ def main_func():
     bg_level = 96
     velocity_rate = 20
     seed(0)
-    velocity_list = np.array([rand(2), rand(2), rand(2), rand(2)])
+    velocity_list = np.array(
+        [rand(2), rand(2), rand(2), rand(2), rand(2), rand(2), rand(2)])
     velocity_list = np.int16(np.round(velocity_list * velocity_rate))
-    color_list = [(192, 192, 192), (192, 0, 0), (0, 192, 0), (0, 0, 192)]
+    color_list = [
+        (192, 192, 192),
+        (192, 0, 0), (0, 192, 0), (0, 0, 192),
+        (192, 0, 192), (192, 192, 0), (0, 192, 192)]
 
     rmo_list = [ReflectiveMovingObject(
         velocity_init=velocity_list[idx], radius=radius)
         for idx in range(len(velocity_list))]
-    trial_num = 720
+    trial_num = 480
     img_base = np.ones((1080, 1920, 3), dtype=np.uint8) * bg_level
     for idx in range(trial_num):
         fname = "./img/test_ball_bg_{:04d}_lv_{:04d}.png".format(bg_level, idx)
@@ -61,12 +65,14 @@ def theread_wrapper_draw_main(kwargs):
     draw_main(**kwargs)
 
 
-def draw_main(idx, radius, pos_list_total, bg_image, color_list):
-    fname = "./img_with_bg_image/ball_size_{:03d}_lv_{:04d}.png".format(
-        radius, idx)
+def draw_main(idx, radius, pos_list_total, color_list):
+    bg_image = cv2.imread("./img/bg_img_6x4.png",
+                          cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR) / 0xFFFF
+    fname = "/work/overuse/2020/003_moving_ball/img_seq"
+    fname += f"/ball_size_{radius:03d}_lv_{idx:04d}.png"
     # pos_list = [
     #     rmo_list[idx].get_pos() for idx in range(len(velocity_list))]
-    img = np.zeros((1080, 1920, 3), dtype=np.uint8)
+    img = np.zeros((2160, 3840, 3), dtype=np.uint8)
     for c_idx, pos in enumerate(pos_list_total[idx]):
         img = cv2.circle(
             img, pos, radius,
@@ -84,19 +90,20 @@ def draw_main(idx, radius, pos_list_total, bg_image, color_list):
 
 
 def plot_with_bg_image(radius=20):
-    velocity_rate = 20
+    velocity_rate = 40
     seed(0)
-    velocity_list = np.array([rand(2), rand(2), rand(2), rand(2)])
+    velocity_list = np.array([
+        rand(2), rand(2), rand(2), rand(2), rand(2), rand(2), rand(2)])
     velocity_list = np.int16(np.round(velocity_list * velocity_rate))
-    color_list = [(192, 192, 192), (192, 0, 0),
-                  (0, 192, 0), (0, 0, 192)]
-    bg_image = cv2.imread("./img/bg_img_5x3.png",
-                          cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR) / 0xFFFF
-
+    color_list = [
+        (192, 192, 192),
+        (192, 0, 0), (0, 192, 0), (0, 0, 192),
+        (192, 0, 192), (192, 192, 0), (0, 192, 192)]
     rmo_list = [ReflectiveMovingObject(
-        velocity_init=velocity_list[idx], radius=radius)
+        velocity_init=velocity_list[idx], radius=radius,
+        outline_size=(3840, 2160))
         for idx in range(len(velocity_list))]
-    trial_num = 900
+    trial_num = 720
 
     # 先に全部座標を計算してしまう
     pos_list_total = []
@@ -109,19 +116,21 @@ def plot_with_bg_image(radius=20):
 
     args = []
     for idx in range(trial_num):
+        # idx = 300
         kwargs = dict(
             idx=idx, radius=radius, pos_list_total=pos_list_total,
-            bg_image=bg_image, color_list=color_list)
+            color_list=color_list)
         args.append(kwargs)
-        # draw_main(**kwargs)
-    with Pool(cpu_count()) as pool:
-        pool.map(theread_wrapper_draw_main, args)
+        draw_main(**kwargs)
+        # break
+    # with Pool(cpu_count()) as pool:
+    #     pool.map(theread_wrapper_draw_main, args)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # main_func()
-    plot_with_bg_image(radius=5)
-    plot_with_bg_image(radius=10)
-    plot_with_bg_image(radius=20)
-    plot_with_bg_image(radius=40)
+    # plot_with_bg_image(radius=5*2)
+    # plot_with_bg_image(radius=10*2)
+    plot_with_bg_image(radius=20*2)
+    plot_with_bg_image(radius=40*2)

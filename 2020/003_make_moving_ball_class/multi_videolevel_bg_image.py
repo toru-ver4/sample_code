@@ -65,8 +65,8 @@ def make_multi_video_level_background(
 def main_func():
     make_multi_video_level_background()
     make_multi_video_level_background(
-        width=1920, height=1080, h_sample_num=16, v_sample_num=9,
-        max_rate=0.7, font_size=20)
+        width=3840, height=2160, h_sample_num=6, v_sample_num=4,
+        max_rate=0.7, font_size=30)
 
 
 if __name__ == '__main__':
