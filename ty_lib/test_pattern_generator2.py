@@ -17,6 +17,8 @@ from colour.models import BT709_COLOURSPACE
 from colour.utilities import normalise_maximum
 from colour import models
 from colour import RGB_COLOURSPACES, COLOURCHECKERS
+from colour import write_image, read_image
+from colour.io.image import ImageAttribute_Specification
 from scipy.spatial import Delaunay
 from scipy.ndimage.filters import convolve
 import math
@@ -68,6 +70,10 @@ def img_read_as_float(filename):
     return img_float
 
 
+def img_read_dpx_as_float(filename):
+    return read_image(filename, bit_depth='float32')
+
+
 def img_write(filename, img):
     """
     OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
@@ -78,6 +84,12 @@ def img_write(filename, img):
 def img_wirte_float_as_16bit_int(filename, img_float):
     img_int = np.uint16(np.round(np.clip(img_float, 0.0, 1.0) * 0xFFFF))
     img_write(filename, img_int)
+
+
+def img_wirte_float_as_10bit_dpx(filename, img_float):
+    bit_option = ImageAttribute_Specification("oiio:BitsPerSample", 10)
+    write_image(
+        img_float, filename, bit_depth='uint16', attributes=[bit_option])
 
 
 def equal_devision(length, div_num):
