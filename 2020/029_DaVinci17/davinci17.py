@@ -525,14 +525,23 @@ def check_inv_drt_test(file_list, graph_name):
     plt.close(fig)
 
 
+def conv_st2084_to_linear():
+    src_file = "./ST2084_vs_Linear/st2084_clip_checker_st2084.png"
+    dst_file = "./ST2084_vs_Linear/st2084_clip_checker_linear.exr"
+    img_st2084 = read_image(src_file)
+    img_linear = tf.eotf(img_st2084, tf.ST2084) * 100
+    write_image(img_linear, dst_file)
+
+
 def main_func():
     # create_exr_ramp()
-    plot_input_drt()
+    # plot_input_drt()
     # plot_output_drt()
     # check_100nits_code_value_on_st2084()
     # plot_forum_fig1()
     # plot_total_drt()
     # plot_inv_drt()
+    conv_st2084_to_linear()
 
 
 if __name__ == '__main__':
