@@ -8,6 +8,7 @@
 # import standard libraries
 import os
 from pathlib import Path
+import subprocess
 
 # import third-party libraries
 import numpy as np
@@ -119,6 +120,20 @@ def create_8bit_cms_test_pattern(width=1920, height=1080, block_size=64):
 def make_src_tp_base_name():
     fname = "{src_png_dir}/src_grad_tp_{width}x{height}"
     fname += "_b-size_{block_size}_{frame_idx:04d}.png"
+
+    return fname
+
+
+def make_dst_png_tp_base_name():
+    fname = "{dst_png_dir}/dst_grad_tp_{width}x{height}"
+    fname += "_b-size_{block_size}_{frame_idx:04d}.png"
+
+    return fname
+
+
+def make_dst_mp4_tp_base_name():
+    fname = "{dst_mp4_dir}/src_grad_tp_{width}x{height}"
+    fname += "_b-size_{block_size}.mp4"
 
     return fname
 
@@ -250,15 +265,60 @@ def debug_func():
         width=width, height=height, block_size=block_size)
 
 
+def encode_8bit_tp_src_with_ffmpeg(width=1920, height=1080, block_size=64):
+    out_fname = make_dst_mp4_tp_base_name().format(
+        dst_mp4_dir=DST_MP4_DIR, width=width, height=height,
+        block_size=block_size)
+    in_fname = make_src_tp_base_name().format(
+        src_png_dir=SRC_PNG_DIR, width=width, height=height,
+        block_size=block_size, frame_idx=0)
+    in_fname_ffmpeg = in_fname.replace("0000", r"%4d")
+    cmd = "ffmpeg"
+    ops = [
+        '-color_primaries', 'bt709', '-color_trc', 'bt709',
+        '-colorspace', 'bt709',
+        '-r', '24', '-i', in_fname_ffmpeg, '-c:v', 'libx264',
+        '-pix_fmt', 'yuv444p', '-qp', '0',
+        '-color_primaries', 'bt709', '-color_trc', 'bt709',
+        '-colorspace', 'bt709',
+        str(out_fname), '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
+def decode_8bit_tp_src_with_ffmpeg(width=1920, height=1080, block_size=64):
+    in_fname = make_dst_mp4_tp_base_name().format(
+        dst_mp4_dir=DST_MP4_DIR, width=width, height=height,
+        block_size=block_size)
+    out_fname = make_dst_png_tp_base_name().format(
+        dst_png_dir=DST_PNG_DIR, width=width, height=height,
+        block_size=block_size, frame_idx=0)
+    out_fname_ffmpeg = out_fname.replace("0000", r"%4d")
+    cmd = "ffmpeg"
+    ops = [
+        '-i', in_fname, '-vsync', '0',
+        str(out_fname_ffmpeg), '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
 def main_func():
     width = 1920
     height = 1080
     block_size = 64
     # create_gradation_pattern_sequence(
     #     width=width, height=height, block_size=block_size)
+    # encode_8bit_tp_src_with_ffmpeg(
+    #     width=width, height=height, block_size=block_size)
+    decode_8bit_tp_src_with_ffmpeg(
+        width=width, height=height, block_size=block_size)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # main_func()
-    debug_func()
+    main_func()
+    # debug_func()
