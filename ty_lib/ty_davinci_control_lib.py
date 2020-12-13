@@ -11,6 +11,7 @@ import sys
 import time
 import pprint
 from pathlib import Path
+import re
 
 # import third-party libraries
 import DaVinciResolveScript as dvr_script
@@ -31,9 +32,9 @@ __all__ = []
 Example 1
 ---------
 import imp
-import ty_davinci_control_lib as dv_lib
+import liblib2 as dv_lib
 imp.reload(dv_lib)
-dv_lib.test_func(close_current_project=False)
+dv_lib.test_func(close_current_project=True)
 
 Example 2
 ---------
@@ -44,77 +45,6 @@ project = dv_lib.test_func()
 ...
 dv_lib._debug_print_and_save_project_settings(project)
 """
-
-
-def set_project_settings(project):
-    project.SetSetting("timelineOutputResolutionHeight", "720")
-    project.SetSetting("timelineOutputResolutionWidth", "1280")
-    project.SetSetting("timelineResolutionHeight", "720")
-    project.SetSetting("timelineResolutionWidth", "1280")
-    project.SetSetting("videoMonitorFormat", "HD 720p 24")
-    project.SetSetting("timelineFrameRate", "24.000")
-    project.SetSetting("timelinePlaybackFrameRate", "24")  # not working
-    project.SetSetting("colorScienceMode", "davinciYRGBColorManagedv2")
-    project.SetSetting("rcmPresetMode", "Custom")
-    project.SetSetting("separateColorSpaceAndGamma", "1")
-    # project.SetSetting("", "")
-    project.SetSetting("colorSpaceInput", "Rec.709")
-    project.SetSetting("colorSpaceInputGamma", "Gamma 2.4")
-    project.SetSetting("colorSpaceTimeline", "Rec.709")
-    project.SetSetting("colorSpaceTimelineGamma", "Gamma 2.4")
-    project.SetSetting("colorSpaceOutput", "Rec.709")
-    project.SetSetting("colorSpaceOutputGamma", "Gamma 2.4")
-    project.SetSetting("inputDRT", "None")
-    project.SetSetting("outputDRT", "None")
-
-
-def add_clip(resolve, project):
-    set_project_settings(project)
-    resolve.OpenPage("media")
-    media_storage = resolve.GetMediaStorage()
-    media_pool = project.GetMediaPool()
-    media_path = str(PureWindowsPath(MP4_DIR))
-    media_storage.AddItemListToMediaPool(media_path)
-
-
-def encode_each_clip(resolve, project, clip_idx):
-    resolve.OpenPage("edit")
-    media_pool = project.GetMediaPool()
-    media_storage = resolve.GetMediaStorage()
-    media_path = str(PureWindowsPath(MP4_DIR))
-    file_list = media_storage.GetFileList(media_path)
-    folder = media_pool.GetCurrentFolder()
-
-    file_name = file_list[clip_idx]
-    max_val = get_max_value_from_clip_name(file_name)
-
-    timeline = media_pool.CreateTimelineFromClips(
-        f"{max_val}", folder.GetClipList()[clip_idx])
-
-    project.DeleteAllRenderJobs()
-    format_str = "tif"
-    codec = "RGB16LZW"
-    resolve.OpenPage("deliver")
-
-    # pprint.pprint(project.GetRenderFormats())
-    # pprint.pprint(project.GetRenderCodecs("tif"))
-    # pprint.pprint(project.GetCurrentRenderFormatAndCodec())
-
-    result = project.SetCurrentRenderFormatAndCodec(format_str, codec)
-
-    outname = f"{max_val}"
-
-    if not result:
-        print("Error! codec settings is invalid")
-        print(f"    format={format_str}", codec={codec})
-    result = project.SetRenderSettings(
-        {"TargetDir": str(PureWindowsPath(RENDER_OUT_DIR)),
-         "CustomName": outname})
-    if not result:
-        print("Error! RenderSetting is invalid")
-    project.AddRenderJob()
-    project.StartRendering()
-    project.DeleteAllRenderJobs()
 
 
 def wait_for_rendering_completion(project):
@@ -221,6 +151,12 @@ def set_project_settings_from_dict(project, params):
             print(f'    "{name}" = "{value}" is OK.')
         else:
             print(f'    "{name}" = "{value}" is NGGGGGGGGGGGGGGGGGG.')
+        if name == "timelineFrameRate":
+            result = project.SetRenderSettings({'FrameRate': float(value)})
+            if result:
+                print(f'    "{name}" = "{value}" is OK in RenderSettings.')
+            else:
+                print(f'    "{name}" = "{value}" is NGGGGGG in RenderSettings')
     print("project settings has done")
 
 
@@ -251,7 +187,7 @@ def add_clips_to_media_pool(resolve, project, media_path):
     media_storage.AddItemListToMediaPool(str(media_path))
 
 
-def get_media_pool_clip_dict_list(project):
+def get_media_pool_clip_list_and_clip_name_list(project):
     """
     Parametes
     ---------
@@ -260,30 +196,146 @@ def get_media_pool_clip_dict_list(project):
 
     Returns
     -------
-    list
-        [{clip name1: clip object1}, {clip name2: clip object2}, ...]
+    clip_return_list : list
+        clip list
+    clip_name_list : list
+        clip name list
 
     Examples
     --------
     >>> resolve, project_manager = init_davinci17(
     ...     close_current_project=close_current_project)
     >>> get_media_pool_clip_dict_list(project)
-    [{'src_grad_tp_1920x1080_b-size_64_[0000-0023].png': <PyRemoteObject object at 0x00000234941E17F8>},
-     {'dst_grad_tp_1920x1080_b-size_64_[0001-0024].png': <PyRemoteObject object at 0x00000234941E1798>},
-     {'dst_grad_tp_1920x1080_b-size_64_resolve_[0000-0023].tif': <PyRemoteObject object at 0x00000234941E17C8>}]
+    [<PyRemoteObject object at 0x000001BB29001630>,
+     <PyRemoteObject object at 0x000001BB290016D8>,
+     <PyRemoteObject object at 0x000001BB29001720>]
+    ['dst_grad_tp_1920x1080_b-size_64_[0001-0024].png',
+     'src_grad_tp_1920x1080_b-size_64_[0000-0023].png',
+     'dst_grad_tp_1920x1080_b-size_64_resolve_[0000-0023].tif']
     """
     media_pool = project.GetMediaPool()
     root_folder = media_pool.GetRootFolder()
     clip_list = root_folder.GetClipList()
-    clip_dict_list = []
+    clip_name_list = []
+    clip_return_list = []
     for clip in clip_list:
-        ddd = {clip.GetName(): clip}
-        clip_dict_list.append(ddd)
+        clip_name_list.append(clip.GetName())
+        clip_return_list.append(clip)
 
-    return clip_dict_list
+    return clip_return_list, clip_name_list
+
+
+def create_timeline_from_clip(resolve, project, clip_list, timeline_name="dummy"):
+    """
+    Parametes
+    ---------
+    resolve : Resolve
+        a Resolve iinstance
+    project : Project
+        a Project instance
+    clip_list : list
+        list of clip
+    timeline_name : str
+        timeline name
+    """
+    resolve.OpenPage("edit")
+    media_pool = project.GetMediaPool()
+    timeline = media_pool.CreateTimelineFromClips(timeline_name, clip_list)
+    # timeline = media_pool.CreateTimelineFromClips(timeline_name, None)
+
+    return timeline
+
+
+def eliminate_frame_idx_from_clip_name(clip_name):
+    """
+    Examples
+    --------
+    >>> clip_name = 'dst_grad_tp_1920x1080_b-size_64_[0001-0024].png'
+    >>> eliminate_frame_idx_from_clip_name(clip_name)
+    eliminate_frame_idx_from_clip_name(clip_name)
+    """
+    eliminated_name = re.sub('_\[\d+-\d+\]', '', clip_name)
+
+    return eliminated_name
+
+
+def load_encode_preset(project, preset_name):
+    result = project.LoadRenderPreset(preset_name)
+    if result:
+        print(f'preset "{preset_name}" is loaded.')
+    else:
+        print(f'INVALID PRESET "{preset_name}" NGGGGGGGGGGGGGGGGGGGGGGG.')
+
+
+def set_render_format_codec_settings(
+        project, format_str='mov', codec='ProRes422HQ'):
+    """
+    Parameters
+    ----------
+    project : Project
+        a Project instance
+    """
+    result = project.SetCurrentRenderFormatAndCodec(format_str, codec)
+    if result:
+        print(f"format={format_str}, codec={codec} is OK")
+    else:
+        print(f"format={format_str}, codec={codec} is NGGGGGGGGGGGGGG")
+
+
+def set_render_settings(project, out_fname):
+    """
+    Parameters
+    ----------
+    project : Project
+        a Project instance
+    out_fname : str
+        output file name
+    """
+    path = Path(out_fname)
+    target_dir = str(path.parent)
+    name_prefix = str(path.name)
+
+    result = project.SetRenderSettings(
+        {"TargetDir": target_dir, "CustomName": name_prefix})
+    if result:
+        print(f"TargetDir={target_dir}, CustomName={name_prefix} is OK")
+    else:
+        print(f"TargetDir={target_dir}, CustomName={name_prefix} is NGGGGGGGG")
+
+
+def encode(resolve, project, out_fname, format_str, codec, preset_name=None):
+    """
+    Parameters
+    ----------
+    resolve : Resolve
+        a Resolve instance
+    project : Project
+        a Project instance
+    out_fname : str
+        output file name
+    format_str : str
+        output format. ex. "mp4", "mov", etc...
+    codec : str
+        codec. ex "H264_NVIDIA", "ProRes422HQ", etc...
+    preset_name : str
+        render preset name
+    """
+    resolve.OpenPage("deliver")
+
+    project.DeleteAllRenderJobs()
+
+    if preset_name is not None:
+        load_encode_preset(project, preset_name)
+    set_render_format_codec_settings(project, format_str, codec)
+    set_render_settings(project, out_fname)
+
+    project.AddRenderJob()
+    project.StartRendering()
+    project.DeleteAllRenderJobs()
 
 
 def _debug_save_dict_as_txt(fname, data):
+    current_directory = os.getcwd()
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     buf = []
     with open(fname, 'wt') as f:
@@ -292,6 +344,25 @@ def _debug_save_dict_as_txt(fname, data):
             print(text_data)
             buf.append(text_data)
         f.write("\n".join(buf))
+    os.chdir(current_directory)
+
+
+def _debug_print_and_save_encode_settings(project):
+    current_directory = os.getcwd()
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    format_list = project.GetRenderFormats()
+    buf = ""
+    for render_format_name, ext in format_list.items():
+        codecs = project.GetRenderCodecs(ext)
+        buf += f"=== {ext} ===\n"
+        for key, value in codecs.items():
+            buf += f"{key}: {value}\n"
+        buf += "\n"
+        print(f"=== {ext} ===")
+        print(codecs)
+        print('')
+    with open("./dv17_codecs.txt", 'wt') as f:
+        f.write(buf)
     os.chdir(current_directory)
 
 
@@ -304,12 +375,15 @@ def _debug_print_and_save_project_settings(project):
 
 def test_func(close_current_project=True):
     """
-    unit test... ?
+    test
     """
-    resolve, project_manager = init_davinci17(
-        close_current_project=close_current_project)
-    project = prepare_project(project_manager)
-
+    # parameter definition
+    out_fname = Path(
+        'D:/abuse/2020/031_cms_for_video_playback/mp4_to_png/python_test_')
+    out_fname = str(out_fname)
+    format_str = "mp4"
+    codec = "H264_NVIDIA"
+    preset_name = "H264_lossless"
     project_params = dict(
         timelineResolutionHeight="1080",
         timelineResolutionWidth="1920",
@@ -328,12 +402,23 @@ def test_func(close_current_project=True):
         inputDRT="None",
         outputDRT="None",
     )
+
+    # set
+    resolve, project_manager = init_davinci17(
+        close_current_project=close_current_project)
+    project = prepare_project(project_manager)
+
     set_project_settings_from_dict(project, project_params)
 
     media_path = Path('D:/abuse/2020/031_cms_for_video_playback/img_seq')
     add_clips_to_media_pool(resolve, project, media_path)
-    clip_dict_list = get_media_pool_clip_dict_list(project)
-    print(clip_dict_list)
+    clip_list, clip_name_list\
+        = get_media_pool_clip_list_and_clip_name_list(project)
+
+    timeline = create_timeline_from_clip(
+        resolve, project, clip_list, timeline_name="dummy")
+
+    encode(resolve, project, out_fname, format_str, codec, preset_name)
 
     return project
 
