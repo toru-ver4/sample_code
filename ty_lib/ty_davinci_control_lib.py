@@ -32,7 +32,7 @@ __all__ = []
 Example 1
 ---------
 import imp
-import liblib2 as dv_lib
+import ty_davinci_control_lib as dv_lib
 imp.reload(dv_lib)
 dv_lib.test_func(close_current_project=True)
 
@@ -53,31 +53,6 @@ def wait_for_rendering_completion(project):
     return
 
 
-def main_func2():
-    # load project
-    resolve = dvr_script.scriptapp("Resolve")
-    fusion = resolve.Fusion()
-    projectManager = resolve.GetProjectManager()
-    projectManager.DeleteProject(MAIN_PRJ_NAME)
-    project = projectManager.CreateProject(MAIN_PRJ_NAME)
-    if not project:
-        print("Unable to loat a project '" + MAIN_PRJ_NAME + "'")
-        sys.exit()
-    add_clip(resolve, project)
-    projectManager.SaveProject()
-    projectManager.CloseProject(project)
-    time.sleep(1)
-
-    clip_num = len(list(WindowsPath(MP4_DIR).glob('*.mp4')))
-
-    for clip_idx in range(clip_num):
-        project = projectManager.LoadProject(MAIN_PRJ_NAME)
-        encode_each_clip(resolve, project, clip_idx)
-        wait_for_rendering_completion(project)
-        projectManager.CloseProject(project)
-        time.sleep(1)
-
-
 def init_davinci17(close_current_project=True):
     """
     Initialize davinci17 python environment.
@@ -94,7 +69,7 @@ def init_davinci17(close_current_project=True):
         ProjectManager instance
     """
     resolve = dvr_script.scriptapp("Resolve")
-    fusion = resolve.Fusion()
+    # fusion = resolve.Fusion()
     project_manager = resolve.GetProjectManager()
 
     if close_current_project:
@@ -259,6 +234,19 @@ def eliminate_frame_idx_from_clip_name(clip_name):
     return eliminated_name
 
 
+def eliminate_frame_idx_and_ext_from_clip_name(clip_name):
+    """
+    Examples
+    --------
+    >>> clip_name = 'dst_grad_tp_1920x1080_b-size_64_[0001-0024].png'
+    >>> eliminate_frame_idx_from_clip_name(clip_name)
+    eliminate_frame_idx_from_clip_name(clip_name)
+    """
+    eliminated_name = re.sub('_\[\d+-\d+\]\..+$', '', clip_name)
+
+    return eliminated_name
+
+
 def load_encode_preset(project, preset_name):
     result = project.LoadRenderPreset(preset_name)
     if result:
@@ -282,18 +270,17 @@ def set_render_format_codec_settings(
         print(f"format={format_str}, codec={codec} is NGGGGGGGGGGGGGG")
 
 
-def set_render_settings(project, out_fname):
+def set_render_settings(project, out_path):
     """
     Parameters
     ----------
     project : Project
         a Project instance
-    out_fname : str
+    out_path : Path
         output file name
     """
-    path = Path(out_fname)
-    target_dir = str(path.parent)
-    name_prefix = str(path.name)
+    target_dir = str(out_path.parent)
+    name_prefix = str(out_path.name)
 
     result = project.SetRenderSettings(
         {"TargetDir": target_dir, "CustomName": name_prefix})
@@ -303,7 +290,7 @@ def set_render_settings(project, out_fname):
         print(f"TargetDir={target_dir}, CustomName={name_prefix} is NGGGGGGGG")
 
 
-def encode(resolve, project, out_fname, format_str, codec, preset_name=None):
+def encode(resolve, project, out_path, format_str, codec, preset_name=None):
     """
     Parameters
     ----------
@@ -311,7 +298,7 @@ def encode(resolve, project, out_fname, format_str, codec, preset_name=None):
         a Resolve instance
     project : Project
         a Project instance
-    out_fname : str
+    out_path : Path
         output file name
     format_str : str
         output format. ex. "mp4", "mov", etc...
@@ -327,11 +314,12 @@ def encode(resolve, project, out_fname, format_str, codec, preset_name=None):
     if preset_name is not None:
         load_encode_preset(project, preset_name)
     set_render_format_codec_settings(project, format_str, codec)
-    set_render_settings(project, out_fname)
+    set_render_settings(project, out_path)
 
     project.AddRenderJob()
     project.StartRendering()
     project.DeleteAllRenderJobs()
+    wait_for_rendering_completion(project)
 
 
 def _debug_save_dict_as_txt(fname, data):
@@ -378,9 +366,8 @@ def test_func(close_current_project=True):
     test
     """
     # parameter definition
-    out_fname = Path(
+    out_path = Path(
         'D:/abuse/2020/031_cms_for_video_playback/mp4_to_png/python_test_')
-    out_fname = str(out_fname)
     format_str = "mp4"
     codec = "H264_NVIDIA"
     preset_name = "H264_lossless"
@@ -418,7 +405,7 @@ def test_func(close_current_project=True):
     timeline = create_timeline_from_clip(
         resolve, project, clip_list, timeline_name="dummy")
 
-    encode(resolve, project, out_fname, format_str, codec, preset_name)
+    encode(resolve, project, out_path, format_str, codec, preset_name)
 
     return project
 
