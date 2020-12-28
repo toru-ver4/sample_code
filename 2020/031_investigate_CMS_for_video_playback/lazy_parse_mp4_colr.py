@@ -109,7 +109,6 @@ def get_moov_address_and_size(fp):
     address = None
     for idx in range(10):
         fp.seek(size, 1)
-        print(f"pos = 0x{fp.tell():08X}")
         if is_end_of_file(fp):
             print("Warning: 'moov' is not found.")
             break
@@ -140,7 +139,10 @@ def search_colour_info_start_address(fp):
     if (colour_type_address - colour_tag_address) != 4:
         print("Error: 'colr' or 'nclx' is not found.")
         return None
-    return colour_type_address + 4 + moov_address
+
+    colour_info_start_address = colour_type_address + 4 + moov_address
+    print(f"'colr' info address is 0x{colour_info_start_address:08X}")
+    return colour_info_start_address
 
 
 def get_colour_characteristics(fp):
@@ -164,6 +166,12 @@ def set_colour_characteristics(
 
 
 def make_dst_fname(src_fname, suffix="9_16_9"):
+    """
+    Examples
+    --------
+    >>> make_dst_fname(src_fname="./video/hoge.mp4", suffix="9_16_9")
+    "./video/hoge_9_16_9.mp4"
+    """
     src_path = Path(src_fname)
     parent = str(src_path.parent)
     ext = src_path.suffix
@@ -171,29 +179,6 @@ def make_dst_fname(src_fname, suffix="9_16_9"):
     dst_path_str = parent + '/' + stem + "_" + suffix + ext
 
     return dst_path_str
-
-
-def test_rewrite_colour_parameters():
-    src_fname = "./video/BT2020-ST2084_H264.mp4"
-    dst_fname = make_dst_fname(src_fname, suffix='colr_10_17_10')
-    print(dst_fname)
-    shutil.copyfile(src_fname, dst_fname)
-    fp = open(dst_fname, 'rb+')
-    colour_primaries, transfer_characteristics, matrix_coefficients\
-        = get_colour_characteristics(fp)
-    print(colour_primaries, transfer_characteristics, matrix_coefficients)
-    set_colour_characteristics(fp, 10, 17, 10)
-
-
-def test_get_colour_characteristics():
-    src_fname = "./video/BT2020-ST2084_H264.mp4"
-    fp = open(src_fname, 'rb')
-    colour_primaries, transfer_characteristics, matrix_coefficients\
-        = get_colour_characteristics(fp)
-    print(colour_primaries, transfer_characteristics, matrix_coefficients)
-    assert_equal(colour_primaries, 9)
-    assert_equal(transfer_characteristics, 16)
-    assert_equal(matrix_coefficients, 9)
 
 
 def rewrite_colr_box(
@@ -222,6 +207,29 @@ def rewrite_colr_box(
         fp, colour_primaries, transfer_characteristics,
         matrix_coefficients)
     fp.close()
+
+
+def test_rewrite_colour_parameters():
+    src_fname = "./video/BT2020-ST2084_H264.mp4"
+    dst_fname = make_dst_fname(src_fname, suffix='colr_10_17_10')
+    print(dst_fname)
+    shutil.copyfile(src_fname, dst_fname)
+    fp = open(dst_fname, 'rb+')
+    colour_primaries, transfer_characteristics, matrix_coefficients\
+        = get_colour_characteristics(fp)
+    print(colour_primaries, transfer_characteristics, matrix_coefficients)
+    set_colour_characteristics(fp, 10, 17, 10)
+
+
+def test_get_colour_characteristics():
+    src_fname = "./video/BT2020-ST2084_H264.mp4"
+    fp = open(src_fname, 'rb')
+    colour_primaries, transfer_characteristics, matrix_coefficients\
+        = get_colour_characteristics(fp)
+    print(colour_primaries, transfer_characteristics, matrix_coefficients)
+    assert_equal(colour_primaries, 9)
+    assert_equal(transfer_characteristics, 16)
+    assert_equal(matrix_coefficients, 9)
 
 
 def test_set_colour_characteristics():
@@ -255,6 +263,16 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # lazy_tests()
     # test_rewrite_colour_parameters()
-    rewrite_colr_box(
-        src_fname='./video/BT2020-ST2084_H264.mp4',
-        colour_primaries=1, transfer_characteristics=1, matrix_coefficients=1)
+    # rewrite_colr_box(
+    #     src_fname='./video/BT2020-ST2084_H264_Resolve.mp4',
+    #     colour_primaries=9, transfer_characteristics=16, matrix_coefficients=9)
+    fname_list = [
+        './video/BT2020-ST2084_H264_command.mp4',
+        './video/src_grad_tp_1920x1080_b-size_64_DV17_HDR10.mp4',
+        './video/src_grad_tp_1920x1080_b-size_64_ffmpeg.mp4'
+    ]
+    for fname in fname_list:
+        rewrite_colr_box(
+            src_fname=fname,
+            colour_primaries=1, transfer_characteristics=1,
+            matrix_coefficients=1)

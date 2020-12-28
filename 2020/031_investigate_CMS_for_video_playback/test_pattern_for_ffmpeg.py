@@ -15,9 +15,11 @@ import numpy as np
 import cv2
 from colour.models import BT709_COLOURSPACE
 from numpy.core.defchararray import center
+import matplotlib.pyplot as plt
 
 # import my libraries
 import test_pattern_generator2 as tpg
+import plot_utility as pu
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -131,9 +133,23 @@ def make_dst_png_tp_base_name():
     return fname
 
 
+def make_dst_dv17_tif_tp_base_name():
+    fname = "{dst_png_dir}/dst_grad_tp_{width}x{height}"
+    fname += "_b-size_{block_size}_dv17_decode_{frame_idx:04d}.tif"
+
+    return fname
+
+
 def make_dst_mp4_tp_base_name():
     fname = "{dst_mp4_dir}/src_grad_tp_{width}x{height}"
-    fname += "_b-size_{block_size}.mp4"
+    fname += "_b-size_{block_size}_ffmpeg.mp4"
+
+    return fname
+
+
+def make_dst_hdr10_mp4_tp_base_name():
+    fname = "{dst_mp4_dir}/src_grad_tp_{width}x{height}"
+    fname += "_b-size_{block_size}_ffmpeg_HDR10.mp4"
 
     return fname
 
@@ -278,9 +294,77 @@ def encode_8bit_tp_src_with_ffmpeg(width=1920, height=1080, block_size=64):
         '-color_primaries', 'bt709', '-color_trc', 'bt709',
         '-colorspace', 'bt709',
         '-r', '24', '-i', in_fname_ffmpeg, '-c:v', 'libx264',
+        # '-bsf:v', 'h264_metadata=colour_primaries=9:transfer_characteristics=16:matrix_coefficients=9',
         '-pix_fmt', 'yuv444p', '-qp', '0',
         '-color_primaries', 'bt709', '-color_trc', 'bt709',
         '-colorspace', 'bt709',
+        str(out_fname), '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
+def encode_8bit_tp_src_with_ffmpeg_hdr10(
+        width=1920, height=1080, block_size=64):
+    out_fname = make_dst_hdr10_mp4_tp_base_name().format(
+        dst_mp4_dir=DST_MP4_DIR, width=width, height=height,
+        block_size=block_size)
+    out_fname_raw = out_fname + ".h264"
+    in_fname = make_src_tp_base_name().format(
+        src_png_dir=SRC_PNG_DIR, width=width, height=height,
+        block_size=block_size, frame_idx=0)
+    in_fname_ffmpeg = in_fname.replace("0000", r"%4d")
+    cmd = "ffmpeg"
+    ops = [
+        '-color_primaries', 'bt2020', '-color_trc', 'smpte2084',
+        '-colorspace', 'bt2020nc',
+        '-r', '24', '-i', in_fname_ffmpeg, '-c:v', 'libx264',
+        # '-bsf:v', 'h264_metadata=colour_primaries=9:transfer_characteristics=16:matrix_coefficients=9',
+        '-pix_fmt', 'yuv444p', '-qp', '0',
+        '-pix_fmt', 'yuv444p',
+        '-color_primaries', 'bt2020', '-color_trc', 'smpte2084',
+        '-colorspace', 'bt2020nc',
+        str(out_fname), '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+    ops = [
+        '-color_primaries', 'bt2020', '-color_trc', 'smpte2084',
+        '-colorspace', 'bt2020nc',
+        '-r', '24', '-i', in_fname_ffmpeg, '-c:v', 'libx264',
+        # '-bsf:v', 'h264_metadata=colour_primaries=9:transfer_characteristics=16:matrix_coefficients=9',
+        '-pix_fmt', 'yuv444p', '-qp', '0',
+        '-pix_fmt', 'yuv444p',
+        '-color_primaries', 'bt2020', '-color_trc', 'smpte2084',
+        '-colorspace', 'bt2020nc',
+        str(out_fname_raw), '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
+def encode_8bit_tp_src_with_ffmpeg_vp9(
+        width=1920, height=1080, block_size=64):
+    out_fname = make_dst_mp4_tp_base_name().format(
+        dst_mp4_dir=DST_MP4_DIR, width=width, height=height,
+        block_size=block_size)
+    out_fname = out_fname.replace(".mp4", "_vp9.mp4")
+    in_fname = make_src_tp_base_name().format(
+        src_png_dir=SRC_PNG_DIR, width=width, height=height,
+        block_size=block_size, frame_idx=0)
+    in_fname_ffmpeg = in_fname.replace("0000", r"%4d")
+    cmd = "ffmpeg"
+    ops = [
+        '-color_primaries', 'bt709', '-color_trc', 'bt709',
+        '-colorspace', 'bt709',
+        '-r', '24', '-i', in_fname_ffmpeg, '-c:v', 'libvpx-vp9',
+        '-pix_fmt', 'yuv444p', '-lossless', '1',
+        '-bsf:v', 'vp9_metadata=color_space=bt2020',
+        '-color_primaries', 'bt2020', '-color_trc', 'bt709',
         str(out_fname), '-y'
     ]
     args = [cmd] + ops
@@ -306,6 +390,80 @@ def decode_8bit_tp_src_with_ffmpeg(width=1920, height=1080, block_size=64):
     subprocess.run(args)
 
 
+def compare_dv17_decode_data(width=1920, height=1080, block_size=64):
+    fname = make_dst_dv17_tif_tp_base_name().format(
+        dst_png_dir=DST_PNG_DIR, width=width, height=height,
+        block_size=block_size, frame_idx=TOTAL_FRAME//2)
+    code_value_data = read_code_value_from_gradation_pattern(
+        fname=fname, width=width, height=height, block_size=block_size)
+
+    ramp = code_value_data['ramp']
+
+    # Ramp
+    expected = np.arange(CODE_VALUE_NUM).astype(np.uint8)
+    observed = ramp[..., 0].reshape((CODE_VALUE_NUM))
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="Decoded data by DaVinci 17 Beta 4",
+        graph_title_size=None,
+        xlabel="Input code value (8 bit)",
+        ylabel="Output code value (8 bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=[x * 32 for x in range(8)] + [255],
+        ytick=[x * 32 for x in range(8)] + [255],
+        xtick_size=None, ytick_size=None,
+        linewidth=5,
+        minor_xtick_num=None,
+        minor_ytick_num=None,
+        return_figure=True)
+    # ax1.plot(expected, expected, label="Theoretical value")
+    ax1.plot(expected, observed, label="Observed value")
+    plt.legend(loc='upper left')
+    plt.savefig("./img/dv17_decoded_data.png", bbox_inches='tight')
+    plt.close(fig)
+
+
+def compare_chrome_decode_data(width=1920, height=1080, block_size=64):
+    fname = "./capture/chrome_sdr.png"
+    code_value_data = read_code_value_from_gradation_pattern(
+        fname=fname, width=width, height=height, block_size=block_size)
+
+    ramp = code_value_data['ramp']
+
+    # Ramp
+    expected = np.arange(CODE_VALUE_NUM).astype(np.uint8)
+    observed = ramp[..., 0].reshape((CODE_VALUE_NUM))
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="Decoded data by DaVinci 17 Beta 4",
+        graph_title_size=None,
+        xlabel="Input code value (8 bit)",
+        ylabel="Output code value (8 bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=[x * 32 for x in range(8)] + [255],
+        ytick=[x * 32 for x in range(8)] + [255],
+        xtick_size=None, ytick_size=None,
+        linewidth=5,
+        minor_xtick_num=None,
+        minor_ytick_num=None,
+        return_figure=True)
+    # ax1.plot(expected, expected, label="Theoretical value")
+    ax1.plot(expected, observed, label="Observed value")
+    plt.legend(loc='upper left')
+    plt.savefig("./img/chrome_decoded_data.png", bbox_inches='tight')
+    plt.close(fig)
+
+
 def main_func():
     width = 1920
     height = 1080
@@ -314,8 +472,16 @@ def main_func():
     #     width=width, height=height, block_size=block_size)
     # encode_8bit_tp_src_with_ffmpeg(
     #     width=width, height=height, block_size=block_size)
-    decode_8bit_tp_src_with_ffmpeg(
+    encode_8bit_tp_src_with_ffmpeg_hdr10(
         width=width, height=height, block_size=block_size)
+    # decode_8bit_tp_src_with_ffmpeg(
+    #     width=width, height=height, block_size=block_size)
+    # compare_dv17_decode_data(
+    #     width=width, height=height, block_size=block_size)
+    # encode_8bit_tp_src_with_ffmpeg_vp9(
+    #     width=width, height=height, block_size=block_size)
+    # compare_chrome_decode_data(
+    #     width=width, height=height, block_size=block_size)
 
 
 if __name__ == '__main__':
