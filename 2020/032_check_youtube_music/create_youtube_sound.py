@@ -24,6 +24,11 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
+FREQ_MAGNIFICATION_LIST = [0.5, 1.0, 2.0, 4.0, 8.0, 16.0]
+BASE_FREQ_LIST = [
+    261.626, 293.665, 329.628, 349.228, 391.995, 440.000, 493.883]
+
+
 def create_sine_wave(frequency=440, seconds=1.5, sampling_rate=44100):
     """
     create the sine wave
@@ -188,14 +193,25 @@ def create_and_save_sine_wave(
     db_value : float
         gain in Decibel unit.
     """
-    fname = f"./audio/freq_{int(frequency):05d}Hz_db{db_value}_24bit.wav"
+    fname_24bit = make_audio_fname(
+        freq=frequency, db_value=db_value, bit_depth=24)
+    fname_16bit = make_audio_fname(
+        freq=frequency, db_value=db_value, bit_depth=16)
     data = create_sine_wave(
         frequency=frequency, seconds=seconds, sampling_rate=sampling_rate)
     if fade_in_out:
         fade_in_out_effect(data, sampling_rate=sampling_rate)
     data = apply_gain(data, db_value=db_value)
     save_sine_wave_24bit(
-        sine_wave=data, sampling_rate=sampling_rate, filename=fname)
+        sine_wave=data, sampling_rate=sampling_rate, filename=fname_24bit)
+    save_sine_wave_16bit(
+        sine_wave=data, sampling_rate=sampling_rate, filename=fname_16bit)
+
+
+def make_audio_fname(freq=440.03, db_value=-3, bit_depth=24):
+    fname = f"./audio/freq_{int(freq):05d}Hz_db{db_value}_{bit_depth}bit.wav"
+
+    return fname
 
 
 def make_test_data():
@@ -220,13 +236,10 @@ def create_sine_wave_files():
     sampling_rate = 44100
     seconds = 0.25
     fade_in_out = True
-    db_value_list = [0]
-    freq_factor_list = [0.5, 1.0, 2.0, 4.0, 8.0, 16]
-    freq_idx_list = [
-        261.626, 293.665, 329.628, 349.228, 391.995, 440.000, 493.883]
-    for freq_factor in freq_factor_list:
-        for freq_idx in freq_idx_list:
-            freq = (freq_idx + 1) * freq_factor
+    db_value_list = [0, -3]
+    for freq_magnification in FREQ_MAGNIFICATION_LIST:
+        for base_freq in BASE_FREQ_LIST:
+            freq = base_freq * freq_magnification
             for db_value in db_value_list:
                 create_and_save_sine_wave(
                     frequency=freq, sampling_rate=sampling_rate,
