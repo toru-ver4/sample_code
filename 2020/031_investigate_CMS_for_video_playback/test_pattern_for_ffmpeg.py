@@ -310,7 +310,6 @@ def encode_8bit_tp_src_with_ffmpeg_hdr10(
     out_fname = make_dst_hdr10_mp4_tp_base_name().format(
         dst_mp4_dir=DST_MP4_DIR, width=width, height=height,
         block_size=block_size)
-    out_fname_raw = out_fname + ".h264"
     in_fname = make_src_tp_base_name().format(
         src_png_dir=SRC_PNG_DIR, width=width, height=height,
         block_size=block_size, frame_idx=0)
@@ -320,7 +319,6 @@ def encode_8bit_tp_src_with_ffmpeg_hdr10(
         '-color_primaries', 'bt2020', '-color_trc', 'smpte2084',
         '-colorspace', 'bt2020nc',
         '-r', '24', '-i', in_fname_ffmpeg, '-c:v', 'libx264',
-        # '-bsf:v', 'h264_metadata=colour_primaries=9:transfer_characteristics=16:matrix_coefficients=9',
         '-pix_fmt', 'yuv444p', '-qp', '0',
         '-pix_fmt', 'yuv444p',
         '-color_primaries', 'bt2020', '-color_trc', 'smpte2084',
@@ -331,6 +329,18 @@ def encode_8bit_tp_src_with_ffmpeg_hdr10(
     print(" ".join(args))
     subprocess.run(args)
 
+
+def encode_8bit_tp_src_with_ffmpeg_hdr10_raw(
+        width=1920, height=1080, block_size=64):
+    out_fname = make_dst_hdr10_mp4_tp_base_name().format(
+        dst_mp4_dir=DST_MP4_DIR, width=width, height=height,
+        block_size=block_size)
+    out_fname_raw = out_fname + ".h264"
+    in_fname = make_src_tp_base_name().format(
+        src_png_dir=SRC_PNG_DIR, width=width, height=height,
+        block_size=block_size, frame_idx=0)
+    in_fname_ffmpeg = in_fname.replace("0000", r"%4d")
+    cmd = "ffmpeg"
     ops = [
         '-color_primaries', 'bt2020', '-color_trc', 'smpte2084',
         '-colorspace', 'bt2020nc',
@@ -473,6 +483,8 @@ def main_func():
     # encode_8bit_tp_src_with_ffmpeg(
     #     width=width, height=height, block_size=block_size)
     encode_8bit_tp_src_with_ffmpeg_hdr10(
+        width=width, height=height, block_size=block_size)
+    encode_8bit_tp_src_with_ffmpeg_hdr10_raw(
         width=width, height=height, block_size=block_size)
     # decode_8bit_tp_src_with_ffmpeg(
     #     width=width, height=height, block_size=block_size)
