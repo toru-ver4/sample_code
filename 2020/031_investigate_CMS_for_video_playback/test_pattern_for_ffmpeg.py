@@ -294,7 +294,7 @@ def encode_8bit_tp_src_with_ffmpeg(width=1920, height=1080, block_size=64):
         '-color_primaries', 'bt709', '-color_trc', 'bt709',
         '-colorspace', 'bt709',
         '-r', '24', '-i', in_fname_ffmpeg, '-c:v', 'libx264',
-        # '-bsf:v', 'h264_metadata=colour_primaries=9:transfer_characteristics=16:matrix_coefficients=9',
+        '-movflags', 'write_colr',
         '-pix_fmt', 'yuv444p', '-qp', '0',
         '-color_primaries', 'bt709', '-color_trc', 'bt709',
         '-colorspace', 'bt709',
@@ -318,7 +318,9 @@ def encode_8bit_tp_src_with_ffmpeg_hdr10(
     ops = [
         '-color_primaries', 'bt2020', '-color_trc', 'smpte2084',
         '-colorspace', 'bt2020nc',
-        '-r', '24', '-i', in_fname_ffmpeg, '-c:v', 'libx264',
+        '-r', '24', '-i', in_fname_ffmpeg,
+        '-movflags', 'write_colr',
+        '-c:v', 'libx264',
         '-pix_fmt', 'yuv444p', '-qp', '0',
         '-pix_fmt', 'yuv444p',
         '-color_primaries', 'bt2020', '-color_trc', 'smpte2084',
@@ -345,7 +347,6 @@ def encode_8bit_tp_src_with_ffmpeg_hdr10_raw(
         '-color_primaries', 'bt2020', '-color_trc', 'smpte2084',
         '-colorspace', 'bt2020nc',
         '-r', '24', '-i', in_fname_ffmpeg, '-c:v', 'libx264',
-        # '-bsf:v', 'h264_metadata=colour_primaries=9:transfer_characteristics=16:matrix_coefficients=9',
         '-pix_fmt', 'yuv444p', '-qp', '0',
         '-pix_fmt', 'yuv444p',
         '-color_primaries', 'bt2020', '-color_trc', 'smpte2084',
@@ -371,7 +372,9 @@ def encode_8bit_tp_src_with_ffmpeg_vp9(
     ops = [
         '-color_primaries', 'bt709', '-color_trc', 'bt709',
         '-colorspace', 'bt709',
-        '-r', '24', '-i', in_fname_ffmpeg, '-c:v', 'libvpx-vp9',
+        '-r', '24', '-i', in_fname_ffmpeg,
+        '-movflags', 'write_colr',
+        '-c:v', 'libvpx-vp9',
         '-pix_fmt', 'yuv444p', '-lossless', '1',
         '-bsf:v', 'vp9_metadata=color_space=bt2020',
         '-color_primaries', 'bt2020', '-color_trc', 'bt709',
@@ -484,8 +487,8 @@ def main_func():
     #     width=width, height=height, block_size=block_size)
     encode_8bit_tp_src_with_ffmpeg_hdr10(
         width=width, height=height, block_size=block_size)
-    encode_8bit_tp_src_with_ffmpeg_hdr10_raw(
-        width=width, height=height, block_size=block_size)
+    # encode_8bit_tp_src_with_ffmpeg_hdr10_raw(
+    #     width=width, height=height, block_size=block_size)
     # decode_8bit_tp_src_with_ffmpeg(
     #     width=width, height=height, block_size=block_size)
     # compare_dv17_decode_data(
