@@ -80,14 +80,23 @@ def make_audio_fname_list(audio_bit_depth=24, db_value=0):
     return fname_list
 
 
+def get_video_and_audio_timeline_items(timeline):
+    audio_items = timeline.GetItemListInTrack('audio', 1)
+    video_items = timeline.GetItemListInTrack('video', 1)
+
+    return video_items + audio_items
+
+
 def encode_tp(close_current_project=True):
     # parameter definition
-    media_path = Path('C:/Users/toruv/OneDrive/work/sample_code/2020/032_check_youtube_music/audio')
+    media_audio_path = Path('C:/Users/toruv/OneDrive/work/sample_code/2020/032_check_youtube_music/audio')
+    media_video_path = Path('C:/Users/toruv/OneDrive/work/sample_code/2020/032_check_youtube_music/image')
     out_path = Path(
         'D:/abuse/2020/031_cms_for_video_playback/mp4/')
     format_str = "mp4"
     codec = "H264_NVIDIA"
     preset_name = "H264_lossless"
+    dummy_image_name = 'dummy_background.png'
     audio_bit_depth = 24
     db_value = 0
     project_params = PROJECT_PARAMS
@@ -101,7 +110,8 @@ def encode_tp(close_current_project=True):
     dcl.set_project_settings_from_dict(project, project_params)
 
     print("add media to pool")
-    dcl.add_clips_to_media_pool(resolve, project, media_path)
+    dcl.add_clips_to_media_pool(resolve, project, media_audio_path)
+    dcl.add_clips_to_media_pool(resolve, project, media_video_path)
     clip_list, clip_name_list\
         = dcl.get_media_pool_clip_list_and_clip_name_list(project)
 
@@ -109,18 +119,38 @@ def encode_tp(close_current_project=True):
     fname_list = make_audio_fname_list(
         audio_bit_depth=audio_bit_depth, db_value=db_value)
 
-    selected_clip_list = []
+    # add audio
+    selected_audio_clip_list = []
     for fname in fname_list:
         print(f"fname = {fname}")
         for clip_obj, clip_name in zip(clip_list, clip_name_list):
             print(f"clip_name = {clip_name}")
             if clip_name == fname:
                 print(f"{fname} is found!")
-                selected_clip_list.append(clip_obj)
+                selected_audio_clip_list.append(clip_obj)
                 break
-
     timeline = dcl.create_timeline_from_clip(
-        resolve, project, selected_clip_list, timeline_name="dummy")
+        resolve, project, selected_audio_clip_list, timeline_name="main")
+
+    # add video
+    selected_video_clip_list = []
+    for clip_obj, clip_name in zip(clip_list, clip_name_list):
+        print(f"clip_name = {clip_name}")
+        if clip_name == dummy_image_name:
+            print(f"{dummy_image_name} is found!")
+            selected_video_clip_list.append(clip_obj)
+            break
+
+    dcl.add_clips_to_the_current_timeline(
+        resolve, project, selected_video_clip_list)
+
+    # compound
+    all_clip = get_video_and_audio_timeline_items(timeline)
+    timeline.CreateCompoundClip(all_clip)
+    video_clip = timeline.GetItemListInTrack('video', 1)[0]
+    print(video_clip)
+    fusion_comp = video_clip.AddFusionComp()
+    print(dir(fusion_comp))
 
     # out_path = out_path.joinpath("ababa")
     # dcl.encode(resolve, project, out_path, format_str, codec, preset_name)

@@ -200,7 +200,8 @@ def get_media_pool_clip_list_and_clip_name_list(project):
     return clip_return_list, clip_name_list
 
 
-def create_timeline_from_clip(resolve, project, clip_list, timeline_name="dummy"):
+def create_timeline_from_clip(
+        resolve, project, clip_list, timeline_name="dummy"):
     """
     Parametes
     ---------
@@ -216,7 +217,24 @@ def create_timeline_from_clip(resolve, project, clip_list, timeline_name="dummy"
     resolve.OpenPage("edit")
     media_pool = project.GetMediaPool()
     timeline = media_pool.CreateTimelineFromClips(timeline_name, clip_list)
-    # timeline = media_pool.CreateTimelineFromClips(timeline_name, None)
+
+    return timeline
+
+
+def add_clips_to_the_current_timeline(resolve, project, clip_list):
+    """
+    Parametes
+    ---------
+    resolve : Resolve
+        a Resolve iinstance
+    project : Project
+        a Project instance
+    clip_list : list
+        list of clip
+    """
+    resolve.OpenPage("edit")
+    media_pool = project.GetMediaPool()
+    timeline = media_pool.AppendToTimeline(clip_list)
 
     return timeline
 

@@ -11,6 +11,7 @@ import os
 import numpy as np
 from scipy.io import wavfile
 import wavio
+import cv2
 
 # import my libraries
 
@@ -247,7 +248,13 @@ def create_sine_wave_files():
                     db_value=db_value)
 
 
+def create_dummy_background():
+    img = np.zeros((1080, 1920, 3), dtype=np.uint8)
+    cv2.imwrite("./image/dummy_background.png", img[..., ::-1])
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # make_test_data()
-    create_sine_wave_files()
+    # create_sine_wave_files()
+    create_dummy_background()
