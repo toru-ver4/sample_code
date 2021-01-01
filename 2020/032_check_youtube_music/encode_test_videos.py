@@ -145,12 +145,12 @@ def encode_tp(close_current_project=True):
         resolve, project, selected_video_clip_list)
 
     # compound
-    all_clip = get_video_and_audio_timeline_items(timeline)
-    timeline.CreateCompoundClip(all_clip)
-    video_clip = timeline.GetItemListInTrack('video', 1)[0]
-    print(video_clip)
-    fusion_comp = video_clip.AddFusionComp()
-    print(dir(fusion_comp))
+    # all_clip = get_video_and_audio_timeline_items(timeline)
+    # timeline.CreateCompoundClip(all_clip)
+    # video_clip = timeline.GetItemListInTrack('video', 1)[0]
+    # print(video_clip)
+    # fusion_comp = video_clip.AddFusionComp()
+    # print(dir(fusion_comp))
 
     # out_path = out_path.joinpath("ababa")
     # dcl.encode(resolve, project, out_path, format_str, codec, preset_name)
