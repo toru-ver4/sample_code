@@ -483,10 +483,10 @@ def main_func():
     block_size = 64
     # create_gradation_pattern_sequence(
     #     width=width, height=height, block_size=block_size)
-    # encode_8bit_tp_src_with_ffmpeg(
-    #     width=width, height=height, block_size=block_size)
-    encode_8bit_tp_src_with_ffmpeg_hdr10(
+    encode_8bit_tp_src_with_ffmpeg(
         width=width, height=height, block_size=block_size)
+    # encode_8bit_tp_src_with_ffmpeg_hdr10(
+    #     width=width, height=height, block_size=block_size)
     # encode_8bit_tp_src_with_ffmpeg_hdr10_raw(
     #     width=width, height=height, block_size=block_size)
     # decode_8bit_tp_src_with_ffmpeg(

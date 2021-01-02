@@ -269,10 +269,11 @@ if __name__ == '__main__':
     fname_list = [
         # './video/BT2020-ST2084_H264_command.mp4',
         # './video/src_grad_tp_1920x1080_b-size_64_DV17_HDR10.mp4',
-        './video/src_grad_tp_1920x1080_b-size_64_ffmpeg_HDR10.mp4'
+        # './video/src_grad_tp_1920x1080_b-size_64_ffmpeg_HDR10.mp4',
+        './video/src_grad_tp_1920x1080_b-size_64_ffmpeg.mp4'
     ]
     for fname in fname_list:
         rewrite_colr_box(
             src_fname=fname,
-            colour_primaries=1, transfer_characteristics=1,
-            matrix_coefficients=1)
+            colour_primaries=9, transfer_characteristics=16,
+            matrix_coefficients=9)
