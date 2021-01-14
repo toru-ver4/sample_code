@@ -14,12 +14,15 @@ import subprocess
 import numpy as np
 import cv2
 from colour.models import BT709_COLOURSPACE
+from colour import RGB_COLOURSPACES
 from numpy.core.defchararray import center
 import matplotlib.pyplot as plt
 
 # import my libraries
 import test_pattern_generator2 as tpg
 import plot_utility as pu
+import transfer_functions as tf
+import color_space as cs
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -45,6 +48,13 @@ COLOR_CHECKER_LINEAR = tpg.generate_color_checker_rgb_value(
 SRC_PNG_DIR = "/work/overuse/2020/031_cms_for_video_playback/img_seq/"
 DST_MP4_DIR = "/work/overuse/2020/031_cms_for_video_playback/mp4/"
 DST_PNG_DIR = "/work/overuse/2020/031_cms_for_video_playback/mp4_to_png/"
+
+LABEL_CONV_DICT = {
+    'bt709': 'BT.709',
+    'unknown': 'Unknown',
+    'iec61966-2-1': 'sRGB',
+    'smpte2084': 'SMPTE ST2084'
+}
 
 
 def calc_block_num_h(width=1920, block_size=64):
@@ -119,9 +129,57 @@ def create_8bit_cms_test_pattern(width=1920, height=1080, block_size=64):
     return img
 
 
+def create_8bit_cms_test_pattern_with_cms(
+        width=1920, height=1080, block_size=64,
+        color_space_name=cs.BT709, eotf_name=tf.GAMMA24):
+    img = np.zeros((height, width, 3), dtype=np.uint8)
+    block_img_base = np.ones((block_size, block_size, 3), dtype=np.uint8)
+
+    # gradation
+    for code_value in range(CODE_VALUE_NUM):
+        block_img = block_img_base * code_value
+        st_pos = calc_gradation_pattern_block_st_pos(
+            code_value=code_value, width=width, height=height,
+            block_size=block_size)
+        tpg.merge(img, block_img, st_pos)
+
+    # RGBMYC
+    color_list = RGBMYC_COLOR_LIST
+    for color_idx in range(len(color_list)):
+        block_img = block_img_base * color_list[color_idx] * MAX_CODE_VALUE
+        st_pos = calc_rgbmyc_pattern_block_st_pos(
+            color_idx=color_idx, width=width, height=height,
+            block_size=block_size)
+        tpg.merge(img, block_img, st_pos)
+
+    # Color Checker
+    color_checker_linear_value = tpg.generate_color_checker_rgb_value(
+        color_space=RGB_COLOURSPACES[color_space_name])
+    rgb_value_sdr_nit = np.clip(color_checker_linear_value, 0.0, 1.0) * 100
+    rgb_value_non_linear = tf.oetf_from_luminance(rgb_value_sdr_nit, eotf_name)
+    rgb_value_8bit = np.uint8(np.round(rgb_value_non_linear * MAX_CODE_VALUE))
+
+    for color_idx in range(len(rgb_value_8bit)):
+        block_img = block_img_base * rgb_value_8bit[color_idx]
+        st_pos = calc_color_checker_pattern_block_st_pos(
+            color_idx=color_idx, width=width, height=height,
+            block_size=block_size)
+        tpg.merge(img, block_img, st_pos)
+
+    return img
+
+
 def make_src_tp_base_name():
     fname = "{src_png_dir}/src_grad_tp_{width}x{height}"
     fname += "_b-size_{block_size}_{frame_idx:04d}.png"
+
+    return fname
+
+
+def make_src_tp_base_name_with_cms_src():
+    fname = "{src_png_dir}/src_grad_tp_{width}x{height}"
+    fname += "_b-size_{block_size}_cs-{cs}_trc-{trc}"
+    fname += "_{frame_idx:04d}.png"
 
     return fname
 
@@ -147,6 +205,22 @@ def make_dst_mp4_tp_base_name():
     return fname
 
 
+def make_dst_mp4_tp_base_name_with_color_info():
+    fname = "{dst_mp4_dir}/src_grad_tp_{width}x{height}"
+    fname += "_b-size_{block_size}_cp-{color_primaries}"
+    fname += "_tc-{color_trc}_cs-{colorspace}_ffmpeg.mp4"
+
+    return fname
+
+
+def make_dst_mp4_tp_base_name_with_color_info_with_cms_src():
+    fname = "{dst_mp4_dir}/src_grad_tp_{width}x{height}"
+    fname += "_b-size_{block_size}_cp-{color_primaries}"
+    fname += "_tc-{color_trc}_cs-{colorspace}_ffmpeg_with_cms_src.mp4"
+
+    return fname
+
+
 def make_dst_hdr10_mp4_tp_base_name():
     fname = "{dst_mp4_dir}/src_grad_tp_{width}x{height}"
     fname += "_b-size_{block_size}_ffmpeg_HDR10.mp4"
@@ -167,6 +241,22 @@ def create_gradation_pattern_sequence(
         cv2.imwrite(fname, img[..., ::-1])
 
 
+def create_gradation_pattern_sequence_with_cms(
+        width=1920, height=1080, block_size=64,
+        color_space_name=cs.BT709, eotf_name=tf.GAMMA24):
+    for frame_idx in range(TOTAL_FRAME):
+        img = create_8bit_cms_test_pattern_with_cms(
+            width=width, height=height, block_size=block_size,
+            color_space_name=color_space_name, eotf_name=eotf_name)
+        fname = make_src_tp_base_name_with_cms_src().format(
+            src_png_dir=SRC_PNG_DIR, width=width, height=height,
+            block_size=block_size, frame_idx=frame_idx,
+            cs=color_space_name, trc=eotf_name)
+        # fname = f"{SRC_PNG_DIR}/src_grad_tp_{width}x{height}"
+        # fname += f"_b-size_{block_size}_{frame_idx:04d}.png"
+        cv2.imwrite(fname, img[..., ::-1])
+
+
 def get_specific_pos_value(img, pos):
     """
     Parameters
@@ -180,7 +270,8 @@ def get_specific_pos_value(img, pos):
 
 
 def read_code_value_from_gradation_pattern(
-        fname=None, width=1920, height=1080, block_size=64):
+        fname=None, width=1920, height=1080, block_size=64,
+        st_pos=(0, 0)):
     """
     Example
     -------
@@ -217,6 +308,7 @@ def read_code_value_from_gradation_pattern(
     # Gradation
     print(f"reading {fname}")
     img = cv2.imread(fname, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)[:, :, ::-1]
+    img = img[st_pos[1]:st_pos[1]+height, st_pos[0]:st_pos[0]+width, :]
     block_offset = block_size // 2
     ramp_value = np.zeros((1, CODE_VALUE_NUM, 3), dtype=np.uint8)
     for code_value in range(CODE_VALUE_NUM):
@@ -477,14 +569,95 @@ def compare_chrome_decode_data(width=1920, height=1080, block_size=64):
     plt.close(fig)
 
 
-def main_func():
+def encode_8bit_tp_src_with_ffmpeg_with_options(
+        width=1920, height=1080, block_size=64,
+        color_primaries='bt709', color_trc='bt709', colorspace='bt709'):
+    out_fname = make_dst_mp4_tp_base_name_with_color_info().format(
+        dst_mp4_dir=DST_MP4_DIR, width=width, height=height,
+        block_size=block_size, color_primaries=color_primaries,
+        color_trc=color_trc, colorspace=colorspace)
+    in_fname = make_src_tp_base_name_with_cms_src().format(
+        src_png_dir=SRC_PNG_DIR, width=width, height=height,
+        block_size=block_size, frame_idx=0, cs=colorspace, trc=color_trc)
+    in_fname_ffmpeg = in_fname.replace("0000", r"%4d")
+    cmd = "ffmpeg"
+    ops = [
+        '-color_primaries', color_primaries, '-color_trc', color_trc,
+        '-colorspace', colorspace,
+        '-r', '24', '-i', in_fname_ffmpeg, '-c:v', 'libx264',
+        '-movflags', 'write_colr',
+        '-pix_fmt', 'yuv444p', '-qp', '0',
+        '-color_primaries', color_primaries, '-color_trc', color_trc,
+        '-colorspace', colorspace,
+        str(out_fname), '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
+def encode_8bit_tp_src_with_ffmpeg_with_options_with_cms_src(
+        width=1920, height=1080, block_size=64,
+        color_primaries='bt709', color_trc='bt709', colorspace='bt709'):
+    out_fname\
+        = make_dst_mp4_tp_base_name_with_color_info_with_cms_src().format(
+            dst_mp4_dir=DST_MP4_DIR, width=width, height=height,
+            block_size=block_size, color_primaries=color_primaries,
+            color_trc=color_trc, colorspace=colorspace)
+    cs_conv_dict = {
+        'bt709': cs.BT709,
+        'smpte432': cs.P3_D65,
+        'bt2020': cs.BT2020
+    }
+    trc_conv_dict = {
+        'bt709': tf.GAMMA24,
+        'smpte2084': tf.ST2084
+    }
+    in_fname = make_src_tp_base_name_with_cms_src().format(
+        src_png_dir=SRC_PNG_DIR, width=width, height=height,
+        block_size=block_size, frame_idx=0,
+        cs=cs_conv_dict[color_primaries], trc=trc_conv_dict[color_trc])
+    in_fname_ffmpeg = in_fname.replace("0000", r"%4d")
+    cmd = "ffmpeg"
+    ops = [
+        '-color_primaries', color_primaries, '-color_trc', color_trc,
+        '-colorspace', colorspace,
+        '-r', '24', '-i', in_fname_ffmpeg, '-c:v', 'libx264',
+        '-movflags', 'write_colr',
+        # '-pix_fmt', 'yuv420p', '-qp', '0',
+        '-pix_fmt', 'yuv420p', '-crf', '18',
+        '-color_primaries', color_primaries, '-color_trc', color_trc,
+        '-colorspace', colorspace,
+        str(out_fname), '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
+def create_test_src():
     width = 1920
     height = 1080
     block_size = 64
     # create_gradation_pattern_sequence(
     #     width=width, height=height, block_size=block_size)
-    encode_8bit_tp_src_with_ffmpeg(
-        width=width, height=height, block_size=block_size)
+    # create_gradation_pattern_sequence_with_cms(
+    #     width=width, height=height, block_size=block_size,
+    #     color_space_name=cs.BT709, eotf_name=tf.GAMMA24)
+    # create_gradation_pattern_sequence_with_cms(
+    #     width=width, height=height, block_size=block_size,
+    #     color_space_name=cs.P3_D65, eotf_name=tf.GAMMA24)
+    # create_gradation_pattern_sequence_with_cms(
+    #     width=width, height=height, block_size=block_size,
+    #     color_space_name=cs.BT2020, eotf_name=tf.GAMMA24)
+    # create_gradation_pattern_sequence_with_cms(
+    #     width=width, height=height, block_size=block_size,
+    #     color_space_name=cs.BT2020, eotf_name=tf.ST2084)
+    # create_gradation_pattern_sequence_with_cms(
+    #     width=width, height=height, block_size=block_size,
+    #     color_space_name=cs.P3_D65, eotf_name=tf.ST2084)
+    # encode_8bit_tp_src_with_ffmpeg(
+    #     width=width, height=height, block_size=block_size)
     # encode_8bit_tp_src_with_ffmpeg_hdr10(
     #     width=width, height=height, block_size=block_size)
     # encode_8bit_tp_src_with_ffmpeg_hdr10_raw(
@@ -497,9 +670,121 @@ def main_func():
     #     width=width, height=height, block_size=block_size)
     # compare_chrome_decode_data(
     #     width=width, height=height, block_size=block_size)
+    # encode_8bit_tp_src_with_ffmpeg_with_options(
+    #     width=width, height=height, block_size=block_size,
+    #     color_primaries='bt709', color_trc='bt709', colorspace='bt709')
+    # encode_8bit_tp_src_with_ffmpeg_with_options(
+    #     width=width, height=height, block_size=block_size,
+    #     color_primaries='bt709', color_trc='unknown', colorspace='bt709')
+    # encode_8bit_tp_src_with_ffmpeg_with_options(
+    #     width=width, height=height, block_size=block_size,
+    #     color_primaries='bt709', color_trc='iec61966-2-1', colorspace='bt709')
+    # encode_8bit_tp_src_with_ffmpeg_with_options(
+    #     width=width, height=height, block_size=block_size,
+    #     color_primaries='bt709', color_trc='smpte2084', colorspace='bt709')
+    # encode_8bit_tp_src_with_ffmpeg_with_options_with_cms_src(
+    #     width=width, height=height, block_size=block_size,
+    #     color_primaries='bt709', color_trc='bt709', colorspace='bt709')
+    # encode_8bit_tp_src_with_ffmpeg_with_options_with_cms_src(
+    #     width=width, height=height, block_size=block_size,
+    #     color_primaries='smpte432', color_trc='bt709', colorspace='bt709')
+    # encode_8bit_tp_src_with_ffmpeg_with_options_with_cms_src(
+    #     width=width, height=height, block_size=block_size,
+    #     color_primaries='bt2020', color_trc='bt709', colorspace='bt2020nc')
+    encode_8bit_tp_src_with_ffmpeg_with_options_with_cms_src(
+        width=width, height=height, block_size=block_size,
+        color_primaries='bt2020', color_trc='smpte2084', colorspace='bt2020nc')
+    encode_8bit_tp_src_with_ffmpeg_with_options_with_cms_src(
+        width=width, height=height, block_size=block_size,
+        color_primaries='smpte432', color_trc='smpte2084', colorspace='bt709')
+
+
+def make_cms_result_srgb_monitor_filename(color_trc='bt709'):
+    fname = "./capture/src_grad_tp_1920x1080_b-size_64_cp-bt709_"
+    fname += f"tc-{color_trc}_cs-bt709_ffmpeg.png"
+
+    return fname
+
+
+def make_cms_result_ap0_monitor_filename_ap0(color_trc='bt709'):
+    fname = "./capture/src_grad_tp_1920x1080_b-size_64_cp-bt709_"
+    fname += f"tc-{color_trc}_cs-bt709_ffmpeg_gm35_ap0.png"
+
+    return fname
+
+
+def plot_cms_result_on_srgb_monitor(ramp_value_dict, profile='sRGB'):
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="Input-Output Characteristics",
+        graph_title_size=None,
+        xlabel="Input Code Value (8 bit)",
+        ylabel="Output Code Value (8 bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=[x * 32 for x in range(8)] + [255],
+        ytick=[x * 32 for x in range(8)] + [255],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None,
+        return_figure=True)
+    x = np.arange(256)
+    ls_idx = 0
+    linestyles = ['-', '--', ':', '-.']
+    colors = [pu.RED, pu.GREEN, pu.BLUE]
+    for key, value in ramp_value_dict.items():
+        if key == 'smpte2084':
+            ax1.plot(x, value[0, :, 1], label=LABEL_CONV_DICT[key],
+                color=pu.BROWN)
+        else:
+            ax1.plot(x, value[0, :, 1], linestyle=linestyles[ls_idx],
+                color=colors[ls_idx], label="Transfer characteristics = " + LABEL_CONV_DICT[key])
+            ls_idx += 1
+    plt.legend(loc='upper left')
+    # plt.show()
+    plt.savefig(f"./img/in-out_{profile}_profile.png",
+        bbox_inches='tight', pad_inches=0.1)
+    plt.close(fig)
+
+
+def analyze_cms_result_on_srgb_monitor(width=1920, height=1080, block_size=64):
+    color_trc_list = ['bt709', 'unknown', 'iec61966-2-1']
+    ramp_value_dict = {}
+    for color_trc in color_trc_list:
+        fname = make_cms_result_srgb_monitor_filename(color_trc)
+        ramp_value = read_code_value_from_gradation_pattern(
+            fname=fname, width=width, height=height, block_size=block_size,
+            st_pos=(320, 232))['ramp']
+        ramp_value_dict[color_trc] = ramp_value
+
+    plot_cms_result_on_srgb_monitor(ramp_value_dict, profile='sRGB')
+
+
+def analyze_cms_result_on_ap0_monitor(width=1920, height=1080, block_size=64):
+    color_trc_list = ['bt709', 'unknown', 'iec61966-2-1']
+    ramp_value_dict = {}
+    for color_trc in color_trc_list:
+        fname = make_cms_result_ap0_monitor_filename_ap0(color_trc)
+        ramp_value = read_code_value_from_gradation_pattern(
+            fname=fname, width=width, height=height, block_size=block_size,
+            st_pos=(320, 232))['ramp']
+        ramp_value_dict[color_trc] = ramp_value
+
+    plot_cms_result_on_srgb_monitor(ramp_value_dict, profile='Gamma3.5-AP0-D65')
+
+
+def main_func():
+    create_test_src()
+    # analyze_cms_result_on_srgb_monitor()
+    # analyze_cms_result_on_ap0_monitor()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     main_func()
     # debug_func()
+    # x=320, y=232
