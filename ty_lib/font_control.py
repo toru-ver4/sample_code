@@ -204,7 +204,8 @@ class TextDrawer():
         a_idx = (alpha > 0)[..., 0]
 
         bg_img_linear[a_idx] = (1 - alpha[a_idx])\
-            * bg_img_linear[a_idx] + text_img_linear[a_idx, :-1]
+            * bg_img_linear[a_idx]\
+            + (text_img_linear[a_idx, :-1] * alpha[a_idx])
         bg_img_linear = np.clip(
             bg_img_linear, 0.0, tf.PEAK_LUMINANCE[self.bg_tf])
         bg_img_linear = tf.oetf_from_luminance(bg_img_linear, self.bg_tf)
