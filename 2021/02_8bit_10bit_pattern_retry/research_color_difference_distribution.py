@@ -37,8 +37,25 @@ def bt709_to_lab(rgb_gm24):
     return lab
 
 
+def get_top_nth_index(data, inner_grid_num, direction_num, nth=10):
+    """
+    get the top n-th index.
+    """
+    r_base = (inner_grid_num ** 2) * direction_num
+    g_base = inner_grid_num * direction_num
+    b_base = direction_num
+    arg_idx = np.argsort(data.flatten())[::-1]
+    arg_idx = arg_idx[:nth]
+    rr_idx = arg_idx // r_base
+    gg_idx = (arg_idx % r_base) // g_base
+    bb_idx = (arg_idx % g_base) // b_base
+    dd_idx = (arg_idx % b_base)
+
+    return (rr_idx, gg_idx, bb_idx, dd_idx)
+
+
 def main_func():
-    grid_num = 7
+    grid_num = 5
 
     # calc lab
     rgb_gm24 = LUT3D.linear_table(size=grid_num)
@@ -46,37 +63,43 @@ def main_func():
     print(lab.shape)
 
     # XY平面は同時計算して Z方向は forループで処理する
-    inner_idx_list = np.arange(1, grid_num-1)
-    inner_num = len(inner_idx_list)
+    inner_grid_num = grid_num-1
+    inner_idx_list = np.arange(inner_grid_num)
+    inner_grid_num = len(inner_idx_list)
     sum_diff_r_direction_buf = []
     for r_idx in inner_idx_list:
-        base_lab = lab[r_idx, 1:grid_num-1, 1:grid_num-1]
-        lab_next1 = lab[r_idx+0, 1:grid_num-1, 0:grid_num-2]
-        lab_next2 = lab[r_idx+0, 1:grid_num-1, 2:grid_num-0]
-        lab_next3 = lab[r_idx+0, 0:grid_num-2, 1:grid_num-1]
-        lab_next4 = lab[r_idx+0, 2:grid_num-0, 1:grid_num-1]
-        lab_next5 = lab[r_idx-1, 1:grid_num-1, 1:grid_num-1]
-        lab_next6 = lab[r_idx+1, 1:grid_num-1, 1:grid_num-1]
+        base_lab = lab[r_idx, :inner_grid_num, :inner_grid_num]
+        lab_next1 = lab[r_idx+0, 0:inner_grid_num+0, 1:inner_grid_num+1]
+        lab_next2 = lab[r_idx+0, 1:inner_grid_num+1, 0:inner_grid_num+0]
+        lab_next3 = lab[r_idx+0, 1:inner_grid_num+1, 1:inner_grid_num+1]
+        lab_next4 = lab[r_idx+1, 0:inner_grid_num+0, 0:inner_grid_num+0]
+        lab_next5 = lab[r_idx+1, 0:inner_grid_num+0, 1:inner_grid_num+1]
+        lab_next6 = lab[r_idx+1, 1:inner_grid_num+1, 0:inner_grid_num+0]
+        lab_next7 = lab[r_idx+1, 1:inner_grid_num+1, 1:inner_grid_num+1]
 
         lab_next_list = [
             lab_next1, lab_next2, lab_next3, lab_next4,
-            lab_next5, lab_next6]
-        lab_next_diff_2k_list = [
+            lab_next5, lab_next6, lab_next7]
+        lab_next_diff_list = [
             delta_E_CIE2000(base_lab, lab_next) for lab_next in lab_next_list]
-        sum_lab_next_diff = np.zeros_like(lab_next_diff_2k_list[0])
-        for next_diff in lab_next_diff_2k_list:
-            sum_lab_next_diff = sum_lab_next_diff + next_diff
-        sum_diff_r_direction_buf.append(sum_lab_next_diff)
+        print(lab_next_diff_list)
+        # lab_nex_diff_array's shape is (g_idx, b_idx, direction)
+        lab_next_diff_array = np.dstack(lab_next_diff_list)
+        sum_diff_r_direction_buf.append(lab_next_diff_array)
         # break
     sum_diff_inner_rgb = np.stack((sum_diff_r_direction_buf))
     print(sum_diff_inner_rgb.shape)
-    max_idx_1d = sum_diff_inner_rgb.argmax()
-    rr = max_idx_1d // (inner_num ** 2)
-    gg = (max_idx_1d % (inner_num ** 2)) // (inner_num ** 1)
-    bb = ((max_idx_1d % (inner_num ** 2)) % (inner_num ** 1)) % inner_num
-    print(rr, gg, bb)
-    print(sum_diff_inner_rgb[rr, gg, bb])
-    print(np.max(sum_diff_inner_rgb))
+    rr, gg, bb, dd = get_top_nth_index(
+        data=sum_diff_inner_rgb, inner_grid_num=inner_grid_num,
+        direction_num=7, nth=3)
+    print(rr, gg, bb, dd)
+    print(sum_diff_inner_rgb[rr, gg, bb, dd])
+    # rr = max_idx_1d // (inner_grid_num ** 2)
+    # gg = (max_idx_1d % (inner_grid_num ** 2)) // (inner_grid_num ** 1)
+    # bb = ((max_idx_1d % (inner_grid_num ** 2)) % (inner_grid_num ** 1)) % inner_grid_num
+    # print(rr, gg, bb)
+    # print(sum_diff_inner_rgb[rr, gg, bb])
+    # print(np.max(sum_diff_inner_rgb))
 
 
 if __name__ == '__main__':
