@@ -8,6 +8,7 @@ fix alpha blending of font_control
 from operator import sub
 import os
 from pathlib import Path
+from colour.models.cie_lab import Lab_to_LCHab
 
 # import third-party libraries
 import numpy as np
@@ -114,12 +115,33 @@ def main_func(calc_de2k=False):
         bb = rgbd_array[2]
         dd = rgbd_array[3]
 
-    print(rr, gg, bb, dd)
-    print(sum_diff_inner_rgb[rr, gg, bb, dd])
-    for idx in range(400):
-        print(rr[idx], gg[idx], bb[idx], dd[idx], sum_diff_inner_rgb[rr[idx], gg[idx], bb[idx], dd[idx]])
+    # print(rr, gg, bb, dd)
+    # print(sum_diff_inner_rgb[rr, gg, bb, dd])
+    # for idx in range(400):
+    #     print(rr[idx], gg[idx], bb[idx], dd[idx], sum_diff_inner_rgb[rr[idx], gg[idx], bb[idx], dd[idx]])
+
+    min_lightness = 40
+    min_chroma = 20
+
+    rgb = np.dstack((rr, gg, bb))
+    lch = Lab_to_LCHab(bt709_to_lab(rgb/255))
+    ll = lch[..., 0]
+    cc = lch[..., 1]
+    ok_idx = ((ll > min_lightness) & (cc > min_chroma))[0]
+    print(f"ok_idx's shape = {ok_idx}")
+    rr_new = rr[ok_idx]
+    gg_new = gg[ok_idx]
+    bb_new = bb[ok_idx]
+    dd_new = dd[ok_idx]
+    for idx in range(100):
+        print(
+            rr_new[idx],
+            gg_new[idx],
+            bb_new[idx],
+            dd_new[idx],
+            sum_diff_inner_rgb[rr_new[idx], gg_new[idx], bb_new[idx], dd_new[idx]])
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    main_func(calc_de2k=True)
+    main_func(calc_de2k=False)
