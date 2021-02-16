@@ -30,10 +30,20 @@ GREEN_DIFF = 10
 
 
 def create_8bit_10bit_patch(
-        width=512, height=1024, total_step=20, direction='h'):
-    base_gg = BASE_RGB_8BIT_MIDDLE[1]
-    rr = BASE_RGB_8BIT_MIDDLE[0]
-    bb = BASE_RGB_8BIT_MIDDLE[2]
+        width=512, height=1024, total_step=20, direction='h', level='middle'):
+
+    if level == 'middle':
+        base_rgb_8bit = BASE_RGB_8BIT_MIDDLE
+    elif level == 'low':
+        base_rgb_8bit = BASE_RGB_8BIT_LOW
+    elif level == 'high':
+        base_rgb_8bit = BASE_RGB_8BIT_HIGH
+    else:
+        print("Warning: invalid level parameter")
+        base_rgb_8bit = BASE_RGB_8BIT_MIDDLE
+    base_gg = base_rgb_8bit[1]
+    rr = base_rgb_8bit[0]
+    bb = base_rgb_8bit[2]
 
     gg_min = base_gg - (total_step // 2)
     gg_max = base_gg + (total_step // 2)
@@ -58,17 +68,27 @@ def create_8bit_10bit_patch(
     img_out_8bit = np.round(img_out_float_8bit * 255) / 255
     img_out_10bit = np.round(img_out_float_8bit * 1023) / 1023
 
-    name_8bit = f"./img/8bit_grad_{width}x{height}_dir_{direction}.png"
-    name_10bit = f"./img/10bit_grad_{width}x{height}_dir_{direction}.png"
+    name_8bit\
+        = f"./img/8bit_grad_{width}x{height}_dir_{direction}_{level}.png"
+    name_10bit\
+        = f"./img/10bit_grad_{width}x{height}_dir_{direction}_{level}.png"
     tpg.img_wirte_float_as_16bit_int(name_8bit, img_out_8bit)
     tpg.img_wirte_float_as_16bit_int(name_10bit, img_out_10bit)
 
 
 def main_func():
     create_8bit_10bit_patch(
-        width=512, height=1024, total_step=20, direction='h')
+        width=512, height=512, total_step=20, direction='h', level='low')
     create_8bit_10bit_patch(
-        width=1024, height=512, total_step=20, direction='v')
+        width=512, height=512, total_step=20, direction='v', level='low')
+    create_8bit_10bit_patch(
+        width=512, height=512, total_step=20, direction='h', level='middle')
+    create_8bit_10bit_patch(
+        width=512, height=512, total_step=20, direction='v', level='middle')
+    create_8bit_10bit_patch(
+        width=512, height=512, total_step=20, direction='h', level='high')
+    create_8bit_10bit_patch(
+        width=512, height=512, total_step=20, direction='v', level='high')
 
 
 if __name__ == '__main__':
