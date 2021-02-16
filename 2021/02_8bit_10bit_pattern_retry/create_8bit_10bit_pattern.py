@@ -23,40 +23,17 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-BASE_RGB_8BIT = np.array([123, 98, 74])
+BASE_RGB_8BIT_LOW = np.array([75, 56, 33])
+BASE_RGB_8BIT_MIDDLE = np.array([123, 98, 74])
+BASE_RGB_8BIT_HIGH = np.array([172, 146, 119])
 GREEN_DIFF = 10
-
-
-def create_test_patch(patch_len=512):
-    width = patch_len
-    height = patch_len
-    base_gg = BASE_RGB_8BIT[1]
-    rr = BASE_RGB_8BIT[0]
-    bb = BASE_RGB_8BIT[2]
-
-    gg_min = base_gg - GREEN_DIFF
-    gg_max = base_gg + GREEN_DIFF
-
-    gg_grad = np.linspace(gg_min, gg_max, patch_len)
-    rr_static = np.ones_like(gg_grad) * rr
-    bb_static = np.ones_like(gg_grad) * bb
-    line = np.dstack((rr_static, gg_grad, bb_static))
-
-    img_base_8bit_float = line * np.ones((height, 1, 3))
-
-    img_out_float_8bit = img_base_8bit_float / 255
-    img_out_8bit = np.round(img_out_float_8bit * 255) / 255
-    img_out_10bit = np.round(img_out_float_8bit * 1023) / 1023
-
-    tpg.img_wirte_float_as_16bit_int("test_8bit.png", img_out_8bit)
-    tpg.img_wirte_float_as_16bit_int("test_10bit.png", img_out_10bit)
 
 
 def create_8bit_10bit_patch(
         width=512, height=1024, total_step=20, direction='h'):
-    base_gg = BASE_RGB_8BIT[1]
-    rr = BASE_RGB_8BIT[0]
-    bb = BASE_RGB_8BIT[2]
+    base_gg = BASE_RGB_8BIT_MIDDLE[1]
+    rr = BASE_RGB_8BIT_MIDDLE[0]
+    bb = BASE_RGB_8BIT_MIDDLE[2]
 
     gg_min = base_gg - (total_step // 2)
     gg_max = base_gg + (total_step // 2)

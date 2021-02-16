@@ -120,7 +120,7 @@ def main_func(calc_de2k=False):
     # for idx in range(400):
     #     print(rr[idx], gg[idx], bb[idx], dd[idx], sum_diff_inner_rgb[rr[idx], gg[idx], bb[idx], dd[idx]])
 
-    min_lightness = 40
+    min_lightness = 20
     min_chroma = 20
 
     rgb = np.dstack((rr, gg, bb))
