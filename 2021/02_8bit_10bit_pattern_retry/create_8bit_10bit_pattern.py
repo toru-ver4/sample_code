@@ -23,71 +23,49 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-BASE_RGB_8BIT_LOW = np.array([75, 56, 33])
-BASE_RGB_8BIT_MIDDLE = np.array([123, 98, 74])
-BASE_RGB_8BIT_HIGH = np.array([172, 146, 119])
-GREEN_DIFF = 10
-
-
-def create_8bit_10bit_patch(
+def create_and_save_8bit_10bit_patch(
         width=512, height=1024, total_step=20, direction='h', level='middle'):
+    img_out_8bit, img_out_10bit = tpg.create_8bit_10bit_id_patch(
+        width=width, height=height, total_step=total_step,
+        direction=direction, level=level)
 
-    if level == 'middle':
-        base_rgb_8bit = BASE_RGB_8BIT_MIDDLE
-    elif level == 'low':
-        base_rgb_8bit = BASE_RGB_8BIT_LOW
-    elif level == 'high':
-        base_rgb_8bit = BASE_RGB_8BIT_HIGH
-    else:
-        print("Warning: invalid level parameter")
-        base_rgb_8bit = BASE_RGB_8BIT_MIDDLE
-    base_gg = base_rgb_8bit[1]
-    rr = base_rgb_8bit[0]
-    bb = base_rgb_8bit[2]
+    save_8bit_10bit_patch(
+        img_8bit=img_out_8bit, img_10bit=img_out_10bit,
+        width=width, height=height, total_step=total_step,
+        direction=direction, level=level)
 
-    gg_min = base_gg - (total_step // 2)
-    gg_max = base_gg + (total_step // 2)
 
-    if direction == 'h':
-        patch_len = width
-    else:
-        patch_len = height
-
-    gg_grad = np.linspace(gg_min, gg_max, patch_len)
-    rr_static = np.ones_like(gg_grad) * rr
-    bb_static = np.ones_like(gg_grad) * bb
-    line = np.dstack((rr_static, gg_grad, bb_static))
-
-    if direction == 'h':
-        img_base_8bit_float = line * np.ones((height, 1, 3))
-    else:
-        line = line.reshape((height, 1, 3))
-        img_base_8bit_float = line * np.ones((1, width, 3))
-
-    img_out_float_8bit = img_base_8bit_float / 255
-    img_out_8bit = np.round(img_out_float_8bit * 255) / 255
-    img_out_10bit = np.round(img_out_float_8bit * 1023) / 1023
+def save_8bit_10bit_patch(
+        img_8bit, img_10bit,
+        width=512, height=1024, total_step=20, direction='h', level='middle'):
 
     name_8bit\
         = f"./img/8bit_grad_{width}x{height}_dir_{direction}_{level}.png"
     name_10bit\
         = f"./img/10bit_grad_{width}x{height}_dir_{direction}_{level}.png"
-    tpg.img_wirte_float_as_16bit_int(name_8bit, img_out_8bit)
-    tpg.img_wirte_float_as_16bit_int(name_10bit, img_out_10bit)
+    tpg.img_wirte_float_as_16bit_int(name_8bit, img_8bit)
+    tpg.img_wirte_float_as_16bit_int(name_10bit, img_10bit)
+
+
+def create_slide_seq(
+        width=512, height=512, total_step=20, level='low'):
+    img_out_8bit, img_out_10bit = tpg.create_8bit_10bit_id_patch(
+        width=width, height=height, total_step=total_step,
+        direction='h', level=level)
 
 
 def main_func():
-    create_8bit_10bit_patch(
+    create_and_save_8bit_10bit_patch(
         width=512, height=512, total_step=20, direction='h', level='low')
-    create_8bit_10bit_patch(
+    create_and_save_8bit_10bit_patch(
         width=512, height=512, total_step=20, direction='v', level='low')
-    create_8bit_10bit_patch(
+    create_and_save_8bit_10bit_patch(
         width=512, height=512, total_step=20, direction='h', level='middle')
-    create_8bit_10bit_patch(
+    create_and_save_8bit_10bit_patch(
         width=512, height=512, total_step=20, direction='v', level='middle')
-    create_8bit_10bit_patch(
+    create_and_save_8bit_10bit_patch(
         width=512, height=512, total_step=20, direction='h', level='high')
-    create_8bit_10bit_patch(
+    create_and_save_8bit_10bit_patch(
         width=512, height=512, total_step=20, direction='v', level='high')
 
 

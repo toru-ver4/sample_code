@@ -1714,6 +1714,88 @@ def get_size_from_image(img):
     return (img.shape[1], img.shape[0])
 
 
+def create_8bit_10bit_id_patch(
+        width=512, height=1024, total_step=20, direction='h', level='middle'):
+    """
+    create two images. the one is 8bit precision.
+    the onother is 10bit precision.
+
+    Parameters
+    ----------
+    width : int
+        image width
+    height : int
+        image height
+    total_step : int
+        step num in 8bit precision.
+    direction : str
+        "h": horizontal (highly recommended)
+        "v": vertical
+    level : str
+        "low" : create low lightness image
+        "middle" : create middle lightness image
+        "high" : create high lightness image
+
+    Returns
+    -------
+    img_out_8bit : ndarray (float)
+        img with 8 bit precision.
+    img_out_10bit : ndarray (float)
+        img with 10bit precision.
+
+    Examples
+    --------
+    >>> import test_pattern_generator2 as tpg
+    >>> img_out_8bit, img_out_10bit = create_8bit_10bit_id_patch(
+            width=512, height=1024, total_step=20, direction='h',
+            level='middle')
+    >>> tpg.img_wirte_float_as_16bit_int("8bit_img.png", img_8bit)
+    >>> tpg.img_wirte_float_as_16bit_int("10bit_img.png", img_10bit)
+    """
+
+    base_rgb_8bit_low = np.array([75, 56, 33])
+    base_rgb_8bit_middle = np.array([123, 98, 74])
+    base_rgb_8bit_high = np.array([172, 146, 119])
+
+    if level == 'middle':
+        base_rgb_8bit = base_rgb_8bit_middle
+    elif level == 'low':
+        base_rgb_8bit = base_rgb_8bit_low
+    elif level == 'high':
+        base_rgb_8bit = base_rgb_8bit_high
+    else:
+        print("Warning: invalid level parameter")
+        base_rgb_8bit = base_rgb_8bit_middle
+    base_gg = base_rgb_8bit[1]
+    rr = base_rgb_8bit[0]
+    bb = base_rgb_8bit[2]
+
+    gg_min = base_gg - (total_step // 2)
+    gg_max = base_gg + (total_step // 2)
+
+    if direction == 'h':
+        patch_len = width
+    else:
+        patch_len = height
+
+    gg_grad = np.linspace(gg_min, gg_max, patch_len)
+    rr_static = np.ones_like(gg_grad) * rr
+    bb_static = np.ones_like(gg_grad) * bb
+    line = np.dstack((rr_static, gg_grad, bb_static))
+
+    if direction == 'h':
+        img_base_8bit_float = line * np.ones((height, 1, 3))
+    else:
+        line = line.reshape((height, 1, 3))
+        img_base_8bit_float = line * np.ones((1, width, 3))
+
+    img_out_float_8bit = img_base_8bit_float / 255
+    img_out_8bit = np.round(img_out_float_8bit * 255) / 255
+    img_out_10bit = np.round(img_out_float_8bit * 1023) / 1023
+
+    return img_out_8bit, img_out_10bit
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
