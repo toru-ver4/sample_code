@@ -1796,6 +1796,39 @@ def create_8bit_10bit_id_patch(
     return img_out_8bit, img_out_10bit
 
 
+class IdPatch8bit10bitGenerator():
+    def __init__(
+            self, width=512, height=1024, total_step=20, level='middle',
+            slide_step=2):
+        self.width = width
+        self.height = height
+        self.total_step = total_step
+        self.direction = 'h'
+        self.level = level
+        self.step = slide_step
+        self.cnt = 0
+
+        img_8bit, img_10bit = create_8bit_10bit_id_patch(
+            width=self.width, height=self.height, total_step=self.total_step,
+            direction=self.direction, level=self.level)
+
+        self.img_8bit_buf = np.hstack([img_8bit, img_8bit])
+        self.img_10bit_buf = np.hstack([img_10bit, img_10bit])
+        print(self.img_10bit_buf.shape)
+
+    def extract_based_on_cnt(self, img):
+        h_st = self.cnt % self.width
+        h_ed = h_st + self.width
+        return img[:, h_st:h_ed]
+
+    def extract_8bit_10bit_img(self):
+        out_8bit = self.extract_based_on_cnt(self.img_8bit_buf)
+        out_10bit = self.extract_based_on_cnt(self.img_10bit_buf)
+        self.cnt += self.step
+
+        return out_8bit, out_10bit
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
