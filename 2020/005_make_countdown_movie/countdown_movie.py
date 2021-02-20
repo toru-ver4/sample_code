@@ -701,7 +701,9 @@ class BackgroundImage():
             = patch_height * 2 + patch_rest_margin_v + patch_internal_margin_v
         temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
         st_pos_v = (self.limited_range_ed_pos_v + temp // 2) % even_mask
-        pos_st_h_base = self.limited_range_low_center_pos_h - total_width // 2
+        pos_st_h_base\
+            = (self.limited_range_low_center_pos_h - total_width // 2)\
+            % even_mask
         text_width, text_height = self.get_text_size(
             text="10bit", font_size=self.ramp_10bit_info_text_size,
             font_path=self.info_text_font_path)
@@ -711,6 +713,7 @@ class BackgroundImage():
         patch_pos_v = st_pos_v
         info_pos_h = pos_st_h_base
         info_pos_v = patch_pos_v
+        internal_offset = patch_internal_margin_v + patch_height
 
         dummy_img = np.ones((patch_height, patch_width, 3))
         bit_depth_list = [8, 10]
@@ -721,8 +724,7 @@ class BackgroundImage():
                     self.img, text=f"{bit_depth_list[idx]}bit",
                     pos=(
                         info_pos_h,
-                        info_pos_v + patch_internal_margin_v * idx
-                        + patch_height * idx),
+                        info_pos_v + internal_offset * idx),
                     font_color=self.text_info_color,
                     font_size=self.ramp_10bit_info_text_size,
                     bg_transfer_functions=self.transfer_function,
@@ -733,10 +735,26 @@ class BackgroundImage():
                 tpg.merge(
                     self.img, dummy_img * idx,
                     (patch_pos_h,
-                     patch_pos_v + patch_internal_margin_v * idx
-                     + patch_height * idx))
+                     patch_pos_v + internal_offset * idx))
             patch_pos_v += patch_pos_v_offset
             info_pos_v = patch_pos_v
+
+        self.patch_width = patch_width
+        self.patch_height = patch_height
+        self.patch_pos_h = [patch_pos_h, patch_pos_h, patch_pos_h]
+        self.patch_pos_v = [st_pos_v, st_pos_v + patch_pos_v_offset,
+                            st_pos_v + patch_pos_v_offset * 2]
+        self.internal_margin_v = patch_internal_margin_v
+        self.patch_v_offset = patch_pos_v_offset
+
+    def get_8bit_10bit_id_pat_param(self):
+        return dict(
+            patch_width=self.patch_width,
+            patch_height=self.patch_height,
+            patch_pos_h=self.patch_pos_h,
+            patch_pos_v=self.patch_pos_v,
+            internal_margin_v=self.internal_margin_v,
+            patch_v_offset=self.patch_v_offset)
 
     def make(self):
         """
@@ -754,7 +772,7 @@ class BackgroundImage():
         self.draw_limited_range_text()
         self.draw_dot_dropped_text()
         # self.draw_10bit_detection()
-        self.draw_10bit_v_ramp()
+        # self.draw_10bit_v_ramp()
         self.draw_8bit_10bit_identification_patterns()
 
         # tpg.preview_image(self.img)

@@ -1842,17 +1842,20 @@ class IdPatch8bit10bitGenerator():
 
         self.img_8bit_buf = np.hstack([img_8bit, img_8bit])
         self.img_10bit_buf = np.hstack([img_10bit, img_10bit])
-        print(self.img_10bit_buf.shape)
 
-    def extract_based_on_cnt(self, img):
-        h_st = self.cnt % self.width
+    def extract_based_on_cnt(self, img, cnt=None):
+        if cnt:
+            h_st = cnt % self.width
+        else:
+            h_st = self.cnt % self.width
         h_ed = h_st + self.width
         return img[:, h_st:h_ed]
 
-    def extract_8bit_10bit_img(self):
-        out_8bit = self.extract_based_on_cnt(self.img_8bit_buf)
-        out_10bit = self.extract_based_on_cnt(self.img_10bit_buf)
-        self.cnt += self.step
+    def extract_8bit_10bit_img(self, cnt=None):
+        out_8bit = self.extract_based_on_cnt(self.img_8bit_buf, cnt)
+        out_10bit = self.extract_based_on_cnt(self.img_10bit_buf, cnt)
+        if not cnt:
+            self.cnt += self.step
 
         return out_8bit, out_10bit
 

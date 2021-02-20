@@ -269,6 +269,11 @@ def make_countdown_movie(
         fname_base=bg_filename_base, dynamic_range=dynamic_range,
         scale_factor=scale_factor, fps=cd_coordinate_param.fps,
         revision=REVISION)
+    bg_image_maker.sound_text = " "
+    bg_image_maker.is_even_number = True
+    bg_image_maker.make()  # dummy make for 8bit 10bit id pattern
+    generator_list = make_8bit_10bit_id_pat_generator(
+        bg_image_maker, scale_factor)
 
     # foreground image
     cd_filename_base\
@@ -287,6 +292,7 @@ def make_countdown_movie(
     counter = 0
     sec_list = [3, 2, 1, 0]
     sound_text_list = ["L", "R", "C", " "]
+    g_frame_cnt = 0
     for sec, sound_text in zip(sec_list, sound_text_list):
         # for chroma-subsampling pattern
         is_even_number = (sec % 2) == 0
@@ -310,23 +316,58 @@ def make_countdown_movie(
                 bg_image = bg_image_with_sound_indicator
 
             # merge 8bit 10bit identification pattern
+            make_8bit_10bit_pattern(
+                bg_image_maker, bg_image, generator_list,
+                cnt=g_frame_cnt)
+            g_frame_cnt += 1
 
             d = dict(
                 sec=sec, frame=frame, counter=counter,
                 count_down_seq_maker=count_down_seq_maker,
-                bg_image=bg_image, merge_st_pos=merge_st_pos,
+                bg_image=bg_image.copy(), merge_st_pos=merge_st_pos,
                 dynamic_range=dynamic_range)
-            # args.append(d)
-            composite_sequence(**d)
+            args.append(d)
+            # composite_sequence(**d)
             counter += 1
-            break
-        # with Pool(cpu_count()) as pool:
-        #     pool.map(thread_wrapper_composite_sequence, args)
-        break
+            # break
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_composite_sequence, args)
+        # break
 
 
-def make_8bit_10bit_pattern(bg_image_maker):
-    pass
+def make_8bit_10bit_id_pat_generator(bg_image_maker, scale_factor):
+    id_param = bg_image_maker.get_8bit_10bit_id_pat_param()
+    step = 16
+    slide_step = 4
+    generator_l = tpg.IdPatch8bit10bitGenerator(
+        width=id_param['patch_width'], height=id_param['patch_height'],
+        total_step=step, level='low', slide_step=slide_step*scale_factor)
+    generator_m = tpg.IdPatch8bit10bitGenerator(
+        width=id_param['patch_width'], height=id_param['patch_height'],
+        total_step=step, level='middle', slide_step=slide_step*scale_factor)
+    generator_h = tpg.IdPatch8bit10bitGenerator(
+        width=id_param['patch_width'], height=id_param['patch_height'],
+        total_step=step, level='high', slide_step=slide_step*scale_factor)
+    generator_list = [generator_l, generator_m, generator_h]
+
+    return generator_list
+
+
+def make_8bit_10bit_pattern(
+        bg_image_maker, bg_image, generator_list, cnt=None, slide_step=4):
+    id_param = bg_image_maker.get_8bit_10bit_id_pat_param()
+    if cnt:
+        cnt_actual = cnt * slide_step
+    else:
+        cnt_actual = cnt
+    for idx, generator in enumerate(generator_list):
+        img_8bit, img_10bit = generator.extract_8bit_10bit_img(cnt_actual)
+        pos_h = id_param['patch_pos_h'][idx]
+        pos_v = id_param['patch_pos_v'][idx]
+        tpg.merge(bg_image, img_8bit, (pos_h, pos_v))
+
+        pos_v += id_param['internal_margin_v'] + id_param['patch_height']
+        tpg.merge(bg_image, img_10bit, (pos_h, pos_v))
 
 
 def make_sequence():
@@ -338,7 +379,7 @@ def make_sequence():
     #     COUNTDOWN_COORDINATE_PARAM_30P,
     #     COUNTDOWN_COORDINATE_PARAM_60P]
     cd_coordinate_param_list = [COUNTDOWN_COORDINATE_PARAM_24P]
-    for scale_factor in [1]:
+    for scale_factor in [2]:
         for cd_coordinate_param in cd_coordinate_param_list:
             make_countdown_movie(
                 bg_color_param=SDR_BG_COLOR_PARAM,
