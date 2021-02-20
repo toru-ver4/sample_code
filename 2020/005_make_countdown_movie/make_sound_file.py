@@ -37,7 +37,7 @@ def calc_cycle_param(freq=440, sec=5, sampling_rate=48000):
     sample_per_one_cycle = sampling_rate / freq_per_one_cycle[Hz]
     """
     temp_total_sample_num = sec * sampling_rate
-    sample_per_one_cycle = sampling_rate / freq
+    sample_per_one_cycle = int(round(sampling_rate / freq))
     cycle_num = int(temp_total_sample_num / sample_per_one_cycle + 0.5)
     total_sample_num = cycle_num * sample_per_one_cycle
 

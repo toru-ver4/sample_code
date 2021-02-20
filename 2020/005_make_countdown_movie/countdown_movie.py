@@ -688,6 +688,56 @@ class BackgroundImage():
             )
             text_draw_left.draw()
 
+    def draw_8bit_10bit_identification_patterns(self):
+        """
+        8bit と 10bit の識別パターンを描画する
+        """
+        even_mask = 0x100000000 - 2
+        total_width = int(self.dot_drop_width * 3) & even_mask
+        patch_height = (total_width // 3) % even_mask
+        patch_internal_margin_v = 2
+        patch_rest_margin_v = (patch_height // 2) & even_mask
+        patch_pos_v_offset\
+            = patch_height * 2 + patch_rest_margin_v + patch_internal_margin_v
+        temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
+        st_pos_v = (self.limited_range_ed_pos_v + temp // 2) % even_mask
+        pos_st_h_base = self.limited_range_low_center_pos_h - total_width // 2
+        text_width, text_height = self.get_text_size(
+            text="10bit", font_size=self.ramp_10bit_info_text_size,
+            font_path=self.info_text_font_path)
+
+        patch_width = int(total_width - text_width * 1.2) % even_mask
+        patch_pos_h = int(pos_st_h_base + text_width * 1.2) % even_mask
+        patch_pos_v = st_pos_v
+        info_pos_h = pos_st_h_base
+        info_pos_v = patch_pos_v
+
+        dummy_img = np.ones((patch_height, patch_width, 3))
+        bit_depth_list = [8, 10]
+
+        for level in ['low', 'middle', 'high']:
+            for idx in range(2):
+                text_draw_left = TextDrawer(
+                    self.img, text=f"{bit_depth_list[idx]}bit",
+                    pos=(
+                        info_pos_h,
+                        info_pos_v + patch_internal_margin_v * idx
+                        + patch_height * idx),
+                    font_color=self.text_info_color,
+                    font_size=self.ramp_10bit_info_text_size,
+                    bg_transfer_functions=self.transfer_function,
+                    fg_transfer_functions=self.transfer_function,
+                    font_path=self.info_text_font_path
+                )
+                text_draw_left.draw()
+                tpg.merge(
+                    self.img, dummy_img * idx,
+                    (patch_pos_h,
+                     patch_pos_v + patch_internal_margin_v * idx
+                     + patch_height * idx))
+            patch_pos_v += patch_pos_v_offset
+            info_pos_v = patch_pos_v
+
     def make(self):
         """
         背景画像を生成する
@@ -705,6 +755,7 @@ class BackgroundImage():
         self.draw_dot_dropped_text()
         # self.draw_10bit_detection()
         self.draw_10bit_v_ramp()
+        self.draw_8bit_10bit_identification_patterns()
 
         # tpg.preview_image(self.img)
 

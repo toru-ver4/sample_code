@@ -1797,6 +1797,34 @@ def create_8bit_10bit_id_patch(
 
 
 class IdPatch8bit10bitGenerator():
+    """
+    create 8bit 10bit idification image (ndarray float).
+
+    Examples
+    --------
+    >>> generator = tpg.IdPatch8bit10bitGenerator(
+    ...     width=width, height=height, total_step=total_step, level=level,
+    ...     slide_step=step)
+    >>> frame_num = 180
+    >>> fname_8bit_base = "img_8bit_{width}x{height}_{step}step_{div}div_"
+    >>> fname_8bit_base += "{level}_{idx:04d}.png"
+    >>> fname_8bit_base = str(IMG_SEQ_DIR / fname_8bit_base)
+    >>> fname_10bit_base = "img_10bit_{width}x{height}_{step}step_{div}div_"
+    >>> fname_10bit_base += "{level}_{idx:04d}.png"
+    >>> fname_10bit_base = str(IMG_SEQ_DIR / fname_10bit_base)
+
+    >>> for idx in range(frame_num):
+    ...     img_8bit, img_10bit = generator.extract_8bit_10bit_img()
+    ...     fname_8bit = fname_8bit_base.format(
+    ...         width=width, height=height, step=step, div=total_step,
+    ...         level=level, idx=idx)
+    ...     fname_10bit = fname_10bit_base.format(
+    ...         width=width, height=height, step=step, div=total_step,
+    ...         level=level, idx=idx)
+    ...     print(fname_8bit)
+    ...     tpg.img_wirte_float_as_16bit_int(fname_8bit, img_8bit)
+    ...     tpg.img_wirte_float_as_16bit_int(fname_10bit, img_10bit)
+    """
     def __init__(
             self, width=512, height=1024, total_step=20, level='middle',
             slide_step=2):
