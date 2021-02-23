@@ -73,6 +73,12 @@ RUN mkdir -p /root/local/src \
     && cd /root/local/src \
     && git clone https://github.com/AOMediaCodec/libavif.git -b v0.8.4 \
     && cd libavif \
-    && git submodule update --init --recursive
+    && mkdir build && cd build \
+    && cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_BUILD_TESTS=1 -DAVIF_BUILD_APPS=1 \
+    && ninja \
+    && cp avifdec /usr/bin \
+    && cp avifenc /usr/bin
 
-# cd /root/local/src/libavif/ && mkdir build && cd build && cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_BUILD_TESTS=1 -DAVIF_BUILD_APPS=1
+RUN rm -rf /root/local/src \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
