@@ -46,3 +46,33 @@ RUN cd /root/local/src/cavif \
 RUN rm -rf /root/local/src \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /root/local/src \
+    && cd /root/local/src \
+    && git clone https://aomedia.googlesource.com/aom \
+    && cd aom \
+    && cd build \
+    && cmake .. \
+    && make \
+    && make install
+
+RUN mkdir -p /root/local/src \
+    && cd /root/local/src \
+    && git clone https://chromium.googlesource.com/libyuv/libyuv \
+    && cd libyuv \
+    && mkdir build && cd build \
+    && cmake -DCMAKE_BUILD_TYPE="Release" .. \
+    && cmake --build . --config Release \
+    && cmake --build . --target install --config Release
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpng-dev \
+        libjpeg-dev
+
+RUN mkdir -p /root/local/src \
+    && cd /root/local/src \
+    && git clone https://github.com/AOMediaCodec/libavif.git -b v0.8.4 \
+    && cd libavif \
+    && git submodule update --init --recursive
+
+# cd /root/local/src/libavif/ && mkdir build && cd build && cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=ON -DAVIF_BUILD_TESTS=1 -DAVIF_BUILD_APPS=1
