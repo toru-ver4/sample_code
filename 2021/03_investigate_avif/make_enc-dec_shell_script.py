@@ -42,12 +42,17 @@ def make_decoded_png_name(
     return fname
 
 
-def make_script():
-    script_name = "encode_decode_avif.sh"
-    encoder_list = ['aom', 'rav1e', 'svt']
-    decoder_list = ['aom', 'dav1d', 'libgav1']
-    bit_depth = 12
-    chroma_subsampling = 444
+def make_script(bit_depth=12, chroma_subsampling=444):
+    if (bit_depth == 10) and (chroma_subsampling == 420):
+        encoder_list = ['aom', 'rav1e', 'svt']
+    else:
+        encoder_list = ['aom', 'rav1e']
+
+    if bit_depth == 12:
+        decoder_list = ['aom', 'dav1d']
+    else:
+        decoder_list = ['aom', 'dav1d', 'libgav1']
+
     gamut = 9
     trc = 16
     mtx_coef = 9
@@ -55,6 +60,8 @@ def make_script():
     src_img = "./png/SMPTE_ST2084_ITU-R_BT.2020_D65_1920x1080_rev04_type1.png"
     encode_ops = f"-d {bit_depth} -y {chroma_subsampling} "
     encode_ops += f"--cicp {gamut}/{trc}/{mtx_coef} -r {range} --min 0 --max 0"
+    script_name = f"encode_decode_avif_yuv{chroma_subsampling}_"
+    script_name += f"{bit_depth}-bit.sh"
 
     out_buf = "#!/bin/bash\n"
 
@@ -65,6 +72,7 @@ def make_script():
             gamut, trc, mtx_coef, range)
         command = f"avifenc_{encoder} {src_img} {encode_ops} {avif_name}\n"
         print(command)
+        out_buf += 'echo " "\n'
         out_buf += 'echo " "\n'
         out_buf += f'echo "{command[:-1]}"\n'
         out_buf += command
@@ -81,6 +89,7 @@ def make_script():
             command = f"avifdec_{decoder} {avif_name} {png_name}\n"
             print(command)
             out_buf += 'echo " "\n'
+            out_buf += 'echo " "\n'
             out_buf += f'echo "{command[:-1]}"\n'
             out_buf += command
 
@@ -90,4 +99,6 @@ def make_script():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    make_script()
+    make_script(bit_depth=10, chroma_subsampling=420)
+    make_script(bit_depth=10, chroma_subsampling=444)
+    make_script(bit_depth=12, chroma_subsampling=444)

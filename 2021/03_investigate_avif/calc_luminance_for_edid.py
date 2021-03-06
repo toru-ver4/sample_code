@@ -27,8 +27,8 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # tiff2png()
 
-    max_luminance = 1000
-    min_luminance = 0.1
+    max_luminance = 10000
+    min_luminance = 10
 
     max_cv = np.round(np.log2(max_luminance / 50) * 32)
     print(max_cv)

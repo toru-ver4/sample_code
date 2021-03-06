@@ -34,7 +34,7 @@ def decode_mp4(in_fname="./captured_video/capture_sample.mp4"):
     return single 10bit data
     """
     stem_name = Path(Path(in_fname).name).stem
-    out_fname = f'./img/{stem_name}.png'
+    out_fname = f'./decoded_png/{stem_name}.png'
     cmd = "ffmpeg"
     ops = [
         '-i', in_fname, '-vframes', '1',
@@ -78,7 +78,7 @@ def extract_gray_patch_from_tp(img_name):
     return csv_name
 
 
-def plot_cautured_data_main(csv_file):
+def plot_cautured_data_main(csv_file, graph_title):
     data = np.loadtxt(csv_file, delimiter=',')
 
     x = data[..., 0]
@@ -89,7 +89,7 @@ def plot_cautured_data_main(csv_file):
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(10, 8),
-        graph_title="Code value of the captured AVIF",
+        graph_title=graph_title,
         graph_title_size=None,
         xlabel="Source Code Value (10bit)",
         ylabel="Captured Code Value (10bit)",
@@ -104,7 +104,7 @@ def plot_cautured_data_main(csv_file):
         minor_xtick_num=None,
         minor_ytick_num=None,
         return_figure=True)
-    ax1.plot(x, x, '-o', color='k', label="Reference")
+    ax1.plot(x, x, '-o', color='k', label="Expected value")
     ax1.plot(x, rr, '-o', color=pu.RED, label="R data")
     ax1.plot(x, gg, '-o', color=pu.GREEN, label="G data")
     ax1.plot(x, bb, '-o', color=pu.SKY, label="B data")
@@ -113,11 +113,13 @@ def plot_cautured_data_main(csv_file):
     stem_name = Path(Path(csv_file).name).stem
     graph_name = f"./graph/{stem_name}.png"
     plt.savefig(graph_name, bbox_inches='tight', pad_inches=0.1)
-    plt.show()
+    # plt.show()
     plt.close(fig)
 
 
-def plot_captured_data(in_fname="./captured_video/capture_sample.mp4"):
+def plot_captured_data(
+        in_fname="./captured_video/capture_sample.mp4",
+        graph_title="Code value of the captured AVIF"):
     """
     * decode video
     * capture 0, 16, 32, ..., 1023 CV
@@ -126,9 +128,52 @@ def plot_captured_data(in_fname="./captured_video/capture_sample.mp4"):
     """
     decoded_img_name = decode_mp4(in_fname=in_fname)
     csv_name = extract_gray_patch_from_tp(img_name=decoded_img_name)
-    plot_cautured_data_main(csv_name)
+    plot_cautured_data_main(csv_name, graph_title)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    plot_captured_data(in_fname="./captured_video/capture_sample.mp4")
+    # plot_captured_data(in_fname="./captured_video/capture_sample.mp4")
+    # plot_captured_data(in_fname="./captured_video/decklink_output.mp4")
+    # plot_captured_data(in_fname="./captured_video/yuv444_10bit_rav1e.mp4")
+    # plot_captured_data(in_fname="./captured_video/yuv420_10bit_svt.mp4")
+
+    # GTX1060
+    # plot_captured_data(
+    #     in_fname="./captured_video/GTX1060_AVIF.mp4",
+    #     graph_title="AVIF (10 bit, YUV444, Full Range, GTX 1060 Super)")
+    # plot_captured_data(
+    #     in_fname="./captured_video/GTX1060_YouTube.mp4",
+    #     graph_title="YouTube (GTX 1060 Super)")
+    # plot_captured_data(
+    #     in_fname="./captured_video/GTX1060_MPC-BE_madVR.mp4",
+    #     graph_title="MPC-BE with madVR (GTX 1060 Super)")
+    # plot_captured_data(
+    #     in_fname="./captured_video/GTX1060_Movies_and_TV_0.1-1000.mp4",
+    #     graph_title="Movies & TV (GTX 1060 Super (0.1-1000 cd/m2))")
+    # plot_captured_data(
+    #     in_fname="./captured_video/GTX1060_Movies_and_TV_10-10000.mp4",
+    #     graph_title="Movies & TV (GTX 1060 Super (10-10000 cd/m2))")
+    # plot_captured_data(
+    #     in_fname="./captured_video/GTX1060_YouTube.mp4",
+    #     graph_title="YouTube (GTX 1060 Super)")
+    # plot_captured_data(
+    #     in_fname="./captured_video/GTX1060_VLC.mp4",
+    #     graph_title="VLC (GTX 1060 Super)")
+
+    # Ryzen
+    # plot_captured_data(
+    #     in_fname="./captured_video/Ryzen_4500U_AVIF.mp4",
+    #     graph_title="AVIF (10 bit, YUV444, Full Range, RYZEN_4500U")
+    # plot_captured_data(
+    #     in_fname="./captured_video/Ryzen_4500U_VLC.mp4",
+    #     graph_title="VLC (Ryzen 4500U)")
+    # plot_captured_data(
+    #     in_fname="./captured_video/Ryzen_4500U_Movies_and_TV_0.1-1000.mp4",
+    #     graph_title="Movies & TV (Ryzen 4500U)")
+    # plot_captured_data(
+    #     in_fname="./captured_video/Ryzen_4500U_MPC-BE_madVR.mp4",
+    #     graph_title="MPC-BE with madVR (Ryzen 4500U)")
+    # plot_captured_data(
+    #     in_fname="./captured_video/Ryzen_4500U_YouTube.mp4",
+    #     graph_title="YouTube (Ryzen 4500U)")

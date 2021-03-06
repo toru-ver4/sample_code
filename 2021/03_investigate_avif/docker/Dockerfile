@@ -17,31 +17,11 @@ RUN apt-get update && \
         python3-tk \
         yasm \
         cmake \
-        nasm
-
-RUN mkdir -p /root/local/src
-RUN mkdir -p /root/local/src \
-    && cd / \
-    && git clone https://github.com/Netflix/vmaf.git \
-    && cd vmaf
-
-RUN pip3 install --upgrade pip
-RUN pip3 install --upgrade cython numpy
-RUN pip3 install --no-cache-dir meson
-
-ENV PATH=/vmaf:/vmaf/libvmaf/build/tools:$PATH
-RUN cd /vmaf && make
-
-RUN mkdir -p /work/src
-RUN mkdir -p /root/local/src \
-    && cd /root/local/src \
-    && git clone --recurse-submodules --recursive https://github.com/link-u/cavif.git
-
-RUN cd /root/local/src/cavif \
-    && mkdir build && cd build \
-    && cmake .. \
-    && make cavif \
-    && make install
+        nasm \
+        cbindgen \
+        cargo \
+        libpng-dev \
+        libjpeg-dev
 
 RUN mkdir -p /root/local/src \
     && cd /root/local/src \
@@ -51,10 +31,6 @@ RUN mkdir -p /root/local/src \
     && cmake -DCMAKE_BUILD_TYPE="Release" .. \
     && cmake --build . --config Release \
     && cmake --build . --target install --config Release
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpng-dev \
-        libjpeg-dev
 
 # avif with aom
 RUN mkdir -p /root/local/src \
@@ -81,10 +57,6 @@ RUN mkdir -p /root/local/src \
     && ninja \
     && cp avifdec /usr/bin/avifdec_dav1d \
     && cp avifenc /usr/bin/avifenc_dav1d
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        cbindgen \
-        cargo
 
 # avif with RAV1E
 RUN mkdir -p /root/local/src \
@@ -126,6 +98,6 @@ RUN mkdir -p /root/local/src \
     && cp avifdec /usr/bin/avifdec_svt \
     && cp avifenc /usr/bin/avifenc_svt
 
-# RUN rm -rf /root/local/src \
-#     && apt-get clean \
-#     && rm -rf /var/lib/apt/lists/*
+RUN rm -rf /root/local/src \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
