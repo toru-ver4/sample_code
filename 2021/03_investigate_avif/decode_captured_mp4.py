@@ -177,3 +177,17 @@ if __name__ == '__main__':
     # plot_captured_data(
     #     in_fname="./captured_video/Ryzen_4500U_YouTube.mp4",
     #     graph_title="YouTube (Ryzen 4500U)")
+
+    # Extra. changed the color accuracy mode on GTX1060 Super
+    # plot_captured_data(
+    #     in_fname="./captured_video/GTX1060_AVIF_Ref-Mode.mp4",
+    #     graph_title="AVIF (GTX 1060 Super, Reference-mode)")
+    # plot_captured_data(
+    #     in_fname="./captured_video/GTX1060_MPC-BE_madVR_Ref-mode.mp4",
+    #     graph_title="MPC-BE with madVR (GTX 1060 Super, Reference-mode)")
+    # plot_captured_data(
+    #     in_fname="./captured_video/GTX1060_AVIF_RenderingIntent-ABS.mp4",
+    #     graph_title="AVIF (GTX 1060 Super, Rendering Intent-Absolute)")
+    plot_captured_data(
+        in_fname="./captured_video/GTX1060_MPC-BE_madVR_RI-ABS.mp4",
+        graph_title="MPC-BE with madVR (GTX 1060 Super, RI-Absolute)")
