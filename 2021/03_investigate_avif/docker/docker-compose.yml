@@ -1,0 +1,16 @@
+version: '3.4'
+
+services:
+    jupyter_dev:
+        image: takuver4/avif:rev00
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment: 
+            PYTHONPATH: "/work/src/ty_lib"
+            DISPLAY: docker.for.win.localhost:0.0
+            JUPYTER_ENABLE_LAB: "yes"
+        ports:
+            - "10000:8888"
+        volumes:
+            - C:\Users\toruv\OneDrive\work\sample_code\2021\03_investigate_avif:/work/src
