@@ -20,7 +20,6 @@ RUN apt-get update && \
         nasm \
         cbindgen \
         cargo \
-        libjpeg8-dev \
         libpng-dev
 
 RUN mkdir -p /root/local/src \
@@ -31,6 +30,10 @@ RUN mkdir -p /root/local/src \
     && cmake -DCMAKE_BUILD_TYPE="Release" .. \
     && cmake --build . --config Release \
     && cmake --build . --target install --config Release
+
+RUN pip3 install --upgrade pip
+RUN pip3 install --upgrade cython numpy
+RUN pip3 install --no-cache-dir meson
 
 # avif with aom
 RUN mkdir -p /root/local/src \
