@@ -7,13 +7,14 @@
 """
 
 import os
+from colour.models.rgb.rgb_colourspace import RGB_to_RGB
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from colour.colorimetry import CMFS, ILLUMINANTS
 from colour.models import XYZ_to_xy, xy_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
 from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ
-from colour.models import BT709_COLOURSPACE
+from colour.models import BT709_COLOURSPACE, BT2020_COLOURSPACE
 from colour.utilities import normalise_maximum
 from colour import models
 from colour import RGB_COLOURSPACES, COLOURCHECKERS
@@ -1715,7 +1716,8 @@ def get_size_from_image(img):
 
 
 def create_8bit_10bit_id_patch(
-        width=512, height=1024, total_step=20, direction='h', level='middle'):
+        width=512, height=1024, total_step=20, direction='h', level='middle',
+        hdr10=False):
     """
     create two images. the one is 8bit precision.
     the onother is 10bit precision.
@@ -1735,6 +1737,9 @@ def create_8bit_10bit_id_patch(
         "low" : create low lightness image
         "middle" : create middle lightness image
         "high" : create high lightness image
+    hdr10 : bool
+        False: generate pattern for BT.709 - Gamma2.4
+        True: generate pattern for BT.2020 - SMPTE ST2084
 
     Returns
     -------
@@ -1766,6 +1771,16 @@ def create_8bit_10bit_id_patch(
     else:
         print("Warning: invalid level parameter")
         base_rgb_8bit = base_rgb_8bit_middle
+
+    if hdr10:
+        linear = tf.eotf(base_rgb_8bit / 255, tf.GAMMA24)
+        linear_2020 = RGB_to_RGB(
+            linear, BT709_COLOURSPACE, BT2020_COLOURSPACE)
+        linear_2020_gain2x = linear_2020 * 100 * 2
+        st2084_2020 = tf.oetf_from_luminance(linear_2020_gain2x, tf.ST2084)
+        base_rgb_8bit = np.round(st2084_2020 * 255)
+        print(f"base_rgb_hdr10 = {base_rgb_8bit}")
+
     base_gg = base_rgb_8bit[1]
     rr = base_rgb_8bit[0]
     bb = base_rgb_8bit[2]
@@ -1827,7 +1842,7 @@ class IdPatch8bit10bitGenerator():
     """
     def __init__(
             self, width=512, height=1024, total_step=20, level='middle',
-            slide_step=2):
+            slide_step=2, hdr10=False):
         self.width = width
         self.height = height
         self.total_step = total_step
@@ -1838,7 +1853,7 @@ class IdPatch8bit10bitGenerator():
 
         img_8bit, img_10bit = create_8bit_10bit_id_patch(
             width=self.width, height=self.height, total_step=self.total_step,
-            direction=self.direction, level=self.level)
+            direction=self.direction, level=self.level, hdr10=hdr10)
 
         self.img_8bit_buf = np.hstack([img_8bit, img_8bit])
         self.img_10bit_buf = np.hstack([img_10bit, img_10bit])

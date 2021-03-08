@@ -273,7 +273,7 @@ def make_countdown_movie(
     bg_image_maker.is_even_number = True
     bg_image_maker.make()  # dummy make for 8bit 10bit id pattern
     generator_list = make_8bit_10bit_id_pat_generator(
-        bg_image_maker, scale_factor)
+        bg_image_maker, scale_factor, dynamic_range)
 
     # foreground image
     cd_filename_base\
@@ -335,19 +335,24 @@ def make_countdown_movie(
         # break
 
 
-def make_8bit_10bit_id_pat_generator(bg_image_maker, scale_factor):
+def make_8bit_10bit_id_pat_generator(
+        bg_image_maker, scale_factor, dynamic_range):
     id_param = bg_image_maker.get_8bit_10bit_id_pat_param()
-    step = 16
+    step = 24
     slide_step = 4
+    hdr10 = True if dynamic_range == 'HDR' else False
     generator_l = tpg.IdPatch8bit10bitGenerator(
         width=id_param['patch_width'], height=id_param['patch_height'],
-        total_step=step, level='low', slide_step=slide_step*scale_factor)
+        total_step=step, level='low', slide_step=slide_step*scale_factor,
+        hdr10=hdr10)
     generator_m = tpg.IdPatch8bit10bitGenerator(
         width=id_param['patch_width'], height=id_param['patch_height'],
-        total_step=step, level='middle', slide_step=slide_step*scale_factor)
+        total_step=step, level='middle', slide_step=slide_step*scale_factor,
+        hdr10=hdr10)
     generator_h = tpg.IdPatch8bit10bitGenerator(
         width=id_param['patch_width'], height=id_param['patch_height'],
-        total_step=step, level='high', slide_step=slide_step*scale_factor)
+        total_step=step, level='high', slide_step=slide_step*scale_factor,
+        hdr10=hdr10)
     generator_list = [generator_l, generator_m, generator_h]
 
     return generator_list
@@ -374,12 +379,11 @@ def make_sequence():
     """
     Make the multiple types of sequence files at a time.
     """
-    # cd_coordinate_param_list = [
-    #     COUNTDOWN_COORDINATE_PARAM_24P,
-    #     COUNTDOWN_COORDINATE_PARAM_30P,
-    #     COUNTDOWN_COORDINATE_PARAM_60P]
-    cd_coordinate_param_list = [COUNTDOWN_COORDINATE_PARAM_24P]
-    for scale_factor in [2]:
+    cd_coordinate_param_list = [
+        COUNTDOWN_COORDINATE_PARAM_24P,
+        COUNTDOWN_COORDINATE_PARAM_30P,
+        COUNTDOWN_COORDINATE_PARAM_60P]
+    for scale_factor in [1, 2]:
         for cd_coordinate_param in cd_coordinate_param_list:
             make_countdown_movie(
                 bg_color_param=SDR_BG_COLOR_PARAM,
@@ -388,13 +392,13 @@ def make_sequence():
                 bg_coordinate_param=BG_COODINATE_PARAM,
                 cd_coordinate_param=cd_coordinate_param,
                 scale_factor=scale_factor)
-            # make_countdown_movie(
-            #     bg_color_param=HDR_BG_COLOR_PARAM,
-            #     cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
-            #     dynamic_range='HDR',
-            #     bg_coordinate_param=BG_COODINATE_PARAM,
-            #     cd_coordinate_param=cd_coordinate_param,
-            #     scale_factor=scale_factor)
+            make_countdown_movie(
+                bg_color_param=HDR_BG_COLOR_PARAM,
+                cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
+                dynamic_range='HDR',
+                bg_coordinate_param=BG_COODINATE_PARAM,
+                cd_coordinate_param=cd_coordinate_param,
+                scale_factor=scale_factor)
         make_countdown_sound()
 
 
