@@ -137,7 +137,7 @@ class GridCoordinate():
 
 class ImgWithTextCoordinate():
     def __init__(
-            self, captioned_img=np.ones((480, 640, 3)),
+            self, img_width, img_height,
             text="8bit \nwith alpha", font_size=30,
             text_pos="left",
             font_path=fc.NOTO_SANS_MONO_BOLD,
@@ -145,8 +145,10 @@ class ImgWithTextCoordinate():
         """
         Parameters
         ----------
-        captioned_img : ndarray
-            A image that needs explanation.
+        img_width : int
+            width of the image
+        img_height : int
+            haight of the image
         text_pos : string
             "left", "right", "top", "bottom".
         margin_num_of_chara : float
@@ -164,7 +166,7 @@ class ImgWithTextCoordinate():
         >>> bg_img = np.zeros((720, 1280, 3))
         >>> tpg.draw_outline(bg_img, np.array([0, 1, 0]), 1)
         >>> img_text_coorinate = ImgWithTextCoordinate(
-        ...     captioned_img=fg_img,
+        ...     img_width=fg_img.shape[1], img_height=fg_img.shape[0]
         ...     text=text, font_size=font_size,
         ...     text_pos="left", font_path=font_path,
         ...     margin_num_of_chara=margin_num_of_chara)
@@ -178,8 +180,6 @@ class ImgWithTextCoordinate():
         >>> text_drawer.draw()
         >>> tpg.img_wirte_float_as_16bit_int("./img_left.png", bg_img)
         """
-        img_width = captioned_img.shape[1]
-        img_height = captioned_img.shape[0]
         text_width, text_height = self.calc_text_size(
             text=text, font_size=font_size, font_path=font_path)
 
@@ -210,11 +210,10 @@ class ImgWithTextCoordinate():
         return self.img_st_pos, self.text_st_pos
 
     def calc_text_size(self, text, font_size, font_path):
-        dummy_img = np.zeros((2048, 2048, 3))
         text_drawer = fc.TextDrawer(
-            dummy_img, text=text, font_size=font_size,
+            None, text=text, font_size=font_size,
             font_path=font_path)
-        text_drawer.draw()
+        text_drawer.make_text_img_with_alpha()
         text_width, text_height = text_drawer.get_text_size()
 
         return text_width, text_height
@@ -265,7 +264,7 @@ if __name__ == '__main__':
     bg_img = np.zeros((720, 1280, 3))
     tpg.draw_outline(bg_img, np.array([0, 1, 0]), 1)
     img_text_coorinate = ImgWithTextCoordinate(
-        captioned_img=fg_img,
+        img_width=fg_img.shape[1], img_height=fg_img.shape[0],
         text=text, font_size=font_size,
         text_pos="left", font_path=font_path,
         margin_num_of_chara=margin_num_of_chara)
@@ -282,7 +281,7 @@ if __name__ == '__main__':
     bg_img = np.zeros((720, 1280, 3))
     tpg.draw_outline(bg_img, np.array([0, 1, 0]), 1)
     img_text_coorinate = ImgWithTextCoordinate(
-        captioned_img=fg_img,
+        img_width=fg_img.shape[1], img_height=fg_img.shape[0],
         text=text, font_size=font_size,
         text_pos="right", font_path=font_path,
         margin_num_of_chara=margin_num_of_chara)
@@ -299,7 +298,7 @@ if __name__ == '__main__':
     bg_img = np.zeros((720, 1280, 3))
     tpg.draw_outline(bg_img, np.array([0, 1, 0]), 1)
     img_text_coorinate = ImgWithTextCoordinate(
-        captioned_img=fg_img,
+        img_width=fg_img.shape[1], img_height=fg_img.shape[0],
         text=text, font_size=font_size,
         text_pos="top", font_path=font_path,
         margin_num_of_chara=margin_num_of_chara)
@@ -316,7 +315,7 @@ if __name__ == '__main__':
     bg_img = np.zeros((720, 1280, 3))
     tpg.draw_outline(bg_img, np.array([0, 1, 0]), 1)
     img_text_coorinate = ImgWithTextCoordinate(
-        captioned_img=fg_img,
+        img_width=fg_img.shape[1], img_height=fg_img.shape[0],
         text=text, font_size=font_size,
         text_pos="bottom", font_path=font_path,
         margin_num_of_chara=margin_num_of_chara)

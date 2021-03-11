@@ -225,6 +225,16 @@ class TextDrawer():
         return self.text_img.shape[1], self.text_img.shape[0]
 
 
+def get_text_width_height(text, font_path, font_size):
+    dummy_drawer = TextDrawer(
+        None, text=text, pos=(0, 0),
+        font_size=font_size, font_path=font_path)
+    dummy_drawer.make_text_img_with_alpha()
+    text_width, text_height = dummy_drawer.get_text_size()
+
+    return text_width, text_height
+
+
 def simple_test_noraml_draw():
     # example 1 SDR text on SDR background
     dst_img = np.ones((540, 960, 3)) * np.array([0.3, 0.3, 0.1])
@@ -287,7 +297,7 @@ def simple_test_dot_drop(dot_factor=1, offset=(0, 0)):
         fg_transfer_functions=tf.SRGB)
     text_drawer.draw_with_dropped_dot(dot_factor=dot_factor, offset=offset)
     img = text_drawer.get_img()
-    fname = f"/work/overuse/2020/005_make_countdown_movie/"\
+    fname = "/work/overuse/2020/005_make_countdown_movie/"\
         + f"dot_drop_factor-{dot_factor}_offset-{offset[0]}-{offset[1]}"\
         + ".png"
     cv2.imwrite(
@@ -298,17 +308,17 @@ def simple_test_dot_drop(dot_factor=1, offset=(0, 0)):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # simple_test_noraml_draw()
-    simple_test_dot_drop(dot_factor=1, offset=(0, 0))
-    simple_test_dot_drop(dot_factor=1, offset=(1, 0))
-    simple_test_dot_drop(dot_factor=1, offset=(0, 1))
-    simple_test_dot_drop(dot_factor=1, offset=(1, 1))
+    # simple_test_dot_drop(dot_factor=1, offset=(0, 0))
+    # simple_test_dot_drop(dot_factor=1, offset=(1, 0))
+    # simple_test_dot_drop(dot_factor=1, offset=(0, 1))
+    # simple_test_dot_drop(dot_factor=1, offset=(1, 1))
 
-    simple_test_dot_drop(dot_factor=2, offset=(0, 0))
-    simple_test_dot_drop(dot_factor=2, offset=(1, 0))
-    simple_test_dot_drop(dot_factor=2, offset=(0, 1))
-    simple_test_dot_drop(dot_factor=2, offset=(1, 1))
+    # simple_test_dot_drop(dot_factor=2, offset=(0, 0))
+    # simple_test_dot_drop(dot_factor=2, offset=(1, 0))
+    # simple_test_dot_drop(dot_factor=2, offset=(0, 1))
+    # simple_test_dot_drop(dot_factor=2, offset=(1, 1))
 
-    simple_test_dot_drop(dot_factor=3, offset=(0, 0))
-    simple_test_dot_drop(dot_factor=3, offset=(1, 0))
-    simple_test_dot_drop(dot_factor=3, offset=(0, 1))
-    simple_test_dot_drop(dot_factor=3, offset=(1, 1))
+    # simple_test_dot_drop(dot_factor=3, offset=(0, 0))
+    # simple_test_dot_drop(dot_factor=3, offset=(1, 0))
+    # simple_test_dot_drop(dot_factor=3, offset=(0, 1))
+    # simple_test_dot_drop(dot_factor=3, offset=(1, 1))
