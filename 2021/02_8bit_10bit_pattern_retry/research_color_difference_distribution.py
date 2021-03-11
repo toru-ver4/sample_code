@@ -120,8 +120,20 @@ def main_func(calc_de2k=False):
     # for idx in range(400):
     #     print(rr[idx], gg[idx], bb[idx], dd[idx], sum_diff_inner_rgb[rr[idx], gg[idx], bb[idx], dd[idx]])
 
+    lh_cl = np.array([127, 127, 127])  # L=50, C=0
+    lh_cm = np.array([141, 126, 114])  # L=50, C=10
+    lh_ch = np.array([149, 122, 97])   # L=50, C=20
+
+    lm_cl = np.array([94, 94, 94])   # L=35, C=0
+    lm_cm = np.array([103, 90, 78])  # L=35, C=10
+    lm_ch = np.array([110, 88, 63])  # L=35, C=20
+
+    ll_cl = np.array([61, 61, 61])  # L=20, C=0
+    ll_cm = np.array([68, 58, 46])  # L=20, C=10
+    ll_ch = np.array([75, 56, 33])  # L=20, C=20
+
     min_lightness = 20
-    min_chroma = 20
+    min_chroma = 0
 
     rgb = np.dstack((rr, gg, bb))
     lch = Lab_to_LCHab(bt709_to_lab(rgb/255))
@@ -133,7 +145,7 @@ def main_func(calc_de2k=False):
     gg_new = gg[ok_idx]
     bb_new = bb[ok_idx]
     dd_new = dd[ok_idx]
-    for idx in range(100):
+    for idx in range(30):
         print(
             rr_new[idx],
             gg_new[idx],

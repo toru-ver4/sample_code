@@ -31,6 +31,16 @@ YCBCR_CHECK_MARKER = [0, 0, 0]
 
 UNIVERSAL_COLOR_LIST = ["#F6AA00", "#FFF100", "#03AF7A",
                         "#005AFF", "#4DC4FF", "#804000"]
+# for 8bit 10bit pattern
+L_LOW_C_LOW = 'lightness_low_chroma_low'
+L_LOW_C_MIDDLE = 'lightness_low_chroma_middle'
+L_LOW_C_HIGH = 'lightness_low_chroma_high'
+L_MIDDLE_C_LOW = 'lightness_middle_chroma_low'
+L_MIDDLE_C_MIDDLE = 'lightness_middle_chroma_middle'
+L_MIDDLE_C_HIGH = 'lightness_middle_chroma_high'
+L_HIGH_C_LOW = 'lightness_high_chroma_low'
+L_HIGH_C_MIDDLE = 'lightness_high_chroma_middle'
+L_HIGH_C_HIGH = 'lightness_high_chroma_high'
 
 
 def preview_image(img, order='rgb', over_disp=False):
@@ -87,6 +97,9 @@ def equal_devision(length, div_num):
     length を div_num で分割する。
     端数が出た場合は誤差拡散法を使って上手い具合に分散させる。
     """
+    if div_num < 1:
+        return []
+
     base = length / div_num
     ret_array = [base for x in range(div_num)]
 
@@ -1716,8 +1729,8 @@ def get_size_from_image(img):
 
 
 def create_8bit_10bit_id_patch(
-        width=512, height=1024, total_step=20, direction='h', level='middle',
-        hdr10=False):
+        width=512, height=1024, total_step=20, direction='h',
+        level=L_LOW_C_LOW, hdr10=False):
     """
     create two images. the one is 8bit precision.
     the onother is 10bit precision.
@@ -1734,9 +1747,15 @@ def create_8bit_10bit_id_patch(
         "h": horizontal (highly recommended)
         "v": vertical
     level : str
-        "low" : create low lightness image
-        "middle" : create middle lightness image
-        "high" : create high lightness image
+        L_LOW_C_LOW : 'lightness_low_chroma_low'
+        L_LOW_C_MIDDLE : 'lightness_low_chroma_middle'
+        L_LOW_C_HIGH : 'lightness_low_chroma_high'
+        L_MIDDLE_C_LOW : 'lightness_middle_chroma_low'
+        L_MIDDLE_C_MIDDLE : 'lightness_middle_chroma_middle'
+        L_MIDDLE_C_HIGH : 'lightness_middle_chroma_high'
+        L_HIGH_C_LOW : 'lightness_high_chroma_low'
+        L_HIGH_C_MIDDLE : 'lightness_high_chroma_middle'
+        L_HIGH_C_HIGH : 'lightness_high_chroma_high'
     hdr10 : bool
         False: generate pattern for BT.709 - Gamma2.4
         True: generate pattern for BT.2020 - SMPTE ST2084
@@ -1753,24 +1772,44 @@ def create_8bit_10bit_id_patch(
     >>> import test_pattern_generator2 as tpg
     >>> img_out_8bit, img_out_10bit = create_8bit_10bit_id_patch(
             width=512, height=1024, total_step=20, direction='h',
-            level='middle')
+            level=tpg.L_LOW_C_LOW)
     >>> tpg.img_wirte_float_as_16bit_int("8bit_img.png", img_8bit)
     >>> tpg.img_wirte_float_as_16bit_int("10bit_img.png", img_10bit)
     """
 
-    base_rgb_8bit_low = np.array([75, 56, 33])
-    base_rgb_8bit_middle = np.array([123, 98, 74])
-    base_rgb_8bit_high = np.array([172, 146, 119])
+    ll_cl = np.array([61, 61, 61])  # L=20, C=0
+    ll_cm = np.array([68, 58, 46])  # L=20, C=10
+    ll_ch = np.array([75, 56, 33])  # L=20, C=20
 
-    if level == 'middle':
-        base_rgb_8bit = base_rgb_8bit_middle
-    elif level == 'low':
-        base_rgb_8bit = base_rgb_8bit_low
-    elif level == 'high':
-        base_rgb_8bit = base_rgb_8bit_high
+    lm_cl = np.array([94, 94, 94])   # L=35, C=0
+    lm_cm = np.array([103, 90, 78])  # L=35, C=10
+    lm_ch = np.array([110, 88, 63])  # L=35, C=20
+
+    lh_cl = np.array([127, 127, 127])  # L=50, C=0
+    lh_cm = np.array([141, 126, 114])  # L=50, C=10
+    lh_ch = np.array([149, 122, 97])   # L=50, C=20
+
+    if level == L_LOW_C_LOW:
+        base_rgb_8bit = ll_cl
+    elif level == L_LOW_C_MIDDLE:
+        base_rgb_8bit = ll_cm
+    elif level == L_LOW_C_HIGH:
+        base_rgb_8bit = ll_ch
+    elif level == L_MIDDLE_C_LOW:
+        base_rgb_8bit = lm_cl
+    elif level == L_MIDDLE_C_MIDDLE:
+        base_rgb_8bit = lm_cm
+    elif level == L_MIDDLE_C_HIGH:
+        base_rgb_8bit = lm_ch
+    elif level == L_HIGH_C_LOW:
+        base_rgb_8bit = lh_cl
+    elif level == L_HIGH_C_MIDDLE:
+        base_rgb_8bit = lh_cm
+    elif level == L_HIGH_C_HIGH:
+        base_rgb_8bit = lh_ch
     else:
         print("Warning: invalid level parameter")
-        base_rgb_8bit = base_rgb_8bit_middle
+        base_rgb_8bit = ll_cl
 
     if hdr10:
         linear = tf.eotf(base_rgb_8bit / 255, tf.GAMMA24)
@@ -1841,19 +1880,18 @@ class IdPatch8bit10bitGenerator():
     ...     tpg.img_wirte_float_as_16bit_int(fname_10bit, img_10bit)
     """
     def __init__(
-            self, width=512, height=1024, total_step=20, level='middle',
-            slide_step=2, hdr10=False):
+            self, width=512, height=1024, total_step=20,
+            level='middle', slide_step=2, hdr10=False):
         self.width = width
         self.height = height
         self.total_step = total_step
-        self.direction = 'h'
-        self.level = level
+        direction = 'h'
         self.step = slide_step
         self.cnt = 0
 
         img_8bit, img_10bit = create_8bit_10bit_id_patch(
             width=self.width, height=self.height, total_step=self.total_step,
-            direction=self.direction, level=self.level, hdr10=hdr10)
+            direction=direction, level=level, hdr10=hdr10)
 
         self.img_8bit_buf = np.hstack([img_8bit, img_8bit])
         self.img_10bit_buf = np.hstack([img_10bit, img_10bit])

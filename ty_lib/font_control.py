@@ -216,6 +216,12 @@ class TextDrawer():
         return self.img
 
     def get_text_size(self):
+        """
+        Returns
+        -------
+        width, height : int
+            width and height
+        """
         return self.text_img.shape[1], self.text_img.shape[0]
 
 

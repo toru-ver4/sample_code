@@ -13,6 +13,7 @@ import numpy as np
 
 # import my libraries
 import test_pattern_generator2 as tpg
+from test_pattern_coordinate import GridCoordinate
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -84,6 +85,25 @@ def id_patch_generator_class_test(
         tpg.img_wirte_float_as_16bit_int(fname_10bit, img_10bit)
 
 
+def grid_coordinate_test(
+        width=1920, height=1080, h_num=6, v_num=4,
+        fg_width=200, fg_height=150, remove_tblr_margin=False):
+    gc = GridCoordinate(
+        bg_width=width, bg_height=height,
+        fg_width=fg_width, fg_height=fg_height,
+        h_num=h_num, v_num=v_num, remove_tblr_margin=remove_tblr_margin)
+    pos_list = gc.get_st_pos_list()
+
+    img = np.zeros((height, width, 3))
+    fg_img = np.ones((fg_height, fg_width, 3))
+    for v_idx in range(v_num):
+        for h_idx in range(h_num):
+            idx = v_idx * h_num + h_idx
+            tpg.merge(
+                img, fg_img*(idx+1)/(h_num*v_num + 1), pos_list[h_idx][v_idx])
+    tpg.img_wirte_float_as_16bit_int("./test_img.png", img)
+
+
 def main_func():
     # create_and_save_8bit_10bit_patch(
     #     width=512, height=512, total_step=20, direction='h', level='low')
@@ -97,8 +117,12 @@ def main_func():
     #     width=512, height=512, total_step=20, direction='h', level='high')
     # create_and_save_8bit_10bit_patch(
     #     width=512, height=512, total_step=20, direction='v', level='high')
-    id_patch_generator_class_test(
-        width=512, height=512, total_step=20, level='middle', step=4)
+    # id_patch_generator_class_test(
+    #     width=512, height=512, total_step=20, level=tpg.L_HIGH_C_HIGH, step=4)
+    # grid_coordinate_test()
+    grid_coordinate_test(
+        width=200, height=1080, h_num=1, v_num=3,
+        fg_width=200, fg_height=150, remove_tblr_margin=True)
 
 
 if __name__ == '__main__':
