@@ -171,6 +171,7 @@ venv.bak/
 2020/999_sample_icc/**
 2020/032_check_youtube_music/audio/*.wav
 2021/02_8bit_10bit_pattern_retry/img/**.png
+2021/03_investigate_avif/captured_video/*.mp4
 
 .gitconfig
 .bash_history
