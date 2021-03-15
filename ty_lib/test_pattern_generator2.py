@@ -7,13 +7,14 @@
 """
 
 import os
+from colour.models.rgb.rgb_colourspace import RGB_to_RGB
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from colour.colorimetry import CMFS, ILLUMINANTS
 from colour.models import XYZ_to_xy, xy_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
 from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ
-from colour.models import BT709_COLOURSPACE
+from colour.models import BT709_COLOURSPACE, BT2020_COLOURSPACE
 from colour.utilities import normalise_maximum
 from colour import models
 from colour import RGB_COLOURSPACES, COLOURCHECKERS
@@ -30,6 +31,16 @@ YCBCR_CHECK_MARKER = [0, 0, 0]
 
 UNIVERSAL_COLOR_LIST = ["#F6AA00", "#FFF100", "#03AF7A",
                         "#005AFF", "#4DC4FF", "#804000"]
+# for 8bit 10bit pattern
+L_LOW_C_LOW = 'lightness_low_chroma_low'
+L_LOW_C_MIDDLE = 'lightness_low_chroma_middle'
+L_LOW_C_HIGH = 'lightness_low_chroma_high'
+L_MIDDLE_C_LOW = 'lightness_middle_chroma_low'
+L_MIDDLE_C_MIDDLE = 'lightness_middle_chroma_middle'
+L_MIDDLE_C_HIGH = 'lightness_middle_chroma_high'
+L_HIGH_C_LOW = 'lightness_high_chroma_low'
+L_HIGH_C_MIDDLE = 'lightness_high_chroma_middle'
+L_HIGH_C_HIGH = 'lightness_high_chroma_high'
 
 
 def preview_image(img, order='rgb', over_disp=False):
@@ -86,6 +97,9 @@ def equal_devision(length, div_num):
     length を div_num で分割する。
     端数が出た場合は誤差拡散法を使って上手い具合に分散させる。
     """
+    if div_num < 1:
+        return []
+
     base = length / div_num
     ret_array = [base for x in range(div_num)]
 
@@ -1712,6 +1726,191 @@ def get_size_from_image(img):
     `calc_st_pos_for_centering()` の引数計算が面倒だったので関数化。
     """
     return (img.shape[1], img.shape[0])
+
+
+def create_8bit_10bit_id_patch(
+        width=512, height=1024, total_step=20, direction='h',
+        level=L_LOW_C_LOW, hdr10=False):
+    """
+    create two images. the one is 8bit precision.
+    the onother is 10bit precision.
+
+    Parameters
+    ----------
+    width : int
+        image width
+    height : int
+        image height
+    total_step : int
+        step num in 8bit precision.
+    direction : str
+        "h": horizontal (highly recommended)
+        "v": vertical
+    level : str
+        L_LOW_C_LOW : 'lightness_low_chroma_low'
+        L_LOW_C_MIDDLE : 'lightness_low_chroma_middle'
+        L_LOW_C_HIGH : 'lightness_low_chroma_high'
+        L_MIDDLE_C_LOW : 'lightness_middle_chroma_low'
+        L_MIDDLE_C_MIDDLE : 'lightness_middle_chroma_middle'
+        L_MIDDLE_C_HIGH : 'lightness_middle_chroma_high'
+        L_HIGH_C_LOW : 'lightness_high_chroma_low'
+        L_HIGH_C_MIDDLE : 'lightness_high_chroma_middle'
+        L_HIGH_C_HIGH : 'lightness_high_chroma_high'
+    hdr10 : bool
+        False: generate pattern for BT.709 - Gamma2.4
+        True: generate pattern for BT.2020 - SMPTE ST2084
+
+    Returns
+    -------
+    img_out_8bit : ndarray (float)
+        img with 8 bit precision.
+    img_out_10bit : ndarray (float)
+        img with 10bit precision.
+
+    Examples
+    --------
+    >>> import test_pattern_generator2 as tpg
+    >>> img_out_8bit, img_out_10bit = create_8bit_10bit_id_patch(
+            width=512, height=1024, total_step=20, direction='h',
+            level=tpg.L_LOW_C_LOW)
+    >>> tpg.img_wirte_float_as_16bit_int("8bit_img.png", img_8bit)
+    >>> tpg.img_wirte_float_as_16bit_int("10bit_img.png", img_10bit)
+    """
+
+    ll_cl = np.array([61, 61, 61])  # L=20, C=0
+    ll_cm = np.array([68, 58, 46])  # L=20, C=10
+    ll_ch = np.array([75, 56, 33])  # L=20, C=20
+
+    lm_cl = np.array([94, 94, 94])   # L=35, C=0
+    lm_cm = np.array([103, 90, 78])  # L=35, C=10
+    lm_ch = np.array([110, 88, 63])  # L=35, C=20
+
+    lh_cl = np.array([127, 127, 127])  # L=50, C=0
+    lh_cm = np.array([141, 126, 114])  # L=50, C=10
+    lh_ch = np.array([149, 122, 97])   # L=50, C=20
+
+    if level == L_LOW_C_LOW:
+        base_rgb_8bit = ll_cl
+    elif level == L_LOW_C_MIDDLE:
+        base_rgb_8bit = ll_cm
+    elif level == L_LOW_C_HIGH:
+        base_rgb_8bit = ll_ch
+    elif level == L_MIDDLE_C_LOW:
+        base_rgb_8bit = lm_cl
+    elif level == L_MIDDLE_C_MIDDLE:
+        base_rgb_8bit = lm_cm
+    elif level == L_MIDDLE_C_HIGH:
+        base_rgb_8bit = lm_ch
+    elif level == L_HIGH_C_LOW:
+        base_rgb_8bit = lh_cl
+    elif level == L_HIGH_C_MIDDLE:
+        base_rgb_8bit = lh_cm
+    elif level == L_HIGH_C_HIGH:
+        base_rgb_8bit = lh_ch
+    else:
+        print("Warning: invalid level parameter")
+        base_rgb_8bit = ll_cl
+
+    if hdr10:
+        linear = tf.eotf(base_rgb_8bit / 255, tf.GAMMA24)
+        linear_2020 = RGB_to_RGB(
+            linear, BT709_COLOURSPACE, BT2020_COLOURSPACE)
+        linear_2020_gain2x = linear_2020 * 100 * 2
+        st2084_2020 = tf.oetf_from_luminance(linear_2020_gain2x, tf.ST2084)
+        base_rgb_8bit = np.round(st2084_2020 * 255)
+        print(f"base_rgb_hdr10 = {base_rgb_8bit}")
+
+    base_gg = base_rgb_8bit[1]
+    rr = base_rgb_8bit[0]
+    bb = base_rgb_8bit[2]
+
+    gg_min = base_gg - (total_step // 2)
+    gg_max = base_gg + (total_step // 2)
+
+    if direction == 'h':
+        patch_len = width
+    else:
+        patch_len = height
+
+    gg_grad = np.linspace(gg_min, gg_max, patch_len)
+    rr_static = np.ones_like(gg_grad) * rr
+    bb_static = np.ones_like(gg_grad) * bb
+    line = np.dstack((rr_static, gg_grad, bb_static))
+
+    if direction == 'h':
+        img_base_8bit_float = line * np.ones((height, 1, 3))
+    else:
+        line = line.reshape((height, 1, 3))
+        img_base_8bit_float = line * np.ones((1, width, 3))
+
+    img_out_float_8bit = img_base_8bit_float / 255
+    img_out_8bit = np.round(img_out_float_8bit * 255) / 255
+    img_out_10bit = np.round(img_out_float_8bit * 1023) / 1023
+
+    return img_out_8bit, img_out_10bit
+
+
+class IdPatch8bit10bitGenerator():
+    """
+    create 8bit 10bit idification image (ndarray float).
+
+    Examples
+    --------
+    >>> generator = tpg.IdPatch8bit10bitGenerator(
+    ...     width=width, height=height, total_step=total_step, level=level,
+    ...     slide_step=step)
+    >>> frame_num = 180
+    >>> fname_8bit_base = "img_8bit_{width}x{height}_{step}step_{div}div_"
+    >>> fname_8bit_base += "{level}_{idx:04d}.png"
+    >>> fname_8bit_base = str(IMG_SEQ_DIR / fname_8bit_base)
+    >>> fname_10bit_base = "img_10bit_{width}x{height}_{step}step_{div}div_"
+    >>> fname_10bit_base += "{level}_{idx:04d}.png"
+    >>> fname_10bit_base = str(IMG_SEQ_DIR / fname_10bit_base)
+
+    >>> for idx in range(frame_num):
+    ...     img_8bit, img_10bit = generator.extract_8bit_10bit_img()
+    ...     fname_8bit = fname_8bit_base.format(
+    ...         width=width, height=height, step=step, div=total_step,
+    ...         level=level, idx=idx)
+    ...     fname_10bit = fname_10bit_base.format(
+    ...         width=width, height=height, step=step, div=total_step,
+    ...         level=level, idx=idx)
+    ...     print(fname_8bit)
+    ...     tpg.img_wirte_float_as_16bit_int(fname_8bit, img_8bit)
+    ...     tpg.img_wirte_float_as_16bit_int(fname_10bit, img_10bit)
+    """
+    def __init__(
+            self, width=512, height=1024, total_step=20,
+            level='middle', slide_step=2, hdr10=False):
+        self.width = width
+        self.height = height
+        self.total_step = total_step
+        direction = 'h'
+        self.step = slide_step
+        self.cnt = 0
+
+        img_8bit, img_10bit = create_8bit_10bit_id_patch(
+            width=self.width, height=self.height, total_step=self.total_step,
+            direction=direction, level=level, hdr10=hdr10)
+
+        self.img_8bit_buf = np.hstack([img_8bit, img_8bit])
+        self.img_10bit_buf = np.hstack([img_10bit, img_10bit])
+
+    def extract_based_on_cnt(self, img, cnt=None):
+        if cnt:
+            h_st = cnt % self.width
+        else:
+            h_st = self.cnt % self.width
+        h_ed = h_st + self.width
+        return img[:, h_st:h_ed]
+
+    def extract_8bit_10bit_img(self, cnt=None):
+        out_8bit = self.extract_based_on_cnt(self.img_8bit_buf, cnt)
+        out_10bit = self.extract_based_on_cnt(self.img_10bit_buf, cnt)
+        if not cnt:
+            self.cnt += self.step
+
+        return out_8bit, out_10bit
 
 
 if __name__ == '__main__':
