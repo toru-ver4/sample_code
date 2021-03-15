@@ -343,15 +343,18 @@ def make_8bit_10bit_id_pat_generator(
     hdr10 = True if dynamic_range == 'HDR' else False
     generator_l = tpg.IdPatch8bit10bitGenerator(
         width=id_param['patch_width'], height=id_param['patch_height'],
-        total_step=step, level='low', slide_step=slide_step*scale_factor,
+        total_step=step, level=tpg.L_LOW_C_HIGH,
+        slide_step=slide_step*scale_factor,
         hdr10=hdr10)
     generator_m = tpg.IdPatch8bit10bitGenerator(
         width=id_param['patch_width'], height=id_param['patch_height'],
-        total_step=step, level='middle', slide_step=slide_step*scale_factor,
+        total_step=step, level=tpg.L_MIDDLE_C_HIGH,
+        slide_step=slide_step*scale_factor,
         hdr10=hdr10)
     generator_h = tpg.IdPatch8bit10bitGenerator(
         width=id_param['patch_width'], height=id_param['patch_height'],
-        total_step=step, level='high', slide_step=slide_step*scale_factor,
+        total_step=step, level=tpg.L_HIGH_C_HIGH,
+        slide_step=slide_step*scale_factor,
         hdr10=hdr10)
     generator_list = [generator_l, generator_m, generator_h]
 

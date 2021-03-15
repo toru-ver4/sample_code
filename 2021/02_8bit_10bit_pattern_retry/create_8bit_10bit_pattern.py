@@ -126,7 +126,7 @@ def create_8bit_10bit_3x3_pattern(scale_factor=1):
         bg_img=bg_img, fg_width=fg_width, fg_height=fg_height,
         caption_font_size=caption_font_size)
 
-    fname = f"./img/tp_8bit_10bit_{bg_width}x{bg_height}.png"
+    fname = f"./img/10bit_checker_{bg_width}x{bg_height}.png"
     tpg.img_wirte_float_as_16bit_int(fname, bg_img)
 
 
@@ -235,6 +235,23 @@ def calc_8bit_10bit_pair_block_size(width, height):
     return block_width, block_height
 
 
+def create_blog_8bit_10bit_image():
+    width = 500
+    height = 128
+    st_level = 96 / 255
+    ed_level = 216 / 255
+
+    line = np.linspace(st_level, ed_level, width)
+    line = np.dstack((line, line, line))
+    img_base = line * np.ones((height, 1, 3))
+    img_8bit = np.uint8(np.round(img_base * 255))
+
+    img_6bit = img_8bit & 0xFC
+
+    tpg.img_write("./img/blog_8bit.png", img_8bit)
+    tpg.img_write("./img/blog_6bit.png", img_6bit)
+
+
 def main_func():
     # create_and_save_8bit_10bit_patch(
     #     width=512, height=512, total_step=20, direction='h', level='low')
@@ -254,8 +271,9 @@ def main_func():
     # grid_coordinate_test(
     #     width=200, height=1080, h_num=1, v_num=3,
     #     fg_width=200, fg_height=150, remove_tblr_margin=True)
-    create_8bit_10bit_3x3_pattern(scale_factor=1)
-    create_8bit_10bit_3x3_pattern(scale_factor=2)
+    # create_8bit_10bit_3x3_pattern(scale_factor=1)
+    # create_8bit_10bit_3x3_pattern(scale_factor=2)
+    create_blog_8bit_10bit_image()
 
 
 if __name__ == '__main__':
