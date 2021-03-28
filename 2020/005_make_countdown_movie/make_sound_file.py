@@ -91,6 +91,7 @@ def make_countdown_sound(sampling_rate=48000):
     beep_sec = 0.06
     fade_in_out_sec = 0.0065
     total_sample = count_down_sec * sampling_rate
+    offset_sample = int(fade_in_out_sec * sampling_rate * 0.5)
 
     # 無音ファイル
     np.zeros((total_sample), dtype=np.int16)
@@ -104,17 +105,17 @@ def make_countdown_sound(sampling_rate=48000):
     add_fade_in_out(sine_high, fade_in_out_sec, sampling_rate)
 
     # left
-    st_sample = sampling_rate * left_st_sec
+    st_sample = sampling_rate * left_st_sec - offset_sample
     left_sound = np.zeros((total_sample), dtype=np.int16)
     left_sound[st_sample:st_sample+sine_low.shape[0]] = sine_low
 
     # right
-    st_sample = sampling_rate * right_st_sec
+    st_sample = sampling_rate * right_st_sec - offset_sample
     right_sound = np.zeros((total_sample), dtype=np.int16)
     right_sound[st_sample:st_sample+sine_low.shape[0]] = sine_low
 
     # center
-    st_sample = sampling_rate * center_st_sec
+    st_sample = sampling_rate * center_st_sec - offset_sample
     left_sound[st_sample:st_sample+sine_high.shape[0]] = sine_high
     right_sound[st_sample:st_sample+sine_high.shape[0]] = sine_high
 
@@ -122,5 +123,41 @@ def make_countdown_sound(sampling_rate=48000):
     wavfile.write("./wav/countdown.wav", sampling_rate, stereo)
 
 
+def make_countdown_sound_99s(sampling_rate=48000):
+    count_down_sec = 100
+    left_st_sec_list = [x for x in range(1, count_down_sec, 2)]
+    right_st_sec_list = [x for x in range(2, count_down_sec-1, 2)]
+    low_freq = 1000
+    beep_sec = 0.06
+    fade_in_out_sec = 0.0065
+    total_sample = count_down_sec * sampling_rate
+    offset_sample = int(fade_in_out_sec * sampling_rate * 0.5)
+
+    # 無音ファイル
+    np.zeros((total_sample), dtype=np.int16)
+
+    # 100ms だけ鳴らすファイル
+    sine_low = get_sine_wave(
+        freq=low_freq, sec=beep_sec, sampling_rate=sampling_rate, gain=0.9)
+    add_fade_in_out(sine_low, fade_in_out_sec, sampling_rate)
+
+    # left
+    left_sound = np.zeros((total_sample), dtype=np.int16)
+    for left_st_sec in left_st_sec_list:
+        st_sample = sampling_rate * left_st_sec - offset_sample
+        left_sound[st_sample:st_sample+sine_low.shape[0]] = sine_low
+
+    # right
+    right_sound = np.zeros((total_sample), dtype=np.int16)
+    for right_st_sec in right_st_sec_list:
+        st_sample = sampling_rate * right_st_sec - offset_sample
+        right_sound[st_sample:st_sample+sine_low.shape[0]] = sine_low
+
+    stereo = np.dstack((left_sound, right_sound)).reshape((total_sample, 2))
+    wavfile.write("./wav/countdown_99s.wav", sampling_rate, stereo)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    make_countdown_sound()
+    make_countdown_sound_99s()
