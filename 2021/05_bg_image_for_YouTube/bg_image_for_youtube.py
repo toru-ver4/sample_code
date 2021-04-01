@@ -13,9 +13,11 @@ import numpy as np
 from colour import RGB_to_XYZ, XYZ_to_Lab, Lab_to_LCHab,\
     LCHab_to_Lab, Lab_to_XYZ, XYZ_to_RGB
 from colour.models import BT709_COLOURSPACE
+import cv2
 
 # import my libraries
 import test_pattern_generator2 as tpg
+from test_pattern_coordinate import GridCoordinate
 import transfer_functions as tf
 from color_space import D65
 
@@ -30,11 +32,8 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-def create_bg_image(color=[0.5, 0.5, 0.5]):
-    width = 1920
-    height = 1080
-
-    img = np.ones((height, width, 4))
+def create_bg_image(color=[0.5, 0.5, 0.5], width=1920, height=1080):
+    img = np.ones((height, width, 3))
     img[..., :3] = img[..., :3] * color
     fname = "./img/bg_image.png"
     tpg.img_wirte_float_as_16bit_int(fname, img)
@@ -72,9 +71,46 @@ def sRGB_to_Lab(rgb=[201/255, 222/255, 251/255]):
     return lch
 
 
+def create_alpha_circle_image(
+        width=1920, height=1080,
+        h_num=3, v_num=2, fg_width=200, fg_height=200,
+        min_rad=5, max_rad=50):
+    gc = GridCoordinate(
+        bg_width=width, bg_height=height,
+        fg_width=fg_width, fg_height=fg_height,
+        h_num=h_num, v_num=v_num, remove_tblr_margin=True)
+    pos_list = gc.get_st_pos_list()
+    rad_list = np.uint16(np.round(np.linspace(min_rad, max_rad, v_num)))
+    fg_img = np.ones((height, width, 3), dtype=np.uint8) * 255
+    for v_idx in range(v_num):
+        for h_idx in range(h_num):
+            center_pos = pos_list[h_idx][v_idx]
+            center_pos[0] = center_pos[0] + fg_width // 2
+            center_pos[1] = center_pos[1] + fg_height // 2
+            cv2.circle(
+                fg_img, (center_pos[0], center_pos[1]), rad_list[v_idx],
+                (0, 0, 0), -1, cv2.LINE_AA)
+    tpg.img_wirte_float_as_16bit_int("./img/test_circle.png", fg_img/255)
+
+
+def create_youtube_bg_image():
+    bg_img = tpg.img_read_as_float("./img/bg_image.png")
+    fg_img = tpg.img_read_as_float("./img/fg_image.png")
+    alpha_img = tpg.img_read_as_float("./img/test_circle.png")[..., 1]
+    alpha_img = alpha_img.reshape((bg_img.shape[0], bg_img.shape[1], 1))
+
+    img = bg_img * alpha_img + fg_img * (1 - alpha_img)
+    tpg.img_wirte_float_as_16bit_int("./img/youtube_background.png", img)
+
+
 def main_func():
-    # create_bg_image(color=np.array([1, 1, 1])*224/255)
-    create_fg_image(rgb=[201/255, 222/255, 251/255])
+    create_bg_image(color=np.array([1, 1, 1])*235/255)
+    create_fg_image(rgb=[174/255, 197/255, 244/255])
+    create_alpha_circle_image(
+        width=1920, height=1080,
+        h_num=int(16*2.3), v_num=int(9*2.3), fg_width=2, fg_height=2,
+        min_rad=5, max_rad=40)
+    create_youtube_bg_image()
 
 
 if __name__ == '__main__':
