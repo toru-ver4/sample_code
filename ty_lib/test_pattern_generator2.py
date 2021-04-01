@@ -66,7 +66,14 @@ def img_read(filename):
     img = cv2.imread(filename, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)
 
     if img is not None:
-        return img[:, :, ::-1]
+        if img.shape[2] == 3:
+            return img[:, :, ::-1]
+        elif img.shape[2] == 4:
+            shape = img.shape
+            b, g, r, a = np.dsplit(img, 4)
+            return np.dstack((r, g, b, a)).reshape((shape))
+        else:
+            raise ValueError("not supported img shape for immg_write")
     else:
         return img
 
@@ -83,7 +90,16 @@ def img_write(filename, img):
     """
     OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
     """
-    cv2.imwrite(filename, img[:, :, ::-1], [cv2.IMWRITE_PNG_COMPRESSION, 9])
+    if img.shape[2] == 3:
+        # cv2.imwrite(filename, img[:, :, ::-1], [cv2.IMWRITE_PNG_COMPRESSION, 9])
+        img_save = img[:, :, ::-1]
+    elif img.shape[2] == 4:
+        shape = img.shape
+        r, g, b, a = np.dsplit(img, 4)
+        img_save = np.dstack((b, g, r, a)).reshape((shape))
+    else:
+        raise ValueError("not supported img shape for immg_write")
+    cv2.imwrite(filename, img_save, [cv2.IMWRITE_PNG_COMPRESSION, 9])
 
 
 def img_wirte_float_as_16bit_int(filename, img_float):
