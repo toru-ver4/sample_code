@@ -13,6 +13,7 @@ from sympy.utilities.lambdify import lambdify
 import matplotlib.pyplot as plt
 from colour import XYZ_to_xyY, xyY_to_XYZ, XYZ_to_RGB
 from colour.models import RGB_COLOURSPACES
+from colour import write_LUT, LUT3D
 
 # import my libraries
 import test_pattern_generator2 as tpg
@@ -21,6 +22,7 @@ import plot_utility as pu
 import color_space as cs
 from bt2446_method_c import apply_cross_talk_matrix, rgb_to_xyz_in_hdr_space,\
     apply_chroma_correction, apply_inverse_cross_talk_matrix
+from bt2047_gamut_mapping import bt2407_gamut_mapping_for_rgb_linear
 
 
 # information
@@ -183,7 +185,9 @@ def bt2446_method_c_tonemapping_youtube_custom(
     xyY_hdr_cor = XYZ_to_xyY(xyz_hdr_cor)
 
     y_hdr = xyY_hdr_cor[..., 2]
-    y_sdr = youtube_tonemapping(y_hdr)
+    y_hdr_non_linear = tf.oetf(y_hdr, tf.ST2084)
+    y_sdr_non_linear = youtube_tonemapping(y_hdr_non_linear)
+    y_sdr = tf.eotf(y_sdr_non_linear, tf.ST2084)
     y_sdr = y_sdr / np.max(y_sdr)
 
     xyY_sdr_cor = xyY_hdr_cor.copy()
@@ -234,7 +238,41 @@ def debug_tone_mapping():
     plt.close(fig)
 
 
+def make_3dlut(
+        src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+        alpha=0.15, sigma=0.5, gamma=2.4,
+        hdr_ref_luminance=203, hdr_peak_luminance=1000,
+        bt2407_gamut_mapping=True, grid_num=65, prefix=""):
+
+    x = LUT3D.linear_table(grid_num).reshape((1, grid_num ** 3, 3))
+    print(x.shape)
+    x_linear = tf.eotf(x, tf.ST2084)
+    sdr_img_linear = bt2446_method_c_tonemapping_youtube_custom(
+         img=x_linear,
+         src_color_space_name=src_color_space_name,
+         tfc=tfc, alpha=alpha, sigma=sigma,
+         hdr_ref_luminance=hdr_ref_luminance,
+         hdr_peak_luminance=hdr_peak_luminance)
+    if bt2407_gamut_mapping:
+        sdr_img_linear = bt2407_gamut_mapping_for_rgb_linear(
+            rgb_linear=sdr_img_linear,
+            outer_color_space_name=cs.BT2020,
+            inner_color_space_name=cs.BT709)
+    sdr_img_nonlinear = sdr_img_linear ** (1/gamma)
+    sdr_img_nonlinear = sdr_img_nonlinear.reshape(
+        ((grid_num, grid_num, grid_num, 3)))
+    print(sdr_img_nonlinear.shape)
+
+    lut_name = "ty tone mapping"
+    lut3d = LUT3D(table=sdr_img_nonlinear, name=lut_name)
+
+    file_name = f"./3DLUT/{prefix}_a_{alpha:.2f}_s_{sigma:.2f}_"\
+        + f"_grid_{grid_num}_gamma_{gamma:.1f}.cube"
+    write_LUT(lut3d, file_name)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # main_func()
-    debug_tone_mapping()
+    # debug_tone_mapping()
+    make_3dlut(prefix="YouTube_Custom_BT2446")
