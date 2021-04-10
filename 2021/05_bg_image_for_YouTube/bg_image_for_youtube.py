@@ -74,13 +74,17 @@ def sRGB_to_Lab(rgb=[201/255, 222/255, 251/255]):
 def create_alpha_circle_image(
         width=1920, height=1080,
         h_num=3, v_num=2, fg_width=200, fg_height=200,
-        min_rad=5, max_rad=50):
+        min_rad=5, max_rad=50, gamma=1.0):
     gc = GridCoordinate(
         bg_width=width, bg_height=height,
         fg_width=fg_width, fg_height=fg_height,
         h_num=h_num, v_num=v_num, remove_tblr_margin=True)
     pos_list = gc.get_st_pos_list()
-    rad_list = np.uint16(np.round(np.linspace(min_rad, max_rad, v_num)))
+    rad_rate = (np.linspace(min_rad, max_rad, v_num) - min_rad)\
+        / (max_rad - min_rad)
+    rad_rate = rad_rate ** gamma
+    rad_list = np.uint16(np.round(rad_rate * (max_rad - min_rad) + min_rad))
+    print(rad_list)
     fg_img = np.ones((height, width, 3), dtype=np.uint8) * 255
     for v_idx in range(v_num):
         for h_idx in range(h_num):
@@ -104,12 +108,12 @@ def create_youtube_bg_image():
 
 
 def main_func():
-    create_bg_image(color=np.array([1, 1, 1])*235/255)
+    create_bg_image(color=np.array([1, 1, 1])*245/255)
     create_fg_image(rgb=[174/255, 197/255, 244/255])
     create_alpha_circle_image(
         width=1920, height=1080,
-        h_num=int(16*2.3), v_num=int(9*2.3), fg_width=2, fg_height=2,
-        min_rad=5, max_rad=40)
+        h_num=int(16*2), v_num=int(9*2), fg_width=2, fg_height=2,
+        min_rad=5, max_rad=55, gamma=1.6)
     create_youtube_bg_image()
 
 
