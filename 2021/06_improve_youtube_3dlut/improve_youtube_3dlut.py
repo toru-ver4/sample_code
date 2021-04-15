@@ -15,6 +15,8 @@ from colour import XYZ_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_RGB
 from colour.models import RGB_COLOURSPACES, BT2020_COLOURSPACE,\
     BT709_COLOURSPACE
 from colour import write_LUT, read_LUT, LUT3D
+from colour import YCbCr_to_RGB, RGB_to_YCbCr, YCBCR_WEIGHTS
+from scipy import linalg
 
 # import my libraries
 import test_pattern_generator2 as tpg
@@ -24,6 +26,7 @@ import color_space as cs
 from bt2446_method_c import apply_cross_talk_matrix, rgb_to_xyz_in_hdr_space,\
     apply_chroma_correction, apply_inverse_cross_talk_matrix
 from bt2047_gamut_mapping import bt2407_gamut_mapping_for_rgb_linear
+from color_convert import rgb2yuv_rec2020mtx, rgb2yuv_rec709mtx
 
 
 # information
@@ -244,10 +247,14 @@ def make_3dlut(
         alpha=0.15, sigma=0.5, gamma=2.4,
         hdr_ref_luminance=203, hdr_peak_luminance=1000,
         bt2407_gamut_mapping=True, grid_num=65, prefix="",
-        on_hdr10=False):
+        on_hdr10=False, for_obs=False):
 
     x = LUT3D.linear_table(grid_num).reshape((1, grid_num ** 3, 3))
     print(x.shape)
+
+    if for_obs:
+        x = apply_obs_matrix(x)
+
     x_linear = tf.eotf(x, tf.ST2084)
     sdr_img_linear = bt2446_method_c_tonemapping_youtube_custom(
          img=x_linear,
@@ -271,6 +278,8 @@ def make_3dlut(
         sdr_img_nonlinear = sdr_img_linear ** (1/gamma)
         suffix = ""
     lut_name = "ty tone mapping"
+    if for_obs:
+        suffix += "_for_obs_bt709"
     file_name = f"./3DLUT/{prefix}_a_{alpha:.2f}_s_{sigma:.2f}_"\
         + f"_grid_{grid_num}_gamma_{gamma:.1f}{suffix}.cube"
 
@@ -298,15 +307,60 @@ def create_youtube_org_on_hdr10():
 
     lut_name = "youtube tone mapping"
     file_name = "./3DLUT/HDR10_to_BT709_YouTube_Rev03_"
-    file_name += f"{suffix}.cube"
+    file_name += f"{grid_num}grid_{suffix}.cube"
     lut3d = LUT3D(table=sdr_img_nonlinear, name=lut_name)
     write_LUT(lut3d, file_name)
+
+
+def apply_wrong_ycbcr_matrix():
+    img = tpg.img_read_as_float("./img/SMPTE_ST2084_ITU-R_BT.2020_D65_1920x1080_rev04_type1.png")
+    img_10bit = np.uint16(np.round(img * 1023))
+    ycbcr_10bit = RGB_to_YCbCr(
+        img_10bit, K=YCBCR_WEIGHTS['ITU-R BT.2020'], in_bits=10,
+        out_bits=10, out_int=True, in_int=True, in_legal=False)
+    rgb_10bit = YCbCr_to_RGB(
+        ycbcr_10bit, K=YCBCR_WEIGHTS['ITU-R BT.709'], in_bits=10,
+        out_bits=10, out_int=True, in_legal=True, in_int=True)
+    rgb = rgb_10bit / 1023
+    tpg.img_wirte_float_as_16bit_int("./img/wrong_matrix.png", rgb)
+
+    lut3d = read_LUT("./3DLUT/YouTube_Custom_BT2446_a_0.15_s_0.50__grid_65_gamma_2.4.cube")
+    sdr_rgb = lut3d.apply(rgb)
+    tpg.img_wirte_float_as_16bit_int("./img/sdr_wrong_matrix.png", sdr_rgb)
+
+    sdr_rgb_right = lut3d.apply(img)
+    tpg.img_wirte_float_as_16bit_int("./img/sdr_right_matrix.png", sdr_rgb_right)
+
+    hdr_rgb_wrong_right = apply_obs_matrix(rgb)
+    sdr_rgb_wrong_right = lut3d.apply(hdr_rgb_wrong_right)
+    tpg.img_wirte_float_as_16bit_int("./img/sdr_wrong_right.png", sdr_rgb_wrong_right)
+
+
+def apply_obs_matrix(rgb):
+    r2y_bt709 = rgb2yuv_rec709mtx
+    r2y_bt2020 = rgb2yuv_rec2020mtx
+    y2r_bt2020 = linalg.inv(r2y_bt2020)
+    mtx = y2r_bt2020.dot(r2y_bt709)
+
+    org_shape = rgb.shape
+    r, g, b = np.dsplit(rgb, 3)
+    ro = mtx[0][0] * r + mtx[0][1] * g + mtx[0][2] * b
+    go = mtx[1][0] * r + mtx[1][1] * g + mtx[1][2] * b
+    bo = mtx[2][0] * r + mtx[2][1] * g + mtx[2][2] * b
+
+    out = np.dstack((ro, go, bo)).reshape(org_shape)
+
+    return out
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # main_func()
     # debug_tone_mapping()
-    # make_3dlut(prefix="YouTube_Custom_BT2446", on_hdr10=False)
-    # make_3dlut(prefix="YouTube_Custom_BT2446", on_hdr10=True)
-    create_youtube_org_on_hdr10()
+    make_3dlut(prefix="YouTube_Custom_BT2446", on_hdr10=False, grid_num=65,
+               for_obs=True)
+    make_3dlut(prefix="YouTube_Custom_BT2446", on_hdr10=False, grid_num=65)
+    make_3dlut(prefix="YouTube_Custom_BT2446", on_hdr10=True, grid_num=65)
+    # create_youtube_org_on_hdr10()
+    # apply_wrong_ycbcr_matrix()
+    # matrix_check()
