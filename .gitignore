@@ -172,6 +172,10 @@ venv.bak/
 2020/032_check_youtube_music/audio/*.wav
 2021/02_8bit_10bit_pattern_retry/img/**.png
 2021/03_investigate_avif/captured_video/*.mp4
+2021/06_improve_youtube_3dlut/luts/*.npy
+2021/06_improve_youtube_3dlut/apng/**/*.png
+2021/06_improve_youtube_3dlut/3DLUT/*.cube
+temporary/**/**
 
 .gitconfig
 .bash_history
