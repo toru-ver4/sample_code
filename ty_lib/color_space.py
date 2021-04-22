@@ -23,7 +23,8 @@ from colour.colorimetry import ILLUMINANTS
 from colour import RGB_COLOURSPACES
 from colour.models import xy_to_XYZ
 from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
-from colour.adaptation import chromatic_adaptation_matrix_VonKries as cat02_mtx
+# from colour.adaptation import chromatic_adaptation_matrix_VonKries as cat02_mtx
+from colour.adaptation import matrix_chromatic_adaptation_VonKries as cat02_mtx
 from scipy import linalg
 
 # Define
