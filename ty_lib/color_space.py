@@ -19,7 +19,7 @@ In-Out は原則 [0:1] のレンジで行う。
 
 import os
 import numpy as np
-from colour.colorimetry import ILLUMINANTS
+from colour.colorimetry import CCS_ILLUMINANTS as ILLUMINANTS
 from colour import RGB_COLOURSPACES
 from colour.models import xy_to_XYZ
 from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
