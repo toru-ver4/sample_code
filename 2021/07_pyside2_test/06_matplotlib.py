@@ -107,7 +107,7 @@ class MatplotlibTest():
         self.plot_obj.figure.canvas.draw()
 
 
-class MyWidget(QtWidgets):
+class MyWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.resize(1920, 1080)
