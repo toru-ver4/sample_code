@@ -8,19 +8,18 @@ import os
 import sys
 
 # import third-party libraries
-import pyqtgraph as pg
 import numpy as np
 import matplotlib.pyplot as plt
 
 from PySide2.QtWidgets import QApplication, QHBoxLayout, QWidget, QSlider,\
     QLabel, QVBoxLayout
 from PySide2.QtCore import Qt
-from PySide2 import QtCore, QtWidgets
+from PySide2 import QtWidgets
+from PySide2.QtGui import QPixmap
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg\
     import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PySide2.QtCharts import QtCharts
 
 # import my libraries
 import plot_utility as pu
@@ -108,54 +107,31 @@ class MatplotlibTest():
         self.plot_obj.figure.canvas.draw()
 
 
-class QtChartsTest():
-    def __init__(self) -> None:
-        super().__init__()
-        self.series = QtCharts.QLineSeries()
-        self.series.append(0, 6)
-        self.series.append(2, 4)
-        self.series.append(3, 8)
-        self.series.append(7, 4)
-        self.series.append(10, 5)
-
-        self.chart = QtCharts.QChart()
-        self.chart.addSeries(self.series)
-        self.chart_view = QtCharts.QChartView(self.chart)
-
-    def get_chart(self):
-        return self.chart_view
-
-
-class PyQtGraphTest():
-    def __init__(self) -> None:
-        super().__init__()
-        self.pw = pg.plot([1, 2, 3, 4])
-
-    def get_pw(self):
-        return self.pw
-
-
-class MyWidget(QWidget):
+class MyWidget(QtWidgets):
     def __init__(self):
         super().__init__()
-        self.base_layout = QVBoxLayout(self)
-        self.mpl_layout = QHBoxLayout(self)
-        self.qt_plot_layout = QHBoxLayout(self)
+        self.resize(1920, 1080)
+        base_layout = QHBoxLayout(self)
+        mpl_layout = QVBoxLayout(self)
+        mpl_control_layout = QHBoxLayout(self)
         self.slider_obj = GammaSlider()
         self.gamma_label = GammaLabel(self.slider_obj.get_default())
         self.matplotlib = MatplotlibTest(
             init_gamma=self.slider_obj.get_default())
-        self.qt_chart = QtChartsTest()
-        self.pyqtgraph = PyQtGraphTest()
 
         self.slider_obj.set_slot(
             self.update_slider_relative_parameters)
-        self.mpl_layout.addWidget(self.matplotlib.get_matplotlib_canvas())
-        self.mpl_layout.addWidget(self.gamma_label.get_label())
-        self.mpl_layout.addWidget(self.slider_obj.get_slider())
-        self.qt_plot_layout.addWidget(self.pyqtgraph.get_pw())
-        self.base_layout.addLayout(self.qt_plot_layout)
-        self.base_layout.addLayout(self.mpl_layout)
+        mpl_control_layout.addWidget(self.gamma_label.get_label())
+        mpl_control_layout.addWidget(self.slider_obj.get_slider())
+        mpl_layout.addWidget(self.matplotlib.get_matplotlib_canvas())
+        mpl_layout.addLayout(mpl_control_layout)
+        base_layout.addLayout(mpl_layout)
+
+        picture = QPixmap("./img/sozai.png")
+        self.label = QLabel(self)
+        self.label.setPixmap(picture)
+        base_layout.addWidget(self.label)
+        self.setLayout(base_layout)
 
     def update_slider_relative_parameters(self):
         value = self.slider_obj.get_value()
@@ -166,7 +142,6 @@ class MyWidget(QWidget):
 def main_func():
     app = QApplication([])
     widget = MyWidget()
-    widget.resize(1920, 1080)
     widget.show()
     sys.exit(app.exec_())
 
