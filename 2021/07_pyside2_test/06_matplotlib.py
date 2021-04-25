@@ -16,7 +16,7 @@ from PySide2.QtWidgets import QApplication, QHBoxLayout, QWidget, QSlider,\
     QLabel, QVBoxLayout
 from PySide2.QtCore import Qt
 from PySide2 import QtWidgets
-from PySide2.QtGui import QPixmap
+from PySide2.QtGui import QPixmap, QImage
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg\
     import FigureCanvasQTAgg as FigureCanvas
@@ -145,6 +145,9 @@ class EventControl():
         self.mpl_canvas.update_plot(gamma=value)
 
 
+        
+
+
 class MyWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -160,9 +163,14 @@ class MyWidget(QWidget):
             canvas=mpl_canvas, slider=mpl_gm_slider,
             label=mpl_gm_label)
 
-        picture = QPixmap("./img/sozai.png")
+        img = np.ones((360, 720, 3), dtype=np.uint8)
+        img = img * np.uint8([255, 255, 0])
+        print(img[0, 0])
+        qimg = QImage(
+            img.data, 720, 360, 720*3, QImage.Format_RGB888)
+
         img_label = QLabel(self)
-        img_label.setPixmap(picture)
+        img_label.setPixmap(QPixmap.fromImage(qimg))
 
         layout.add_mpl_widget(
             canvas=mpl_canvas, slider=mpl_gm_slider,
