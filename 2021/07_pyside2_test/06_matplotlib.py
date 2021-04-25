@@ -24,7 +24,7 @@ from matplotlib.figure import Figure
 
 # import my libraries
 import plot_utility as pu
-
+import test_pattern_generator2 as tpg
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -39,16 +39,20 @@ __all__ = []
 class GammaSlider(QWidget):
     def __init__(self, slot_func=None):
         super().__init__()
-        self.int_float_rate = 100
+        self.int_float_rate = 10
         self.defalut_value = 2.2
         min_value = 0.1
         max_value = 3.0
         interval = 0.1
+        step = 0.1
         self.slider = QSlider(orientation=Qt.Horizontal)
-        self.slider.setTickInterval(int(interval * self.int_float_rate))
         self.slider.setMinimum(int(min_value * self.int_float_rate))
         self.slider.setMaximum(int(max_value * self.int_float_rate))
         self.slider.setValue(int(self.defalut_value * self.int_float_rate))
+        self.slider.setTickInterval(int(interval * self.int_float_rate))
+        self.slider.setTickPosition(QSlider.TicksBelow)
+        self.slider.setSingleStep(int(step * self.int_float_rate))
+        # print(f"step={int(step * self.int_float_rate)}")
 
     def change_value(self):
         print("changed")
@@ -104,7 +108,7 @@ class MatplotlibTest():
         return self.canvas
 
     def update_plot(self, gamma=2.4):
-        y = self.x ** gamma
+        y = self.x ** (1/gamma)
         self.plot_obj.set_data(self.x, y)
         self.plot_obj.figure.canvas.draw()
 
@@ -132,10 +136,11 @@ class EventControl():
     def __init__(self) -> None:
         pass
 
-    def mpl_slider_changed(self, canvas, slider, label):
+    def mpl_slider_changed(self, canvas, slider, label, img):
         self.mpl_canvas = canvas
         self.mpl_slider = slider
         self.mpl_label = label
+        self.img = img
         slider.set_slot(slot_func=self.mpl_slider_change_slot)
 
     def mpl_slider_change_slot(self):
@@ -143,16 +148,49 @@ class EventControl():
         print(f"value = {value}")
         self.mpl_label.set_label(value)
         self.mpl_canvas.update_plot(gamma=value)
+        self.img.gamma_change(gamma=value)
 
 
-        
+class MyImage():
+    def __init__(
+            self, numpy_img=np.ones((512, 512, 3), dtype=np.float32)) -> None:
+        self.label = QLabel()
+        self.np_img = numpy_img
+        self.ndarray_to_qimage(self.np_img)
+        self.label.setPixmap(QPixmap.fromImage(self.qimg))
+
+    def ndarray_to_qimage(self, img):
+        """
+        Parameters
+        ----------
+        img : ndarray(float)
+            image data. data range is from 0.0 to 1.0
+        """
+        self.uint8_img = np.uint8(np.round(np.clip(img, 0.0, 1.0) * 255))
+        height, width = self.uint8_img.shape[:2]
+        print(f"h={height}, w={width}")
+        self.qimg = QImage(
+            self.uint8_img.data, width, height, QImage.Format_RGB888)
+
+        return self.qimg
+
+    def gamma_change(self, gamma=2.2):
+        img = (self.np_img ** 2.4) ** (1/gamma)
+        self.ndarray_to_qimage(img)
+        self.label.setPixmap(QPixmap.fromImage(self.qimg))
+
+    def get_widget(self):
+        return self.label
 
 
 class MyWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.resize(1920, 1080)
+        self.resize(960, 540)
         layout = MyLayout(self)
+        img = tpg.img_read_as_float("./img/sozai.png")
+        # img = np.ones((512, 512, 3)) * np.array([1.0, 1.0, 0.0])
+        my_image = MyImage(numpy_img=img)
         event_control = EventControl()
         mpl_gm_slider = GammaSlider()
         mpl_gm_label = GammaLabel(mpl_gm_slider.get_default())
@@ -161,21 +199,12 @@ class MyWidget(QWidget):
 
         event_control.mpl_slider_changed(
             canvas=mpl_canvas, slider=mpl_gm_slider,
-            label=mpl_gm_label)
-
-        img = np.ones((360, 720, 3), dtype=np.uint8)
-        img = img * np.uint8([255, 255, 0])
-        print(img[0, 0])
-        qimg = QImage(
-            img.data, 720, 360, 720*3, QImage.Format_RGB888)
-
-        img_label = QLabel(self)
-        img_label.setPixmap(QPixmap.fromImage(qimg))
+            label=mpl_gm_label, img=my_image)
 
         layout.add_mpl_widget(
             canvas=mpl_canvas, slider=mpl_gm_slider,
             label=mpl_gm_label)
-        layout.add_image_widget(img_label)
+        layout.add_image_widget(my_image.get_widget())
 
 
 def main_func():
@@ -205,4 +234,5 @@ def matplot_qt5_test():
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     main_func()
-    # matplot_qt5_test()
+    # a = np.array([[0, 1, 2], [3, 4, 5]], dtype=np.uint8)
+    # print(a.nbytes)
