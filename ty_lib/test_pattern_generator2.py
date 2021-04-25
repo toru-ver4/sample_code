@@ -11,13 +11,13 @@ from colour.models.rgb.rgb_colourspace import RGB_to_RGB
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from colour.colorimetry import CMFS, ILLUMINANTS
+from colour.colorimetry import MSDS_CMFS, CCS_ILLUMINANTS
 from colour.models import XYZ_to_xy, xy_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
 from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ
-from colour.models import BT709_COLOURSPACE, BT2020_COLOURSPACE
+from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020
 from colour.utilities import normalise_maximum
 from colour import models
-from colour import RGB_COLOURSPACES, COLOURCHECKERS
+from colour import RGB_COLOURSPACES, CCS_COLOURCHECKERS
 from scipy.spatial import Delaunay
 from scipy.ndimage.filters import convolve
 import math
@@ -26,7 +26,7 @@ import transfer_functions as tf
 
 
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
-D65_WHITE = ILLUMINANTS[CMFS_NAME]['D65']
+D65_WHITE = CCS_ILLUMINANTS[CMFS_NAME]['D65']
 YCBCR_CHECK_MARKER = [0, 0, 0]
 
 UNIVERSAL_COLOR_LIST = ["#F6AA00", "#FFF100", "#03AF7A",
@@ -172,7 +172,7 @@ def _get_cmfs_xy():
     """
     # 基本パラメータ設定
     # ------------------
-    cmf = CMFS.get(CMFS_NAME)
+    cmf = MSDS_CMFS.get(CMFS_NAME)
     d65_white = D65_WHITE
 
     # 馬蹄形のxy値を算出
@@ -263,9 +263,9 @@ def get_white_point(name):
     """
     if name != "DCI-P3":
         illuminant = RGB_COLOURSPACES[name].illuminant
-        white_point = ILLUMINANTS[CMFS_NAME][illuminant]
+        white_point = CCS_ILLUMINANTS[CMFS_NAME][illuminant]
     else:
-        white_point = ILLUMINANTS[CMFS_NAME]["D65"]
+        white_point = CCS_ILLUMINANTS[CMFS_NAME]["D65"]
 
     return white_point
 
@@ -392,7 +392,7 @@ def get_chromaticity_image(samples=1024, antialiasing=True, bg_color=0.9,
     色域設定。sRGBだと狭くて少し変だったのでBT.2020に設定。
     若干色が薄くなるのが難点。暇があれば改良したい。
     """
-    # color_space = models.BT2020_COLOURSPACE
+    # color_space = models.RGB_COLOURSPACE_BT2020
     # color_space = models.S_GAMUT3_COLOURSPACE
     color_space = models.ACES_CG_COLOURSPACE
 
@@ -1440,7 +1440,7 @@ def _calc_rgb_from_same_lstar_radial_data(
 
 def calc_same_lstar_radial_color_patch_data(
         lstar=58, chroma=32.5, outmost_num=9,
-        color_space=BT709_COLOURSPACE,
+        color_space=RGB_COLOURSPACE_BT709,
         transfer_function=tf.GAMMA24):
     """
     以下のような、中心がGray、周りは CIELAB 空間の a*b*平面のカラーパッチの
@@ -1475,7 +1475,7 @@ def calc_same_lstar_radial_color_patch_data(
 
 def _plot_same_lstar_radial_color_patch_data(
         lstar=58, chroma=32.5, outmost_num=9,
-        color_space=BT709_COLOURSPACE,
+        color_space=RGB_COLOURSPACE_BT709,
         transfer_function=tf.GAMMA24):
     patch_size = 1080 // outmost_num
     img = np.ones((1080, 1080, 3)) * 0.0
@@ -1602,7 +1602,7 @@ def get_accelerated_x_8x(sample_num=64):
 
 
 def generate_color_checker_rgb_value(
-        color_space=BT709_COLOURSPACE, target_white=D65_WHITE):
+        color_space=RGB_COLOURSPACE_BT709, target_white=D65_WHITE):
     """
     Generate the 24 RGB values of the color checker.
 
@@ -1622,7 +1622,7 @@ def generate_color_checker_rgb_value(
     Examples
     --------
     >>> generate_color_checker_rgb_value(
-    ...     color_space=colour.models.BT709_COLOURSPACE,
+    ...     color_space=colour.models.RGB_COLOURSPACE_BT709,
     ...     target_white=[0.3127, 0.3290])
     >>> [[ 0.17289286  0.08205728  0.05714562]
     >>>  [ 0.5680292   0.29250401  0.21951748]
@@ -1830,7 +1830,7 @@ def create_8bit_10bit_id_patch(
     if hdr10:
         linear = tf.eotf(base_rgb_8bit / 255, tf.GAMMA24)
         linear_2020 = RGB_to_RGB(
-            linear, BT709_COLOURSPACE, BT2020_COLOURSPACE)
+            linear, RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020)
         linear_2020_gain2x = linear_2020 * 100 * 2
         st2084_2020 = tf.oetf_from_luminance(linear_2020_gain2x, tf.ST2084)
         base_rgb_8bit = np.round(st2084_2020 * 255)
@@ -1934,7 +1934,7 @@ if __name__ == '__main__':
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
     # _plot_same_lstar_radial_color_patch_data(
     #     lstar=58, chroma=32.5, outmost_num=7,
-    #     color_space=BT709_COLOURSPACE,
+    #     color_space=RGB_COLOURSPACE_BT709,
     #     transfer_function=tf.GAMMA24)
     # calc_rad_patch_idx2(outmost_num=9, current_num=7)
     # print(convert_luminance_to_color_value(100, tf.ST2084))
