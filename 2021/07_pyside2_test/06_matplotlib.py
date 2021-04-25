@@ -6,6 +6,7 @@ improve the 3dlut.
 # import standard libraries
 import os
 import sys
+from matplotlib.backend_bases import Event
 
 # import third-party libraries
 import numpy as np
@@ -48,7 +49,6 @@ class GammaSlider(QWidget):
         self.slider.setMinimum(int(min_value * self.int_float_rate))
         self.slider.setMaximum(int(max_value * self.int_float_rate))
         self.slider.setValue(int(self.defalut_value * self.int_float_rate))
-        self.set_slot(slot_func)
 
     def change_value(self):
         print("changed")
@@ -61,14 +61,16 @@ class GammaSlider(QWidget):
     def get_value(self):
         return self.slider.value() / self.int_float_rate
 
-    def get_slider(self):
+    def get_widget(self):
         return self.slider
 
     def get_default(self):
         return self.defalut_value
 
     def set_slot(self, slot_func):
-        self.slider.valueChanged.connect(slot_func)
+        self.slot_func = slot_func
+        self.slot_func()
+        self.slider.valueChanged.connect(self.slot_func)
 
 
 class GammaLabel(QWidget):
@@ -76,7 +78,7 @@ class GammaLabel(QWidget):
         super().__init__()
         self.label = QLabel(str(default))
 
-    def get_label(self):
+    def get_widget(self):
         return self.label
 
     def set_label(self, value):
@@ -98,7 +100,7 @@ class MatplotlibTest():
         self.plot_obj, =\
             self.ax1.plot(self.x, self.y, label=f"gamma={gamma}")
 
-    def get_matplotlib_canvas(self):
+    def get_widget(self):
         return self.canvas
 
     def update_plot(self, gamma=2.4):
@@ -107,36 +109,65 @@ class MatplotlibTest():
         self.plot_obj.figure.canvas.draw()
 
 
+class MyLayout():
+    def __init__(self, parent) -> None:
+        # self.base_layout = QHBoxLayout(parent)
+        self.base_layout = QHBoxLayout()
+        parent.setLayout(self.base_layout)
+
+    def add_mpl_widget(self, canvas, slider, label):
+        mpl_layout = QVBoxLayout()
+        ctrl_layout = QHBoxLayout()
+        ctrl_layout.addWidget(label.get_widget())
+        ctrl_layout.addWidget(slider.get_widget())
+        mpl_layout.addWidget(canvas.get_widget())
+        mpl_layout.addLayout(ctrl_layout)
+        self.base_layout.addLayout(mpl_layout)
+
+    def add_image_widget(self, img):
+        self.base_layout.addWidget(img)
+
+
+class EventControl():
+    def __init__(self) -> None:
+        pass
+
+    def mpl_slider_changed(self, canvas, slider, label):
+        self.mpl_canvas = canvas
+        self.mpl_slider = slider
+        self.mpl_label = label
+        slider.set_slot(slot_func=self.mpl_slider_change_slot)
+
+    def mpl_slider_change_slot(self):
+        value = self.mpl_slider.get_value()
+        print(f"value = {value}")
+        self.mpl_label.set_label(value)
+        self.mpl_canvas.update_plot(gamma=value)
+
+
 class MyWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.resize(1920, 1080)
-        base_layout = QHBoxLayout(self)
-        mpl_layout = QVBoxLayout(self)
-        mpl_control_layout = QHBoxLayout(self)
-        self.slider_obj = GammaSlider()
-        self.gamma_label = GammaLabel(self.slider_obj.get_default())
-        self.matplotlib = MatplotlibTest(
-            init_gamma=self.slider_obj.get_default())
+        layout = MyLayout(self)
+        event_control = EventControl()
+        mpl_gm_slider = GammaSlider()
+        mpl_gm_label = GammaLabel(mpl_gm_slider.get_default())
+        mpl_canvas = MatplotlibTest(
+            init_gamma=mpl_gm_slider.get_default())
 
-        self.slider_obj.set_slot(
-            self.update_slider_relative_parameters)
-        mpl_control_layout.addWidget(self.gamma_label.get_label())
-        mpl_control_layout.addWidget(self.slider_obj.get_slider())
-        mpl_layout.addWidget(self.matplotlib.get_matplotlib_canvas())
-        mpl_layout.addLayout(mpl_control_layout)
-        base_layout.addLayout(mpl_layout)
+        event_control.mpl_slider_changed(
+            canvas=mpl_canvas, slider=mpl_gm_slider,
+            label=mpl_gm_label)
 
         picture = QPixmap("./img/sozai.png")
-        self.label = QLabel(self)
-        self.label.setPixmap(picture)
-        base_layout.addWidget(self.label)
-        self.setLayout(base_layout)
+        img_label = QLabel(self)
+        img_label.setPixmap(picture)
 
-    def update_slider_relative_parameters(self):
-        value = self.slider_obj.get_value()
-        self.gamma_label.set_label(value)
-        self.matplotlib.update_plot(gamma=value)
+        layout.add_mpl_widget(
+            canvas=mpl_canvas, slider=mpl_gm_slider,
+            label=mpl_gm_label)
+        layout.add_image_widget(img_label)
 
 
 def main_func():
