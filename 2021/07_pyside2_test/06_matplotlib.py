@@ -11,6 +11,8 @@ from matplotlib.backend_bases import Event
 # import third-party libraries
 import numpy as np
 import matplotlib.pyplot as plt
+from colour import RGB_to_XYZ, XYZ_to_RGB, CCT_to_xy
+from colour.models import RGB_COLOURSPACE_BT709
 
 from PySide2.QtWidgets import QApplication, QHBoxLayout, QWidget, QSlider,\
     QLabel, QVBoxLayout
@@ -77,6 +79,42 @@ class GammaSlider(QWidget):
         self.slider.valueChanged.connect(self.slot_func)
 
 
+class ColorTempSlider(QWidget):
+    def __init__(self, slot_func=None):
+        super().__init__()
+        self.int_float_rate = 1/100
+        self.defalut_value = 6500
+        min_value = 3000
+        max_value = 10000
+        self.slider = QSlider(orientation=Qt.Horizontal)
+        self.slider.setMinimum(int(min_value * self.int_float_rate))
+        self.slider.setMaximum(int(max_value * self.int_float_rate))
+        self.slider.setValue(int(self.defalut_value * self.int_float_rate))
+        self.slider.setTickPosition(QSlider.TicksBelow)
+
+    def change_value(self):
+        print("color temp changed")
+        value = self.get_value()
+        print(value)
+
+    def set_value(self, value=6500):
+        self.slider.setValue(int(value * self.int_float_rate))
+
+    def get_value(self):
+        return self.slider.value() / self.int_float_rate
+
+    def get_widget(self):
+        return self.slider
+
+    def get_default(self):
+        return self.defalut_value
+
+    def set_slot(self, slot_func):
+        self.slot_func = slot_func
+        self.slot_func()
+        self.slider.valueChanged.connect(self.slot_func)
+
+
 class GammaLabel(QWidget):
     def __init__(self, default=2.2):
         super().__init__()
@@ -87,6 +125,18 @@ class GammaLabel(QWidget):
 
     def set_label(self, value):
         self.label.setText(str(value))
+
+
+class ColorTempLabel(QWidget):
+    def __init__(self, default=6500):
+        super().__init__()
+        self.label = QLabel(str(default))
+
+    def get_widget(self):
+        return self.label
+
+    def set_label(self, value):
+        self.label.setText(str(int(value)))
 
 
 class MatplotlibTest():
@@ -119,13 +169,17 @@ class MyLayout():
         self.base_layout = QHBoxLayout()
         parent.setLayout(self.base_layout)
 
-    def add_mpl_widget(self, canvas, slider, label):
+    def add_mpl_widget(self, canvas, gm_slider, gm_label, ct_slider, ct_label):
         mpl_layout = QVBoxLayout()
-        ctrl_layout = QHBoxLayout()
-        ctrl_layout.addWidget(label.get_widget())
-        ctrl_layout.addWidget(slider.get_widget())
+        gm_ctrl_layout = QHBoxLayout()
+        ct_ctrl_layout = QHBoxLayout()
+        gm_ctrl_layout.addWidget(gm_label.get_widget())
+        gm_ctrl_layout.addWidget(gm_slider.get_widget())
+        ct_ctrl_layout.addWidget(ct_label.get_widget())
+        ct_ctrl_layout.addWidget(ct_slider.get_widget())
         mpl_layout.addWidget(canvas.get_widget())
-        mpl_layout.addLayout(ctrl_layout)
+        mpl_layout.addLayout(gm_ctrl_layout)
+        mpl_layout.addLayout(ct_ctrl_layout)
         self.base_layout.addLayout(mpl_layout)
 
     def add_image_widget(self, img):
@@ -136,19 +190,25 @@ class EventControl():
     def __init__(self) -> None:
         pass
 
-    def mpl_slider_changed(self, canvas, slider, label, img):
+    def mpl_slider_changed(
+            self, canvas, gm_slider, ct_slider, gm_label, ct_label, img):
         self.mpl_canvas = canvas
-        self.mpl_slider = slider
-        self.mpl_label = label
+        self.gm_slider = gm_slider
+        self.ct_slider = ct_slider
+        self.mpl_label = gm_label
+        self.ct_label = ct_label
         self.img = img
-        slider.set_slot(slot_func=self.mpl_slider_change_slot)
+        gm_slider.set_slot(slot_func=self.slider_change_slot)
+        ct_slider.set_slot(slot_func=self.slider_change_slot)
 
-    def mpl_slider_change_slot(self):
-        value = self.mpl_slider.get_value()
-        print(f"value = {value}")
-        self.mpl_label.set_label(value)
-        self.mpl_canvas.update_plot(gamma=value)
-        self.img.gamma_change(gamma=value)
+    def slider_change_slot(self):
+        gm_value = self.gm_slider.get_value()
+        color_temp = self.ct_slider.get_value()
+        print(f"gamma = {gm_value}, color_temp = {color_temp}")
+        self.mpl_label.set_label(gm_value)
+        self.ct_label.set_label(color_temp)
+        self.mpl_canvas.update_plot(gamma=gm_value)
+        self.img.image_change(gamma=gm_value, color_temp=color_temp)
 
 
 class MyImage():
@@ -174,8 +234,17 @@ class MyImage():
 
         return self.qimg
 
-    def gamma_change(self, gamma=2.2):
-        img = (self.np_img ** 2.4) ** (1/gamma)
+    def image_change(self, gamma=2.2, color_temp=6500):
+        linear_img = (self.np_img ** 2.4)
+        dst_temperature_xy = CCT_to_xy(color_temp)
+        # dst_temperature_xy = tpg.D65_WHITE
+        xyz = RGB_to_XYZ(
+            linear_img, tpg.D65_WHITE, dst_temperature_xy,
+            RGB_COLOURSPACE_BT709.RGB_to_XYZ_matrix)
+        linear_img = XYZ_to_RGB(
+            xyz, dst_temperature_xy, dst_temperature_xy,
+            RGB_COLOURSPACE_BT709.XYZ_to_RGB_matrix)
+        img = np.clip(linear_img, 0.0, 1.0) ** (1/gamma)
         self.ndarray_to_qimage(img)
         self.label.setPixmap(QPixmap.fromImage(self.qimg))
 
@@ -193,17 +262,21 @@ class MyWidget(QWidget):
         my_image = MyImage(numpy_img=img)
         event_control = EventControl()
         mpl_gm_slider = GammaSlider()
+        mpl_ct_slider = ColorTempSlider()
         mpl_gm_label = GammaLabel(mpl_gm_slider.get_default())
+        mpl_ct_label = ColorTempLabel(mpl_ct_slider.get_default())
         mpl_canvas = MatplotlibTest(
             init_gamma=mpl_gm_slider.get_default())
 
         event_control.mpl_slider_changed(
-            canvas=mpl_canvas, slider=mpl_gm_slider,
-            label=mpl_gm_label, img=my_image)
+            canvas=mpl_canvas, gm_slider=mpl_gm_slider,
+            ct_slider=mpl_ct_slider, gm_label=mpl_gm_label,
+            ct_label=mpl_ct_label, img=my_image)
 
         layout.add_mpl_widget(
-            canvas=mpl_canvas, slider=mpl_gm_slider,
-            label=mpl_gm_label)
+            canvas=mpl_canvas, gm_slider=mpl_gm_slider, gm_label=mpl_gm_label,
+            ct_slider=mpl_ct_slider, ct_label=mpl_ct_label)
+
         layout.add_image_widget(my_image.get_widget())
 
 
@@ -236,3 +309,4 @@ if __name__ == '__main__':
     main_func()
     # a = np.array([[0, 1, 2], [3, 4, 5]], dtype=np.uint8)
     # print(a.nbytes)
+    # print(tpg.D65_WHITE)
