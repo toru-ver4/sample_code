@@ -11,6 +11,7 @@ plot補助ツール群
 
 """
 
+from copy import Error
 import numpy as np
 from matplotlib import ticker
 import matplotlib.pyplot as plt
