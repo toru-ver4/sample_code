@@ -181,3 +181,4 @@ temporary/**/**
 .bash_history
 .local/**
 .vscode-server/**
+~/.pyenv/plugins/pyenv-update/
