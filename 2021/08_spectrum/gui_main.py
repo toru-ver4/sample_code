@@ -23,6 +23,9 @@ from matplotlib.figure import Figure
 
 # import my libraries
 import test_pattern_generator2 as tpg
+import plot_utility as pu
+from spectrum_calculation import calc_illuminant_d_spectrum,\
+    get_cie_2_1931_cmf
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -114,25 +117,39 @@ class LayoutControl():
 
 class TySpectrumPlot():
     def __init__(
-            self, figsize=(10, 8)):
+            self, figsize=(10, 8), default_temp=6500):
         super().__init__()
         self.fig = Figure(figsize=figsize)
         self.ax1 = self.fig.add_subplot(111)
-        self.plot_init_plot(sample_num=256)
+        self.plot_init_plot(sample_num=256, default_temp=6500)
         self.canvas = FigureCanvas(self.fig)
         # self.plot_obj.figure.canvas.draw()
 
-    def plot_init_plot(self, sample_num):
-        self.x = np.linspace(0, 1, sample_num)
-        self.y = self.x * 1
-        self.plot_obj, = self.ax1.plot(self.x, self.y)
+    def plot_init_plot(self, sample_num, default_temp):
+        illuminant_d = calc_illuminant_d_spectrum(color_temp=default_temp)
+        self.illuminant_x = illuminant_d.wavelengths
+        self.illuminant_y = illuminant_d.values
+        self.illuminant_line, = self.ax1.plot(
+            self.illuminant_x, self.illuminant_y, color=[0.2, 0.2, 0.2])
+
+        cmf = get_cie_2_1931_cmf()
+        self.cmf_x = cmf.wavelengths
+        self.cmf_r = cmf.values[..., 0]
+        self.cmf_g = cmf.values[..., 1]
+        self.cmf_b = cmf.values[..., 2]
+        self.line_cmf_r = self.ax1.plot(
+            self.cmf_x, self.cmf_r, '--', color=pu.RED)
+        self.line_cmf_g = self.ax1.plot(
+            self.cmf_x, self.cmf_g, '--', color=pu.GREEN)
+        self.line_cmf_b = self.ax1.plot(
+            self.cmf_x, self.cmf_b, '--', color=pu.BLUE)
 
     def get_widget(self):
         return self.canvas
 
     def update_plot(self, x, y):
-        self.plot_obj.set_data(x, y)
-        self.plot_obj.figure.canvas.draw()
+        self.illuminant_line.set_data(x, y)
+        self.illuminant_line.figure.canvas.draw()
 
 
 class EventControl():
@@ -143,13 +160,15 @@ class EventControl():
             self, white_slider, white_label, spectrum_plot):
         self.white_slider = white_slider
         self.white_label = white_label
-        self.mpl_plot = spectrum_plot
+        self.spectrum_plot = spectrum_plot
         self.white_slider.set_slot(self.slider_event)
 
     def slider_event(self):
         color_temp = self.white_slider.get_value()
+        sd = calc_illuminant_d_spectrum(color_temp)
         print(f"color_temp={color_temp}")
         self.white_label.set_label(int(color_temp))
+        self.spectrum_plot.update_plot(x=sd.wavelengths, y=sd.values)
 
 
 class MyWidget(QWidget):
@@ -162,10 +181,10 @@ class MyWidget(QWidget):
 
         # object for widget
         white_slider = TyBasicSlider(
-            int_float_rate=1/50, default=6500, min_val=2000, max_val=10000)
+            int_float_rate=1/50, default=6500, min_val=3000, max_val=10000)
         white_label = TyBasicLabel(
             default=white_slider.get_default(), suffix="K")
-        spectrum_plot = TySpectrumPlot()
+        spectrum_plot = TySpectrumPlot(default_temp=white_slider.get_default())
 
         # set slot
         self.event_control = EventControl()
