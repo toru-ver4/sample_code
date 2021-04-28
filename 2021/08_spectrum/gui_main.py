@@ -12,20 +12,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from PySide2.QtWidgets import QApplication, QHBoxLayout, QWidget, QSlider,\
-    QLabel, QVBoxLayout
-from PySide2.QtCore import Qt
+    QLabel, QVBoxLayout, QGridLayout
+from PySide2.QtCore import QCalendar, Qt
 from PySide2 import QtWidgets
-from PySide2.QtGui import QPixmap, QImage
+from PySide2.QtGui import QPixmap, QImage, QPalette, QColor
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg\
     import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+import color_space
+from colour.models import RGB_COLOURSPACE_BT709
 
 # import my libraries
 import test_pattern_generator2 as tpg
 import plot_utility as pu
+import transfer_functions as tf
 from spectrum_calculation import calc_illuminant_d_spectrum,\
-    get_cie_2_1931_cmf
+    get_cie_2_1931_cmf, calc_linear_rgb_from_single_spectrum,\
+    REFRECT_100P_SD
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -101,7 +105,7 @@ class TyBasicLabel(QWidget):
 class LayoutControl():
     def __init__(self, parent) -> None:
         # self.base_layout = QHBoxLayout(parent)
-        self.base_layout = QHBoxLayout()
+        self.base_layout = QGridLayout()
         parent.setLayout(self.base_layout)
 
     def set_mpl_layout(self, canvas, white_label, white_slider):
@@ -112,7 +116,65 @@ class LayoutControl():
         mpl_layout.addWidget(canvas.get_widget())
         mpl_layout.addLayout(white_layout)
         # white_layout.setFrameSt
-        self.base_layout.addLayout(mpl_layout)
+        self.base_layout.addLayout(mpl_layout, 0, 0)
+
+    def set_color_patch_layout(self, color_patch):
+        patch_layout = QVBoxLayout()
+        patch_layout.addWidget(color_patch.get_widget())
+        self.base_layout.addLayout(patch_layout, 0, 1)
+
+
+class WindowColorControl():
+    def __init__(self, parent) -> None:
+        self.parent = parent
+
+    def set_bg_color(self, color=[0.15, 0.15, 0.15]):
+        palette = self.parent.palette()
+        color_value = [int(x * 255) for x in color]
+        palette.setColor(QPalette.Window, QColor(*color_value))
+        self.parent.setPalette(palette)
+        self.parent.setAutoFillBackground(True)
+
+
+class ColorPatchImage():
+    def __init__(self, width=256, height=256, color_temp_default=6500):
+        self.label = QLabel()
+        self.width = width
+        self.height = height
+        self.image_change(color_temp=color_temp_default)
+
+    def ndarray_to_qimage(self, img):
+        """
+        Parameters
+        ----------
+        img : ndarray(float)
+            image data. data range is from 0.0 to 1.0
+        """
+        self.uint8_img = np.uint8(np.round(np.clip(img, 0.0, 1.0) * 255))
+        height, width = self.uint8_img.shape[:2]
+        self.qimg = QImage(
+            self.uint8_img.data, width, height, QImage.Format_RGB888)
+
+        return self.qimg
+
+    def image_change(self, color_temp=6500):
+        src_sd = calc_illuminant_d_spectrum(color_temp=color_temp)
+        ref_sd = REFRECT_100P_SD
+        cmfs = get_cie_2_1931_cmf()
+
+        rgb_linear = calc_linear_rgb_from_single_spectrum(
+            src_sd=src_sd, ref_sd=ref_sd, cmfs=cmfs,
+            color_space=RGB_COLOURSPACE_BT709).reshape((1, 1, 3))
+        print(f"rgb_linear={rgb_linear}")
+        rgb_srgb = tf.oetf(np.clip(rgb_linear, 0.0, 1.0), tf.SRGB)
+        print(f"rgb_srgb={rgb_srgb}")
+
+        self.qimg = self.ndarray_to_qimage(
+            np.ones((self.height, self.width, 3), dtype=np.uint8) * rgb_srgb)
+        self.label.setPixmap(QPixmap.fromImage(self.qimg))
+
+    def get_widget(self):
+        return self.label
 
 
 class TySpectrumPlot():
@@ -177,10 +239,11 @@ class EventControl():
         pass
 
     def set_white_slider_event(
-            self, white_slider, white_label, spectrum_plot):
+            self, white_slider, white_label, spectrum_plot, patch_img):
         self.white_slider = white_slider
         self.white_label = white_label
         self.spectrum_plot = spectrum_plot
+        self.patch_img = patch_img
         self.white_slider.set_slot(self.slider_event)
 
     def slider_event(self):
@@ -189,12 +252,17 @@ class EventControl():
         print(f"color_temp={color_temp}")
         self.white_label.set_label(int(color_temp))
         self.spectrum_plot.update_plot(x=sd.wavelengths, y=sd.values)
+        self.patch_img.image_change(color_temp=color_temp)
 
 
 class MyWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.resize(960, 540)
+
+        # background color
+        window_color = WindowColorControl(parent=self)
+        window_color.set_bg_color(color=[0.7, 0.7, 0.7])
 
         # layout
         layout = LayoutControl(self)
@@ -206,17 +274,20 @@ class MyWidget(QWidget):
             default=white_slider.get_default(), suffix="K")
         spectrum_plot = TySpectrumPlot(
             default_temp=white_slider.get_default(), figsize=(10, 6))
+        patch_img = ColorPatchImage(
+            color_temp_default=white_slider.get_default())
 
         # set slot
         self.event_control = EventControl()
         self.event_control.set_white_slider_event(
             white_slider=white_slider, white_label=white_label,
-            spectrum_plot=spectrum_plot)
+            spectrum_plot=spectrum_plot, patch_img=patch_img)
 
         # set layout
         layout.set_mpl_layout(
             canvas=spectrum_plot,
             white_label=white_label, white_slider=white_slider)
+        layout.set_color_patch_layout(color_patch=patch_img)
 
 
 def main_func():

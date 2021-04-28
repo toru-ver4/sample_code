@@ -46,7 +46,7 @@ REFRECT_100P_SD = SpectralDistribution(
 
 def calc_illuminant_d_spectrum(color_temp=6500):
     xy = CCT_to_xy_CIE_D(color_temp)
-    print(xy)
+    # print(xy)
     sd = sd_CIE_illuminant_D_series(xy)
     sd.values = sd.values / 100
 
