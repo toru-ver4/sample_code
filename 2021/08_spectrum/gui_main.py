@@ -119,8 +119,23 @@ class TySpectrumPlot():
     def __init__(
             self, figsize=(10, 8), default_temp=6500):
         super().__init__()
-        self.fig = Figure(figsize=figsize)
-        self.ax1 = self.fig.add_subplot(111)
+        self.fig, self.ax1 = pu.plot_1_graph(
+            fontsize=16,
+            figsize=figsize,
+            graph_title="Spectral power distribution",
+            graph_title_size=None,
+            xlabel="Wavelength [nm]", ylabel="???",
+            axis_label_size=None,
+            legend_size=14,
+            xlim=[330, 860],
+            ylim=[-0.05, 2.0],
+            xtick=[350 + x * 50 for x in range(11)],
+            ytick=None,
+            xtick_size=None, ytick_size=None,
+            linewidth=3,
+            minor_xtick_num=None,
+            minor_ytick_num=None,
+            return_figure=True)
         self.plot_init_plot(sample_num=256, default_temp=6500)
         self.canvas = FigureCanvas(self.fig)
         # self.plot_obj.figure.canvas.draw()
@@ -130,7 +145,8 @@ class TySpectrumPlot():
         self.illuminant_x = illuminant_d.wavelengths
         self.illuminant_y = illuminant_d.values
         self.illuminant_line, = self.ax1.plot(
-            self.illuminant_x, self.illuminant_y, color=[0.2, 0.2, 0.2])
+            self.illuminant_x, self.illuminant_y, color=[0.2, 0.2, 0.2],
+            label="SPD of illuminant D")
 
         cmf = get_cie_2_1931_cmf()
         self.cmf_x = cmf.wavelengths
@@ -138,11 +154,15 @@ class TySpectrumPlot():
         self.cmf_g = cmf.values[..., 1]
         self.cmf_b = cmf.values[..., 2]
         self.line_cmf_r = self.ax1.plot(
-            self.cmf_x, self.cmf_r, '--', color=pu.RED)
+            self.cmf_x, self.cmf_r, '--', color=pu.RED,
+            label="Color matching function(R)")
         self.line_cmf_g = self.ax1.plot(
-            self.cmf_x, self.cmf_g, '--', color=pu.GREEN)
+            self.cmf_x, self.cmf_g, '--', color=pu.GREEN,
+            label="Color matching function(G)")
         self.line_cmf_b = self.ax1.plot(
-            self.cmf_x, self.cmf_b, '--', color=pu.BLUE)
+            self.cmf_x, self.cmf_b, '--', color=pu.BLUE,
+            label="Color matching function(B)")
+        plt.legend(loc='upper right')
 
     def get_widget(self):
         return self.canvas
@@ -184,7 +204,8 @@ class MyWidget(QWidget):
             int_float_rate=1/50, default=6500, min_val=3000, max_val=10000)
         white_label = TyBasicLabel(
             default=white_slider.get_default(), suffix="K")
-        spectrum_plot = TySpectrumPlot(default_temp=white_slider.get_default())
+        spectrum_plot = TySpectrumPlot(
+            default_temp=white_slider.get_default(), figsize=(10, 6))
 
         # set slot
         self.event_control = EventControl()
