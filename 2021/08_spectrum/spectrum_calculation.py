@@ -5,13 +5,9 @@ spectrum
 
 # import standard libraries
 import os
-import sys
-from colour.models.rgb import transfer_functions
 
-# import third-party libraries
 import numpy as np
-import matplotlib.pyplot as plt
-from colour import XYZ_to_xyY, XYZ_to_RGB, SpragueInterpolator,\
+from colour import XYZ_to_xyY, XYZ_to_RGB, xy_to_XYZ, SpragueInterpolator,\
     SpectralDistribution, MultiSpectralDistributions
 from colour.temperature import CCT_to_xy_CIE_D
 from colour import sd_CIE_illuminant_D_series, SpectralShape
@@ -208,19 +204,55 @@ def calc_color_temp_after_spectrum_rendering(src_sd, cmfs):
     return result_xyY[:2]
 
 
+def get_color_checker_large_xyz_of_d65(color_temp):
+    src_sd = calc_illuminant_d_spectrum(color_temp)
+    ref_multi_sd = load_color_checker_spectrum()
+    cmfs = get_cie_2_1931_cmf()
+    large_xyz = calc_xyz_from_multi_spectrum(
+        src_sd=src_sd, ref_sd=ref_multi_sd, cmfs=cmfs)
+
+    return large_xyz
+
+
+def get_color_checker_linear_rgb_from_d65(dst_white, color_space):
+    """
+    convert from D65 white color checker to Dxx white color checker.
+    """
+    color_temp = 6504
+    src_white = CCT_to_xy_CIE_D(color_temp)
+    d65_xyz = get_color_checker_large_xyz_of_d65(color_temp)
+    linear_rgb = XYZ_to_RGB(
+        d65_xyz, D65_WHITE, dst_white, color_space.matrix_XYZ_to_RGB)
+
+    # normalize coefficient
+    large_xyz = xy_to_XYZ(src_white)
+    normalize_rgb = XYZ_to_RGB(
+        large_xyz, D65_WHITE, dst_white, color_space.matrix_XYZ_to_RGB)
+    print(f"normalize_rgb = {normalize_rgb}")
+
+    # return linear_rgb / np.max(normalize_rgb)
+    return linear_rgb
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_func()
-    src_sd = calc_illuminant_d_spectrum(6500)
+    src_sd = calc_illuminant_d_spectrum(3000)
     ref_multi_sd = load_color_checker_spectrum()
     cmfs = get_cie_2_1931_cmf()
     linear_rgb = linear_rgb = calc_linear_rgb_from_spectrum(
         src_sd=src_sd, ref_sd=ref_multi_sd, cmfs=cmfs,
         color_space=RGB_COLOURSPACE_BT709)
     rgb_srgb = tf.oetf(np.clip(linear_rgb, 0.0, 1.0), tf.SRGB)
-    color_checker_img = plot_color_checker_image(
-        rgb=rgb_srgb, size=(540, 360), block_size=1/4.5)
-    img_wirte_float_as_16bit_int("hoge.png", color_checker_img)
+    # color_checker_img = plot_color_checker_image(
+    #     rgb=rgb_srgb, size=(540, 360), block_size=1/4.5)
+    # img_wirte_float_as_16bit_int("hoge.png", color_checker_img)
     result_xy = calc_color_temp_after_spectrum_rendering(
         src_sd=src_sd, cmfs=cmfs)
-    print(result_xy)
+
+    linear_rgb = get_color_checker_linear_rgb_from_d65(
+        dst_white=result_xy, color_space=RGB_COLOURSPACE_BT709)
+    rgb_srgb2 = tf.oetf(np.clip(linear_rgb, 0.0, 1.0), tf.SRGB)
+    color_checker_img = plot_color_checker_image(
+        rgb=rgb_srgb, rgb2=rgb_srgb2, size=(540, 360), block_size=1/4.5)
+    img_wirte_float_as_16bit_int("hoge.png", color_checker_img)
