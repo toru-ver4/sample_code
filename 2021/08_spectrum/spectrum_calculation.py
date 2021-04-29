@@ -7,18 +7,23 @@ spectrum
 import os
 
 import numpy as np
+from scipy.stats import norm
+
 from colour import XYZ_to_xyY, XYZ_to_RGB, xy_to_XYZ, SpragueInterpolator,\
     SpectralDistribution, MultiSpectralDistributions
 from colour.temperature import CCT_to_xy_CIE_D
-from colour import sd_CIE_illuminant_D_series, SpectralShape
+from colour import sd_CIE_illuminant_D_series, SpectralShape, Extrapolator
 from colour.colorimetry import MSDS_CMFS_STANDARD_OBSERVER
 from colour.utilities import tstack
 from colour.models import RGB_COLOURSPACE_BT709
+from colour.algebra import LinearInterpolator
 
 # import my libraries
 from test_pattern_generator2 import D65_WHITE, plot_color_checker_image,\
     img_wirte_float_as_16bit_int
 import transfer_functions as tf
+import plot_utility as pu
+import matplotlib.pyplot as plt
 
 
 # information
@@ -31,10 +36,10 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-# VALID_WAVELENGTH_ST = 360
-# VALID_WAVELENGTH_ED = 830
-VALID_WAVELENGTH_ST = 380
-VALID_WAVELENGTH_ED = 730
+VALID_WAVELENGTH_ST = 360
+VALID_WAVELENGTH_ED = 830
+# VALID_WAVELENGTH_ST = 380
+# VALID_WAVELENGTH_ED = 730
 VALID_SHAPE = SpectralShape(
     VALID_WAVELENGTH_ST, VALID_WAVELENGTH_ED, 1)
 
@@ -121,7 +126,13 @@ def load_color_checker_spectrum():
     data = dict(zip(wavelength, values))
     color_checker_sd = MultiSpectralDistributions(data=data)
     color_checker_sd = color_checker_sd.interpolate(
-        shape=VALID_SHAPE, interpolator=SpragueInterpolator).trim(VALID_SHAPE)
+        shape=VALID_SHAPE, interpolator=SpragueInterpolator)
+
+    keyword = dict(
+        method='Constant', left=0, right=0)
+    color_checker_sd.extrapolate(
+        shape=VALID_SHAPE, extrapolator=Extrapolator,
+        extrapolator_kwargs=keyword)
 
     return color_checker_sd
 
@@ -265,9 +276,7 @@ def convert_color_checker_linear_rgb_from_d65(
     return linear_rgb / np.max(normalize_rgb)
 
 
-if __name__ == '__main__':
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # debug_func()
+def color_checker_check_func():
     src_sd = calc_illuminant_d_spectrum(3000)
     ref_multi_sd = load_color_checker_spectrum()
     cmfs = get_cie_2_1931_cmf()
@@ -289,3 +298,74 @@ if __name__ == '__main__':
     color_checker_img = plot_color_checker_image(
         rgb=rgb_srgb, rgb2=rgb_srgb2, size=(540, 360), block_size=1/4.5)
     img_wirte_float_as_16bit_int("hoge.png", color_checker_img)
+
+
+def create_display_spectrum_test():
+    x = np.arange()
+    y = norm.pdf(x, 500, scale=30)
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="Title",
+        graph_title_size=None,
+        xlabel="X Axis Label", ylabel="Y Axis Label",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None,
+        return_figure=True)
+    ax1.plot(x, y, label="aaa")
+    plt.legend(loc='upper left')
+    plt.show()
+    plt.close(fig)
+
+
+def extrapolator_test():
+    ref_multi_sd = load_color_checker_spectrum()
+    keyword = dict(
+        method='Constant', left=0, right=0)
+    ref_multi_sd_360_830 = ref_multi_sd.copy()
+    ref_multi_sd_360_830.extrapolate(
+        shape=VALID_SHAPE, extrapolator=Extrapolator,
+        extrapolator_kwargs=keyword)
+
+    x1 = ref_multi_sd.wavelengths
+    y1 = ref_multi_sd.values[..., 18]
+
+    x2 = ref_multi_sd_360_830.wavelengths
+    y2 = ref_multi_sd_360_830.values[..., 18]
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        graph_title="Title",
+        graph_title_size=None,
+        xlabel="X Axis Label", ylabel="Y Axis Label",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None,
+        return_figure=True)
+    ax1.plot(x2, y2, label="with Extrapolation")
+    ax1.plot(x1, y1, '--', label="original")
+    plt.legend(loc='upper left')
+    plt.show()
+    plt.close(fig)
+
+
+if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # debug_func()
+    extrapolator_test()
