@@ -214,15 +214,47 @@ def get_color_checker_large_xyz_of_d65(color_temp):
     return large_xyz
 
 
-def get_color_checker_linear_rgb_from_d65(dst_white, color_space):
+def convert_color_checker_linear_rgb_from_d65(
+        d65_color_checker_xyz, dst_white, color_space):
     """
     convert from D65 white color checker to Dxx white color checker.
+
+    Examples
+    --------
+    >>> d65_color_checker_xyz = get_color_checker_large_xyz_of_d65(6504)
+    >>> convert_color_checker_linear_rgb_from_d65(
+    ...     d65_color_checker_xyz=d65_color_checker_xyz,
+    ...     dst_white=result_xy, color_space=RGB_COLOURSPACE_BT709)
+    [[ 0.14683397  0.03958833  0.00627516]
+     [ 0.47596101  0.14178862  0.02575557]
+     [ 0.13636166  0.09700691  0.06000937]
+     [ 0.11606916  0.07385164  0.00284443]
+     [ 0.22484404  0.10575814  0.07761267]
+     [ 0.23497984  0.25816364  0.05921924]
+     [ 0.56708895  0.08951235 -0.01117377]
+     [ 0.08001099  0.05211231  0.07652314]
+     [ 0.41278372  0.03650183  0.01537575]
+     [ 0.08808705  0.02052208  0.02608161]
+     [ 0.39305027  0.24938059 -0.01730461]
+     [ 0.65500321  0.16628094 -0.02019578]
+     [ 0.03354099  0.02411967  0.05853887]
+     [ 0.12997428  0.15023356 -0.00127581]
+     [ 0.31587871  0.00976112  0.00245512]
+     [ 0.7700667   0.2760175  -0.03421657]
+     [ 0.38727265  0.03718964  0.05450171]
+     [ 0.05200192  0.12495766  0.06890876]
+     [ 0.91575358  0.44532093  0.12991015]
+     [ 0.58456461  0.28768097  0.08856024]
+     [ 0.35692614  0.17568433  0.05459322]
+     [ 0.18895591  0.093656    0.02919013]
+     [ 0.08791188  0.043792    0.01393372]
+     [ 0.03185322  0.01554741  0.00501038]]
     """
     color_temp = 6504
     src_white = CCT_to_xy_CIE_D(color_temp)
-    d65_xyz = get_color_checker_large_xyz_of_d65(color_temp)
     linear_rgb = XYZ_to_RGB(
-        d65_xyz, D65_WHITE, dst_white, color_space.matrix_XYZ_to_RGB)
+        d65_color_checker_xyz, D65_WHITE, dst_white,
+        color_space.matrix_XYZ_to_RGB)
 
     # normalize coefficient
     large_xyz = xy_to_XYZ(src_white)
@@ -230,8 +262,7 @@ def get_color_checker_linear_rgb_from_d65(dst_white, color_space):
         large_xyz, D65_WHITE, dst_white, color_space.matrix_XYZ_to_RGB)
     print(f"normalize_rgb = {normalize_rgb}")
 
-    # return linear_rgb / np.max(normalize_rgb)
-    return linear_rgb
+    return linear_rgb / np.max(normalize_rgb)
 
 
 if __name__ == '__main__':
@@ -249,9 +280,11 @@ if __name__ == '__main__':
     # img_wirte_float_as_16bit_int("hoge.png", color_checker_img)
     result_xy = calc_color_temp_after_spectrum_rendering(
         src_sd=src_sd, cmfs=cmfs)
-
-    linear_rgb = get_color_checker_linear_rgb_from_d65(
+    d65_color_checker_xyz = get_color_checker_large_xyz_of_d65(6504)
+    linear_rgb = convert_color_checker_linear_rgb_from_d65(
+        d65_color_checker_xyz=d65_color_checker_xyz,
         dst_white=result_xy, color_space=RGB_COLOURSPACE_BT709)
+    print(linear_rgb)
     rgb_srgb2 = tf.oetf(np.clip(linear_rgb, 0.0, 1.0), tf.SRGB)
     color_checker_img = plot_color_checker_image(
         rgb=rgb_srgb, rgb2=rgb_srgb2, size=(540, 360), block_size=1/4.5)

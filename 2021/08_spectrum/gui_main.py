@@ -29,7 +29,11 @@ import plot_utility as pu
 import transfer_functions as tf
 from spectrum_calculation import calc_illuminant_d_spectrum,\
     get_cie_2_1931_cmf, calc_linear_rgb_from_spectrum,\
-    REFRECT_100P_SD
+    REFRECT_100P_SD, get_color_checker_large_xyz_of_d65,\
+    convert_color_checker_linear_rgb_from_d65,\
+    plot_color_checker_image, load_color_checker_spectrum,\
+    calc_color_temp_after_spectrum_rendering
+
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -177,6 +181,54 @@ class ColorPatchImage():
         return self.label
 
 
+class ColorCheckerImage():
+    def __init__(self, width=540, height=360, color_temp_default=6504):
+        self.label = QLabel()
+        self.width = width
+        self.height = height
+        self.d65_color_checker_xyz = get_color_checker_large_xyz_of_d65(
+            color_temp=color_temp_default)
+        self.cmfs = get_cie_2_1931_cmf()
+        self.cc_ref_sd = load_color_checker_spectrum()
+        self.image_change(color_temp=color_temp_default)
+
+    def ndarray_to_qimage(self, img):
+        """
+        Parameters
+        ----------
+        img : ndarray(float)
+            image data. data range is from 0.0 to 1.0
+        """
+        self.uint8_img = np.uint8(np.round(np.clip(img, 0.0, 1.0) * 255))
+        height, width = self.uint8_img.shape[:2]
+        self.qimg = QImage(
+            self.uint8_img.data, width, height, QImage.Format_RGB888)
+
+        return self.qimg
+
+    def get_widget(self):
+        return self.label
+
+    def image_change(self, color_temp=6504):
+        src_sd = calc_illuminant_d_spectrum(color_temp)
+        linear_rgb = calc_linear_rgb_from_spectrum(
+            src_sd=src_sd, ref_sd=self.cc_ref_sd, cmfs=self.cmfs,
+            color_space=RGB_COLOURSPACE_BT709)
+        rgb_srgb = tf.oetf(np.clip(linear_rgb, 0.0, 1.0), tf.SRGB)
+        result_xy = calc_color_temp_after_spectrum_rendering(
+            src_sd=src_sd, cmfs=self.cmfs)
+        linear_rgb_mtx = convert_color_checker_linear_rgb_from_d65(
+            d65_color_checker_xyz=self.d65_color_checker_xyz,
+            dst_white=result_xy, color_space=RGB_COLOURSPACE_BT709)
+        rgb_srgb_mtx = tf.oetf(np.clip(linear_rgb_mtx, 0.0, 1.0), tf.SRGB)
+        color_checker_img = plot_color_checker_image(
+            rgb=rgb_srgb, rgb2=rgb_srgb_mtx, size=(self.width, self.height),
+            block_size=1/4.5)
+
+        self.qimg = self.ndarray_to_qimage(color_checker_img)
+        self.label.setPixmap(QPixmap.fromImage(self.qimg))
+
+
 class TySpectrumPlot():
     def __init__(
             self, figsize=(10, 8), default_temp=6500):
@@ -258,7 +310,7 @@ class EventControl():
 class MyWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.resize(960, 540)
+        self.resize(1280, 540)
 
         # background color
         window_color = WindowColorControl(parent=self)
@@ -269,25 +321,28 @@ class MyWidget(QWidget):
 
         # object for widget
         white_slider = TyBasicSlider(
-            int_float_rate=1/50, default=6500, min_val=3000, max_val=10000)
+            int_float_rate=1/100, default=6500, min_val=4000, max_val=15000)
         white_label = TyBasicLabel(
             default=white_slider.get_default(), suffix="K")
         spectrum_plot = TySpectrumPlot(
             default_temp=white_slider.get_default(), figsize=(10, 6))
-        patch_img = ColorPatchImage(
+        # patch_img = ColorPatchImage(
+        #     color_temp_default=white_slider.get_default())
+        color_checkr_img = ColorCheckerImage(
+            width=540, height=360,
             color_temp_default=white_slider.get_default())
 
         # set slot
         self.event_control = EventControl()
         self.event_control.set_white_slider_event(
             white_slider=white_slider, white_label=white_label,
-            spectrum_plot=spectrum_plot, patch_img=patch_img)
+            spectrum_plot=spectrum_plot, patch_img=color_checkr_img)
 
         # set layout
         layout.set_mpl_layout(
             canvas=spectrum_plot,
             white_label=white_label, white_slider=white_slider)
-        layout.set_color_patch_layout(color_patch=patch_img)
+        layout.set_color_patch_layout(color_patch=color_checkr_img)
 
 
 def main_func():
