@@ -32,7 +32,7 @@ from spectrum_calculation import calc_illuminant_d_spectrum,\
     REFRECT_100P_SD, get_color_checker_large_xyz_of_d65,\
     convert_color_checker_linear_rgb_from_d65,\
     plot_color_checker_image, load_color_checker_spectrum,\
-    calc_color_temp_after_spectrum_rendering
+    calc_color_temp_after_spectrum_rendering, DisplaySpectralDistribution
 
 
 # information
@@ -286,6 +286,76 @@ class TySpectrumPlot():
         self.illuminant_line.figure.canvas.draw()
 
 
+class DisplaySpectrumPlot():
+    def __init__(
+            self, r_mean, r_dist, r_gain,
+            g_mean, g_dist, g_gain, b_mean, b_dist, b_gain, figsize=(10, 6)):
+        super().__init__()
+        self.figsize = figsize
+        self.cmfs = get_cie_2_1931_cmf()
+        self.update_spectrum(
+            r_mean=r_mean, r_dist=r_dist, r_gain=r_gain,
+            g_mean=g_mean, g_dist=g_dist, g_gain=g_gain,
+            b_mean=b_mean, b_dist=b_dist, b_gain=b_gain)
+        self.init_plot()
+
+    def update_spectrum(
+            self, r_mean, r_dist, r_gain,
+            g_mean, g_dist, g_gain, b_mean, b_dist, b_gain):
+        param_dict = dict(
+            wavelengths=np.arange(360, 831),
+            r_mean=r_mean, r_dist=r_dist, r_gain=r_gain,
+            g_mean=g_mean, g_dist=g_dist, g_gain=g_gain,
+            b_mean=b_mean, b_dist=b_dist, b_gain=b_gain)
+        self.display_sd_obj = DisplaySpectralDistribution(**param_dict)
+        self.display_w_sd = self.display_sd_obj.get_wrgb_sd_array()[0]
+
+    def init_plot(self):
+        self.fig, ax1 = pu.plot_1_graph(
+            fontsize=14,
+            figsize=self.figsize,
+            graph_title="Spectral power distribution",
+            graph_title_size=None,
+            xlabel="Wavelength [nm]", ylabel="???",
+            axis_label_size=None,
+            legend_size=12,
+            xlim=[340, 750],
+            ylim=None,
+            xtick=None,
+            ytick=None,
+            xtick_size=None, ytick_size=None,
+            linewidth=3,
+            return_figure=True)
+        self.display_sd_line = ax1.plot(
+            self.display_w_sd.wavelengths, self.display_w_sd.values, '-',
+            color=(0.1, 0.1, 0.1), label="Display (W=R+G+B)")
+        ax1.plot(
+            self.cmfs.wavelengths, self.cmfs.values[..., 0], '--',
+            color=pu.RED, label="Color matching function(R)", lw=1.5)
+        ax1.plot(
+            self.cmfs.wavelengths, self.cmfs.values[..., 1], '--',
+            color=pu.GREEN, label="Color matching function(G)", lw=1.5)
+        ax1.plot(
+            self.cmfs.wavelengths, self.cmfs.values[..., 2], '--',
+            color=pu.BLUE, label="Color matching function(B)", lw=1.5)
+        plt.legend(loc='upper right')
+        self.canvas = FigureCanvas(self.fig)
+
+    def update_plot(
+            self, r_mean, r_dist, r_gain,
+            g_mean, g_dist, g_gain, b_mean, b_dist, b_gain):
+        self.update_spectrum(
+            r_mean=r_mean, r_dist=r_dist, r_gain=r_gain,
+            g_mean=g_mean, g_dist=g_dist, g_gain=g_gain,
+            b_mean=b_mean, b_dist=b_dist, b_gain=b_gain)
+        self.display_sd_line.set_data(
+            x=self.display_w_sd.wavelengths, y=self.display_w_sd.values)
+        self.display_sd_line.figure.canvas.draw()
+
+    def get_widget(self):
+        return self.canvas
+
+
 class EventControl():
     def __init__(self) -> None:
         pass
@@ -324,8 +394,12 @@ class MyWidget(QWidget):
             int_float_rate=1/100, default=6500, min_val=4000, max_val=15000)
         white_label = TyBasicLabel(
             default=white_slider.get_default(), suffix="K")
-        spectrum_plot = TySpectrumPlot(
-            default_temp=white_slider.get_default(), figsize=(10, 6))
+        # spectrum_plot = TySpectrumPlot(
+        #     default_temp=white_slider.get_default(), figsize=(10, 6))
+        display_sd_plot = DisplaySpectrumPlot(
+            r_mean=625, r_dist=20, r_gain=50,
+            g_mean=530, g_dist=20, g_gain=50,
+            b_mean=460, b_dist=20, b_gain=50, figsize=(10, 6))
         # patch_img = ColorPatchImage(
         #     color_temp_default=white_slider.get_default())
         color_checkr_img = ColorCheckerImage(
@@ -334,13 +408,13 @@ class MyWidget(QWidget):
 
         # set slot
         self.event_control = EventControl()
-        self.event_control.set_white_slider_event(
-            white_slider=white_slider, white_label=white_label,
-            spectrum_plot=spectrum_plot, patch_img=color_checkr_img)
+        # self.event_control.set_white_slider_event(
+        #     white_slider=white_slider, white_label=white_label,
+        #     spectrum_plot=spectrum_plot, patch_img=color_checkr_img)
 
         # set layout
         layout.set_mpl_layout(
-            canvas=spectrum_plot,
+            canvas=display_sd_plot,
             white_label=white_label, white_slider=white_slider)
         layout.set_color_patch_layout(color_patch=color_checkr_img)
 

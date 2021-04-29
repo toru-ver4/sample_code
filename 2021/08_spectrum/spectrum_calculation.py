@@ -323,11 +323,13 @@ class DisplaySpectralDistribution():
         self.b_values = self.create_norm(self.x, b_mean, b_dist, b_gain)
         self.w_values = self.r_values + self.g_values + self.b_values
 
-        self.sd = SpectralDistribution(
-            data=dict(zip(self.x, self.w_values)))
+        self.w_sd = SpectralDistribution(data=dict(zip(self.x, self.w_values)))
+        self.r_sd = SpectralDistribution(data=dict(zip(self.x, self.r_values)))
+        self.g_sd = SpectralDistribution(data=dict(zip(self.x, self.g_values)))
+        self.b_sd = SpectralDistribution(data=dict(zip(self.x, self.b_values)))
 
-    def get_sd(self):
-        return self.sd
+    def get_wrgb_sd_array(self):
+        return [self.w_sd, self.r_sd, self.g_sd, self.b_sd]
 
     def plot_rgb_distribution(self):
         fig, ax1 = pu.plot_1_graph(
@@ -363,7 +365,7 @@ def create_display_spectrum_test():
         g_mean=530, g_dist=7.5, g_gain=50,
         b_mean=460, b_dist=7.5, b_gain=50)
     display_spectral_distribution = DisplaySpectralDistribution(**param_dict)
-    display_sd = display_spectral_distribution.get_sd()
+    display_w_sd = display_spectral_distribution.get_wrgb_sd_array()[0]
 
     # display_sd.plot_rgb_distribution()
     cmfs = get_cie_2_1931_cmf()
@@ -383,8 +385,8 @@ def create_display_spectrum_test():
         linewidth=3,
         return_figure=True)
     ax1.plot(
-        display_sd.wavelengths, display_sd.values, '-', color=(0.1, 0.1, 0.1),
-        label="Display (W=R+G+B)")
+        display_w_sd.wavelengths, display_w_sd.values, '-',
+        color=(0.1, 0.1, 0.1), label="Display (W=R+G+B)")
     ax1.plot(
         cmfs.wavelengths, cmfs.values[..., 0], '--', color=pu.RED,
         label="Color matching function(R)", lw=1.5)
@@ -395,7 +397,8 @@ def create_display_spectrum_test():
         cmfs.wavelengths, cmfs.values[..., 2], '--', color=pu.BLUE,
         label="Color matching function(B)", lw=1.5)
     plt.legend(loc='upper right')
-    plt.savefig("./img/ds_sd_dist_7.5.png", bbox_inches='tight', pad_inches=0.1)
+    plt.savefig(
+        "./img/ds_sd_dist_7.5.png", bbox_inches='tight', pad_inches=0.1)
     plt.show()
     plt.close(fig)
 
@@ -410,29 +413,12 @@ def plot_display_gamut_test():
         r_mean=r_mean, r_dist=dist, r_gain=50,
         g_mean=g_mean, g_dist=dist, g_gain=50,
         b_mean=b_mean, b_dist=dist, b_gain=50)
-    r_param_dict = dict(
-        wavelengths=np.arange(360, 831),
-        r_mean=r_mean, r_dist=dist, r_gain=50,
-        g_mean=g_mean, g_dist=dist, g_gain=0,
-        b_mean=b_mean, b_dist=dist, b_gain=0)
-    g_param_dict = dict(
-        wavelengths=np.arange(360, 831),
-        r_mean=r_mean, r_dist=dist, r_gain=0,
-        g_mean=g_mean, g_dist=dist, g_gain=50,
-        b_mean=b_mean, b_dist=dist, b_gain=0)
-    b_param_dict = dict(
-        wavelengths=np.arange(360, 831),
-        r_mean=r_mean, r_dist=dist, r_gain=0,
-        g_mean=g_mean, g_dist=dist, g_gain=0,
-        b_mean=b_mean, b_dist=dist, b_gain=50)
-    w_display_sd_obj = DisplaySpectralDistribution(**w_param_dict)
-    r_display_sd_obj = DisplaySpectralDistribution(**r_param_dict)
-    g_display_sd_obj = DisplaySpectralDistribution(**g_param_dict)
-    b_display_sd_obj = DisplaySpectralDistribution(**b_param_dict)
-    w_display_sd = w_display_sd_obj.get_sd()
-    r_display_sd = r_display_sd_obj.get_sd()
-    g_display_sd = g_display_sd_obj.get_sd()
-    b_display_sd = b_display_sd_obj.get_sd()
+    display_sd_obj = DisplaySpectralDistribution(**w_param_dict)
+    display_sd_array = display_sd_obj.get_wrgb_sd_array()
+    w_display_sd = display_sd_array[0]
+    r_display_sd = display_sd_array[1]
+    g_display_sd = display_sd_array[2]
+    b_display_sd = display_sd_array[3]
     cmfs = get_cie_2_1931_cmf()
     w_xyY = calc_xyY_from_single_spectrum(
         src_sd=REFRECT_100P_SD, ref_sd=w_display_sd, cmfs=cmfs)
@@ -486,11 +472,11 @@ def plot_display_gamut_test():
     ax1.plot((cmf_xy[-1, 0], cmf_xy[0, 0]), (cmf_xy[-1, 1], cmf_xy[0, 1]),
              '-k', lw=3.5*rate, label=None)
     ax1.plot(bt709_gamut[:, 0], bt709_gamut[:, 1],
-             c=pu.RED, label="BT.709", lw=2.75*rate)
+             c=pu.RED, label="BT.709", lw=2*rate, alpha=0.8)
     ax1.plot(bt2020_gamut[:, 0], bt2020_gamut[:, 1],
-             c=pu.YELLOW, label="BT.2020", lw=2.75*rate)
+             c=pu.YELLOW, label="BT.2020", lw=2*rate, alpha=0.8)
     ax1.plot(dci_p3_gamut[:, 0], dci_p3_gamut[:, 1],
-             c=pu.BLUE, label="DCI-P3", lw=2.75*rate)
+             c=pu.BLUE, label="DCI-P3", lw=2*rate, alpha=0.8)
     ax1.plot(primaries[:, 0], primaries[:, 1],
              c='k', label="Display device", lw=2.75*rate)
     ax1.plot(
@@ -508,5 +494,5 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_func()
     # extrapolator_test()
-    create_display_spectrum_test()
-    # plot_display_gamut_test()
+    # create_display_spectrum_test()
+    plot_display_gamut_test()

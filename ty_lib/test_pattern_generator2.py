@@ -449,7 +449,7 @@ def get_chromaticity_image(samples=1024, antialiasing=True, bg_color=0.9,
     illuminant_XYZ = D65_WHITE
     illuminant_RGB = color_space.whitepoint
     chromatic_adaptation_transform = 'XYZ Scaling'
-    large_xyz_to_rgb_matrix = color_space.XYZ_to_RGB_matrix
+    large_xyz_to_rgb_matrix = color_space.matrix_XYZ_to_RGB
     xy[xy == 0.0] = 1.0  # ゼロ割対策
     large_xyz = xy_to_XYZ(xy)
     rgb = XYZ_to_RGB(large_xyz, illuminant_XYZ, illuminant_RGB,
@@ -1427,7 +1427,7 @@ def _calc_rgb_from_same_lstar_radial_data(
     lab = np.dstack((ll, aa, bb))
     large_xyz = Lab_to_XYZ(lab)
     rgb = XYZ_to_RGB(large_xyz, D65_WHITE, D65_WHITE,
-                     color_space.XYZ_to_RGB_matrix)
+                     color_space.matrix_XYZ_to_RGB)
 
     return np.clip(rgb, 0.0, 1.0)
 
@@ -1656,7 +1656,7 @@ def generate_color_checker_rgb_value(
     illuminant_XYZ = whitepoint   # ColorCheckerのオリジナルデータの白色点
     illuminant_RGB = rgb_white_point  # XYZ to RGB 変換後の白色点を設定
     chromatic_adaptation_transform = 'CAT02'
-    large_xyz_to_rgb_matrix = color_space.XYZ_to_RGB_matrix
+    large_xyz_to_rgb_matrix = color_space.matrix_XYZ_to_RGB
 
     rgb = XYZ_to_RGB(
         large_xyz, illuminant_XYZ, illuminant_RGB,
