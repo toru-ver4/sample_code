@@ -20,10 +20,12 @@ from colour.algebra import LinearInterpolator
 
 # import my libraries
 from test_pattern_generator2 import D65_WHITE, plot_color_checker_image,\
-    img_wirte_float_as_16bit_int
+    img_wirte_float_as_16bit_int, _get_cmfs_xy, get_primaries,\
+    get_chromaticity_image
 import transfer_functions as tf
 import plot_utility as pu
 import matplotlib.pyplot as plt
+import color_space as cs
 
 
 # information
@@ -300,72 +302,211 @@ def color_checker_check_func():
     img_wirte_float_as_16bit_int("hoge.png", color_checker_img)
 
 
+class DisplaySpectralDistribution():
+    def __init__(
+            self, wavelengths, r_mean, r_dist, r_gain,
+            g_mean, g_dist, g_gain, b_mean, b_dist, b_gain):
+        self.x = wavelengths
+        self.update_spectrum(
+            r_mean=r_mean, r_dist=r_dist, r_gain=r_gain,
+            g_mean=g_mean, g_dist=g_dist, g_gain=g_gain,
+            b_mean=b_mean, b_dist=b_dist, b_gain=b_gain)
+
+    def create_norm(self, x, mean, dist, gain):
+        return norm.pdf(x, loc=mean, scale=dist) * gain
+
+    def update_spectrum(
+            self, r_mean, r_dist, r_gain,
+            g_mean, g_dist, g_gain, b_mean, b_dist, b_gain):
+        self.r_values = self.create_norm(self.x, r_mean, r_dist, r_gain)
+        self.g_values = self.create_norm(self.x, g_mean, g_dist, g_gain)
+        self.b_values = self.create_norm(self.x, b_mean, b_dist, b_gain)
+        self.w_values = self.r_values + self.g_values + self.b_values
+
+        self.sd = SpectralDistribution(
+            data=dict(zip(self.x, self.w_values)))
+
+    def get_sd(self):
+        return self.sd
+
+    def plot_rgb_distribution(self):
+        fig, ax1 = pu.plot_1_graph(
+            fontsize=20,
+            figsize=(10, 8),
+            graph_title="Spectral power distribution",
+            graph_title_size=None,
+            xlabel="Wavelength [nm]", ylabel="???",
+            axis_label_size=None,
+            legend_size=17,
+            xlim=None,
+            ylim=None,
+            xtick=None,
+            ytick=None,
+            xtick_size=None, ytick_size=None,
+            linewidth=5,
+            return_figure=True)
+        ax1.plot(self.x, self.r_values, color=pu.RED, label="R", alpha=0.6)
+        ax1.plot(self.x, self.g_values, color=pu.GREEN, label="G", alpha=0.6)
+        ax1.plot(self.x, self.b_values, color=pu.BLUE, label="B", alpha=0.6)
+        ax1.plot(
+            self.sd.wavelengths, self.sd.values, '--', color=(0.1, 0.1, 0.1),
+            label="W", lw=2)
+        plt.legend(loc='upper left')
+        plt.show()
+        plt.close(fig)
+
+
 def create_display_spectrum_test():
-    x = np.arange()
-    y = norm.pdf(x, 500, scale=30)
+    param_dict = dict(
+        wavelengths=np.arange(360, 831),
+        r_mean=625, r_dist=7.5, r_gain=50,
+        g_mean=530, g_dist=7.5, g_gain=50,
+        b_mean=460, b_dist=7.5, b_gain=50)
+    display_spectral_distribution = DisplaySpectralDistribution(**param_dict)
+    display_sd = display_spectral_distribution.get_sd()
+
+    # display_sd.plot_rgb_distribution()
+    cmfs = get_cie_2_1931_cmf()
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(10, 8),
-        graph_title="Title",
+        graph_title="Spectral power distribution",
         graph_title_size=None,
-        xlabel="X Axis Label", ylabel="Y Axis Label",
+        xlabel="Wavelength [nm]", ylabel="???",
         axis_label_size=None,
         legend_size=17,
-        xlim=None,
+        xlim=[340, 750],
         ylim=None,
         xtick=None,
         ytick=None,
         xtick_size=None, ytick_size=None,
         linewidth=3,
-        minor_xtick_num=None,
-        minor_ytick_num=None,
         return_figure=True)
-    ax1.plot(x, y, label="aaa")
-    plt.legend(loc='upper left')
+    ax1.plot(
+        display_sd.wavelengths, display_sd.values, '-', color=(0.1, 0.1, 0.1),
+        label="Display (W=R+G+B)")
+    ax1.plot(
+        cmfs.wavelengths, cmfs.values[..., 0], '--', color=pu.RED,
+        label="Color matching function(R)", lw=1.5)
+    ax1.plot(
+        cmfs.wavelengths, cmfs.values[..., 1], '--', color=pu.GREEN,
+        label="Color matching function(G)", lw=1.5)
+    ax1.plot(
+        cmfs.wavelengths, cmfs.values[..., 2], '--', color=pu.BLUE,
+        label="Color matching function(B)", lw=1.5)
+    plt.legend(loc='upper right')
+    plt.savefig("./img/ds_sd_dist_7.5.png", bbox_inches='tight', pad_inches=0.1)
     plt.show()
     plt.close(fig)
 
 
-def extrapolator_test():
-    ref_multi_sd = load_color_checker_spectrum()
-    keyword = dict(
-        method='Constant', left=0, right=0)
-    ref_multi_sd_360_830 = ref_multi_sd.copy()
-    ref_multi_sd_360_830.extrapolate(
-        shape=VALID_SHAPE, extrapolator=Extrapolator,
-        extrapolator_kwargs=keyword)
+def plot_display_gamut_test():
+    r_mean = 625
+    g_mean = 530
+    b_mean = 460
+    dist = 20
+    w_param_dict = dict(
+        wavelengths=np.arange(360, 831),
+        r_mean=r_mean, r_dist=dist, r_gain=50,
+        g_mean=g_mean, g_dist=dist, g_gain=50,
+        b_mean=b_mean, b_dist=dist, b_gain=50)
+    r_param_dict = dict(
+        wavelengths=np.arange(360, 831),
+        r_mean=r_mean, r_dist=dist, r_gain=50,
+        g_mean=g_mean, g_dist=dist, g_gain=0,
+        b_mean=b_mean, b_dist=dist, b_gain=0)
+    g_param_dict = dict(
+        wavelengths=np.arange(360, 831),
+        r_mean=r_mean, r_dist=dist, r_gain=0,
+        g_mean=g_mean, g_dist=dist, g_gain=50,
+        b_mean=b_mean, b_dist=dist, b_gain=0)
+    b_param_dict = dict(
+        wavelengths=np.arange(360, 831),
+        r_mean=r_mean, r_dist=dist, r_gain=0,
+        g_mean=g_mean, g_dist=dist, g_gain=0,
+        b_mean=b_mean, b_dist=dist, b_gain=50)
+    w_display_sd_obj = DisplaySpectralDistribution(**w_param_dict)
+    r_display_sd_obj = DisplaySpectralDistribution(**r_param_dict)
+    g_display_sd_obj = DisplaySpectralDistribution(**g_param_dict)
+    b_display_sd_obj = DisplaySpectralDistribution(**b_param_dict)
+    w_display_sd = w_display_sd_obj.get_sd()
+    r_display_sd = r_display_sd_obj.get_sd()
+    g_display_sd = g_display_sd_obj.get_sd()
+    b_display_sd = b_display_sd_obj.get_sd()
+    cmfs = get_cie_2_1931_cmf()
+    w_xyY = calc_xyY_from_single_spectrum(
+        src_sd=REFRECT_100P_SD, ref_sd=w_display_sd, cmfs=cmfs)
+    r_xyY = calc_xyY_from_single_spectrum(
+        src_sd=REFRECT_100P_SD, ref_sd=r_display_sd, cmfs=cmfs)
+    g_xyY = calc_xyY_from_single_spectrum(
+        src_sd=REFRECT_100P_SD, ref_sd=g_display_sd, cmfs=cmfs)
+    b_xyY = calc_xyY_from_single_spectrum(
+        src_sd=REFRECT_100P_SD, ref_sd=b_display_sd, cmfs=cmfs)
 
-    x1 = ref_multi_sd.wavelengths
-    y1 = ref_multi_sd.values[..., 18]
+    white = w_xyY
+    primaries = np.vstack((r_xyY, g_xyY, b_xyY, r_xyY))
 
-    x2 = ref_multi_sd_360_830.wavelengths
-    y2 = ref_multi_sd_360_830.values[..., 18]
+    rate = 480 / 755.0 * 2
+    xmin = 0.0
+    xmax = 0.8
+    ymin = 0.0
+    ymax = 0.9
 
-    fig, ax1 = pu.plot_1_graph(
-        fontsize=20,
-        figsize=(10, 8),
-        graph_title="Title",
-        graph_title_size=None,
-        xlabel="X Axis Label", ylabel="Y Axis Label",
-        axis_label_size=None,
-        legend_size=17,
-        xlim=None,
-        ylim=None,
-        xtick=None,
-        ytick=None,
-        xtick_size=None, ytick_size=None,
-        linewidth=3,
-        minor_xtick_num=None,
-        minor_ytick_num=None,
-        return_figure=True)
-    ax1.plot(x2, y2, label="with Extrapolation")
-    ax1.plot(x1, y1, '--', label="original")
-    plt.legend(loc='upper left')
+    # プロット用データ準備
+    # ---------------------------------
+    xy_image = get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+    cmf_xy = _get_cmfs_xy()
+
+    bt709_gamut, _ = get_primaries(name=cs.BT709)
+    bt2020_gamut, _ = get_primaries(name=cs.BT2020)
+    dci_p3_gamut, _ = get_primaries(name=cs.P3_D65)
+    xlim = (min(0, xmin), max(0.8, xmax))
+    ylim = (min(0, ymin), max(0.9, ymax))
+
+    ax1 = pu.plot_1_graph(fontsize=20 * rate,
+                          figsize=((xmax - xmin) * 10 * rate,
+                                   (ymax - ymin) * 10 * rate),
+                          graph_title="CIE1931 Chromaticity Diagram",
+                          graph_title_size=None,
+                          xlabel=None, ylabel=None,
+                          axis_label_size=None,
+                          legend_size=18 * rate,
+                          xlim=xlim, ylim=ylim,
+                          xtick=[x * 0.1 + xmin for x in
+                                 range(int((xlim[1] - xlim[0])/0.1) + 1)],
+                          ytick=[x * 0.1 + ymin for x in
+                                 range(int((ylim[1] - ylim[0])/0.1) + 1)],
+                          xtick_size=17 * rate,
+                          ytick_size=17 * rate,
+                          linewidth=4 * rate,
+                          minor_xtick_num=2,
+                          minor_ytick_num=2)
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=3.5*rate, label=None)
+    ax1.plot((cmf_xy[-1, 0], cmf_xy[0, 0]), (cmf_xy[-1, 1], cmf_xy[0, 1]),
+             '-k', lw=3.5*rate, label=None)
+    ax1.plot(bt709_gamut[:, 0], bt709_gamut[:, 1],
+             c=pu.RED, label="BT.709", lw=2.75*rate)
+    ax1.plot(bt2020_gamut[:, 0], bt2020_gamut[:, 1],
+             c=pu.YELLOW, label="BT.2020", lw=2.75*rate)
+    ax1.plot(dci_p3_gamut[:, 0], dci_p3_gamut[:, 1],
+             c=pu.BLUE, label="DCI-P3", lw=2.75*rate)
+    ax1.plot(primaries[:, 0], primaries[:, 1],
+             c='k', label="Display device", lw=2.75*rate)
+    ax1.plot(
+        D65_WHITE[0], D65_WHITE[1], 'x', c=pu.RED, label="D65", ms=15, mew=5)
+    ax1.plot(
+        white[0], white[1], 'x', c='k', label="White point", ms=15, mew=5)
+
+    ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax))
+    plt.legend(loc='upper right')
+    plt.savefig(f"./img/dist_{dist}.png", bbox_inches='tight')
     plt.show()
-    plt.close(fig)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_func()
-    extrapolator_test()
+    # extrapolator_test()
+    create_display_spectrum_test()
+    # plot_display_gamut_test()
