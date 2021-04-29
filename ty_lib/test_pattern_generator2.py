@@ -1051,7 +1051,7 @@ def make_ycbcr_checker(height=480, v_tile_num=4):
 
 
 def plot_color_checker_image(rgb, rgb2=None, size=(1920, 1080),
-                             block_size=1/4.5, padding=0.01):
+                             block_size=1/4.5):
     """
     ColorCheckerをプロットする
 
@@ -1069,8 +1069,6 @@ def plot_color_checker_image(rgb, rgb2=None, size=(1920, 1080),
     block_size : float
         A each block's size.
         This value is ratio to height of the canvas.
-    padding : float
-        A padding to the block.
 
     Returns
     -------
@@ -1078,38 +1076,34 @@ def plot_color_checker_image(rgb, rgb2=None, size=(1920, 1080),
         A ColorChecker image.
 
     """
-    IMG_HEIGHT = size[1]
-    IMG_WIDTH = size[0]
-    COLOR_CHECKER_SIZE = block_size
-    COLOR_CHECKER_H_NUM = 6
-    COLOR_CHECKER_V_NUM = 4
-    COLOR_CHECKER_PADDING = 0.01
     # 基本パラメータ算出
     # --------------------------------------
-    COLOR_CHECKER_H_NUM = 6
-    COLOR_CHECKER_V_NUM = 4
-    img_height = IMG_HEIGHT
-    img_width = IMG_WIDTH
-    patch_st_h = int(IMG_WIDTH / 2.0
-                     - (IMG_HEIGHT * COLOR_CHECKER_SIZE
-                        * COLOR_CHECKER_H_NUM / 2.0
-                        + (IMG_HEIGHT * COLOR_CHECKER_PADDING
-                           * (COLOR_CHECKER_H_NUM / 2.0 - 0.5)) / 2.0))
-    patch_st_v = int(IMG_HEIGHT / 2.0
-                     - (IMG_HEIGHT * COLOR_CHECKER_SIZE
-                        * COLOR_CHECKER_V_NUM / 2.0
-                        + (IMG_HEIGHT * COLOR_CHECKER_PADDING
-                           * (COLOR_CHECKER_V_NUM / 2.0 - 0.5)) / 2.0))
-    patch_width = int(img_height * COLOR_CHECKER_SIZE)
+    cc_h_num = 6
+    cc_v_num = 4
+    img_height = size[1]
+    img_width = size[0]
+    patch_width = int(img_height * block_size)
     patch_height = patch_width
-    patch_space = int(img_height * COLOR_CHECKER_PADDING)
+    patch_space = int(
+        (img_height - patch_height * cc_v_num) / (cc_v_num + 1))
+
+    patch_st_h = int(
+        img_width / 2.0
+        - patch_width * cc_h_num / 2.0
+        - patch_space * (cc_h_num / 2.0 - 0.5)
+    )
+    patch_st_v = int(
+        img_height / 2.0
+        - patch_height * cc_v_num / 2.0
+        - patch_space * (cc_v_num / 2.0 - 0.5)
+    )
 
     # 24ループで1枚の画像に24パッチを描画
     # -------------------------------------------------
-    img_all_patch = np.zeros((img_height, img_width, 3), dtype=np.uint8)
-    for idx in range(COLOR_CHECKER_H_NUM * COLOR_CHECKER_V_NUM):
-        v_idx = idx // COLOR_CHECKER_H_NUM
-        h_idx = (idx % COLOR_CHECKER_H_NUM)
+    img_all_patch = np.zeros((img_height, img_width, 3))
+    for idx in range(cc_h_num * cc_v_num):
+        v_idx = idx // cc_h_num
+        h_idx = (idx % cc_h_num)
         patch = np.ones((patch_height, patch_width, 3))
         patch[:, :] = rgb[idx]
         st_h = patch_st_h + (patch_width + patch_space) * h_idx

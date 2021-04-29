@@ -6,6 +6,7 @@ spectrum
 # import standard libraries
 import os
 import sys
+from colour.models.rgb import transfer_functions
 
 # import third-party libraries
 import numpy as np
@@ -17,10 +18,11 @@ from colour import sd_CIE_illuminant_D_series, SpectralShape
 from colour.colorimetry import MSDS_CMFS_STANDARD_OBSERVER
 from colour.utilities import tstack
 from colour.models import RGB_COLOURSPACE_BT709
-import colour_datasets
 
 # import my libraries
-from test_pattern_generator2 import D65_WHITE
+from test_pattern_generator2 import D65_WHITE, plot_color_checker_image,\
+    img_wirte_float_as_16bit_int
+import transfer_functions as tf
 
 
 # information
@@ -76,31 +78,6 @@ def calc_xyY_from_single_spectrum(src_sd, ref_sd, cmfs):
         src_sd=src_sd, ref_sd=ref_sd, cmfs=cmfs))
 
 
-def calc_linear_rgb_from_single_spectrum(src_sd, ref_sd, cmfs, color_space):
-    """
-    Parameters
-    ----------
-    src_sd : SpectralDistribution
-        light source
-    ref_sd : SpectralDistribution
-        refrectance
-    cmfs : MultiSpectralDistributions
-        cmfs
-    """
-    large_xyz = calc_xyz_from_single_spectrum(
-        src_sd=src_sd, ref_sd=ref_sd, cmfs=cmfs)
-    linear_rgb = XYZ_to_RGB(
-        large_xyz, D65_WHITE, D65_WHITE, color_space.matrix_XYZ_to_RGB)
-    print(f"xyY={XYZ_to_xyY(large_xyz)}")
-
-    normalize_xyz = calc_xyz_from_single_spectrum(
-        src_sd=src_sd, ref_sd=REFRECT_100P_SD, cmfs=cmfs)
-    normalize_rgb = XYZ_to_RGB(
-        normalize_xyz, D65_WHITE, D65_WHITE, color_space.matrix_XYZ_to_RGB)
-
-    return linear_rgb / np.max(normalize_rgb)
-
-
 def calc_xyz_from_single_spectrum(src_sd, ref_sd, cmfs):
     """
     Parameters
@@ -133,7 +110,7 @@ def debug_func():
     result_xyY = calc_xyY_from_single_spectrum(
         src_sd=src_sd, ref_sd=ref_sd, cmfs=cmfs)
 
-    result_rgb = calc_linear_rgb_from_single_spectrum(
+    result_rgb = calc_linear_rgb_from_spectrum(
         src_sd=src_sd, ref_sd=ref_sd, cmfs=cmfs,
         color_space=RGB_COLOURSPACE_BT709)
     print(f"estimated={estimated_xy}, result={result_xyY}")
@@ -183,12 +160,67 @@ def calc_xyz_from_multi_spectrum(src_sd, ref_sd, cmfs):
     return large_xyz
 
 
+def calc_linear_rgb_from_spectrum(src_sd, ref_sd, cmfs, color_space):
+    """
+    Parameters
+    ----------
+    src_sd : SpectralDistribution
+        light source
+    ref_sd : SpectralDistribution or MultiSpectralDistributions
+        refrectance
+    cmfs : MultiSpectralDistributions
+        cmfs
+    """
+    if isinstance(ref_sd, SpectralDistribution):
+        calc_xyz_func = calc_xyz_from_single_spectrum
+    elif isinstance(ref_sd, MultiSpectralDistributions):
+        calc_xyz_func = calc_xyz_from_multi_spectrum
+    else:
+        print("Error: invalid 'ref_sd' type")
+        calc_xyz_func = None
+    large_xyz = calc_xyz_func(
+        src_sd=src_sd, ref_sd=ref_sd, cmfs=cmfs)
+    linear_rgb = XYZ_to_RGB(
+        large_xyz, D65_WHITE, D65_WHITE, color_space.matrix_XYZ_to_RGB)
+    # print(f"xyY={XYZ_to_xyY(large_xyz)}")
+
+    normalize_xyz = calc_xyz_from_single_spectrum(
+        src_sd=src_sd, ref_sd=REFRECT_100P_SD, cmfs=cmfs)
+    normalize_rgb = XYZ_to_RGB(
+        normalize_xyz, D65_WHITE, D65_WHITE, color_space.matrix_XYZ_to_RGB)
+
+    return linear_rgb / np.max(normalize_rgb)
+
+
+def calc_color_temp_after_spectrum_rendering(src_sd, cmfs):
+    """
+    Parameters
+    ----------
+    src_sd : SpectralDistribution
+        light source
+    cmfs : MultiSpectralDistributions
+        cmfs
+    """
+    ref_sd = REFRECT_100P_SD
+    result_xyY = calc_xyY_from_single_spectrum(
+        src_sd=src_sd, ref_sd=ref_sd, cmfs=cmfs)
+
+    return result_xyY[:2]
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_func()
-    src_sd = calc_illuminant_d_spectrum(6504)
+    src_sd = calc_illuminant_d_spectrum(6500)
     ref_multi_sd = load_color_checker_spectrum()
     cmfs = get_cie_2_1931_cmf()
-    large_xyz = calc_xyz_from_multi_spectrum(
-        src_sd=src_sd, ref_sd=ref_multi_sd, cmfs=cmfs)
-    print(large_xyz)
+    linear_rgb = linear_rgb = calc_linear_rgb_from_spectrum(
+        src_sd=src_sd, ref_sd=ref_multi_sd, cmfs=cmfs,
+        color_space=RGB_COLOURSPACE_BT709)
+    rgb_srgb = tf.oetf(np.clip(linear_rgb, 0.0, 1.0), tf.SRGB)
+    color_checker_img = plot_color_checker_image(
+        rgb=rgb_srgb, size=(540, 360), block_size=1/4.5)
+    img_wirte_float_as_16bit_int("hoge.png", color_checker_img)
+    result_xy = calc_color_temp_after_spectrum_rendering(
+        src_sd=src_sd, cmfs=cmfs)
+    print(result_xy)

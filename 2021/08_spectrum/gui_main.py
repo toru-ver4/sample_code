@@ -28,7 +28,7 @@ import test_pattern_generator2 as tpg
 import plot_utility as pu
 import transfer_functions as tf
 from spectrum_calculation import calc_illuminant_d_spectrum,\
-    get_cie_2_1931_cmf, calc_linear_rgb_from_single_spectrum,\
+    get_cie_2_1931_cmf, calc_linear_rgb_from_spectrum,\
     REFRECT_100P_SD
 
 # information
@@ -162,7 +162,7 @@ class ColorPatchImage():
         ref_sd = REFRECT_100P_SD
         cmfs = get_cie_2_1931_cmf()
 
-        rgb_linear = calc_linear_rgb_from_single_spectrum(
+        rgb_linear = calc_linear_rgb_from_spectrum(
             src_sd=src_sd, ref_sd=ref_sd, cmfs=cmfs,
             color_space=RGB_COLOURSPACE_BT709).reshape((1, 1, 3))
         print(f"rgb_linear={rgb_linear}")
