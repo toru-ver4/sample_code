@@ -182,18 +182,18 @@ class TySpectrumPlot():
             self, figsize=(10, 8), default_temp=6500):
         super().__init__()
         self.fig, self.ax1 = pu.plot_1_graph(
-            fontsize=16,
+            fontsize=14,
             figsize=figsize,
             graph_title="Spectral power distribution",
             graph_title_size=None,
             xlabel="Wavelength [nm]", ylabel="???",
-            axis_label_size=None,
-            legend_size=14,
+            axis_label_size=12,
+            legend_size=12,
             xlim=[330, 860],
             ylim=[-0.05, 2.0],
             xtick=[350 + x * 50 for x in range(11)],
             ytick=None,
-            xtick_size=None, ytick_size=None,
+            xtick_size=12, ytick_size=12,
             linewidth=3,
             minor_xtick_num=None,
             minor_ytick_num=None,
