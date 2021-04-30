@@ -16,7 +16,6 @@ from colour import sd_CIE_illuminant_D_series, SpectralShape, Extrapolator
 from colour.colorimetry import MSDS_CMFS_STANDARD_OBSERVER
 from colour.utilities import tstack
 from colour.models import RGB_COLOURSPACE_BT709
-from colour.algebra import LinearInterpolator
 
 # import my libraries
 from test_pattern_generator2 import D65_WHITE, plot_color_checker_image,\
