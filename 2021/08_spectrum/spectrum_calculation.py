@@ -38,6 +38,8 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
 
+COLOR_TEMP_15K = CCT_to_xy_CIE_D(15000)
+COLOR_TEMP_4K = CCT_to_xy_CIE_D(4000)
 
 VALID_WAVELENGTH_ST = 360
 VALID_WAVELENGTH_ED = 830
@@ -65,6 +67,19 @@ def calc_illuminant_d_spectrum(color_temp=6500):
 
 def get_cie_2_1931_cmf():
     return MSDS_CMFS_STANDARD_OBSERVER['cie_2_1931'].trim(VALID_SHAPE)
+
+
+def get_cie_2_2012_cmf():
+    cmfs_2012 = MSDS_CMFS_STANDARD_OBSERVER[
+        'CIE 2012 10 Degree Standard Observer'].trim(VALID_SHAPE)
+
+    keyword = dict(
+        method='Constant', left=0, right=0)
+    cmfs_2012.extrapolate(
+        shape=VALID_SHAPE, extrapolator=Extrapolator,
+        extrapolator_kwargs=keyword)
+
+    return cmfs_2012
 
 
 def calc_xyY_from_single_spectrum(src_sd, ref_sd, cmfs, emit=False):
@@ -366,34 +381,6 @@ class DisplaySpectralDistribution():
         plt.close(fig)
 
 
-def calc_gain_for_white_point_adjust(src_display_sd_obj, dst_color_temp):
-    """
-    Parameters
-    ----------
-    src_display_sd_obj : DisplaySpectralDistribution
-        src display spectral distribution
-    dst_color_temp : int
-        color temperature [K].
-    """
-    display_sd_array = src_display_sd_obj.get_wrgb_sd_array()
-    w_display_sd = display_sd_array[0]
-
-    cmfs = get_cie_2_1931_cmf()
-    # w_xyY = calc_xyY_from_single_spectrum(
-    #     src_sd=REFRECT_100P_SD, ref_sd=w_display_sd, cmfs=cmfs)
-    src_xyz = calc_xyz_from_single_spectrum(
-        src_sd=REFRECT_100P_SD, ref_sd=w_display_sd, cmfs=cmfs, emit=True)
-
-    # src_xyz = xy_to_XYZ(w_xyY[:2])
-    dst_xyz = xy_to_XYZ(CCT_to_xy_CIE_D(dst_color_temp)) * src_xyz[1]
-    # dst_xyz = xy_to_XYZ(CCT_to_xy_CIE_D(dst_color_temp))
-    print(f"src_xyz = {src_xyz}, dst_xyz = {dst_xyz}")
-
-    gain = (dst_xyz / src_xyz) * 50
-
-    return gain[0], gain[1], gain[2]
-
-
 def calc_gain_for_white_point_adjust_rgb(src_display_sd_obj, dst_color_temp):
     """
     Parameters
@@ -411,9 +398,19 @@ def calc_gain_for_white_point_adjust_rgb(src_display_sd_obj, dst_color_temp):
     xyz2rgb_mtx = linalg.inv(rgb2xyz_mtx)
     dst_xyz = xy_to_XYZ(CCT_to_xy_CIE_D(dst_color_temp))
     gain = xyz2rgb_mtx.dot(dst_xyz)
-    gain = gain / gain[1]
+    gain = gain / gain[1] * 50
 
     return gain[0], gain[1], gain[2]
+
+
+def calc_gobal_gain_for_bright_adjust(display_sd_obj, dst_bright=1.0):
+    w_display_sd = display_sd_obj.get_wrgb_sd_array()[0]
+    cmfs = get_cie_2_1931_cmf()
+    w_xyY = calc_xyY_from_single_spectrum(
+        src_sd=REFRECT_100P_SD, ref_sd=w_display_sd, cmfs=cmfs)
+    gain = dst_bright / w_xyY[2]
+
+    return gain
 
 
 def calc_primary_xyY_and_white_xyY(display_sd_obj):
@@ -569,25 +566,9 @@ def plot_display_gamut_test():
     plt.show()
 
 
-def gain_adjust_test():
-    r_mean = 625
-    g_mean = 530
-    b_mean = 460
-    dist = 20
-    w_param_dict = dict(
-        wavelengths=np.arange(360, 831),
-        r_mean=r_mean, r_dist=dist, r_gain=50,
-        g_mean=g_mean, g_dist=dist, g_gain=50,
-        b_mean=b_mean, b_dist=dist, b_gain=50)
-    src_display_sd_obj = DisplaySpectralDistribution(**w_param_dict)
-    rg, gg, bg = calc_gain_for_white_point_adjust(src_display_sd_obj, 6504)
-    print(rg, gg, bg)
-
-
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_func()
     # extrapolator_test()
     # create_display_spectrum_test()
     # plot_display_gamut_test()
-    gain_adjust_test()

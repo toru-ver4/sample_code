@@ -6,7 +6,6 @@ simulation
 # import standard libraries
 import os
 import sys
-from matplotlib.backends.qt_compat import QT_RC_MAJOR_VERSION
 
 # import third-party libraries
 import numpy as np
@@ -14,14 +13,10 @@ import matplotlib.pyplot as plt
 
 from PySide2.QtWidgets import QApplication, QHBoxLayout, QWidget, QSlider,\
     QLabel, QVBoxLayout, QGridLayout
-from PySide2.QtCore import QCalendar, Qt
-from PySide2 import QtWidgets
+from PySide2.QtCore import Qt
 from PySide2.QtGui import QPixmap, QImage, QPalette, QColor, QFont
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg\
     import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-import color_space
 from colour.models import RGB_COLOURSPACE_BT709
 
 # import my libraries
@@ -30,13 +25,14 @@ import plot_utility as pu
 import transfer_functions as tf
 import color_space as cs
 from spectrum_calculation import calc_illuminant_d_spectrum,\
-    get_cie_2_1931_cmf, calc_linear_rgb_from_spectrum,\
+    get_cie_2_1931_cmf, get_cie_2_2012_cmf, calc_linear_rgb_from_spectrum,\
     REFRECT_100P_SD, get_color_checker_large_xyz_of_d65,\
     convert_color_checker_linear_rgb_from_d65,\
     plot_color_checker_image, load_color_checker_spectrum,\
     calc_color_temp_after_spectrum_rendering, DisplaySpectralDistribution,\
     calc_xyY_from_single_spectrum, calc_gain_for_white_point_adjust_rgb,\
-    calc_primary_xyY_and_white_xyY
+    calc_primary_xyY_and_white_xyY, COLOR_TEMP_15K, COLOR_TEMP_4K,\
+    calc_gobal_gain_for_bright_adjust
 
 
 # information
@@ -115,10 +111,41 @@ class TyBasicLabel(QWidget):
     def set_label(self, value):
         self.internal_value = value
         self.label.setText(
-            f"{self.prefix} {self.internal_value:.1f} {self.suffix}")
+            f"{self.prefix} {int(self.internal_value):4d} {self.suffix}")
 
     def get_label(self):
         return float(self.internal_value)
+
+
+class TyxyYLabel(TyBasicLabel):
+    def __init__(
+            self, default=2.2, prefix="", suffix="",
+            font='Noto Sans Mono CJK JP', font_size=12,
+            font_weight=QFont.Medium):
+        super().__init__(
+                default=default, prefix=prefix, font='Noto Sans Mono CJK JP',
+                font_size=12, font_weight=QFont.Medium)
+
+    def set_label(self, value):
+        self.internal_value = value
+        label_txt = f"({value[0]:.3f}, {value[1]:.3f}, {value[2]:.3f})"
+        self.label.setText(
+            f"{self.prefix} {label_txt} {self.suffix}")
+
+
+class TyDxyLabel(TyBasicLabel):
+    def __init__(
+            self, default=2.2, prefix="", suffix="",
+            font='Noto Sans Mono CJK JP', font_size=12,
+            font_weight=QFont.Medium):
+        super().__init__(
+                default=default, prefix=prefix, font='Noto Sans Mono CJK JP',
+                font_size=12, font_weight=QFont.Medium)
+
+    def set_label(self, value):
+        self.internal_value = value
+        self.label.setText(
+            f"{self.prefix} {value:.3f} {self.suffix}")
 
 
 class LayoutControl():
@@ -133,10 +160,15 @@ class LayoutControl():
             r_dist_label, g_dist_label, b_dist_label,
             r_gain_label, g_gain_label, b_gain_label,
             r_mean_slider, g_mean_slider, b_mean_slider,
-            r_dist_slider, g_dist_slider, b_dist_slider):
+            r_dist_slider, g_dist_slider, b_dist_slider,
+            color_temp_slider, color_temp_label,
+            cie1931_xyY_label, cie2012_xyY_label,
+            cie1931_dx_label, cie1931_dy_label):
         r_layout = QHBoxLayout()
         g_layout = QHBoxLayout()
         b_layout = QHBoxLayout()
+        color_temp_layout = QHBoxLayout()
+
         r_layout.addWidget(r_mean_label.get_widget())
         r_layout.addWidget(r_mean_slider.get_widget())
         r_layout.addWidget(r_dist_label.get_widget())
@@ -155,15 +187,31 @@ class LayoutControl():
         b_layout.addWidget(b_dist_slider.get_widget())
         b_layout.addWidget(b_gain_label.get_widget())
 
+        color_temp_layout.addWidget(color_temp_label.get_widget())
+        color_temp_layout.addWidget(color_temp_slider.get_widget())
+
         mpl_layout = QVBoxLayout()
         mpl_layout.addWidget(canvas.get_widget())
         mpl_layout.addLayout(r_layout)
         mpl_layout.addLayout(g_layout)
         mpl_layout.addLayout(b_layout)
-        # white_layout.setFrameSt
+        mpl_layout.addLayout(color_temp_layout)
+
+        cie_xyY_layout = QHBoxLayout()
+        cie_xyY_layout.addWidget(cie1931_xyY_label.get_widget())
+        cie_xyY_layout.addWidget(cie2012_xyY_label.get_widget())
+        cie_dxy_layout = QHBoxLayout()
+        cie_dxy_layout.addWidget(cie1931_dx_label.get_widget())
+        cie_dxy_layout.addWidget(cie1931_dy_label.get_widget())
+
+        chroma_diagram_layout = QVBoxLayout()
+        chroma_diagram_layout.addWidget(
+            chromaticity_diagram_canvas.get_widget())
+        chroma_diagram_layout.addLayout(cie_xyY_layout)
+        chroma_diagram_layout.addLayout(cie_dxy_layout)
+
         self.base_layout.addLayout(mpl_layout, 0, 0)
-        self.base_layout.addWidget(
-            chromaticity_diagram_canvas.get_widget(), 0, 1)
+        self.base_layout.addLayout(chroma_diagram_layout, 0, 1)
 
     def set_color_patch_layout(self, color_patch):
         patch_layout = QVBoxLayout()
@@ -336,6 +384,7 @@ class DisplaySpectrumPlot():
         super().__init__()
         self.figsize = figsize
         self.cmfs = get_cie_2_1931_cmf()
+        self.cmfs2012 = get_cie_2_2012_cmf()
         self.update_spectrum(
             r_mean=r_mean, r_dist=r_dist, r_gain=r_gain,
             g_mean=g_mean, g_dist=g_dist, g_gain=g_gain,
@@ -363,7 +412,7 @@ class DisplaySpectrumPlot():
             axis_label_size=None,
             legend_size=12,
             xlim=[340, 750],
-            ylim=None,
+            ylim=[-0.05, 5],
             xtick=None,
             ytick=None,
             xtick_size=None, ytick_size=None,
@@ -373,14 +422,25 @@ class DisplaySpectrumPlot():
             self.display_w_sd.wavelengths, self.display_w_sd.values, '-',
             color=(0.1, 0.1, 0.1), label="Display (W=R+G+B)")
         ax1.plot(
-            self.cmfs.wavelengths, self.cmfs.values[..., 0], '--',
-            color=pu.RED, label="Color matching function(R)", lw=1.5)
+            self.cmfs.wavelengths, self.cmfs.values[..., 0], '-',
+            color=pu.RED, label="CIE 1931 2 CMF(R)", lw=1.5)
         ax1.plot(
-            self.cmfs.wavelengths, self.cmfs.values[..., 1], '--',
-            color=pu.GREEN, label="Color matching function(G)", lw=1.5)
+            self.cmfs.wavelengths, self.cmfs.values[..., 1], '-',
+            color=pu.GREEN, label="CIE 1931 2 CMF(G)", lw=1.5)
         ax1.plot(
-            self.cmfs.wavelengths, self.cmfs.values[..., 2], '--',
-            color=pu.BLUE, label="Color matching function(B)", lw=1.5)
+            self.cmfs.wavelengths, self.cmfs.values[..., 2], '-',
+            color=pu.BLUE, label="CIE 1931 2 CMF(B)", lw=1.5)
+
+        ax1.plot(
+            self.cmfs2012.wavelengths, self.cmfs2012.values[..., 0], '--',
+            color=pu.RED, label="CIE 2012 2 CMF(R)", lw=1.5)
+        ax1.plot(
+            self.cmfs2012.wavelengths, self.cmfs2012.values[..., 1], '--',
+            color=pu.GREEN, label="CIE 2012 2 CMF(G)", lw=1.5)
+        ax1.plot(
+            self.cmfs2012.wavelengths, self.cmfs2012.values[..., 2], '--',
+            color=pu.BLUE, label="CIE 2012 2 CMF(B)", lw=1.5)
+
         plt.legend(loc='upper right')
         self.canvas = FigureCanvas(self.fig)
 
@@ -466,8 +526,14 @@ class ChromaticityDiagramPlot():
             primaries[:, 0], primaries[:, 1], 's', c=(0.9, 0.9, 0.9), ms=8,
             mec=(0.2, 0.2, 0.2))
         ax1.plot(
-            tpg.D65_WHITE[0], tpg.D65_WHITE[1], 'x', c=pu.RED, label="D65",
+            tpg.D65_WHITE[0], tpg.D65_WHITE[1], 'x', c=pu.RED, label="6504 K",
             ms=10, mew=3)
+        ax1.plot(
+            COLOR_TEMP_15K[0], COLOR_TEMP_15K[1], '+', c=pu.RED,
+            label="15000 K", ms=12, mew=3)
+        ax1.plot(
+            COLOR_TEMP_4K[0], COLOR_TEMP_4K[1], 'o', c=pu.RED,
+            label="4000 K", ms=8)
         self.display_w_line, = ax1.plot(
             white[0], white[1], 'x', c='k', label="White point", ms=10, mew=3)
         ax1.imshow(self.xy_image, extent=(xmin, xmax, ymin, ymax))
@@ -490,29 +556,16 @@ class EventControl():
     def __init__(self) -> None:
         pass
 
-    # def set_white_slider_event(
-    #         self, white_slider, white_label, spectrum_plot, patch_img):
-    #     self.white_slider = white_slider
-    #     self.white_label = white_label
-    #     self.spectrum_plot = spectrum_plot
-    #     self.patch_img = patch_img
-    #     self.white_slider.set_slot(self.slider_event)
-
-    # def slider_event(self):
-    #     color_temp = self.white_slider.get_value()
-    #     sd = calc_illuminant_d_spectrum(color_temp)
-    #     print(f"color_temp={color_temp}")
-    #     self.white_label.set_label(int(color_temp))
-    #     self.spectrum_plot.update_plot(x=sd.wavelengths, y=sd.values)
-    #     self.patch_img.image_change(color_temp=color_temp)
-
     def set_display_sd_slider_event(
             self, display_sd_canvas, chromaticity_diagram_canvas,
             r_mean_label, g_mean_label, b_mean_label,
             r_dist_label, g_dist_label, b_dist_label,
             r_gain_label, g_gain_label, b_gain_label,
             r_mean_slider, g_mean_slider, b_mean_slider,
-            r_dist_slider, g_dist_slider, b_dist_slider):
+            r_dist_slider, g_dist_slider, b_dist_slider,
+            color_temp_slider, color_temp_label,
+            cie1931_xyY_label, cie2012_xyY_label,
+            cie1931_dx_label, cie1931_dy_label):
         self.display_sd_canvas = display_sd_canvas
         self.chromaticity_diagram_canvas = chromaticity_diagram_canvas
         self.r_mean_label = r_mean_label
@@ -530,6 +583,8 @@ class EventControl():
         self.r_dist_slider = r_dist_slider
         self.g_dist_slider = g_dist_slider
         self.b_dist_slider = b_dist_slider
+        self.color_temp_slider = color_temp_slider
+        self.color_temp_label = color_temp_label
 
         self.r_mean_slider.set_slot(self.display_sd_slider_event)
         self.g_mean_slider.set_slot(self.display_sd_slider_event)
@@ -537,6 +592,12 @@ class EventControl():
         self.r_dist_slider.set_slot(self.display_sd_slider_event)
         self.g_dist_slider.set_slot(self.display_sd_slider_event)
         self.b_dist_slider.set_slot(self.display_sd_slider_event)
+        self.color_temp_slider.set_slot(self.display_sd_slider_event)
+
+        self.cie1931_xyY_label = cie1931_xyY_label
+        self.cie2012_xyY_label = cie2012_xyY_label
+        self.cie1931_dx_label = cie1931_dx_label
+        self.cie1931_dy_label = cie1931_dy_label
 
         # gain is set automatically
         # self.r_gain_slider.set_slot(self.display_sd_slider_event)
@@ -550,9 +611,7 @@ class EventControl():
         r_dist_value = self.r_dist_slider.get_value()
         g_dist_value = self.g_dist_slider.get_value()
         b_dist_value = self.b_dist_slider.get_value()
-        # r_gain_value = self.r_gain_slider.get_value()
-        # g_gain_value = self.g_gain_slider.get_value()
-        # b_gain_value = self.b_gain_slider.get_value()
+        color_temp = self.color_temp_slider.get_value()
 
         self.r_mean_label.set_label(r_mean_value)
         self.g_mean_label.set_label(g_mean_value)
@@ -563,30 +622,57 @@ class EventControl():
         # r_gain_value = self.r_gain_label.get_label()
         g_gain_value = self.g_gain_label.get_label()
         # b_gain_value = self.b_gain_label.get_label()
-        print(g_gain_value)
 
         # pre calculation
-        self.display_sd_canvas.update_plot(
+        self.display_sd_canvas.update_spectrum(
             r_mean=r_mean_value, r_dist=r_dist_value, r_gain=g_gain_value,
             g_mean=g_mean_value, g_dist=g_dist_value, g_gain=g_gain_value,
             b_mean=b_mean_value, b_dist=b_dist_value, b_gain=g_gain_value)
 
-        # update gain
+        # calc r, g, b gain
         r_gain_value, g_gain_value, b_gain_value\
             = calc_gain_for_white_point_adjust_rgb(
                 src_display_sd_obj=self.display_sd_canvas.get_display_sd_obj(),
-                dst_color_temp=6504)
-        print(r_gain_value, g_gain_value, b_gain_value)
+                dst_color_temp=color_temp)
+
+        # apply r, g, b gain
+        self.display_sd_canvas.update_spectrum(
+            r_mean=r_mean_value, r_dist=r_dist_value, r_gain=g_gain_value,
+            g_mean=g_mean_value, g_dist=g_dist_value, g_gain=g_gain_value,
+            b_mean=b_mean_value, b_dist=b_dist_value, b_gain=g_gain_value)
+
+        # calc global gain
+        global_gain = calc_gobal_gain_for_bright_adjust(
+            display_sd_obj=self.display_sd_canvas.get_display_sd_obj())
+        r_gain_value = r_gain_value * global_gain
+        g_gain_value = g_gain_value * global_gain
+        b_gain_value = b_gain_value * global_gain
 
         self.r_gain_label.set_label(r_gain_value)
         self.g_gain_label.set_label(g_gain_value)
         self.b_gain_label.set_label(b_gain_value)
+        self.color_temp_label.set_label(color_temp)
 
         # main update
         self.display_sd_canvas.update_plot(
             r_mean=r_mean_value, r_dist=r_dist_value, r_gain=r_gain_value,
             g_mean=g_mean_value, g_dist=g_dist_value, g_gain=g_gain_value,
             b_mean=b_mean_value, b_dist=b_dist_value, b_gain=b_gain_value)
+
+        # calc xyY
+        display_sd_obj = self.display_sd_canvas.get_display_sd_obj()
+        w_display_sd = display_sd_obj.get_wrgb_sd_array()[0]
+        cmfs_1931 = get_cie_2_1931_cmf()
+        cmfs_2012 = get_cie_2_2012_cmf()
+        xyY_1931 = calc_xyY_from_single_spectrum(
+            src_sd=REFRECT_100P_SD, ref_sd=w_display_sd, cmfs=cmfs_1931)
+        xyY_2012 = calc_xyY_from_single_spectrum(
+            src_sd=REFRECT_100P_SD, ref_sd=w_display_sd, cmfs=cmfs_2012)
+        self.cie1931_xyY_label.set_label(xyY_1931)
+        self.cie2012_xyY_label.set_label(xyY_2012)
+        self.cie1931_dx_label.set_label((xyY_1931 - xyY_2012)[0])
+        self.cie1931_dy_label.set_label((xyY_1931 - xyY_2012)[1])
+
         self.chromaticity_diagram_canvas.update_plot(
             display_sd_obj=self.display_sd_canvas.get_display_sd_obj())
 
@@ -619,12 +705,8 @@ class MyWidget(QWidget):
             int_float_rate=1, default=25, min_val=1, max_val=60)
         b_dist_slider = TyBasicSlider(
             int_float_rate=1, default=25, min_val=1, max_val=60)
-        # r_gain_slider = TyBasicSlider(
-        #     int_float_rate=10, default=50, min_val=10, max_val=100)
-        # g_gain_slider = TyBasicSlider(
-        #     int_float_rate=10, default=50, min_val=10, max_val=100)
-        # b_gain_slider = TyBasicSlider(
-        #     int_float_rate=10, default=50, min_val=10, max_val=100)
+        color_temp_slider = TyBasicSlider(
+            int_float_rate=1/100, default=6500, min_val=4000, max_val=15000)
 
         r_mean_label = TyBasicLabel(
             default=r_mean_slider.get_default(),
@@ -644,6 +726,12 @@ class MyWidget(QWidget):
         r_gain_label = TyBasicLabel(default=r_gain_default, prefix=" R_gain:")
         g_gain_label = TyBasicLabel(default=g_gain_default, prefix=" G_gain:")
         b_gain_label = TyBasicLabel(default=b_gain_default, prefix=" B_gain:")
+        color_temp_label = TyBasicLabel(
+            default=color_temp_slider.get_default(), suffix="[K]")
+        cie1931_xyY_label = TyxyYLabel(default=0.0, prefix="CIE1931 xyY=")
+        cie2012_xyY_label = TyxyYLabel(default=0.0, prefix="CIE2012 xyY=")
+        cie1931_dx_label = TyDxyLabel(default=0.0, prefix="Δx=")
+        cie1931_dy_label = TyDxyLabel(default=0.0, prefix="Δy=")
 
         # spectrum_plot = TySpectrumPlot(
         #     default_temp=white_slider.get_default(), figsize=(10, 6))
@@ -676,7 +764,12 @@ class MyWidget(QWidget):
             b_gain_label=b_gain_label, r_mean_slider=r_mean_slider,
             g_mean_slider=g_mean_slider, b_mean_slider=b_mean_slider,
             r_dist_slider=r_dist_slider, g_dist_slider=g_dist_slider,
-            b_dist_slider=b_dist_slider)
+            b_dist_slider=b_dist_slider, color_temp_slider=color_temp_slider,
+            color_temp_label=color_temp_label,
+            cie1931_xyY_label=cie1931_xyY_label,
+            cie2012_xyY_label=cie2012_xyY_label,
+            cie1931_dx_label=cie1931_dx_label,
+            cie1931_dy_label=cie1931_dy_label)
 
         # set layout
         layout.set_mpl_layout(
@@ -689,7 +782,12 @@ class MyWidget(QWidget):
             b_gain_label=b_gain_label, r_mean_slider=r_mean_slider,
             g_mean_slider=g_mean_slider, b_mean_slider=b_mean_slider,
             r_dist_slider=r_dist_slider, g_dist_slider=g_dist_slider,
-            b_dist_slider=b_dist_slider)
+            b_dist_slider=b_dist_slider, color_temp_slider=color_temp_slider,
+            color_temp_label=color_temp_label,
+            cie1931_xyY_label=cie1931_xyY_label,
+            cie2012_xyY_label=cie2012_xyY_label,
+            cie1931_dx_label=cie1931_dx_label,
+            cie1931_dy_label=cie1931_dy_label)
 
 
 def main_func():
