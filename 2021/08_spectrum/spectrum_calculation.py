@@ -5,8 +5,10 @@ spectrum
 
 # import standard libraries
 import os
+from colour.models.cie_xyy import xyY_to_XYZ
 
 import numpy as np
+from numpy import linalg
 from scipy.stats import norm
 
 from colour import XYZ_to_xyY, XYZ_to_RGB, xy_to_XYZ, SpragueInterpolator,\
@@ -65,7 +67,7 @@ def get_cie_2_1931_cmf():
     return MSDS_CMFS_STANDARD_OBSERVER['cie_2_1931'].trim(VALID_SHAPE)
 
 
-def calc_xyY_from_single_spectrum(src_sd, ref_sd, cmfs):
+def calc_xyY_from_single_spectrum(src_sd, ref_sd, cmfs, emit=False):
     """
     Parameters
     ----------
@@ -75,12 +77,14 @@ def calc_xyY_from_single_spectrum(src_sd, ref_sd, cmfs):
         refrectance
     cmfs : MultiSpectralDistributions
         cmfs
+    emit : Bool
+        whether light-emitting devaice
     """
     return XYZ_to_xyY(calc_xyz_from_single_spectrum(
-        src_sd=src_sd, ref_sd=ref_sd, cmfs=cmfs))
+        src_sd=src_sd, ref_sd=ref_sd, cmfs=cmfs, emit=emit))
 
 
-def calc_xyz_from_single_spectrum(src_sd, ref_sd, cmfs):
+def calc_xyz_from_single_spectrum(src_sd, ref_sd, cmfs, emit=False):
     """
     Parameters
     ----------
@@ -90,13 +94,18 @@ def calc_xyz_from_single_spectrum(src_sd, ref_sd, cmfs):
         refrectance
     cmfs : MultiSpectralDistributions
         cmfs
+    emit : Bool
+        whether light-emitting devaice
     """
     sd_result = src_sd.values * ref_sd.values
     large_x = np.sum(sd_result * cmfs.values[..., 0])
     large_y = np.sum(sd_result * cmfs.values[..., 1])
     large_z = np.sum(sd_result * cmfs.values[..., 2])
 
-    normalize_coef = np.sum(src_sd.values * cmfs.values[..., 1])
+    if emit:
+        normalize_coef = 1.0
+    else:
+        normalize_coef = np.sum(src_sd.values * cmfs.values[..., 1])
 
     large_xyz = tstack([large_x, large_y, large_z]) / normalize_coef
 
@@ -357,6 +366,77 @@ class DisplaySpectralDistribution():
         plt.close(fig)
 
 
+def calc_gain_for_white_point_adjust(src_display_sd_obj, dst_color_temp):
+    """
+    Parameters
+    ----------
+    src_display_sd_obj : DisplaySpectralDistribution
+        src display spectral distribution
+    dst_color_temp : int
+        color temperature [K].
+    """
+    display_sd_array = src_display_sd_obj.get_wrgb_sd_array()
+    w_display_sd = display_sd_array[0]
+
+    cmfs = get_cie_2_1931_cmf()
+    # w_xyY = calc_xyY_from_single_spectrum(
+    #     src_sd=REFRECT_100P_SD, ref_sd=w_display_sd, cmfs=cmfs)
+    src_xyz = calc_xyz_from_single_spectrum(
+        src_sd=REFRECT_100P_SD, ref_sd=w_display_sd, cmfs=cmfs, emit=True)
+
+    # src_xyz = xy_to_XYZ(w_xyY[:2])
+    dst_xyz = xy_to_XYZ(CCT_to_xy_CIE_D(dst_color_temp)) * src_xyz[1]
+    # dst_xyz = xy_to_XYZ(CCT_to_xy_CIE_D(dst_color_temp))
+    print(f"src_xyz = {src_xyz}, dst_xyz = {dst_xyz}")
+
+    gain = (dst_xyz / src_xyz) * 50
+
+    return gain[0], gain[1], gain[2]
+
+
+def calc_gain_for_white_point_adjust_rgb(src_display_sd_obj, dst_color_temp):
+    """
+    Parameters
+    ----------
+    src_display_sd_obj : DisplaySpectralDistribution
+        src display spectral distribution
+    dst_color_temp : int
+        color temperature [K].
+    """
+    primaries, white_xyY = calc_primary_xyY_and_white_xyY(
+        display_sd_obj=src_display_sd_obj)
+    gamut_xy = primaries[:3, :2]
+    rgb2xyz_mtx = cs.calc_rgb_to_xyz_matrix(
+        gamut_xy=gamut_xy, white_large_xyz=xyY_to_XYZ(white_xyY))
+    xyz2rgb_mtx = linalg.inv(rgb2xyz_mtx)
+    dst_xyz = xy_to_XYZ(CCT_to_xy_CIE_D(dst_color_temp))
+    gain = xyz2rgb_mtx.dot(dst_xyz)
+    gain = gain / gain[1]
+
+    return gain[0], gain[1], gain[2]
+
+
+def calc_primary_xyY_and_white_xyY(display_sd_obj):
+    display_sd_array = display_sd_obj.get_wrgb_sd_array()
+    w_display_sd = display_sd_array[0]
+    r_display_sd = display_sd_array[1]
+    g_display_sd = display_sd_array[2]
+    b_display_sd = display_sd_array[3]
+    cmfs = get_cie_2_1931_cmf()
+    w_xyY = calc_xyY_from_single_spectrum(
+        src_sd=REFRECT_100P_SD, ref_sd=w_display_sd, cmfs=cmfs)
+    r_xyY = calc_xyY_from_single_spectrum(
+        src_sd=REFRECT_100P_SD, ref_sd=r_display_sd, cmfs=cmfs)
+    g_xyY = calc_xyY_from_single_spectrum(
+        src_sd=REFRECT_100P_SD, ref_sd=g_display_sd, cmfs=cmfs)
+    b_xyY = calc_xyY_from_single_spectrum(
+        src_sd=REFRECT_100P_SD, ref_sd=b_display_sd, cmfs=cmfs)
+    white = w_xyY
+    primaries = np.vstack((r_xyY, g_xyY, b_xyY, r_xyY))
+
+    return primaries, white
+
+
 def create_display_spectrum_test():
     param_dict = dict(
         wavelengths=np.arange(360, 831),
@@ -489,9 +569,25 @@ def plot_display_gamut_test():
     plt.show()
 
 
+def gain_adjust_test():
+    r_mean = 625
+    g_mean = 530
+    b_mean = 460
+    dist = 20
+    w_param_dict = dict(
+        wavelengths=np.arange(360, 831),
+        r_mean=r_mean, r_dist=dist, r_gain=50,
+        g_mean=g_mean, g_dist=dist, g_gain=50,
+        b_mean=b_mean, b_dist=dist, b_gain=50)
+    src_display_sd_obj = DisplaySpectralDistribution(**w_param_dict)
+    rg, gg, bg = calc_gain_for_white_point_adjust(src_display_sd_obj, 6504)
+    print(rg, gg, bg)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_func()
     # extrapolator_test()
     # create_display_spectrum_test()
-    plot_display_gamut_test()
+    # plot_display_gamut_test()
+    gain_adjust_test()
