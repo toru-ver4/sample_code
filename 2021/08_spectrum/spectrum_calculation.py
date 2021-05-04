@@ -12,17 +12,18 @@ from numpy import linalg
 from scipy.stats import norm
 
 from colour import XYZ_to_xyY, XYZ_to_RGB, xy_to_XYZ, SpragueInterpolator,\
-    SpectralDistribution, MultiSpectralDistributions
+    SpectralDistribution, MultiSpectralDistributions, LinearInterpolator
 from colour.temperature import CCT_to_xy_CIE_D
 from colour import sd_CIE_illuminant_D_series, SpectralShape, Extrapolator
 from colour.colorimetry import MSDS_CMFS_STANDARD_OBSERVER
 from colour.utilities import tstack
 from colour.models import RGB_COLOURSPACE_BT709
+import colour_datasets
 
 # import my libraries
 from test_pattern_generator2 import D65_WHITE, plot_color_checker_image,\
     img_wirte_float_as_16bit_int, _get_cmfs_xy, get_primaries,\
-    get_chromaticity_image
+    get_chromaticity_image, img_wirte_float_as_16bit_int
 import transfer_functions as tf
 import plot_utility as pu
 import matplotlib.pyplot as plt
@@ -82,6 +83,21 @@ def get_cie_2_2012_cmf():
     return cmfs_2012
 
 
+def get_sony_nex5_ss():
+    dataset = colour_datasets.load('3245883')
+    sony_nex_5n_name = 'SONY NEX-5N'
+    sony_ss = dataset[sony_nex_5n_name]
+    sony_ss.interpolate(
+        shape=VALID_SHAPE, interpolator=LinearInterpolator)
+    keyword = dict(
+        method='Constant', left=0, right=0)
+    sony_ss.extrapolate(
+        shape=VALID_SHAPE, extrapolator=Extrapolator,
+        extrapolator_kwargs=keyword)
+
+    return sony_ss
+
+
 def calc_xyY_from_single_spectrum(src_sd, ref_sd, cmfs, emit=False):
     """
     Parameters
@@ -97,6 +113,44 @@ def calc_xyY_from_single_spectrum(src_sd, ref_sd, cmfs, emit=False):
     """
     return XYZ_to_xyY(calc_xyz_from_single_spectrum(
         src_sd=src_sd, ref_sd=ref_sd, cmfs=cmfs, emit=emit))
+
+
+def calc_tristimulus_values_from_multi_spectrum(
+        src_sd, ref_sd, ss):
+    """
+    Parameters
+    ----------
+    src_sd : SpectralDistribution
+        light source
+    ref_sd : MultiSpectralDistributions
+        refrectance
+    ss : MultiSpectralDistributions
+        Spectral Sensitivities for tristiulus values.
+        ex. camera spectrum sensitivities
+    emit : Bool
+        whether light-emitting devaice
+    """
+    return calc_xyz_from_multi_spectrum(
+        src_sd=src_sd, ref_sd=ref_sd, cmfs=ss)
+
+
+def calc_tristimulus_values_from_single_spectrum(
+        src_sd, ref_sd, ss):
+    """
+    Parameters
+    ----------
+    src_sd : SpectralDistribution
+        light source
+    ref_sd : SpectralDistribution
+        refrectance
+    ss : MultiSpectralDistributions
+        Spectral Sensitivities for tristiulus values.
+        ex. camera spectrum sensitivities
+    emit : Bool
+        whether light-emitting devaice
+    """
+    return calc_xyz_from_single_spectrum(
+        src_sd=src_sd, ref_sd=ref_sd, cmfs=ss)
 
 
 def calc_xyz_from_single_spectrum(src_sd, ref_sd, cmfs, emit=False):
@@ -190,6 +244,26 @@ def calc_xyz_from_multi_spectrum(src_sd, ref_sd, cmfs):
     large_xyz = tstack([large_x, large_y, large_z]) / normalize_coef
 
     return large_xyz
+
+
+def mult_camera_ss_cmfs(camera_ss, cmfs):
+    """
+    Parameters
+    ----------
+    camera_ss : MultiSpectralDistributions
+        camera spectral sensitivities
+    cmfs : MultiSpectralDistributions
+        cmfs
+    """
+
+    r = camera_ss.values[..., 0] * cmfs.values[..., 0]
+    g = camera_ss.values[..., 1] * cmfs.values[..., 1]
+    b = camera_ss.values[..., 2] * cmfs.values[..., 2]
+
+    data = dict(zip(cmfs.wavelengths, tstack([r, g, b])))
+    ret_val = MultiSpectralDistributions(data=data)
+
+    return ret_val
 
 
 def calc_linear_rgb_from_spectrum(src_sd, ref_sd, cmfs, color_space):
@@ -381,6 +455,97 @@ class DisplaySpectralDistribution():
         plt.close(fig)
 
 
+class CameraSpectralDistribution():
+    def __init__(self, camera_sd):
+        self.x = camera_sd.wavelengths
+        self.r_values = camera_sd.values[..., 0]
+        self.g_values = camera_sd.values[..., 1]
+        self.b_values = camera_sd.values[..., 2]
+        self.w_values = self.r_values + self.g_values + self.b_values
+
+        self.w_sd = SpectralDistribution(data=dict(zip(self.x, self.w_values)))
+        self.r_sd = SpectralDistribution(data=dict(zip(self.x, self.r_values)))
+        self.g_sd = SpectralDistribution(data=dict(zip(self.x, self.g_values)))
+        self.b_sd = SpectralDistribution(data=dict(zip(self.x, self.b_values)))
+
+    def calc_primary_xyY_and_white_xyY(self):
+        cmfs = get_cie_2_1931_cmf()
+        w_xyY = calc_xyY_from_single_spectrum(
+            src_sd=REFRECT_100P_SD, ref_sd=self.w_sd, cmfs=cmfs)
+        r_xyY = calc_xyY_from_single_spectrum(
+            src_sd=REFRECT_100P_SD, ref_sd=self.r_sd, cmfs=cmfs)
+        g_xyY = calc_xyY_from_single_spectrum(
+            src_sd=REFRECT_100P_SD, ref_sd=self.g_sd, cmfs=cmfs)
+        b_xyY = calc_xyY_from_single_spectrum(
+            src_sd=REFRECT_100P_SD, ref_sd=self.b_sd, cmfs=cmfs)
+
+        white = w_xyY
+        primaries = np.vstack((r_xyY, g_xyY, b_xyY, r_xyY))
+
+        return primaries, white
+
+
+def calc_inv_mtx_for_cct_matrix(camera_rgb):
+    n = len(camera_rgb)
+    r = camera_rgb[..., 0]
+    g = camera_rgb[..., 1]
+    b = camera_rgb[..., 2]
+
+    base_mtx = np.array([
+        [np.sum(r**2)/n, np.sum(r*g)/n, np.sum(r*b)/n],
+        [np.sum(r*g)/n, np.sum(g**2)/n, np.sum(g*b)/n],
+        [np.sum(r*b)/n, np.sum(g*b)/n, np.sum(b**2)/n]])
+
+    return linalg.inv(base_mtx)
+
+
+def calc_cct_matrix(camera_rgb, measure_xyz):
+    n = len(camera_rgb)
+    r = camera_rgb[..., 0]
+    g = camera_rgb[..., 1]
+    b = camera_rgb[..., 2]
+    x = measure_xyz[..., 0]
+    y = measure_xyz[..., 1]
+    z = measure_xyz[..., 2]
+
+    base_mtx = calc_inv_mtx_for_cct_matrix(camera_rgb=camera_rgb)
+    x_vec = np.array([np.sum(r*x)/n, np.sum(g*x)/n, np.sum(b*x)/n])
+    y_vec = np.array([np.sum(r*y)/n, np.sum(g*y)/n, np.sum(b*y)/n])
+    z_vec = np.array([np.sum(r*z)/n, np.sum(g*z)/n, np.sum(b*z)/n])
+
+    m1_vec = base_mtx.dot(x_vec)
+    m2_vec = base_mtx.dot(y_vec)
+    m3_vec = base_mtx.dot(z_vec)
+
+    cct_matrix = np.array([m1_vec, m2_vec, m3_vec])
+
+    return cct_matrix
+
+
+def calc_cct_matrix_from_color_checker():
+    """
+    最小二乗法で Camera の RGB to XYZ 変換 Matrix を作成する。
+    """
+    color_temp = 6504
+    light_sd = calc_illuminant_d_spectrum(color_temp)
+    color_checker_sd = load_color_checker_spectrum()
+    camera_ss = get_sony_nex5_ss()
+    cmfs = get_cie_2_1931_cmf()
+    # cmfs_with_camera = mult_camera_ss_cmfs(camera_ss=camera_ss, cmfs=cmfs)
+    camera_rgb = calc_tristimulus_values_from_multi_spectrum(
+        src_sd=light_sd, ref_sd=color_checker_sd, ss=camera_ss)
+
+    measure_xyz = calc_xyz_from_multi_spectrum(
+        src_sd=light_sd, ref_sd=color_checker_sd, cmfs=cmfs)
+    # print(camera_rgb)
+    # print(XYZ_to_xyY(measure_xyz))
+
+    cct_matrix = calc_cct_matrix(
+        camera_rgb=camera_rgb, measure_xyz=measure_xyz)
+
+    print(cct_matrix)
+
+
 def calc_gain_for_white_point_adjust_rgb(src_display_sd_obj, dst_color_temp):
     """
     Parameters
@@ -566,9 +731,105 @@ def plot_display_gamut_test():
     plt.show()
 
 
+def apply_matrix(src, mtx):
+    """
+    src: (N, M, 3)
+    mtx: (3, 3)
+    """
+    shape_bak = src.shape
+    a = src[..., 0]*mtx[0][0] + src[..., 1]*mtx[0][1] + src[..., 2]*mtx[0][2]
+    b = src[..., 0]*mtx[1][0] + src[..., 1]*mtx[1][1] + src[..., 2]*mtx[1][2]
+    c = src[..., 0]*mtx[2][0] + src[..., 1]*mtx[2][1] + src[..., 2]*mtx[2][2]
+
+    return np.dstack([a, b, c]).reshape(shape_bak)
+
+
+def debug_cct_matrix():
+    color_temp = 6504
+    light_sd = calc_illuminant_d_spectrum(color_temp)
+    color_checker_sd = load_color_checker_spectrum()
+    camera_ss = get_sony_nex5_ss()
+    cmfs = get_cie_2_1931_cmf()
+
+    camera_rgb = calc_tristimulus_values_from_multi_spectrum(
+        src_sd=light_sd, ref_sd=color_checker_sd, ss=camera_ss)
+
+    measure_xyz = calc_xyz_from_multi_spectrum(
+        src_sd=light_sd, ref_sd=color_checker_sd, cmfs=cmfs)
+
+    cct_matrix = calc_cct_matrix(
+        camera_rgb=camera_rgb, measure_xyz=measure_xyz)
+    print(cct_matrix)
+
+    result_xyz = apply_matrix(src=camera_rgb, mtx=cct_matrix)
+
+
+    true_rgb = XYZ_to_RGB(
+        measure_xyz, cs.D65, cs.D65, RGB_COLOURSPACE_BT709.matrix_XYZ_to_RGB)
+    estimated_rgb = XYZ_to_RGB(
+        result_xyz, cs.D65, cs.D65, RGB_COLOURSPACE_BT709.matrix_XYZ_to_RGB)
+
+    true_rgb_srgb = tf.oetf(np.clip(true_rgb, 0.0, 1.0), tf.SRGB)
+    est_rgb_srgb = tf.oetf(np.clip(estimated_rgb, 0.0, 1.0), tf.SRGB)
+    img = plot_color_checker_image(
+        rgb=true_rgb_srgb, rgb2=est_rgb_srgb)
+    img_wirte_float_as_16bit_int("./img/cct_mtx.png", img)
+
+    # primaries
+    xmin = 0.0
+    xmax = 0.8
+    ymin = -0.4
+    ymax = 1.2
+    primary_rgb = np.array([
+        [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0], [1, 1, 1]])
+    primary_xyz = apply_matrix(primary_rgb, cct_matrix)
+    primary_xyY = XYZ_to_xyY(primary_xyz)
+    bt709_gamut, _ = get_primaries(name=cs.BT709)
+    bt2020_gamut, _ = get_primaries(name=cs.BT2020)
+    dci_p3_gamut, _ = get_primaries(name=cs.P3_D65)
+    xy_image = get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(8, 14),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Chromaticity Diagram?",
+        graph_title_size=None,
+        xlabel="x", ylabel="y",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[xmin, xmax],
+        ylim=[ymin, ymax],
+        xtick=[0.1 * x for x in range(9)],
+        ytick=[0.1 * x - 0.4 for x in range(17)],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    cmf_xy = _get_cmfs_xy()
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', label=None)
+    ax1.plot(bt709_gamut[:, 0], bt709_gamut[:, 1],
+             c=pu.RED, label="BT.709", lw=2, alpha=0.8)
+    ax1.plot(bt2020_gamut[:, 0], bt2020_gamut[:, 1],
+             c=pu.YELLOW, label="BT.2020", lw=2, alpha=0.8)
+    ax1.plot(dci_p3_gamut[:, 0], dci_p3_gamut[:, 1],
+             c=pu.BLUE, label="DCI-P3", lw=2, alpha=0.8)
+    ax1.plot(
+        (cmf_xy[-1, 0], cmf_xy[0, 0]), (cmf_xy[-1, 1], cmf_xy[0, 1]),
+        '-k', label=None)
+    ax1.plot(
+        primary_xyY[:4, 0], primary_xyY[:4, 1], color='k', label="SONY NEX-5N")
+    ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax))
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right',
+        save_fname="img/camera_chroma_test.png")
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_func()
     # extrapolator_test()
     # create_display_spectrum_test()
     # plot_display_gamut_test()
+    # calc_cct_matrix_from_color_checker()
+    debug_cct_matrix()
