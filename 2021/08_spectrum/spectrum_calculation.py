@@ -87,6 +87,9 @@ def get_sony_nex5_ss():
     dataset = colour_datasets.load('3245883')
     sony_nex_5n_name = 'SONY NEX-5N'
     sony_ss = dataset[sony_nex_5n_name]
+    min_w = sony_ss.wavelengths[0]
+    max_w = sony_ss.wavelengths[-1]
+    print(f"{sony_nex_5n_name} default wavelength is {min_w} - {max_w} nm")
     sony_ss.interpolate(
         shape=VALID_SHAPE, interpolator=LinearInterpolator)
     keyword = dict(
@@ -123,12 +126,10 @@ def calc_tristimulus_values_from_multi_spectrum(
     src_sd : SpectralDistribution
         light source
     ref_sd : MultiSpectralDistributions
-        refrectance
+        refrectance. ex) color checker
     ss : MultiSpectralDistributions
         Spectral Sensitivities for tristiulus values.
         ex. camera spectrum sensitivities
-    emit : Bool
-        whether light-emitting devaice
     """
     return calc_xyz_from_multi_spectrum(
         src_sd=src_sd, ref_sd=ref_sd, cmfs=ss)
@@ -499,7 +500,7 @@ def calc_inv_mtx_for_cct_matrix(camera_rgb):
     return linalg.inv(base_mtx)
 
 
-def calc_cct_matrix(camera_rgb, measure_xyz):
+def calc_cct_matrix_using_least_squares(camera_rgb, measure_xyz):
     n = len(camera_rgb)
     r = camera_rgb[..., 0]
     g = camera_rgb[..., 1]
@@ -522,28 +523,31 @@ def calc_cct_matrix(camera_rgb, measure_xyz):
     return cct_matrix
 
 
-def calc_cct_matrix_from_color_checker():
+def calc_cct_matrix_from_color_checker(camera_ss):
     """
     最小二乗法で Camera の RGB to XYZ 変換 Matrix を作成する。
+
+    Parameters
+    ----------
+    camera_ss : MultiSpectralDistributions
+        Spectral Sensitivities for tristiulus values.
     """
     color_temp = 6504
     light_sd = calc_illuminant_d_spectrum(color_temp)
     color_checker_sd = load_color_checker_spectrum()
     camera_ss = get_sony_nex5_ss()
     cmfs = get_cie_2_1931_cmf()
-    # cmfs_with_camera = mult_camera_ss_cmfs(camera_ss=camera_ss, cmfs=cmfs)
+
     camera_rgb = calc_tristimulus_values_from_multi_spectrum(
         src_sd=light_sd, ref_sd=color_checker_sd, ss=camera_ss)
 
     measure_xyz = calc_xyz_from_multi_spectrum(
         src_sd=light_sd, ref_sd=color_checker_sd, cmfs=cmfs)
-    # print(camera_rgb)
-    # print(XYZ_to_xyY(measure_xyz))
 
-    cct_matrix = calc_cct_matrix(
+    cct_matrix = calc_cct_matrix_using_least_squares(
         camera_rgb=camera_rgb, measure_xyz=measure_xyz)
 
-    print(cct_matrix)
+    return cct_matrix
 
 
 def calc_gain_for_white_point_adjust_rgb(src_display_sd_obj, dst_color_temp):
@@ -744,85 +748,6 @@ def apply_matrix(src, mtx):
     return np.dstack([a, b, c]).reshape(shape_bak)
 
 
-def debug_cct_matrix():
-    color_temp = 6504
-    light_sd = calc_illuminant_d_spectrum(color_temp)
-    color_checker_sd = load_color_checker_spectrum()
-    camera_ss = get_sony_nex5_ss()
-    cmfs = get_cie_2_1931_cmf()
-
-    camera_rgb = calc_tristimulus_values_from_multi_spectrum(
-        src_sd=light_sd, ref_sd=color_checker_sd, ss=camera_ss)
-
-    measure_xyz = calc_xyz_from_multi_spectrum(
-        src_sd=light_sd, ref_sd=color_checker_sd, cmfs=cmfs)
-
-    cct_matrix = calc_cct_matrix(
-        camera_rgb=camera_rgb, measure_xyz=measure_xyz)
-    print(cct_matrix)
-
-    result_xyz = apply_matrix(src=camera_rgb, mtx=cct_matrix)
-
-
-    true_rgb = XYZ_to_RGB(
-        measure_xyz, cs.D65, cs.D65, RGB_COLOURSPACE_BT709.matrix_XYZ_to_RGB)
-    estimated_rgb = XYZ_to_RGB(
-        result_xyz, cs.D65, cs.D65, RGB_COLOURSPACE_BT709.matrix_XYZ_to_RGB)
-
-    true_rgb_srgb = tf.oetf(np.clip(true_rgb, 0.0, 1.0), tf.SRGB)
-    est_rgb_srgb = tf.oetf(np.clip(estimated_rgb, 0.0, 1.0), tf.SRGB)
-    img = plot_color_checker_image(
-        rgb=true_rgb_srgb, rgb2=est_rgb_srgb)
-    img_wirte_float_as_16bit_int("./img/cct_mtx.png", img)
-
-    # primaries
-    xmin = 0.0
-    xmax = 0.8
-    ymin = -0.4
-    ymax = 1.2
-    primary_rgb = np.array([
-        [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0], [1, 1, 1]])
-    primary_xyz = apply_matrix(primary_rgb, cct_matrix)
-    primary_xyY = XYZ_to_xyY(primary_xyz)
-    bt709_gamut, _ = get_primaries(name=cs.BT709)
-    bt2020_gamut, _ = get_primaries(name=cs.BT2020)
-    dci_p3_gamut, _ = get_primaries(name=cs.P3_D65)
-    xy_image = get_chromaticity_image(
-        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
-    fig, ax1 = pu.plot_1_graph(
-        fontsize=20,
-        figsize=(8, 14),
-        bg_color=(0.96, 0.96, 0.96),
-        graph_title="Chromaticity Diagram?",
-        graph_title_size=None,
-        xlabel="x", ylabel="y",
-        axis_label_size=None,
-        legend_size=17,
-        xlim=[xmin, xmax],
-        ylim=[ymin, ymax],
-        xtick=[0.1 * x for x in range(9)],
-        ytick=[0.1 * x - 0.4 for x in range(17)],
-        xtick_size=None, ytick_size=None,
-        linewidth=3,
-        minor_xtick_num=None,
-        minor_ytick_num=None)
-    cmf_xy = _get_cmfs_xy()
-    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', label=None)
-    ax1.plot(bt709_gamut[:, 0], bt709_gamut[:, 1],
-             c=pu.RED, label="BT.709", lw=2, alpha=0.8)
-    ax1.plot(bt2020_gamut[:, 0], bt2020_gamut[:, 1],
-             c=pu.YELLOW, label="BT.2020", lw=2, alpha=0.8)
-    ax1.plot(dci_p3_gamut[:, 0], dci_p3_gamut[:, 1],
-             c=pu.BLUE, label="DCI-P3", lw=2, alpha=0.8)
-    ax1.plot(
-        (cmf_xy[-1, 0], cmf_xy[0, 0]), (cmf_xy[-1, 1], cmf_xy[0, 1]),
-        '-k', label=None)
-    ax1.plot(
-        primary_xyY[:4, 0], primary_xyY[:4, 1], color='k', label="SONY NEX-5N")
-    ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax))
-    pu.show_and_save(
-        fig=fig, legend_loc='upper right',
-        save_fname="img/camera_chroma_test.png")
 
 
 if __name__ == '__main__':
@@ -832,4 +757,3 @@ if __name__ == '__main__':
     # create_display_spectrum_test()
     # plot_display_gamut_test()
     # calc_cct_matrix_from_color_checker()
-    debug_cct_matrix()
