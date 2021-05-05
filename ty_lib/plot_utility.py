@@ -321,6 +321,16 @@ def _arrow3D(ax, x, y, z, dx, dy, dz, *args, **kwargs):
     ax.add_artist(arrow)
 
 
+def _exist_key(key, **kwargs):
+    """
+    check whether key is exsit in the kwargs and kwargs[key] is not None.
+    """
+    is_exist = key in kwargs
+    is_not_none = kwargs[key] is not None if is_exist else None
+
+    return is_exist and is_not_none
+
+
 def _set_common_parameters(fontsize, **kwargs):
     # japanese font
     # ---------------------------------------
@@ -344,23 +354,23 @@ def _set_common_parameters(fontsize, **kwargs):
     if fontsize:
         plt.rcParams["font.size"] = fontsize
 
-    if 'tick_size' in kwargs and kwargs['tick_size']:
+    if _exist_key('tick_size', **kwargs):
         plt.rcParams['xtick.labelsize'] = kwargs['tick_size']
         plt.rcParams['ytick.labelsize'] = kwargs['tick_size']
 
-    if 'xtick_size' in kwargs and kwargs['xtick_size']:
+    if _exist_key('xtick_size', **kwargs):
         plt.rcParams['xtick.labelsize'] = kwargs['xtick_size']
 
-    if 'ytick_size' in kwargs and kwargs['ytick_size']:
+    if _exist_key('ytick_size', **kwargs):
         plt.rcParams['ytick.labelsize'] = kwargs['ytick_size']
 
-    if 'axis_label_size' in kwargs and kwargs['axis_label_size']:
+    if _exist_key('axis_label_size', **kwargs):
         plt.rcParams['axes.labelsize'] = kwargs['axis_label_size']
 
-    if 'graph_title_size' in kwargs and kwargs['graph_title_size']:
+    if _exist_key('graph_title_size', **kwargs):
         plt.rcParams['axes.titlesize'] = kwargs['graph_title_size']
 
-    if 'legend_size' in kwargs and kwargs['legend_size']:
+    if _exist_key('legend_size', **kwargs):
         plt.rcParams['legend.fontsize'] = kwargs['legend_size']
 
     # plot style
@@ -375,122 +385,77 @@ def _set_common_parameters(fontsize, **kwargs):
 
     # line style
     # ---------------------------------------
-    if 'linewidth' in kwargs and kwargs['linewidth']:
+    if _exist_key('linewidth', **kwargs):
         plt.rcParams['lines.linewidth'] = kwargs['linewidth']
 
-    if 'prop_cycle' in kwargs and kwargs['prop_cycle']:
+    if _exist_key('prop_cycle', **kwargs):
         plt.rcParams['axes.prop_cycle'] = kwargs['prop_cycle']
 
 
 def plot_1_graph(fontsize=20, **kwargs):
     _set_common_parameters(fontsize=fontsize, **kwargs)
 
-    if 'figsize' in kwargs and kwargs['figsize']:
+    if _exist_key('figsize', **kwargs):
         figsize = kwargs['figsize']
     else:
         figsize = (10, 8)
 
-    if 'dpi' in kwargs and kwargs['dpi']:
+    if _exist_key('dpi', **kwargs):
         fig = plt.figure(figsize=figsize, dpi=kwargs['dpi'])
     else:
         fig = plt.figure(figsize=figsize)
 
     ax1 = fig.add_subplot(111)
 
-    if 'xlim' in kwargs and kwargs['xlim']:
+    if _exist_key('xlim', **kwargs):
         ax1.set_xlim(kwargs['xlim'][0], kwargs['xlim'][1])
 
-    if 'ylim' in kwargs and kwargs['ylim']:
+    if _exist_key('ylim', **kwargs):
         ax1.set_ylim(kwargs['ylim'][0], kwargs['ylim'][1])
 
-    if 'graph_title' in kwargs and kwargs['graph_title']:
+    if _exist_key('graph_title', **kwargs):
         ax1.set_title(kwargs['graph_title'])
     else:
         ax1.set_title("Title")
 
-    if 'xlabel' in kwargs and kwargs['xlabel']:
+    if _exist_key('xlabel', **kwargs):
         ax1.set_xlabel(kwargs['xlabel'])
-    else:
-        # ax1.set_xlabel("X Axis Label")
-        pass
 
-    if 'ylabel' in kwargs and kwargs['ylabel']:
+    if _exist_key('ylabel', **kwargs):
         ax1.set_ylabel(kwargs['ylabel'])
-    else:
-        # ax1.set_ylabel("Y Axis Label")
-        pass
 
-    if 'xtick' in kwargs and kwargs['xtick']:
+    if _exist_key('xtick', **kwargs):
         ax1.set_xticks(kwargs['xtick'])
 
-    if 'ytick' in kwargs and kwargs['ytick']:
+    if _exist_key('ytick', **kwargs):
         ax1.set_yticks(kwargs['ytick'])
 
-    if 'minor_xtick_num' in kwargs and kwargs['minor_xtick_num']:
+    if _exist_key('minor_xtick_num', **kwargs):
         minor_locator = AutoMinorLocator(kwargs['minor_xtick_num'])
         ax1.xaxis.set_minor_locator(minor_locator)
         ax1.xaxis.grid(which='minor', color="#808080")
-        ax1.tick_params(axis='x', which='minor', length=0.0)
+        ax1.tick_params(
+            axis='x', which='minor', length=0.0, grid_linestyle='--')
 
-    if 'minor_ytick_num' in kwargs and kwargs['minor_ytick_num']:
+    if _exist_key('minor_ytick_num', **kwargs):
         minor_locator = AutoMinorLocator(kwargs['minor_ytick_num'])
         ax1.yaxis.set_minor_locator(minor_locator)
         ax1.yaxis.grid(which='minor', color="#808080")
-        ax1.tick_params(axis='y', which='minor', length=0.0)
+        ax1.tick_params(
+            axis='y', which='minor', length=0.0, grid_linestyle='--')
 
-    # Adjust the position
-    # ------------------------------------
-    fig.tight_layout()
+    if _exist_key('bg_color', **kwargs):
+        ax1.set_facecolor(kwargs['bg_color'])
+    else:
+        ax1.set_facecolor((0.96, 0.96, 0.96))
 
-    if 'return_figure' in kwargs and kwargs['return_figure']:
+    if _exist_key('return_figure', **kwargs):
+        if kwargs['return_figure'] is not None:
+            return fig, ax1
+        else:
+            return ax1
+    else:
         return fig, ax1
-    else:
-        return ax1
-
-
-def plot_1_graph_ret_figure(fontsize=20, **kwargs):
-    _set_common_parameters(fontsize=fontsize, **kwargs)
-
-    if 'figsize' in kwargs and kwargs['figsize']:
-        figsize = kwargs['figsize']
-    else:
-        figsize = (10, 8)
-
-    fig = plt.figure(figsize=figsize)
-    ax1 = fig.add_subplot(111)
-
-    if 'xlim' in kwargs and kwargs['xlim']:
-        ax1.set_xlim(kwargs['xlim'][0], kwargs['xlim'][1])
-
-    if 'ylim' in kwargs and kwargs['ylim']:
-        ax1.set_ylim(kwargs['ylim'][0], kwargs['ylim'][1])
-
-    if 'graph_title' in kwargs and kwargs['graph_title']:
-        ax1.set_title(kwargs['graph_title'])
-    else:
-        ax1.set_title("Title")
-
-    if 'xlabel' in kwargs and kwargs['xlabel']:
-        ax1.set_xlabel(kwargs['xlabel'])
-    else:
-        ax1.set_xlabel("X Axis Label")
-
-    if 'ylabel' in kwargs and kwargs['ylabel']:
-        ax1.set_ylabel(kwargs['ylabel'])
-    else:
-        ax1.set_ylabel("Y Axis Label")
-
-    if 'xtick' in kwargs and kwargs['xtick']:
-        ax1.set_xticks(kwargs['xtick'])
-
-    if 'ytick' in kwargs and kwargs['ytick']:
-        ax1.set_yticks(kwargs['ytick'])
-
-    # Adjust the position
-    # ------------------------------------
-    fig.tight_layout()
-
-    return fig, ax1
 
 
 def _check_hsv_space():
@@ -624,6 +589,19 @@ def plot_3d_init(
     return fig, ax
 
 
+def show_and_save(fig, legend_loc='upper right', save_fname=None):
+    if legend_loc is not None:
+        plt.legend(loc=legend_loc)
+
+    # Adjust the position
+    fig.tight_layout()
+
+    if save_fname is not None:
+        plt.savefig(save_fname, bbox_inches='tight', pad_inches=0.1)
+
+    plt.show()
+
+
 if __name__ == '__main__':
     # _check_hsv_space()
 
@@ -636,6 +614,7 @@ if __name__ == '__main__':
     fig, ax1 = plot_1_graph(
         fontsize=20,
         figsize=(10, 8),
+        bg_color=(0.96, 0.96, 0.96),
         graph_title="Title",
         graph_title_size=None,
         xlabel="X Axis Label", ylabel="Y Axis Label",
@@ -648,10 +627,10 @@ if __name__ == '__main__':
         xtick_size=None, ytick_size=None,
         linewidth=3,
         minor_xtick_num=None,
-        minor_ytick_num=None,
-        return_figure=True)
+        minor_ytick_num=None)
     for y, label in zip(y_list, label_list):
         ax1.plot(x, y, label=label)
-    plt.legend(loc='upper left')
-    plt.show()
-    plt.close(fig)
+    show_and_save(fig=fig, legend_loc='upper left', save_fname=None)
+    # plt.legend(loc='upper left')
+    # plt.show()
+    # plt.close(fig)

@@ -517,3 +517,4 @@ def d_log_decoding(x, out_reflection=False):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    print(oetf(np.array([0.5, 0.5, 0.5]), SRGB))
