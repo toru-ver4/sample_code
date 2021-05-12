@@ -5,13 +5,11 @@ create gamut boundary lut.
 
 # import standard libraries
 import os
-import time
-from colour.models.cie_lab import XYZ_to_Lab
-from colour.models.rgb.rgb_colourspace import RGB_to_XYZ
+from multiprocessing import Pool, cpu_count
 
 # import third-party libraries
 import numpy as np
-from colour import LCHab_to_Lab, Lab_to_XYZ, XYZ_to_RGB, RGB_COLOURSPACES
+from colour import LCHab_to_Lab
 
 # import my libraries
 import create_gamut_booundary_lut as cgb
@@ -89,7 +87,8 @@ def debug_mplot_cl_plane_from_image():
 
 
 def create_valid_ab_plane_image_srgb(
-        l_val=50, ab_max=200, ab_sample=512, color_space_name=cs.BT2020):
+        l_val=50, ab_max=200, ab_sample=512, color_space_name=cs.BT2020,
+        bg_rgb=np.array([0.5, 0.5, 0.5])):
     """
     Create an image that indicates the valid area of the ab plane.
 
@@ -104,7 +103,7 @@ def create_valid_ab_plane_image_srgb(
     color_space_name : str
         color space name for colour.RGB_COLOURSPACES
     """
-    dummy_rgb = np.array([0.5, 0.5, 0.5])
+    dummy_rgb = bg_rgb
     aa_base = np.linspace(-ab_max, ab_max, ab_sample)
     bb_base = np.linspace(-ab_max, ab_max, ab_sample)
     aa = aa_base.reshape((1, ab_sample))\
@@ -193,11 +192,11 @@ def debug_plot_ab_plane(l_val, color_space_name, idx=0):
     ax1.imshow(
         srgb_image, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
     pu.show_and_save(
-        fig=fig, legend_loc=None, plot=False,
+        fig=fig, legend_loc=None, show=False,
         save_fname=f"./img/test_ab_{idx:04d}.png")
 
 
-def plot_ab_plane_core(ty_ch_lut, l_val):
+def plot_ab_plane_core(ty_ch_lut, l_idx, l_val, color_space_name):
     """
     Parameters
     ----------
@@ -205,13 +204,60 @@ def plot_ab_plane_core(ty_ch_lut, l_val):
         gamut boundary data.
         shape is (Hue_num, 3).
         the data order is L*, C*, Hab
+    l_idx : int
+        A Lightness index for ty_ch_lut
     l_val : float
         Lightness Value of the ab plane
+    color_space_name : str
+        color space name for colour.RGB_COLOURSPACES
     """
-    pass
+    lch = ty_ch_lut[l_idx]
+    lab = LCHab_to_Lab(lch)
+
+    if l_val < 25:
+        line_color = (0.96, 0.96, 0.96)
+    else:
+        line_color = (0.005, 0.005, 0.005)
+
+    ab_max = 200
+    ab_sample = 1280
+
+    srgb_image = create_valid_ab_plane_image_srgb(
+        l_val=l_val, ab_max=ab_max, ab_sample=ab_sample,
+        color_space_name=color_space_name)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(20, 16),
+        bg_color=None,
+        graph_title=f"ab plane, L*={l_val:.2f}",
+        graph_title_size=None,
+        xlabel="a*", ylabel="b*",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[-200, 200],
+        ylim=[-200, 200],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=4,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.imshow(
+        srgb_image, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
+    ax1.plot(
+        lab[..., 1], lab[..., 2], '-', color=line_color,
+        label="Boundaries using LUT", alpha=0.6)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right', show=False,
+        save_fname=f"./img/ab_plane_{l_idx:04d}.png")
 
 
-def plot_ab_plane_seq(ty_lch_lut):
+def thread_wrapper_plot_ab_plane_core(args):
+    plot_ab_plane_core(**args)
+
+
+def plot_ab_plane_seq(ty_lch_lut, color_space_name):
     """
     Parameters
     ----------
@@ -223,29 +269,40 @@ def plot_ab_plane_seq(ty_lch_lut):
     l_num = ty_lch_lut.shape[0]
 
     total_process_num = l_num
-    block_process_num = 20
-    block_num = int(total_process_num / block_process_num + 0.5)
+    block_process_num = cpu_count()
+    block_num = int(round(total_process_num / block_process_num + 0.5))
 
     for b_idx in range(block_num):
+        args = []
         for p_idx in range(block_process_num):
             l_idx = b_idx * block_process_num + p_idx              # User
             print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
             if l_idx >= total_process_num:                         # User
                 break
-            args = dict(                                           # User
-                ty_ch_lut=ty_lch_lut[l_idx], l_val=l_idx/(l_num-1))
-            plot_ab_plane_core(**args)
+            d = dict(
+                ty_ch_lut=ty_lch_lut, l_idx=l_idx,          # User
+                l_val=l_idx/(l_num-1)*100, color_space_name=color_space_name)
+            # plot_ab_plane_core(**d)
+            args.append(d)
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_plot_ab_plane_core, args)
 
 
 def check_lch_2d_lut():
-    lut = np.load("./lut_sample_50_361_8192.npy")
+    lut = np.load("./lut/lut_sample_50_361_8192.npy")
+    plot_ab_plane_core(
+        ty_ch_lut=lut, l_idx=40, l_val=40/49*100, color_space_name=cs.BT2020)
+    plot_ab_plane_core(
+        ty_ch_lut=lut, l_idx=25, l_val=25/49*100, color_space_name=cs.BT2020)
+    plot_ab_plane_core(
+        ty_ch_lut=lut, l_idx=10, l_val=10/49*100, color_space_name=cs.BT2020)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # lut = np.load("./lut_sample_50_361_8192.npy")
-    # plot_ab_plane_seq(ty_lch_lut=lut)
-    debug_plot_cl_plane_core(hue=99)
+    lut = np.load("./lut/lut_sample_50_1024_8192.npy")
+    plot_ab_plane_seq(ty_lch_lut=lut, color_space_name=cs.BT2020)
+    # debug_plot_cl_plane_core(hue=99)
     # for idx in range(200):
     #     l_val = 90 + 0.05 * idx
     #     print(f"idx={idx}, l_val={l_val}")
@@ -254,3 +311,5 @@ if __name__ == '__main__':
     # srgb_img = create_valid_ab_plane_image_srgb(
     #     l_val=90, ab_max=200, ab_sample=512, color_space_name=cs.BT2020)
     # tpg.img_wirte_float_as_16bit_int("uuu.png", srgb_img)
+
+    # check_lch_2d_lut()

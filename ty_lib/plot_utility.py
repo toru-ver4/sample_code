@@ -445,6 +445,7 @@ def plot_1_graph(fontsize=20, **kwargs):
             axis='y', which='minor', length=0.0, grid_linestyle='--')
 
     if _exist_key('bg_color', **kwargs):
+        print(f"bg_color = {kwargs['bg_color']}")
         ax1.set_facecolor(kwargs['bg_color'])
     else:
         ax1.set_facecolor((0.96, 0.96, 0.96))
@@ -589,7 +590,7 @@ def plot_3d_init(
     return fig, ax
 
 
-def show_and_save(fig, legend_loc='upper right', save_fname=None, plot=True):
+def show_and_save(fig, legend_loc='upper right', save_fname=None, show=True):
     if legend_loc is not None:
         plt.legend(loc=legend_loc)
 
@@ -599,7 +600,7 @@ def show_and_save(fig, legend_loc='upper right', save_fname=None, plot=True):
     if save_fname is not None:
         plt.savefig(save_fname, bbox_inches='tight', pad_inches=0.1)
 
-    if plot:
+    if show:
         plt.show()
 
     plt.close(fig)
