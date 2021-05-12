@@ -86,7 +86,7 @@ def img_read_as_float(filename):
     return img_float
 
 
-def img_write(filename, img):
+def img_write(filename, img, comp_val=9):
     """
     OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
     """
@@ -99,12 +99,12 @@ def img_write(filename, img):
         img_save = np.dstack((b, g, r, a)).reshape((shape))
     else:
         raise ValueError("not supported img shape for immg_write")
-    cv2.imwrite(filename, img_save, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+    cv2.imwrite(filename, img_save, [cv2.IMWRITE_PNG_COMPRESSION, comp_val])
 
 
-def img_wirte_float_as_16bit_int(filename, img_float):
+def img_wirte_float_as_16bit_int(filename, img_float, comp_val=9):
     img_int = np.uint16(np.round(np.clip(img_float, 0.0, 1.0) * 0xFFFF))
-    img_write(filename, img_int)
+    img_write(filename, img_int, comp_val)
 
 
 def equal_devision(length, div_num):

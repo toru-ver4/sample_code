@@ -589,7 +589,7 @@ def plot_3d_init(
     return fig, ax
 
 
-def show_and_save(fig, legend_loc='upper right', save_fname=None):
+def show_and_save(fig, legend_loc='upper right', save_fname=None, plot=True):
     if legend_loc is not None:
         plt.legend(loc=legend_loc)
 
@@ -599,7 +599,10 @@ def show_and_save(fig, legend_loc='upper right', save_fname=None):
     if save_fname is not None:
         plt.savefig(save_fname, bbox_inches='tight', pad_inches=0.1)
 
-    plt.show()
+    if plot:
+        plt.show()
+
+    plt.close(fig)
 
 
 if __name__ == '__main__':

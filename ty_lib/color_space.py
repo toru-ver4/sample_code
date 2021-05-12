@@ -22,8 +22,8 @@ import numpy as np
 from colour.colorimetry import CCS_ILLUMINANTS as ILLUMINANTS
 from colour import RGB_COLOURSPACES
 from colour.models import xy_to_XYZ
-from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
-# from colour.adaptation import chromatic_adaptation_matrix_VonKries as cat02_mtx
+from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab,\
+    Lab_to_XYZ
 from colour.adaptation import matrix_chromatic_adaptation_VonKries as cat02_mtx
 from scipy import linalg
 
@@ -74,7 +74,7 @@ def calc_rgb_from_xyY(xyY, color_space_name, white=D65):
     >>> xyY = np.array(
     ...     [[0.3127, 0.3290, 1.0], [0.64, 0.33, 0.2], [0.30, 0.60, 0.6]])
     >>> calc_rgb_from_xyY(
-    ...     xyY=xyY, color_space_name=cs.BT709, white=cs.D65)
+    ...     xyY=xyY, color_space_name=cs.BT709, white=D65)
     [[  1.00000000e+00   1.00000000e+00   1.00000000e+00]
      [  9.40561207e-01   1.66533454e-16  -1.73472348e-17]
      [ -2.22044605e-16   8.38962916e-01  -6.93889390e-18]]
@@ -108,7 +108,7 @@ def calc_rgb_from_XYZ(XYZ, color_space_name, white=D65):
     >>> xyY = np.array(
     ...     [[0.3127, 0.3290, 1.0], [0.64, 0.33, 0.2], [0.30, 0.60, 0.6]])
     >>> calc_rgb_from_XYZ(
-    ...     XYZ=xyY_to_XYZ(xyY), color_space_name=cs.BT709, white=cs.D65)
+    ...     XYZ=xyY_to_XYZ(xyY), color_space_name=cs.BT709, white=D65)
     [[  1.00000000e+00   1.00000000e+00   1.00000000e+00]
      [  9.40561207e-01   1.66533454e-16  -1.73472348e-17]
      [ -2.22044605e-16   8.38962916e-01  -6.93889390e-18]]
@@ -143,7 +143,7 @@ def calc_XYZ_from_rgb(rgb, color_space_name, white=D65):
     >>> rgb = np.array(
     ...     [[1.0, 1.0, 1.0], [0.18, 0.18, 0.18], [1.0, 0.0, 0.0]])
     >>> XYZ = calc_XYZ_from_rgb(
-    ...     rgb=rgb, color_space_name=cs.BT709, white=cs.D65)
+    ...     rgb=rgb, color_space_name=cs.BT709, white=D65)
     >>> XYZ_to_xyY(XYZ)
     [[ 0.3127      0.329       1.        ]
      [ 0.3127      0.329       0.18      ]
@@ -309,6 +309,42 @@ def ocio_matrix_transform_mtx(src_name, dst_name):
 
 def get_primaries(color_space_name=BT709):
     return RGB_COLOURSPACES[color_space_name].primaries
+
+
+def lab_to_rgb(lab, color_space_name, xyz_white=D65, rgb_white=D65):
+    rgb_linear = large_xyz_to_rgb(
+        xyz=Lab_to_XYZ(lab), color_space_name=color_space_name,
+        xyz_white=xyz_white, rgb_white=rgb_white)
+
+    return rgb_linear
+
+
+def large_xyz_to_rgb(
+        xyz, color_space_name, xyz_white=D65, rgb_white=D65):
+    rgb_linear = XYZ_to_RGB(
+        xyz, xyz_white, rgb_white,
+        RGB_COLOURSPACES[color_space_name].matrix_XYZ_to_RGB)
+
+    return rgb_linear
+
+
+def rgb_to_large_xyz(
+        rgb, color_space_name, rgb_white=D65, xyz_white=D65):
+    large_xyz = RGB_to_XYZ(
+        rgb, rgb_white, xyz_white,
+        RGB_COLOURSPACES[color_space_name].matrix_RGB_to_XYZ)
+
+    return large_xyz
+
+
+def rgb_to_lab(
+        rgb, color_space_name, rgb_white=D65, xyz_white=D65):
+    large_xyz = rgb_to_large_xyz(
+        rgb=rgb, color_space_name=color_space_name,
+        rgb_white=rgb_white, xyz_white=xyz_white)
+    lab = XYZ_to_Lab(large_xyz)
+
+    return lab
 
 
 if __name__ == '__main__':
