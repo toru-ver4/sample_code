@@ -6,6 +6,7 @@ create gamut boundary lut.
 # import standard libraries
 import os
 from multiprocessing import Pool, cpu_count
+from colour.utilities.array import tstack
 
 # import third-party libraries
 import numpy as np
@@ -41,6 +42,8 @@ def debug_plot_cl_plane_core(hue, color_space_name=cs.BT2020):
     ----------
     hue : float
         hue. the unit is degree. range is 0.0 - 360.0
+    color_space_name : str
+        color space name
     """
     c_sample = 1280 * 2
     l_sample = 720 * 2
@@ -52,38 +55,6 @@ def debug_plot_cl_plane_core(hue, color_space_name=cs.BT2020):
     fname = f"./img/{color_space_name}_h-{hue:.1f}_"
     fname += f"c-{c_sample}_l_{l_sample}.png"
     tpg.img_write(fname, np.uint8(srgb * 255), comp_val=6)
-
-
-def debug_mplot_cl_plane_from_image():
-    ll_line = 97.4
-    x = [0, 200]
-    y = [ll_line, ll_line]
-    fig, ax1 = pu.plot_1_graph(
-        fontsize=20,
-        figsize=(20, 16),
-        bg_color=(0.96, 0.96, 0.96),
-        graph_title="Chroma-Lightness Plane",
-        graph_title_size=None,
-        xlabel="Chroma", ylabel="Lightness",
-        axis_label_size=None,
-        legend_size=17,
-        xlim=[0, 220],
-        ylim=[0, 100],
-        xtick=None,
-        ytick=[x * 20 for x in range(5)] + [ll_line],
-        xtick_size=None, ytick_size=None,
-        linewidth=3,
-        minor_xtick_num=None,
-        minor_ytick_num=None)
-
-    rgb_img = tpg.img_read_as_float(
-        "./img/ITU-R BT.2020_h-99.0_c-2560_l_1440.png")
-    ax1.imshow(
-        rgb_img, extent=(0, 220, 0, 100),
-        aspect='auto')
-    ax1.plot(x, y, '--k', lw=2, alpha=0.5)
-    pu.show_and_save(
-        fig=fig, legend_loc=None, save_fname="./img/test_cl.png")
 
 
 def create_valid_ab_plane_image_srgb(
@@ -253,6 +224,140 @@ def plot_ab_plane_core(ty_ch_lut, l_idx, l_val, color_space_name):
         save_fname=f"./img/ab_plane_{l_idx:04d}.png")
 
 
+def plot_ab_plane_using_intp_core(
+        ty_ch_lut, l_idx, l_val, color_space_name):
+    """
+    Parameters
+    ----------
+    ty_ch_lut : ndarray
+        gamut boundary data.
+        shape is (Hue_num, 3).
+        the data order is L*, C*, Hab
+    l_idx : int
+        A Lightness index for ty_ch_lut
+    l_val : float
+        Lightness Value of the ab plane
+    color_space_name : str
+        color space name for colour.RGB_COLOURSPACES
+    """
+    hue_array = np.linspace(0, 360, 512)
+    ll_array = np.ones_like(hue_array) * l_val
+    lh_array = tstack([ll_array, hue_array])
+    lch = cgb.get_gamut_boundary_lch_from_lut(
+        lut=ty_ch_lut, lh_array=lh_array)
+    lab = LCHab_to_Lab(lch)
+
+    if l_val < 25:
+        line_color = (0.96, 0.96, 0.96)
+    else:
+        line_color = (0.005, 0.005, 0.005)
+
+    ab_max = 200
+    ab_sample = 1280
+
+    srgb_image = create_valid_ab_plane_image_srgb(
+        l_val=l_val, ab_max=ab_max, ab_sample=ab_sample,
+        color_space_name=color_space_name)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(20, 16),
+        bg_color=None,
+        graph_title=f"ab plane, L*={l_val:.2f}",
+        graph_title_size=None,
+        xlabel="a*", ylabel="b*",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[-200, 200],
+        ylim=[-200, 200],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=4,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.imshow(
+        srgb_image, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
+    ax1.plot(
+        lab[..., 1], lab[..., 2], '-', color=line_color,
+        label="Boundaries using LUT", alpha=0.6)
+    prefix = "/work/overuse/2021/09_gamut_boundary/img_seq/"
+    fname = f"{prefix}/intp_ab_plane_{l_idx:04d}.png"
+    print(f"save file = {fname}")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right', show=False, save_fname=fname)
+
+
+def plot_cl_plane_using_intp_core(
+        ty_ch_lut, h_idx, h_val, color_space_name):
+    """
+    Parameters
+    ----------
+    ty_ch_lut : ndarray
+        gamut boundary data.
+        shape is (Hue_num, 3).
+        the data order is L*, C*, Hab
+    h_idx : int
+        A Hue index for ty_ch_lut
+    h_val : float
+        Hue Value of the ab plane
+    color_space_name : str
+        color space name for colour.RGB_COLOURSPACES
+    """
+    lightness_array = np.linspace(0, 100, 512)
+    hh_array = np.ones_like(lightness_array) * h_val
+    lh_array = tstack([lightness_array, hh_array])
+    lch = cgb.get_gamut_boundary_lch_from_lut(
+        lut=ty_ch_lut, lh_array=lh_array)
+    # lab = LCHab_to_Lab(lch)
+    line_color = (0.005, 0.005, 0.005)
+
+    c_max = 220
+    c_sample = 1280
+    l_max = 100
+    l_sample = 720
+
+    srgb_image = create_valid_cl_plane_image_srgb(
+        h_val=h_val, c_max=c_max, c_sample=c_sample, l_sample=l_sample,
+        color_space_name=color_space_name, bg_val=0.5)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(20, 16),
+        bg_color=None,
+        graph_title=f"cl plane, H*={h_val:.2f}",
+        graph_title_size=None,
+        xlabel="Chroma", ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[0, c_max],
+        ylim=[0, l_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=4,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.imshow(
+        srgb_image, extent=(0, c_max, 0, l_max), aspect='auto')
+    ax1.plot(
+        lch[..., 1], lch[..., 0], '-', color=line_color,
+        label="Boundaries using LUT", alpha=0.6)
+    prefix = "/work/overuse/2021/09_gamut_boundary/img_seq/"
+    fname = f"{prefix}/intp_cl_plane_{h_idx:04d}.png"
+    print(f"save file = {fname}")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right', show=False, save_fname=fname)
+
+
+def thread_wrapper_plot_ab_plane_using_intp_core(args):
+    plot_ab_plane_using_intp_core(**args)
+
+
+def thread_wrapper_plot_cl_plane_using_intp_core(args):
+    plot_cl_plane_using_intp_core(**args)
+
+
 def thread_wrapper_plot_ab_plane_core(args):
     plot_ab_plane_core(**args)
 
@@ -288,6 +393,68 @@ def plot_ab_plane_seq(ty_lch_lut, color_space_name):
             pool.map(thread_wrapper_plot_ab_plane_core, args)
 
 
+def plot_ab_plane_seq_using_intp(ty_lch_lut, color_space_name):
+    """
+    Parameters
+    ----------
+    ty_lch_lut : ndarray
+        gamut boundary data.
+        shape is (Lightness_num, Hue_num, 3).
+        the data order is L*, C*, Hab
+    """
+    l_num = 1001
+
+    total_process_num = l_num
+    block_process_num = cpu_count()
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            l_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
+            if l_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                ty_ch_lut=ty_lch_lut, l_idx=l_idx,          # User
+                l_val=l_idx/(l_num-1)*100, color_space_name=color_space_name)
+            # plot_ab_plane_using_intp_core(**d)
+            args.append(d)
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_plot_ab_plane_using_intp_core, args)
+
+
+def plot_cl_plane_seq_using_intp(ty_lch_lut, color_space_name):
+    """
+    Parameters
+    ----------
+    ty_lch_lut : ndarray
+        gamut boundary data.
+        shape is (Lightness_num, Hue_num, 3).
+        the data order is L*, C*, Hab
+    """
+    h_num = 1001
+
+    total_process_num = h_num
+    block_process_num = cpu_count()
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            h_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={h_idx}")  # User
+            if h_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                ty_ch_lut=ty_lch_lut, h_idx=h_idx,          # User
+                h_val=h_idx/(h_num-1)*360, color_space_name=color_space_name)
+            # plot_cl_plane_using_intp_core(**d)
+            args.append(d)
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_plot_cl_plane_using_intp_core, args)
+
+
 def check_lch_2d_lut():
     lut = np.load("./lut/lut_sample_50_361_8192.npy")
     plot_ab_plane_core(
@@ -300,16 +467,7 @@ def check_lch_2d_lut():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    lut = np.load("./lut/lut_sample_50_1024_8192.npy")
-    plot_ab_plane_seq(ty_lch_lut=lut, color_space_name=cs.BT2020)
-    # debug_plot_cl_plane_core(hue=99)
-    # for idx in range(200):
-    #     l_val = 90 + 0.05 * idx
-    #     print(f"idx={idx}, l_val={l_val}")
-    #     debug_plot_ab_plane(
-    #         l_val=l_val, color_space_name=cs.BT2020, idx=idx)
-    # srgb_img = create_valid_ab_plane_image_srgb(
-    #     l_val=90, ab_max=200, ab_sample=512, color_space_name=cs.BT2020)
-    # tpg.img_wirte_float_as_16bit_int("uuu.png", srgb_img)
+    # lut = np.load("./lut/lut_sample_1024_1024_32768.npy")
+    # plot_cl_plane_seq_using_intp(ty_lch_lut=lut, color_space_name=cs.BT2020)
+    # plot_ab_plane_seq_using_intp(ty_lch_lut=lut, color_space_name=cs.BT2020)
 
-    # check_lch_2d_lut()

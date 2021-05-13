@@ -154,44 +154,6 @@ def calc_chroma_boundary_specific_hue(
     return ll_base, chroma_array
 
 
-# def calc_chroma_boundary_lut(
-#         lightness_sample, chroma_sample, chroma_max, hue_num, cs_name):
-#     """
-#     parameters
-#     ----------
-#     lightness_sample : int
-#         Sample number of the Lightness
-#         Lightness range is 0.0 - 100.0
-#     chroma_sample : int
-#         Sample number of the Chroma
-#     chroma_max : float
-#         The maximum value of the Chroma search range.
-#     hue_num : int
-#         Sample number of the Hue
-#     cs_name : string
-#         A color space name. ex. "ITU-R BT.709", "ITU-R BT.2020"
-#     """
-#     # create buffer (2D-LUT)
-#     lut = np.zeros((lightness_sample, hue_num, 3))
-#     mtime = MeasureExecTime()
-#     mtime.start()
-#     for l_idx in range(lightness_sample):
-#         ll = l_idx / (lightness_sample - 1) * 100
-#         print(f"l_idx={l_idx}, l_val={ll}")
-#         hue_array, chroma_array = calc_chroma_boundary_specific_l(
-#             ll=ll, chroma_sample=chroma_sample, chroma_max=chroma_max,
-#             hue_num=hue_num, cs_name=cs_name)
-#         ll_array = np.ones_like(hue_array) * ll
-#         plane_lut = tstack([ll_array, chroma_array, hue_array])
-#         lut[l_idx] = plane_lut
-#         mtime.lap()
-
-#     mtime.end()
-#     # print(lut)
-
-#     return lut
-
-
 def thread_wrapper_calc_chroma_boundary_specific_hue(args):
     lightness_array, chroma_array = calc_chroma_boundary_specific_hue(**args)
     hue_array = np.ones_like(lightness_array) * args['hue']
@@ -204,7 +166,6 @@ def thread_wrapper_calc_chroma_boundary_specific_hue(args):
 
     for l_idx in range(ll_len):
         addr = (hue_plane_size * l_idx) + (h_idx * 3)
-        # print(f"l_idx={l_idx}, addr={st_addr}, lut={plane_lut[l_idx]}")
         shared_array[addr:addr+3] = np.float32(plane_lut[l_idx])
 
 
@@ -223,11 +184,10 @@ def calc_chroma_boundary_lut(
     cs_name : string
         A color space name. ex. "ITU-R BT.709", "ITU-R BT.2020"
     """
-    # create buffer (2D-LUT)
-    # lut = np.zeros((lightness_sample, hue_sample, 3))
 
     total_process_num = hue_sample
     block_process_num = cpu_count()
+    # block_process_num = 3  # for 32768 sample
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
     mtime = MeasureExecTime()
@@ -247,6 +207,7 @@ def calc_chroma_boundary_lut(
             # thread_wrapper_calc_chroma_boundary_specific_hue(d)
         with Pool(cpu_count()) as pool:
             pool.map(thread_wrapper_calc_chroma_boundary_specific_hue, args)
+            # mtime.lap()
         mtime.lap()
     mtime.end()
 
@@ -254,23 +215,54 @@ def calc_chroma_boundary_lut(
         shared_array[:lightness_sample*hue_sample*3]).reshape(
             (lightness_sample, hue_sample, 3))
 
-    # mtime = MeasureExecTime()
-    # mtime.start()
-    # for h_idx in range(hue_sample):
-    #     hh = h_idx / (hue_sample - 1) * 360
-    #     print(f"h_idx={h_idx}, h_val={hh}")
-    #     lightness_array, chroma_array = calc_chroma_boundary_specific_hue(
-    #         hue=hh, chroma_sample=chroma_sample,
-    #         ll_num=lightness_sample, cs_name=cs_name)
-    #     hue_array = np.ones_like(lightness_array) * hh
-    #     plane_lut = tstack([lightness_array, chroma_array, hue_array])
-    #     lut[:, h_idx] = plane_lut
-    #     mtime.lap()
-
-    # mtime.end()
-    # # print(lut)
-
     return lut
+
+
+def get_gamut_boundary_lch_from_lut(lut, lh_array):
+    """
+    parameters
+    ----------
+    lut : ndarray
+        A Gamut boundary lut
+    lh_array : ndarray
+        lightness, hue array for interpolate.
+    """
+    ll_num = lut.shape[0]
+    hh_num = lut.shape[1]
+    ll_idx_float = lh_array[..., 0] / 100 * (ll_num - 1)
+    ll_low_idx = np.int32(np.floor(ll_idx_float))
+    ll_high_idx = ll_low_idx + 1
+    ll_high_idx[ll_high_idx >= ll_num] = ll_num - 1
+    # print(ll_low_idx)
+    coef_after_shape = (ll_low_idx.shape[0], 1)
+    ll_coef = (ll_idx_float - ll_low_idx).reshape(coef_after_shape)
+
+    hh_idx_float = lh_array[..., 1] / 360 * (hh_num - 1)
+    hh_low_idx = np.int32(np.floor(hh_idx_float))
+    hh_high_idx = hh_low_idx + 1
+    hh_high_idx[hh_high_idx >= hh_num] = hh_num - 1
+    # print(hh_low_idx)
+    coef_after_shape = (hh_low_idx.shape[0], 1)
+    hh_coef = (hh_idx_float - hh_low_idx).reshape(coef_after_shape)
+
+    # interpolate Lightness direction
+    # print(lut[ll_low_idx, hh_low_idx].shape)
+    # print(ll_idx_float - ll_low_idx)
+    intp_l_hue_low = lut[ll_low_idx, hh_low_idx]\
+        + (lut[ll_high_idx, hh_low_idx] - lut[ll_low_idx, hh_low_idx])\
+        * ll_coef
+    intp_l_hue_high = lut[ll_low_idx, hh_high_idx]\
+        + (lut[ll_high_idx, hh_high_idx] - lut[ll_low_idx, hh_high_idx])\
+        * ll_coef
+
+    intp_lch = intp_l_hue_low\
+        + (intp_l_hue_high - intp_l_hue_low) * hh_coef
+
+    # print(intp_l_hue_low)
+    # print(intp_l_hue_high)
+    # print(intp_val)
+
+    return intp_lch
 
 
 if __name__ == '__main__':
@@ -283,16 +275,27 @@ if __name__ == '__main__':
     #     hue_num=361, cs_name=cs.BT2020)
     # np.save("./lut_sample_50_361_8192.npy", lut)
 
-    hue = 0
-    hue_sample = 1024
-    chroma_sample = 16384
-    ll_num = 1024
-    cs_name = cs.BT2020
-    # calc_chroma_boundary_specific_hue(
-    #     hue=hue, chroma_sample=chroma_sample,
-    #     ll_num=ll_num, cs_name=cs_name)
-    lut = calc_chroma_boundary_lut(
-        lightness_sample=ll_num, chroma_sample=chroma_sample,
-        hue_sample=hue_sample, cs_name=cs_name)
-    np.save(
-        f"./lut/lut_sample_{ll_num}_{hue_sample}_{chroma_sample}.npy", lut)
+    # hue = 0
+    # hue_sample = 100
+    # chroma_sample = 8192
+    # ll_num = 25
+    # cs_name = cs.BT2020
+    # # calc_chroma_boundary_specific_hue(
+    # #     hue=hue, chroma_sample=chroma_sample,
+    # #     ll_num=ll_num, cs_name=cs_name)
+    # lut = calc_chroma_boundary_lut(
+    #     lightness_sample=ll_num, chroma_sample=chroma_sample,
+    #     hue_sample=hue_sample, cs_name=cs_name)
+    # np.save(
+    #     f"./lut/lut_sample_{ll_num}_{hue_sample}_{chroma_sample}.npy", lut)
+
+    lut = np.load("./lut/lut_sample_25_100_8192.npy")
+    # l = 13
+    # h = 15
+    print(np.linspace(0, 100, 25))
+    print(np.linspace(0, 360, 100))
+    hh = np.array([14, 19])
+    ll = np.ones_like(hh) * 13
+    lh_array = tstack([ll, hh])
+    print(lh_array)
+    get_gamut_boundary_lch_from_lut(lut=lut, lh_array=lh_array)
