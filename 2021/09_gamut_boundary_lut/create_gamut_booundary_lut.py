@@ -186,8 +186,8 @@ def calc_chroma_boundary_lut(
     """
 
     total_process_num = hue_sample
-    block_process_num = cpu_count()
-    # block_process_num = 3  # for 32768 sample
+    # block_process_num = cpu_count()
+    block_process_num = 3  # for 32768 sample
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
     mtime = MeasureExecTime()
@@ -226,6 +226,37 @@ def get_gamut_boundary_lch_from_lut(lut, lh_array):
         A Gamut boundary lut
     lh_array : ndarray
         lightness, hue array for interpolate.
+
+    Examples
+    --------
+    >>> lut = np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy")
+    >>> ll_base = np.linspace(0, 100, 11)
+    >>> hh_base = np.ones_like(ll_base) * 20
+    >>> lh_array = tstack([ll_base, hh_base])
+    >>> print(lh_array)
+    [[   0.   20.]
+     [  10.   20.]
+     [  20.   20.]
+     [  30.   20.]
+     [  40.   20.]
+     [  50.   20.]
+     [  60.   20.]
+     [  70.   20.]
+     [  80.   20.]
+     [  90.   20.]
+     [ 100.   20.]]
+    >>> lch = get_gamut_boundary_lch_from_lut(lut=lut, lh_array=lh_array)
+    [[   0.            0.           20.        ]
+     [  10.           33.74652269   20.        ]
+     [  20.           53.29969237   20.        ]
+     [  30.           72.81704797   20.        ]
+     [  40.           92.31053162   20.        ]
+     [  50.          111.74134064   20.        ]
+     [  60.          130.80209944   20.        ]
+     [  70.           96.07373979   20.        ]
+     [  80.           59.76966519   20.        ]
+     [  90.           27.97189331   20.        ]
+     [ 100.            0.           20.        ]]
     """
     ll_num = lut.shape[0]
     hh_num = lut.shape[1]
@@ -265,6 +296,36 @@ def get_gamut_boundary_lch_from_lut(lut, lh_array):
     return intp_lch
 
 
+def calc_cusp_specific_hue(lut, hue):
+    """
+    calc gamut's cusp using lut.
+
+    Parameters
+    ----------
+    lut : ndarray
+        A gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    hue : float
+        A Hue value. range is 0.0 - 360.0
+    Returns
+    -------
+    cusp : ndarray
+        gamut's cusp.
+        [Lightness, Chroma, Hue].
+    """
+    l_num = lut.shape[0]
+    ll_base = np.linspace(0, 100, l_num)
+    hh_base = np.ones_like(ll_base) * hue
+
+    lh_array = tstack([ll_base, hh_base])
+
+    lch = get_gamut_boundary_lch_from_lut(lut=lut, lh_array=lh_array)
+    max_cc_idx = np.argmax(lch[..., 1])
+
+    return lch[max_cc_idx]
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # # calc_chroma_boundary_specific_l(ll=50, cs_name=cs.BT2020)
@@ -275,27 +336,28 @@ if __name__ == '__main__':
     #     hue_num=361, cs_name=cs.BT2020)
     # np.save("./lut_sample_50_361_8192.npy", lut)
 
-    # hue = 0
-    # hue_sample = 100
+    # hue_sample = 9
     # chroma_sample = 8192
-    # ll_num = 25
+    # ll_num = 11
     # cs_name = cs.BT2020
-    # # calc_chroma_boundary_specific_hue(
-    # #     hue=hue, chroma_sample=chroma_sample,
-    # #     ll_num=ll_num, cs_name=cs_name)
     # lut = calc_chroma_boundary_lut(
     #     lightness_sample=ll_num, chroma_sample=chroma_sample,
     #     hue_sample=hue_sample, cs_name=cs_name)
     # np.save(
-    #     f"./lut/lut_sample_{ll_num}_{hue_sample}_{chroma_sample}.npy", lut)
+    #     f"./lut/lut_sample_{ll_num}_{hue_sample}_{chroma_sample}_{cs_name}.npy",
+    #     lut)
 
-    lut = np.load("./lut/lut_sample_25_100_8192.npy")
-    # l = 13
-    # h = 15
-    print(np.linspace(0, 100, 25))
-    print(np.linspace(0, 360, 100))
-    hh = np.array([14, 19])
-    ll = np.ones_like(hh) * 13
-    lh_array = tstack([ll, hh])
-    print(lh_array)
-    get_gamut_boundary_lch_from_lut(lut=lut, lh_array=lh_array)
+    # lut = np.load("./lut/lut_sample_25_100_8192.npy")
+    # # l = 13
+    # # h = 15
+    # print(np.linspace(0, 100, 25))
+    # print(np.linspace(0, 360, 100))
+    # hh = np.array([14, 19])
+    # ll = np.ones_like(hh) * 13
+    # lh_array = tstack([ll, hh])
+    # print(lh_array)
+    # get_gamut_boundary_lch_from_lut(lut=lut, lh_array=lh_array)
+
+    calc_cusp_specific_hue(
+        lut=np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy"),
+        hue=20)

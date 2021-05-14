@@ -289,13 +289,13 @@ def plot_ab_plane_using_intp_core(
 
 
 def plot_cl_plane_using_intp_core(
-        ty_ch_lut, h_idx, h_val, color_space_name):
+        ty_lch_lut, h_idx, h_val, color_space_name):
     """
     Parameters
     ----------
-    ty_ch_lut : ndarray
+    ty_lch_lut : ndarray
         gamut boundary data.
-        shape is (Hue_num, 3).
+        shape is (Lightness_num, Hue_num, 3).
         the data order is L*, C*, Hab
     h_idx : int
         A Hue index for ty_ch_lut
@@ -308,7 +308,7 @@ def plot_cl_plane_using_intp_core(
     hh_array = np.ones_like(lightness_array) * h_val
     lh_array = tstack([lightness_array, hh_array])
     lch = cgb.get_gamut_boundary_lch_from_lut(
-        lut=ty_ch_lut, lh_array=lh_array)
+        lut=ty_lch_lut, lh_array=lh_array)
     # lab = LCHab_to_Lab(lch)
     line_color = (0.005, 0.005, 0.005)
 
@@ -470,4 +470,3 @@ if __name__ == '__main__':
     # lut = np.load("./lut/lut_sample_1024_1024_32768.npy")
     # plot_cl_plane_seq_using_intp(ty_lch_lut=lut, color_space_name=cs.BT2020)
     # plot_ab_plane_seq_using_intp(ty_lch_lut=lut, color_space_name=cs.BT2020)
-
