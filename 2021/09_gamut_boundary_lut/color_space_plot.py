@@ -455,6 +455,107 @@ def plot_cl_plane_seq_using_intp(ty_lch_lut, color_space_name):
             pool.map(thread_wrapper_plot_cl_plane_using_intp_core, args)
 
 
+def plot_l_focal_and_cups_core(
+        inner_ty_lch_lut, outer_ty_lch_lut, h_idx, h_val, color_space_name):
+    lightness_array = np.linspace(0, 100, 512)
+    hh_array = np.ones_like(lightness_array) * h_val
+    lh_array = tstack([lightness_array, hh_array])
+    inner_lch = cgb.get_gamut_boundary_lch_from_lut(
+        lut=inner_ty_lch_lut, lh_array=lh_array)
+    outer_lch = cgb.get_gamut_boundary_lch_from_lut(
+        lut=outer_ty_lch_lut, lh_array=lh_array)
+    line_color = (0.2, 0.2, 0.2)
+
+    inner_cusp = cgb.calc_cusp_specific_hue(lut=inner_lut, hue=h_val)
+    outer_cusp = cgb.calc_cusp_specific_hue(lut=outer_lut, hue=h_val)
+    l_focal = cgb.calc_l_focal_specific_hue(
+        inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val)
+
+    c_max = 220
+    l_max = 104
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(16, 10),
+        bg_color=None,
+        graph_title=f"L_focal, BT.709 cups, BT.2020 cups, H*={h_val:.2f}",
+        graph_title_size=None,
+        xlabel="Chroma", ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[-4, c_max],
+        ylim=[-4, l_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=4,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(
+        inner_lch[..., 1], inner_lch[..., 0], '--', color=line_color,
+        label="BT.709", alpha=1.0)
+    ax1.plot(
+        outer_lch[..., 1], outer_lch[..., 0], '-', color=line_color,
+        label="BT.2020", alpha=1.0)
+    ax1.plot(
+        [l_focal[1], outer_cusp[1]], [l_focal[0], outer_cusp[0]], '--', lw=1)
+    ax1.plot(
+        inner_cusp[1], inner_cusp[0], 's', label="BT.709 cups", ms=22,
+        alpha=0.6)
+    ax1.plot(
+        outer_cusp[1], outer_cusp[0], 's', label="BT.2020 cups", ms=22,
+        alpha=0.6)
+    ax1.plot(
+        l_focal[1], l_focal[0], 'x', label="L focal", ms=22, mew=5,
+        color=line_color)
+    prefix = "/work/overuse/2021/09_gamut_boundary/l_focal/"
+    fname = f"{prefix}/L_focal_cl_plane_{h_idx:04d}.png"
+    print(f"save file = {fname}")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right', show=False, save_fname=fname)
+
+
+def plot_l_focal_and_cups_seq(
+        inner_lch_lut, outer_lch_lut, color_space_name):
+    """
+    Parameters
+    ----------
+    inner_lch_lut : ndarray
+        gamut boundary data.
+        shape is (Lightness_num, Hue_num, 3).
+        the data order is L*, C*, Hab
+    outer_lch_lut : ndarray
+        gamut boundary data.
+        shape is (Lightness_num, Hue_num, 3).
+        the data order is L*, C*, Hab
+    color_space_name : str
+        color space name for colour.RGB_COLOURSPACES
+    """
+    h_num = 361
+
+    total_process_num = h_num
+    block_process_num = cpu_count()
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            h_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={h_idx}")  # User
+            if h_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                inner_ty_lch_lut=inner_lch_lut, outer_ty_lch_lut=outer_lch_lut,
+                h_idx=h_idx, h_val=h_idx/(h_num-1)*360,
+                color_space_name=color_space_name)
+            plot_l_focal_and_cups_core(**d)
+            args.append(d)
+            break
+        break
+        # with Pool(cpu_count()) as pool:
+        #     pool.map(thread_wrapper_plot_l_focal_and_cups_core, args)
+
+
 def check_lch_2d_lut():
     lut = np.load("./lut/lut_sample_50_361_8192.npy")
     plot_ab_plane_core(
@@ -470,3 +571,8 @@ if __name__ == '__main__':
     # lut = np.load("./lut/lut_sample_1024_1024_32768.npy")
     # plot_cl_plane_seq_using_intp(ty_lch_lut=lut, color_space_name=cs.BT2020)
     # plot_ab_plane_seq_using_intp(ty_lch_lut=lut, color_space_name=cs.BT2020)
+    inner_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy")
+    outer_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy")
+    plot_l_focal_and_cups_seq(
+        inner_lch_lut=inner_lut, outer_lch_lut=outer_lut,
+        color_space_name=cs.BT2020)
