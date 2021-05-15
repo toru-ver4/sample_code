@@ -17,6 +17,7 @@ from multiprocessing import Pool, cpu_count, Array
 # import my libraries
 import color_space as cs
 from common import MeasureExecTime
+import light
 
 # information
 __author__ = 'Toru Yoshihara'

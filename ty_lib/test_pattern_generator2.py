@@ -8,12 +8,13 @@
 
 import os
 from colour.models.rgb.rgb_colourspace import RGB_to_RGB
+from colour.utilities import tstack
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from colour.colorimetry import MSDS_CMFS, CCS_ILLUMINANTS
 from colour.models import XYZ_to_xy, xy_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
-from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ
+from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ, LCHab_to_Lab
 from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020
 from colour.utilities import normalise_maximum
 from colour import models
@@ -23,7 +24,9 @@ from scipy.ndimage.filters import convolve
 import math
 
 import transfer_functions as tf
-
+import create_gamut_booundary_lut as cgbl
+import font_control as fc
+import color_space as cs
 
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
 D65_WHITE = CCS_ILLUMINANTS[CMFS_NAME]['D65']
@@ -1923,6 +1926,92 @@ class IdPatch8bit10bitGenerator():
         return out_8bit, out_10bit
 
 
+def make_hue_chroma_pattern(
+        inner_lut, outer_lut, hue_num, width, height):
+    """
+    Parameters
+    ----------
+    inner_lut : ndarray
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    outer_lut : ndarray
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    width : int
+        image width
+    height : int
+        image height
+    hue_num : int
+        the number of the hue block.
+    """
+    height_org = height
+    font_size = int(26 * height / 1080)
+    text_h_margin = int(6 * height / 1080)
+    font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
+    text = "Title: BT.2020 Hue-Chroma Pattern,  Revision: 2,  "
+    text += "Author: Toru Yoshihara(@toru_ver15)"
+    hue = np.linspace(0, 360, hue_num, endpoint=False)
+    text_width, text_height = fc.get_text_width_height(
+        text=text, font_path=font_path, font_size=font_size)
+    text_v_margin = int(text_height * 0.3)
+
+    img = np.ones((height, width, 3)) * 0.1
+    text_drawer = fc.TextDrawer(
+        img, text=text,
+        pos=(text_h_margin, height - text_height - text_v_margin),
+        font_color=(0.8, 0.8, 0.8), font_size=font_size, font_path=font_path)
+    text_drawer.draw()
+
+    height = height - text_height - 2 * text_v_margin
+    h_block_width = width / hue_num
+    chroma_num = int(round(height / h_block_width + 0.5))
+    h_block_size = equal_devision(width, hue_num)
+    v_block_size = equal_devision(height, chroma_num)
+    mark_size = v_block_size[0] // 8
+    mark_img_2020 = np.zeros((mark_size, mark_size, 3))
+    # mark_img_p3 = np.ones((mark_size, mark_size, 3)) * 0.5
+
+    h_buf = []
+    for h_idx, h_val in enumerate(hue):
+        # calc RGB value
+        l_focal = cgbl.calc_l_focal_specific_hue(
+            inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val)
+        cups = cgbl.calc_cusp_specific_hue(lut=outer_lut, hue=h_val)
+        cc_max = cups[1]
+        chroma = np.linspace(0, cc_max, chroma_num)
+        bb = l_focal[0]
+        aa = (cups[0] - l_focal[0]) / cc_max
+        lightness = aa * chroma + bb
+        hue_array = np.ones_like(lightness) * h_val
+        lch_array = tstack([lightness, chroma, hue_array])
+        lab_array = LCHab_to_Lab(lch_array)
+        p3_idx = cgbl.is_outer_gamut(lab=lab_array, color_space_name=cs.BT709)
+        bt2020_idx = cgbl.is_outer_gamut(
+            lab=lab_array, color_space_name=cs.P3_D65)
+        v_buf = []
+        for c_idx, lab, in enumerate(lab_array):
+            rgb_linear = cs.lab_to_rgb(lab, cs.BT2020)
+            rgb = tf.oetf(np.clip(rgb_linear, 0.0, 1.0), tf.GAMMA24)
+            img_temp = np.ones((v_block_size[c_idx], h_block_size[h_idx], 3))\
+                * rgb
+            if p3_idx[c_idx]:
+                img_temp_p3 = mark_img_2020.copy()
+                img_temp_p3[1:-1, 1:-1]\
+                    = np.ones_like(img_temp_p3[1:-1, 1:-1]) * rgb
+                merge(img_temp, img_temp_p3, (0, 0))
+            if bt2020_idx[c_idx]:
+                merge(img_temp, mark_img_2020, (0, 0))
+            v_buf.append(img_temp)
+
+        h_buf.append(np.vstack(v_buf))
+    img_pat = np.hstack(h_buf)
+    merge(img, img_pat, (0, 0))
+    img_wirte_float_as_16bit_int(
+        f"./bt2020_hue_chroma_{width}x{height_org}_h_num-{hue_num}.png", img)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
@@ -1933,5 +2022,9 @@ if __name__ == '__main__':
     # calc_rad_patch_idx2(outmost_num=9, current_num=7)
     # print(convert_luminance_to_color_value(100, tf.ST2084))
     # print(generate_color_checker_rgb_value(target_white=[0.3127, 0.3290]))
-    print(calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480)))
-    print(convert_luminance_to_code_value(100, tf.ST2084))
+    # print(calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480)))
+    # print(convert_luminance_to_code_value(100, tf.ST2084))
+    make_hue_chroma_pattern(
+        inner_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
+        outer_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
+        width=3840, height=2160, hue_num=128)
