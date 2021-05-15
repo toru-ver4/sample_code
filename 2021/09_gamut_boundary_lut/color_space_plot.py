@@ -362,6 +362,10 @@ def thread_wrapper_plot_ab_plane_core(args):
     plot_ab_plane_core(**args)
 
 
+def thread_wrapper_plot_l_focal_and_cups_core(args):
+    plot_l_focal_and_cups_core(**args)
+
+
 def plot_ab_plane_seq(ty_lch_lut, color_space_name):
     """
     Parameters
@@ -470,6 +474,10 @@ def plot_l_focal_and_cups_core(
     outer_cusp = cgb.calc_cusp_specific_hue(lut=outer_lut, hue=h_val)
     l_focal = cgb.calc_l_focal_specific_hue(
         inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val)
+    inner_color = lab_to_rgb_srgb(
+        lab=LCHab_to_Lab(inner_cusp), color_space_name=cs.BT2020)
+    outer_color = lab_to_rgb_srgb(
+        lab=LCHab_to_Lab(outer_cusp), color_space_name=cs.BT2020)
 
     c_max = 220
     l_max = 104
@@ -477,8 +485,8 @@ def plot_l_focal_and_cups_core(
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(16, 10),
-        bg_color=None,
-        graph_title=f"L_focal, BT.709 cups, BT.2020 cups, H*={h_val:.2f}",
+        bg_color=(0.85, 0.85, 0.85),
+        graph_title=f"L_focal, BT.709 cups, BT.2020 cups, H={h_val:.2f}",
         graph_title_size=None,
         xlabel="Chroma", ylabel="Lightness",
         axis_label_size=None,
@@ -492,19 +500,20 @@ def plot_l_focal_and_cups_core(
         minor_xtick_num=None,
         minor_ytick_num=None)
     ax1.plot(
-        inner_lch[..., 1], inner_lch[..., 0], '--', color=line_color,
-        label="BT.709", alpha=1.0)
+        inner_lch[..., 1], inner_lch[..., 0], '-', color=line_color,
+        label="BT.709", alpha=0.7, lw=2)
     ax1.plot(
         outer_lch[..., 1], outer_lch[..., 0], '-', color=line_color,
         label="BT.2020", alpha=1.0)
     ax1.plot(
-        [l_focal[1], outer_cusp[1]], [l_focal[0], outer_cusp[0]], '--', lw=1)
+        [l_focal[1], outer_cusp[1]], [l_focal[0], outer_cusp[0]], '--', lw=1,
+        color=line_color)
     ax1.plot(
         inner_cusp[1], inner_cusp[0], 's', label="BT.709 cups", ms=22,
-        alpha=0.6)
+        alpha=0.8, color=inner_color)
     ax1.plot(
         outer_cusp[1], outer_cusp[0], 's', label="BT.2020 cups", ms=22,
-        alpha=0.6)
+        alpha=0.8, color=outer_color)
     ax1.plot(
         l_focal[1], l_focal[0], 'x', label="L focal", ms=22, mew=5,
         color=line_color)
@@ -512,7 +521,7 @@ def plot_l_focal_and_cups_core(
     fname = f"{prefix}/L_focal_cl_plane_{h_idx:04d}.png"
     print(f"save file = {fname}")
     pu.show_and_save(
-        fig=fig, legend_loc='upper right', show=False, save_fname=fname)
+        fig=fig, legend_loc='lower right', show=False, save_fname=fname)
 
 
 def plot_l_focal_and_cups_seq(
@@ -548,12 +557,12 @@ def plot_l_focal_and_cups_seq(
                 inner_ty_lch_lut=inner_lch_lut, outer_ty_lch_lut=outer_lch_lut,
                 h_idx=h_idx, h_val=h_idx/(h_num-1)*360,
                 color_space_name=color_space_name)
-            plot_l_focal_and_cups_core(**d)
+            # plot_l_focal_and_cups_core(**d)
             args.append(d)
-            break
-        break
-        # with Pool(cpu_count()) as pool:
-        #     pool.map(thread_wrapper_plot_l_focal_and_cups_core, args)
+        #     break
+        # break
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_plot_l_focal_and_cups_core, args)
 
 
 def check_lch_2d_lut():
