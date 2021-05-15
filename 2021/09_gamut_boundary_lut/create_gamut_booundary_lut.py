@@ -308,11 +308,19 @@ def calc_cusp_specific_hue(lut, hue):
         M is the number of the Hue.
     hue : float
         A Hue value. range is 0.0 - 360.0
+
     Returns
     -------
     cusp : ndarray
         gamut's cusp.
         [Lightness, Chroma, Hue].
+
+    Examples
+    --------
+    >>> calc_cusp_specific_hue(
+    ...     lut=np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy"),
+    ...     hue=20)
+    [  60.          130.80209944   20.        ]
     """
     l_num = lut.shape[0]
     ll_base = np.linspace(0, 100, l_num)
@@ -324,6 +332,52 @@ def calc_cusp_specific_hue(lut, hue):
     max_cc_idx = np.argmax(lch[..., 1])
 
     return lch[max_cc_idx]
+
+
+def calc_l_focal_specific_hue(inner_lut, outer_lut, hue):
+    """
+    calc L_focal value
+
+    Parameters
+    ----------
+    inner_lut : ndarray
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    outer_lut : ndarray
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    hue : float
+        A Hue value. range is 0.0 - 360.0
+
+    Returns
+    -------
+    L_focal : ndarray
+        L_focal value.
+        [Lightness, Chroma, Hue].
+
+    Examples
+    --------
+    >>> inner_lut = np.load("./lut/lut_sample_11_9_8192_ITU-R BT.709.npy")
+    >>> outer_lut = np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy")
+    >>> calc_l_focal_specific_hue(inner_lut, outer_lut, 20)
+    [ 32.7255767   0.         20.       ]
+    """
+    inner_cups = calc_cusp_specific_hue(lut=inner_lut, hue=hue)
+    outer_cups = calc_cusp_specific_hue(lut=outer_lut, hue=hue)
+
+    x1 = inner_cups[1]
+    y1 = inner_cups[0]
+    x2 = outer_cups[1]
+    y2 = outer_cups[0]
+
+    if x1 != x2:
+        l_focal = (y2 - y1) / (x2 - x1) * (-x1) + y1
+    else:
+        l_focal = y1
+
+    return np.array([l_focal, 0, hue])
 
 
 if __name__ == '__main__':
@@ -339,7 +393,7 @@ if __name__ == '__main__':
     # hue_sample = 9
     # chroma_sample = 8192
     # ll_num = 11
-    # cs_name = cs.BT2020
+    # cs_name = cs.BT709
     # lut = calc_chroma_boundary_lut(
     #     lightness_sample=ll_num, chroma_sample=chroma_sample,
     #     hue_sample=hue_sample, cs_name=cs_name)
@@ -358,6 +412,11 @@ if __name__ == '__main__':
     # print(lh_array)
     # get_gamut_boundary_lch_from_lut(lut=lut, lh_array=lh_array)
 
-    calc_cusp_specific_hue(
-        lut=np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy"),
-        hue=20)
+    # calc_cusp_specific_hue(
+    #     lut=np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy"),
+    #     hue=20)
+
+    inner_lut = np.load("./lut/lut_sample_11_9_8192_ITU-R BT.709.npy")
+    outer_lut = np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy")
+    l_focal = calc_l_focal_specific_hue(inner_lut, outer_lut, 20)
+    print(l_focal)
