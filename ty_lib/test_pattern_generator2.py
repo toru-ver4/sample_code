@@ -27,6 +27,7 @@ import transfer_functions as tf
 import create_gamut_booundary_lut as cgbl
 import font_control as fc
 import color_space as cs
+from common import is_img_shape
 
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
 D65_WHITE = CCS_ILLUMINANTS[CMFS_NAME]['D65']
@@ -60,6 +61,189 @@ def preview_image(img, order='rgb', over_disp=False):
         cv2.resizeWindow('preview', )
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+
+def h_mono_line_to_img(line, height):
+    """
+    create image from horizontal line data.
+
+    Parameters
+    ----------
+    line : ndarray
+        line value
+    height : int
+        height
+
+    Examples
+    --------
+    >>> line = np.linespace(0, 1, 9)
+    >>> print(line)
+    [ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]
+
+    >>> img = h_mono_line_to_img(line, 6)
+    >>> print(img)
+    [[ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]
+     [ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]
+     [ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]
+     [ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]
+     [ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]
+     [ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]]
+    """
+    return line.reshape(1, -1, 1).repeat(3, axis=2).repeat(height, axis=0)
+
+
+def v_mono_line_to_img(line, height):
+    """
+    create image from horizontal line data.
+
+    Parameters
+    ----------
+    line : ndarray
+        line value
+    height : int
+        height
+
+    Examples
+    --------
+    >>> line = np.linspace(0, 1, 5)
+    >>> print(line)
+    [ 0.    0.25  0.5   0.75  1.  ]
+
+    >>> img = v_mono_line_to_img(line, 6)
+    >>> print(img)
+    [[[ 0.    0.    0.  ]
+      [ 0.    0.    0.  ]
+      [ 0.    0.    0.  ]
+      [ 0.    0.    0.  ]]
+
+     [[ 0.25  0.25  0.25]
+      [ 0.25  0.25  0.25]
+      [ 0.25  0.25  0.25]
+      [ 0.25  0.25  0.25]]
+
+     [[ 0.5   0.5   0.5 ]
+      [ 0.5   0.5   0.5 ]
+      [ 0.5   0.5   0.5 ]
+      [ 0.5   0.5   0.5 ]]
+
+     [[ 0.75  0.75  0.75]
+      [ 0.75  0.75  0.75]
+      [ 0.75  0.75  0.75]
+      [ 0.75  0.75  0.75]]
+
+     [[ 1.    1.    1.  ]
+      [ 1.    1.    1.  ]
+      [ 1.    1.    1.  ]
+      [ 1.    1.    1.  ]]]
+    """
+    return line.reshape(-1, 1, 1).repeat(3, axis=2).repeat(height, axis=1)
+
+
+def h_color_line_to_img(line, height):
+    """
+    create image from horizontal line data.
+
+    Parameters
+    ----------
+    line : ndarray
+        color line value. shape is (N, M, 3) or (M, 3).
+    height : int
+        height
+
+    Examples
+    --------
+    >>> line_r = np.linspace(0, 4, 5)
+    >>> line_g = np.linspace(0, 4, 5) * 2
+    >>> line_b = np.linspace(0, 4, 5) * 3
+    >>> line_color = tstack([line_r, line_g, line_b])
+    >>> print(line_color)
+    [[  0.   0.   0.]
+     [  1.   2.   3.]
+     [  2.   4.   6.]
+     [  3.   6.   9.]
+     [  4.   8.  12.]]
+
+    >>> img = h_color_line_to_img(line_color, 4)
+    >>> print(img)
+    [[[  0.   0.   0.]
+      [  1.   2.   3.]
+      [  2.   4.   6.]
+      [  3.   6.   9.]
+      [  4.   8.  12.]]
+
+     [[  0.   0.   0.]
+      [  1.   2.   3.]
+      [  2.   4.   6.]
+      [  3.   6.   9.]
+      [  4.   8.  12.]]
+
+     [[  0.   0.   0.]
+      [  1.   2.   3.]
+      [  2.   4.   6.]
+      [  3.   6.   9.]
+      [  4.   8.  12.]]
+
+     [[  0.   0.   0.]
+      [  1.   2.   3.]
+      [  2.   4.   6.]
+      [  3.   6.   9.]
+      [  4.   8.  12.]]]
+    """
+    return line.reshape((1, -1, 3)).repeat(height, axis=0)
+
+
+def v_color_line_to_img(line, height):
+    """
+    create image from horizontal line data.
+
+    Parameters
+    ----------
+    line : ndarray
+        color line value. shape is (N, M, 3) or (M, 3).
+    height : int
+        height
+
+    Examples
+    --------
+    >>> line_r = np.linspace(0, 4, 5)
+    >>> line_g = np.linspace(0, 4, 5) * 2
+    >>> line_b = np.linspace(0, 4, 5) * 3
+    >>> line_color = tstack([line_r, line_g, line_b])
+    >>> print(line_color)
+    [[  0.   0.   0.]
+     [  1.   2.   3.]
+     [  2.   4.   6.]
+     [  3.   6.   9.]
+     [  4.   8.  12.]]
+
+    >>> img = v_color_line_to_img(line_color, 4)
+    >>> print(img)
+    [[[  0.   0.   0.]
+      [  0.   0.   0.]
+      [  0.   0.   0.]
+      [  0.   0.   0.]]
+
+     [[  1.   2.   3.]
+      [  1.   2.   3.]
+      [  1.   2.   3.]
+      [  1.   2.   3.]]
+
+     [[  2.   4.   6.]
+      [  2.   4.   6.]
+      [  2.   4.   6.]
+      [  2.   4.   6.]]
+
+     [[  3.   6.   9.]
+      [  3.   6.   9.]
+      [  3.   6.   9.]
+      [  3.   6.   9.]]
+
+     [[  4.   8.  12.]
+      [  4.   8.  12.]
+      [  4.   8.  12.]
+      [  4.   8.  12.]]]
+    """
+    return line.reshape((-1, 1, 3)).repeat(height, axis=1)
 
 
 def img_read(filename):
@@ -825,7 +1009,7 @@ def merge_with_alpha(bg_img, fg_img, tf_str=tf.SRGB, pos=(0, 0)):
     fg_linear = tf.eotf_to_luminance(fg_img, tf_str)
     alpha = fg_linear[:, :, 3:] / tf.PEAK_LUMINANCE[tf_str]
 
-    out_linear = (1 - alpha) * bg_linear + fg_linear[:, :, :-1]
+    out_linear = (1 - alpha) * bg_linear + alpha * fg_linear[:, :, :-1]
     out_merge_area = tf.oetf_from_luminance(out_linear, tf_str)
     bg_img[pos[1]:f_height+pos[1], pos[0]:f_width+pos[0]] = out_merge_area
 
@@ -1947,11 +2131,12 @@ def make_hue_chroma_pattern(
         the number of the hue block.
     """
     height_org = height
-    font_size = int(26 * height / 1080)
+    font_size = int(20 * height / 1080)
     text_h_margin = int(6 * height / 1080)
     font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
-    text = "Title: BT.2020 Hue-Chroma Pattern,  Revision: 2,  "
-    text += "Author: Toru Yoshihara(@toru_ver15)"
+    text = '"BT.2020 Hue-Chroma Pattern",   Revision 2,   '
+    text += "Copyright (C) 2021 - Toru Yoshihara,   "
+    text += "https://trev16.hatenablog.com/"
     hue = np.linspace(0, 360, hue_num, endpoint=False)
     text_width, text_height = fc.get_text_width_height(
         text=text, font_path=font_path, font_size=font_size)
@@ -2024,7 +2209,21 @@ if __name__ == '__main__':
     # print(generate_color_checker_rgb_value(target_white=[0.3127, 0.3290]))
     # print(calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480)))
     # print(convert_luminance_to_code_value(100, tf.ST2084))
-    make_hue_chroma_pattern(
-        inner_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
-        outer_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
-        width=3840, height=2160, hue_num=128)
+    # make_hue_chroma_pattern(
+    #     inner_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
+    #     outer_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
+    #     width=1920, height=1080, hue_num=32)
+
+    line = np.linspace(0, 1, 5)
+    line_color = tstack([line, line, line])
+    print(line)
+    img = v_mono_line_to_img(line, 4)
+    print(img)
+
+    # line_r = np.linspace(0, 4, 5)
+    # line_g = np.linspace(0, 4, 5) * 2
+    # line_b = np.linspace(0, 4, 5) * 3
+    # line_color = tstack([line_r, line_g, line_b])
+    # print(line_color)
+    # img = v_color_line_to_img(line_color, 4)
+    # print(img)
