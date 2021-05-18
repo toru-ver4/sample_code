@@ -580,8 +580,24 @@ if __name__ == '__main__':
     # lut = np.load("./lut/lut_sample_1024_1024_32768.npy")
     # plot_cl_plane_seq_using_intp(ty_lch_lut=lut, color_space_name=cs.BT2020)
     # plot_ab_plane_seq_using_intp(ty_lch_lut=lut, color_space_name=cs.BT2020)
-    inner_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy")
-    outer_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy")
-    plot_l_focal_and_cups_seq(
-        inner_lch_lut=inner_lut, outer_lch_lut=outer_lut,
-        color_space_name=cs.BT2020)
+    # inner_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy")
+    # outer_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy")
+    # plot_l_focal_and_cups_seq(
+    #     inner_lch_lut=inner_lut, outer_lch_lut=outer_lut,
+    #     color_space_name=cs.BT2020)
+    tpg.make_hue_chroma_pattern(
+        inner_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
+        outer_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
+        width=1920, height=1080, hue_num=32)
+    tpg.make_hue_chroma_pattern(
+        inner_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
+        outer_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
+        width=3840, height=2160, hue_num=32)
+    tpg.make_hue_chroma_pattern(
+        inner_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
+        outer_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
+        width=1920, height=1080, hue_num=128)
+    tpg.make_hue_chroma_pattern(
+        inner_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
+        outer_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
+        width=3840, height=2160, hue_num=128)

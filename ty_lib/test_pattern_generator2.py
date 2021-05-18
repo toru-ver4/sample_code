@@ -2154,7 +2154,7 @@ def make_hue_chroma_pattern(
     chroma_num = int(round(height / h_block_width + 0.5))
     h_block_size = equal_devision(width, hue_num)
     v_block_size = equal_devision(height, chroma_num)
-    mark_size = v_block_size[0] // 8
+    mark_size = max(v_block_size[0] // 10, 5)
     mark_img_2020 = np.zeros((mark_size, mark_size, 3))
     # mark_img_p3 = np.ones((mark_size, mark_size, 3)) * 0.5
 
@@ -2209,10 +2209,10 @@ if __name__ == '__main__':
     # print(generate_color_checker_rgb_value(target_white=[0.3127, 0.3290]))
     # print(calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480)))
     # print(convert_luminance_to_code_value(100, tf.ST2084))
-    make_hue_chroma_pattern(
-        inner_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
-        outer_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
-        width=2048, height=1180, hue_num=32)
+    # make_hue_chroma_pattern(
+    #     inner_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
+    #     outer_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
+    #     width=2048, height=1180, hue_num=32)
 
     # line = np.linspace(0, 1, 5)
     # line_color = tstack([line, line, line])
