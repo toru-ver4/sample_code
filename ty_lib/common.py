@@ -141,9 +141,9 @@ class MeasureExecTime():
         self.st_time = time.time()
         self.lap_st = self.st_time
 
-    def lap(self):
+    def lap(self, msg=""):
         current = time.time()
-        print(f"lap time = {current - self.lap_st:.5f} [sec]")
+        print(f"lap time = {current - self.lap_st:.5f} [sec], {msg}")
         self.lap_st = current
 
     def end(self):
