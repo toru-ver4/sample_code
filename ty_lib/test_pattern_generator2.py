@@ -2110,8 +2110,25 @@ class IdPatch8bit10bitGenerator():
         return out_8bit, out_10bit
 
 
-def make_hue_chroma_pattern(
-        inner_lut, outer_lut, hue_num, width, height):
+def _calc_l_focal_to_cups_lch_array(
+        inner_lut, outer_lut, h_val, chroma_num, l_focal_max):
+    l_focal = cgbl.calc_l_focal_specific_hue(
+        inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val,
+        maximum_l_focal=l_focal_max)
+    cups = cgbl.calc_cusp_specific_hue(lut=outer_lut, hue=h_val)
+    cc_max = cups[1]
+    chroma = np.linspace(0, cc_max, chroma_num)
+    bb = l_focal[0]
+    aa = (cups[0] - l_focal[0]) / cc_max
+    lightness = aa * chroma + bb
+    hue_array = np.ones_like(lightness) * h_val
+    lch_array = tstack([lightness, chroma, hue_array])
+
+    return lch_array
+
+
+def make_bt2020_bt709_hue_chroma_pattern(
+        inner_lut, outer_lut, hue_num, width, height, l_focal_max=90):
     """
     Parameters
     ----------
@@ -2129,12 +2146,19 @@ def make_hue_chroma_pattern(
         image height
     hue_num : int
         the number of the hue block.
+    l_focal_max : float
+        An maximum value for l_focal.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
+        https://twitter.com/toru_ver15/status/1394645785929666561
+
+        l_focal_max = 90: for BT.709 and BT.2020 pattern
     """
     height_org = height
     font_size = int(20 * height / 1080)
     text_h_margin = int(6 * height / 1080)
     font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
-    text = '"BT.2020 Hue-Chroma Pattern",   Revision 2,   '
+    text = '"BT.2020 - DCI-P3 - BT.709 Hue-Chroma Pattern",   Revision 2,   '
     text += "Copyright (C) 2021 - Toru Yoshihara,   "
     text += "https://trev16.hatenablog.com/"
     hue = np.linspace(0, 360, hue_num, endpoint=False)
@@ -2160,17 +2184,10 @@ def make_hue_chroma_pattern(
 
     h_buf = []
     for h_idx, h_val in enumerate(hue):
-        # calc RGB value
-        l_focal = cgbl.calc_l_focal_specific_hue(
-            inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val)
-        cups = cgbl.calc_cusp_specific_hue(lut=outer_lut, hue=h_val)
-        cc_max = cups[1]
-        chroma = np.linspace(0, cc_max, chroma_num)
-        bb = l_focal[0]
-        aa = (cups[0] - l_focal[0]) / cc_max
-        lightness = aa * chroma + bb
-        hue_array = np.ones_like(lightness) * h_val
-        lch_array = tstack([lightness, chroma, hue_array])
+        # calc LCH value in specific HUE
+        lch_array = _calc_l_focal_to_cups_lch_array(
+            inner_lut=inner_lut, outer_lut=outer_lut,
+            h_val=h_val, chroma_num=chroma_num, l_focal_max=l_focal_max)
         lab_array = LCHab_to_Lab(lch_array)
         p3_idx = cgbl.is_outer_gamut(lab=lab_array, color_space_name=cs.BT709)
         bt2020_idx = cgbl.is_outer_gamut(
@@ -2193,8 +2210,91 @@ def make_hue_chroma_pattern(
         h_buf.append(np.vstack(v_buf))
     img_pat = np.hstack(h_buf)
     merge(img, img_pat, (0, 0))
+    fname = f"./bt2020_bt709_hue_chroma_{width}x{height_org}_"
+    fname += f"h_num-{hue_num}.png"
+    img_wirte_float_as_16bit_int(fname, img)
+
+
+def make_bt2020_dci_p3_hue_chroma_pattern(
+        inner_lut, outer_lut, hue_num, width, height, l_focal_max=90):
+    """
+    Parameters
+    ----------
+    inner_lut : ndarray
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    outer_lut : ndarray
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    width : int
+        image width
+    height : int
+        image height
+    hue_num : int
+        the number of the hue block.
+    l_focal_max : float
+        An maximum value for l_focal.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
+        https://twitter.com/toru_ver15/status/1394645785929666561
+
+        l_focal_max = 90: for BT.709 and BT.2020 pattern
+    """
+    height_org = height
+    font_size = int(20 * height / 1080)
+    text_h_margin = int(6 * height / 1080)
+    font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
+    text = '"BT.2020 - DCI-P3 Hue-Chroma Pattern",   Revision 1,   '
+    text += "Copyright (C) 2021 - Toru Yoshihara,   "
+    text += "https://trev16.hatenablog.com/"
+    hue = np.linspace(0, 360, hue_num, endpoint=False)
+    text_width, text_height = fc.get_text_width_height(
+        text=text, font_path=font_path, font_size=font_size)
+    text_v_margin = int(text_height * 0.3)
+
+    img = np.ones((height, width, 3)) * 0.1
+    text_drawer = fc.TextDrawer(
+        img, text=text,
+        pos=(text_h_margin, height - text_height - text_v_margin),
+        font_color=(0.8, 0.8, 0.8), font_size=font_size, font_path=font_path)
+    text_drawer.draw()
+
+    height = height - text_height - 2 * text_v_margin
+    h_block_width = width / hue_num
+    chroma_num = int(round(height / h_block_width + 0.5))
+    h_block_size = equal_devision(width, hue_num)
+    v_block_size = equal_devision(height, chroma_num)
+    mark_size = max(v_block_size[0] // 10, 5)
+    mark_img_2020 = np.zeros((mark_size, mark_size, 3))
+    # mark_img_p3 = np.ones((mark_size, mark_size, 3)) * 0.5
+
+    h_buf = []
+    for h_idx, h_val in enumerate(hue):
+        # calc LCH value in specific HUE
+        lch_array = _calc_l_focal_to_cups_lch_array(
+            inner_lut=inner_lut, outer_lut=outer_lut,
+            h_val=h_val, chroma_num=chroma_num, l_focal_max=l_focal_max)
+        lab_array = LCHab_to_Lab(lch_array)
+        bt2020_idx = cgbl.is_outer_gamut(
+            lab=lab_array, color_space_name=cs.P3_D65)
+        v_buf = []
+        for c_idx, lab, in enumerate(lab_array):
+            rgb_linear = cs.lab_to_rgb(lab, cs.BT2020)
+            rgb = tf.oetf(np.clip(rgb_linear, 0.0, 1.0), tf.GAMMA24)
+            img_temp = np.ones((v_block_size[c_idx], h_block_size[h_idx], 3))\
+                * rgb
+            if bt2020_idx[c_idx]:
+                merge(img_temp, mark_img_2020, (0, 0))
+            v_buf.append(img_temp)
+
+        h_buf.append(np.vstack(v_buf))
+    img_pat = np.hstack(h_buf)
+    merge(img, img_pat, (0, 0))
     img_wirte_float_as_16bit_int(
-        f"./bt2020_hue_chroma_{width}x{height_org}_h_num-{hue_num}.png", img)
+        f"./bt2020_P3_hue_chroma_{width}x{height_org}_h_num-{hue_num}.png",
+        img)
 
 
 if __name__ == '__main__':

@@ -6,6 +6,7 @@ create gamut boundary lut.
 # import standard libraries
 import os
 from multiprocessing import Pool, cpu_count
+from colour.models.cie_lab import Lab_to_LCHab
 from colour.utilities.array import tstack
 
 # import third-party libraries
@@ -469,11 +470,13 @@ def plot_l_focal_and_cups_core(
     outer_lch = cgb.get_gamut_boundary_lch_from_lut(
         lut=outer_ty_lch_lut, lh_array=lh_array)
     line_color = (0.2, 0.2, 0.2)
+    maximum_l_focal = 90
 
     inner_cusp = cgb.calc_cusp_specific_hue(lut=inner_lut, hue=h_val)
     outer_cusp = cgb.calc_cusp_specific_hue(lut=outer_lut, hue=h_val)
     l_focal = cgb.calc_l_focal_specific_hue(
-        inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val)
+        inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val,
+        maximum_l_focal=maximum_l_focal)
     inner_color = lab_to_rgb_srgb(
         lab=LCHab_to_Lab(inner_cusp), color_space_name=cs.BT2020)
     outer_color = lab_to_rgb_srgb(
@@ -517,8 +520,8 @@ def plot_l_focal_and_cups_core(
     ax1.plot(
         l_focal[1], l_focal[0], 'x', label="L focal", ms=22, mew=5,
         color=line_color)
-    prefix = "/work/overuse/2021/09_gamut_boundary/l_focal/"
-    fname = f"{prefix}/L_focal_cl_plane_{h_idx:04d}.png"
+    prefix = "/work/overuse/2021/09_gamut_boundary/l_focal_max95"
+    fname = f"{prefix}/L_focal_cl_plane_max-{maximum_l_focal}_{h_idx:04d}.png"
     print(f"save file = {fname}")
     pu.show_and_save(
         fig=fig, legend_loc='lower right', show=False, save_fname=fname)
@@ -575,29 +578,116 @@ def check_lch_2d_lut():
         ty_ch_lut=lut, l_idx=10, l_val=10/49*100, color_space_name=cs.BT2020)
 
 
+def debug_hue_chroma_pattern_core(
+        inner_lut, outer_lut, h_idx, h_val, chroma_num):
+    lch_array = tpg._calc_l_focal_to_cups_lch_array(
+        inner_lut=inner_lut, outer_lut=outer_lut,
+        h_val=h_val, chroma_num=chroma_num)
+    rgb_array = lab_to_rgb_srgb(LCHab_to_Lab(lch_array), cs.BT709)
+
+    lightness_array = np.linspace(0, 100, 512)
+    hh_array = np.ones_like(lightness_array) * h_val
+    lh_array = tstack([lightness_array, hh_array])
+    inner_lch = cgb.get_gamut_boundary_lch_from_lut(
+        lut=inner_lut, lh_array=lh_array)
+    outer_lch = cgb.get_gamut_boundary_lch_from_lut(
+        lut=outer_lut, lh_array=lh_array)
+    line_color_1 = (0.1, 0.1, 0.1)
+    line_color_2 = (0.6, 0.6, 0.6)
+
+    c_max = 220
+    l_max = 104
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(16, 10),
+        bg_color=(0.85, 0.85, 0.85),
+        graph_title=f"L_focal, BT.709 cups, BT.2020 cups, H={h_val:.2f}",
+        graph_title_size=None,
+        xlabel="Chroma", ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[-4, c_max],
+        ylim=[-4, l_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=5,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(
+        outer_lch[..., 1], outer_lch[..., 0], '-', color=line_color_2,
+        label="BT.2020", alpha=1.0)
+    ax1.plot(
+        inner_lch[..., 1], inner_lch[..., 0], '-', color=line_color_1,
+        label="BT.709", alpha=1.0, lw=2)
+    ax1.scatter(
+        lch_array[..., 1], lch_array[..., 0], zorder=3, c=rgb_array,
+        edgecolors='k', s=50, alpha=0.3)
+    prefix = "/work/overuse/2021/09_gamut_boundary/debug_hc"
+    fname = f"{prefix}/hue_chroma_debug_{h_idx:04d}.png"
+    print(f"save file = {fname}")
+    pu.show_and_save(
+        fig=fig, legend_loc='lower right', show=False, save_fname=fname)
+
+
+def plot_hue_l_focal_plane(inner_lut, outer_lut):
+    hue = np.linspace(0, 360, 361)
+    l_focal = np.zeros_like(hue)
+    for h_idx, h_val in enumerate(hue):
+        l_focal_lch = cgb.calc_l_focal_specific_hue(
+            inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val,
+            maximum_l_focal=95)
+        l_focal[h_idx] = l_focal_lch[0]
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 6),
+        bg_color=(0.94, 0.94, 0.94),
+        graph_title="L_focal",
+        graph_title_size=None,
+        xlabel="Hue", ylabel="L_focal",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(hue, l_focal, label="L_focal", color=(0.2, 0.2, 0.2))
+    fname = "img/l_focal_restricted.png"
+    print(f"save file = {fname}")
+    pu.show_and_save(
+        fig=fig, legend_loc='lower right', show=True, save_fname=fname)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # lut = np.load("./lut/lut_sample_1024_1024_32768.npy")
     # plot_cl_plane_seq_using_intp(ty_lch_lut=lut, color_space_name=cs.BT2020)
     # plot_ab_plane_seq_using_intp(ty_lch_lut=lut, color_space_name=cs.BT2020)
-    # inner_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy")
-    # outer_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy")
+    inner_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy")
+    outer_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy")
     # plot_l_focal_and_cups_seq(
     #     inner_lch_lut=inner_lut, outer_lch_lut=outer_lut,
     #     color_space_name=cs.BT2020)
-    tpg.make_hue_chroma_pattern(
-        inner_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
-        outer_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
-        width=1920, height=1080, hue_num=32)
-    tpg.make_hue_chroma_pattern(
-        inner_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
-        outer_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
-        width=3840, height=2160, hue_num=32)
-    tpg.make_hue_chroma_pattern(
-        inner_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
-        outer_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
-        width=1920, height=1080, hue_num=128)
-    tpg.make_hue_chroma_pattern(
-        inner_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
-        outer_lut=np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
-        width=3840, height=2160, hue_num=128)
+    # tpg.make_bt2020_bt709_hue_chroma_pattern(
+    #     inner_lut=inner_lut, outer_lut=outer_lut,
+    #     width=1920, height=1080, hue_num=32, l_focal_max=90)
+    # tpg.make_bt2020_bt709_hue_chroma_pattern(
+    #     inner_lut=inner_lut, outer_lut=outer_lut,
+    #     width=3840, height=2160, hue_num=32, l_focal_max=90)
+    # tpg.make_bt2020_bt709_hue_chroma_pattern(
+    #     inner_lut=inner_lut, outer_lut=outer_lut,
+    #     width=1920, height=1080, hue_num=128, l_focal_max=90)
+    # tpg.make_bt2020_bt709_hue_chroma_pattern(
+    #     inner_lut=inner_lut, outer_lut=outer_lut,
+    #     width=3840, height=2160, hue_num=128, l_focal_max=90)
+    # h_val = int(round(1123 / 3840 * 360))
+    # debug_hue_chroma_pattern_core(
+    #     inner_lut=inner_lut, outer_lut=outer_lut, h_idx=0, h_val=h_val,
+    #     chroma_num=128)
+    # plot_hue_l_focal_plane(inner_lut=inner_lut, outer_lut=outer_lut)

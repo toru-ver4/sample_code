@@ -333,7 +333,7 @@ def calc_cusp_specific_hue(lut, hue):
     return lch[max_cc_idx]
 
 
-def calc_l_focal_specific_hue(inner_lut, outer_lut, hue):
+def calc_l_focal_specific_hue(inner_lut, outer_lut, hue, maximum_l_focal=100):
     """
     calc L_focal value
 
@@ -349,6 +349,10 @@ def calc_l_focal_specific_hue(inner_lut, outer_lut, hue):
         M is the number of the Hue.
     hue : float
         A Hue value. range is 0.0 - 360.0
+    maximum_l_focal : float
+        A maximum L_focal value.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
 
     Returns
     -------
@@ -375,6 +379,9 @@ def calc_l_focal_specific_hue(inner_lut, outer_lut, hue):
         l_focal = (y2 - y1) / (x2 - x1) * (-x1) + y1
     else:
         l_focal = y1
+
+    if l_focal > maximum_l_focal:
+        l_focal = maximum_l_focal
 
     return np.array([l_focal, 0, hue])
 
