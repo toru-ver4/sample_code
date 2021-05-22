@@ -97,13 +97,13 @@ def plot_with_bg_image(
         width=1920, height=1080, radius=20,
         bg_image_name="./img/bg_img_5x3.png"):
     velocity_rate = 20 * height / 1080
-    seed(0)
-    velocity_list = np.array(
-        [rand(2), rand(2), rand(2), rand(2), rand(2), rand(2), rand(2)])
-    velocity_list = np.int32(np.round(velocity_list * velocity_rate))
     color_list = [
         [192, 192, 192], [192, 0, 0], [0, 192, 0], [0, 0, 192],
         [192, 0, 192], [192, 192, 0], [0, 192, 192]]
+    seed(0)
+    velocity_list = np.array(
+        [rand(2) for x in range(len(color_list))])
+    velocity_list = np.int32(np.round(velocity_list * velocity_rate))
 
     rmo_list = [ReflectiveMovingObject(
         velocity_init=velocity_list[idx], radius=radius,

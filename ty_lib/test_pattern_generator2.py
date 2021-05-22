@@ -1016,6 +1016,40 @@ def merge_with_alpha(bg_img, fg_img, tf_str=tf.SRGB, pos=(0, 0)):
     return bg_img
 
 
+def merge_with_alpha2(bg_img, fg_img, tf_str=tf.SRGB, pos=(0, 0)):
+    """
+    合成する。今までは無駄が多かったので、必要なところだけ計算する。
+    具体的には alpha != 0 の最小の矩形を探して、その領域だけ合成する。
+
+    Parameters
+    ----------
+    bg_img : array_like(float, 3-channel)
+        image data.
+    fg_img : array_like(float, 4-channel)
+        image data
+    tf : strings
+        transfer function
+    pos : list(int)
+        (pos_h, pos_v)
+    """
+    f_width = fg_img.shape[1]
+    f_height = fg_img.shape[0]
+
+    not_transp = fg_img[..., 3] > 0
+
+    bg_merge_area = bg_img[pos[1]:f_height+pos[1], pos[0]:f_width+pos[0]]
+    bg_merge_img = bg_merge_area[not_transp]
+    fg_merge_img = fg_img[not_transp]
+    bg_linear = tf.eotf_to_luminance(bg_merge_img, tf_str)
+    fg_linear = tf.eotf_to_luminance(fg_merge_img, tf_str)
+    alpha = fg_linear[..., 3:] / tf.PEAK_LUMINANCE[tf_str]
+
+    out_linear = (1 - alpha) * bg_linear + alpha * fg_linear[..., :-1]
+    out_merge_area = tf.oetf_from_luminance(out_linear, tf_str)
+    bg_img[pos[1]:f_height+pos[1], pos[0]:f_width+pos[0]][not_transp]\
+        = out_merge_area
+
+
 def dot_pattern(dot_size=4, repeat=4, color=np.array([1.0, 1.0, 1.0])):
     """
     dot pattern 作る。
@@ -2327,3 +2361,17 @@ if __name__ == '__main__':
     # print(line_color)
     # img = v_color_line_to_img(line_color, 4)
     # print(img)
+
+    bg_img = np.ones((1080, 1920, 3)) * 0.5
+    fg_img = np.zeros((540, 960, 3), dtype=np.uint8)
+    fg_img = cv2.circle(
+        fg_img, (200, 100), 40,
+        color=[0, 192, 192], thickness=-1, lineType=cv2.LINE_AA)
+        # rmo_list[idx].calc_next_pos()  # マルチスレッド化にともない事前に計算
+    # alpha channel は正規化する。そうしないと中間調合成時に透けてしまう
+    alpha = np.max(fg_img, axis=-1)
+    alpha = alpha / np.max(alpha)
+    fg_img = np.dstack((fg_img / 0xFF, alpha))
+    merge_with_alpha2(bg_img=bg_img, fg_img=fg_img, pos=(200, 100))
+    img_wirte_float_as_16bit_int("fg.png", fg_img)
+    img_wirte_float_as_16bit_int("after_merge.png", bg_img)
