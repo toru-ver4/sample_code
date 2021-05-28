@@ -6,12 +6,13 @@ create gamut boundary lut.
 # import standard libraries
 import os
 from multiprocessing import Pool, cpu_count
-from colour.models.cie_lab import Lab_to_LCHab
-from colour.utilities.array import tstack
+import subprocess
+from pathlib import Path
 
 # import third-party libraries
 import numpy as np
 from colour import LCHab_to_Lab
+from colour.utilities.array import tstack
 
 # import my libraries
 import create_gamut_booundary_lut as cgb
@@ -471,12 +472,13 @@ def plot_l_focal_and_cups_core(
         lut=outer_ty_lch_lut, lh_array=lh_array)
     line_color = (0.2, 0.2, 0.2)
     maximum_l_focal = 90
+    minimum_l_focal = 50
 
     inner_cusp = cgb.calc_cusp_specific_hue(lut=inner_lut, hue=h_val)
     outer_cusp = cgb.calc_cusp_specific_hue(lut=outer_lut, hue=h_val)
     l_focal = cgb.calc_l_focal_specific_hue(
         inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val,
-        maximum_l_focal=maximum_l_focal)
+        maximum_l_focal=maximum_l_focal, minimum_l_focal=minimum_l_focal)
     inner_color = lab_to_rgb_srgb(
         lab=LCHab_to_Lab(inner_cusp), color_space_name=cs.BT2020)
     outer_color = lab_to_rgb_srgb(
@@ -489,7 +491,7 @@ def plot_l_focal_and_cups_core(
         fontsize=20,
         figsize=(16, 10),
         bg_color=(0.85, 0.85, 0.85),
-        graph_title=f"L_focal, BT.709 cups, BT.2020 cups, H={h_val:.2f}",
+        graph_title=f"L_focal, DCI-P3 cups, BT.2020 cups, H={h_val:.2f}",
         graph_title_size=None,
         xlabel="Chroma", ylabel="Lightness",
         axis_label_size=None,
@@ -504,7 +506,7 @@ def plot_l_focal_and_cups_core(
         minor_ytick_num=None)
     ax1.plot(
         inner_lch[..., 1], inner_lch[..., 0], '-', color=line_color,
-        label="BT.709", alpha=0.7, lw=2)
+        label="DCI-P3", alpha=0.7, lw=2)
     ax1.plot(
         outer_lch[..., 1], outer_lch[..., 0], '-', color=line_color,
         label="BT.2020", alpha=1.0)
@@ -512,7 +514,7 @@ def plot_l_focal_and_cups_core(
         [l_focal[1], outer_cusp[1]], [l_focal[0], outer_cusp[0]], '--', lw=1,
         color=line_color)
     ax1.plot(
-        inner_cusp[1], inner_cusp[0], 's', label="BT.709 cups", ms=22,
+        inner_cusp[1], inner_cusp[0], 's', label="DCI-P3 cups", ms=22,
         alpha=0.8, color=inner_color)
     ax1.plot(
         outer_cusp[1], outer_cusp[0], 's', label="BT.2020 cups", ms=22,
@@ -520,7 +522,7 @@ def plot_l_focal_and_cups_core(
     ax1.plot(
         l_focal[1], l_focal[0], 'x', label="L focal", ms=22, mew=5,
         color=line_color)
-    prefix = "/work/overuse/2021/09_gamut_boundary/l_focal_max95"
+    prefix = "/work/overuse/2021/09_gamut_boundary/l_focal_p3"
     fname = f"{prefix}/L_focal_cl_plane_max-{maximum_l_focal}_{h_idx:04d}.png"
     print(f"save file = {fname}")
     pu.show_and_save(
@@ -669,25 +671,56 @@ if __name__ == '__main__':
     # lut = np.load("./lut/lut_sample_1024_1024_32768.npy")
     # plot_cl_plane_seq_using_intp(ty_lch_lut=lut, color_space_name=cs.BT2020)
     # plot_ab_plane_seq_using_intp(ty_lch_lut=lut, color_space_name=cs.BT2020)
-    inner_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy")
-    outer_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy")
+    # resolution_list = [(1920, 1080), (3840, 2160)]
+    # hue_num_list = [32, 48, 64, 96, 128]
+    resolution_list = [(1920, 1080)]
+    hue_num_list = [125]
+
     # plot_l_focal_and_cups_seq(
     #     inner_lch_lut=inner_lut, outer_lch_lut=outer_lut,
     #     color_space_name=cs.BT2020)
-    # tpg.make_bt2020_bt709_hue_chroma_pattern(
-    #     inner_lut=inner_lut, outer_lut=outer_lut,
-    #     width=1920, height=1080, hue_num=32, l_focal_max=90)
-    # tpg.make_bt2020_bt709_hue_chroma_pattern(
-    #     inner_lut=inner_lut, outer_lut=outer_lut,
-    #     width=3840, height=2160, hue_num=32, l_focal_max=90)
-    # tpg.make_bt2020_bt709_hue_chroma_pattern(
-    #     inner_lut=inner_lut, outer_lut=outer_lut,
-    #     width=1920, height=1080, hue_num=128, l_focal_max=90)
-    # tpg.make_bt2020_bt709_hue_chroma_pattern(
-    #     inner_lut=inner_lut, outer_lut=outer_lut,
-    #     width=3840, height=2160, hue_num=128, l_focal_max=90)
-    # h_val = int(round(1123 / 3840 * 360))
-    # debug_hue_chroma_pattern_core(
-    #     inner_lut=inner_lut, outer_lut=outer_lut, h_idx=0, h_val=h_val,
-    #     chroma_num=128)
+    inner_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy")
+    outer_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy")
+    # icc_profile = "./icc_profile/Gamma2.4_BT.2020_D65.icc"
+    # for resolution in resolution_list:
+    #     for hue_num in hue_num_list:
+    #         width = resolution[0]
+    #         height = resolution[1]
+    #         img = tpg.make_bt2020_bt709_hue_chroma_pattern(
+    #             inner_lut=inner_lut, outer_lut=outer_lut,
+    #             width=width, height=height, hue_num=hue_num)
+    #         fname = f"./bt2020_bt709_hue_chroma_{width}x{height}_"
+    #         fname += f"h_num-{hue_num}.png"
+    #         print(fname)
+    #         fname_with_profile = str('img' / Path(fname))
+    #         tpg.img_wirte_float_as_16bit_int(fname, img)
+    #         cmd = [
+    #             'convert', fname, '-profile', icc_profile, fname_with_profile]
+    #         subprocess.run(cmd)
+    #         os.remove(fname)
+
+    # inner_lut = np.load("./lut/lut_sample_1024_1024_32768_P3-D65.npy")
+    # outer_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy")
+    # for resolution in resolution_list:
+    #     for hue_num in hue_num_list:
+    #         width = resolution[0]
+    #         height = resolution[1]
+    #         img = tpg.make_bt2020_dci_p3_hue_chroma_pattern(
+    #             inner_lut=inner_lut, outer_lut=outer_lut,
+    #             width=resolution[0], height=resolution[1], hue_num=hue_num)
+    #         fname = f"./bt2020_P3_hue_chroma_{width}x{height}_"
+    #         fname += f"h_num-{hue_num}.png"
+    #         print(fname)
+    #         tpg.img_wirte_float_as_16bit_int(fname, img)
+    #         fname_with_profile = str('img' / Path(fname))
+    #         tpg.img_wirte_float_as_16bit_int(fname, img)
+    #         cmd = [
+    #             'convert', fname, '-profile', icc_profile, fname_with_profile]
+    #         subprocess.run(cmd)
+    #         os.remove(fname)
+
+    h_val = int(round(1123 / 3840 * 360))
+    debug_hue_chroma_pattern_core(
+        inner_lut=inner_lut, outer_lut=outer_lut, h_idx=0, h_val=h_val,
+        chroma_num=128)
     # plot_hue_l_focal_plane(inner_lut=inner_lut, outer_lut=outer_lut)

@@ -2145,7 +2145,8 @@ class IdPatch8bit10bitGenerator():
 
 
 def _calc_l_focal_to_cups_lch_array(
-        inner_lut, outer_lut, h_val, chroma_num, l_focal_max):
+        inner_lut, outer_lut, h_val, chroma_num,
+        l_focal_max=100, l_focal_min=0):
     l_focal = cgbl.calc_l_focal_specific_hue(
         inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val,
         maximum_l_focal=l_focal_max)
@@ -2162,7 +2163,8 @@ def _calc_l_focal_to_cups_lch_array(
 
 
 def make_bt2020_bt709_hue_chroma_pattern(
-        inner_lut, outer_lut, hue_num, width, height, l_focal_max=90):
+        inner_lut, outer_lut, hue_num, width, height,
+        l_focal_max=90, l_focal_min=50):
     """
     Parameters
     ----------
@@ -2185,8 +2187,12 @@ def make_bt2020_bt709_hue_chroma_pattern(
         This is a parameter to prevent the data from changing
         from l_focal to cups transitioning to Out-of-Gamut.
         https://twitter.com/toru_ver15/status/1394645785929666561
+    l_focal_min : float
+        An minimum value for l_focal.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
+        https://twitter.com/toru_ver15/status/1394645785929666561
 
-        l_focal_max = 90: for BT.709 and BT.2020 pattern
     """
     height_org = height
     font_size = int(20 * height / 1080)
@@ -2207,7 +2213,7 @@ def make_bt2020_bt709_hue_chroma_pattern(
         font_color=(0.8, 0.8, 0.8), font_size=font_size, font_path=font_path)
     text_drawer.draw()
 
-    height = height - text_height - 2 * text_v_margin
+    # height = height - text_height - 2 * text_v_margin
     h_block_width = width / hue_num
     chroma_num = int(round(height / h_block_width + 0.5))
     h_block_size = equal_devision(width, hue_num)
@@ -2244,13 +2250,13 @@ def make_bt2020_bt709_hue_chroma_pattern(
         h_buf.append(np.vstack(v_buf))
     img_pat = np.hstack(h_buf)
     merge(img, img_pat, (0, 0))
-    fname = f"./bt2020_bt709_hue_chroma_{width}x{height_org}_"
-    fname += f"h_num-{hue_num}.png"
-    img_wirte_float_as_16bit_int(fname, img)
+
+    return img
 
 
 def make_bt2020_dci_p3_hue_chroma_pattern(
-        inner_lut, outer_lut, hue_num, width, height, l_focal_max=90):
+        inner_lut, outer_lut, hue_num, width, height,
+        l_focal_max=90, l_focal_min=50):
     """
     Parameters
     ----------
@@ -2273,8 +2279,11 @@ def make_bt2020_dci_p3_hue_chroma_pattern(
         This is a parameter to prevent the data from changing
         from l_focal to cups transitioning to Out-of-Gamut.
         https://twitter.com/toru_ver15/status/1394645785929666561
-
-        l_focal_max = 90: for BT.709 and BT.2020 pattern
+    l_focal_min : float
+        An minimum value for l_focal.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
+        https://twitter.com/toru_ver15/status/1394645785929666561
     """
     height_org = height
     font_size = int(20 * height / 1080)
@@ -2326,9 +2335,8 @@ def make_bt2020_dci_p3_hue_chroma_pattern(
         h_buf.append(np.vstack(v_buf))
     img_pat = np.hstack(h_buf)
     merge(img, img_pat, (0, 0))
-    img_wirte_float_as_16bit_int(
-        f"./bt2020_P3_hue_chroma_{width}x{height_org}_h_num-{hue_num}.png",
-        img)
+
+    return img
 
 
 if __name__ == '__main__':

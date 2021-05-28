@@ -80,7 +80,7 @@ def draw_main(
     for c_idx, pos in enumerate(pos_list_total[idx]):
         img = cv2.circle(
             img, pos, radius,
-            color=color_list[c_idx], thickness=-1)
+            color=color_list[c_idx], thickness=-1, lineType=cv2.LINE_AA)
         # rmo_list[idx].calc_next_pos()  # マルチスレッド化にともない事前に計算
     # alpha channel は正規化する。そうしないと中間調合成時に透けてしまう
     alpha = np.max(img, axis=-1)
@@ -88,9 +88,12 @@ def draw_main(
     img = np.dstack((img / 0xFF, alpha))
 
     bg_temp = bg_image.copy()
-    img = tpg.merge_with_alpha(bg_temp, img)
+    tpg.merge_with_alpha2(bg_temp, img)
     print(fname)
-    cv2.imwrite(fname, np.uint16(np.round(img[:, :, ::-1] * 0xFFFF)))
+    # cv2.imwrite(
+    #     fname, np.uint16(np.round(bg_temp[:, :, ::-1] * 0xFFFF)),
+    #     [cv2.IMWRITE_PNG_COMPRESSION, 7])
+    tpg.img_wirte_float_as_16bit_int(fname, bg_temp, comp_val=7)
 
 
 def plot_with_bg_image(
@@ -121,7 +124,7 @@ def plot_with_bg_image(
             rmo_list[idx].calc_next_pos()
 
     total_process_num = trial_num
-    block_process_num = 8
+    block_process_num = int(cpu_count() * 0.8)
     block_num = int(round(total_process_num / block_process_num + 0.5))
     mtime.start()
     for b_idx in range(block_num):
@@ -136,10 +139,10 @@ def plot_with_bg_image(
                 bg_image_name=bg_image_name, color_list=color_list,
                 width=width, height=height)
             args.append(d)
-            draw_main(**d)
+            # draw_main(**d)
             mtime.lap("p loop")
-        # with Pool(cpu_count()) as pool:
-        #     pool.map(theread_wrapper_draw_main, args)
+        with Pool(cpu_count()) as pool:
+            pool.map(theread_wrapper_draw_main, args)
     mtime.end()
 
 
@@ -147,25 +150,25 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # main_func()
     bg_h_name = "./img/h_inc_grad_3840x2160_1000-nits.png"
-    # bg_v_name = "./img/v_inc_grad_3840x2160_1000_nits.png"
-    # plot_with_bg_image(
-    #     radius=5 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
-    # plot_with_bg_image(
-    #     radius=10 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
-    # plot_with_bg_image(
-    #     radius=20 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
-    # plot_with_bg_image(
-    #     radius=40 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
+    bg_v_name = "./img/v_inc_grad_3840x2160_1000_nits.png"
+    plot_with_bg_image(
+        radius=5 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
+    plot_with_bg_image(
+        radius=10 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
+    plot_with_bg_image(
+        radius=20 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
+    plot_with_bg_image(
+        radius=40 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
 
-    # plot_with_bg_image(
-    #     radius=5 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
-    # plot_with_bg_image(
-    #     radius=10 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
-    # plot_with_bg_image(
-    #     radius=20 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
-    # plot_with_bg_image(
-    #     radius=40 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
+    plot_with_bg_image(
+        radius=5 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
+    plot_with_bg_image(
+        radius=10 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
+    plot_with_bg_image(
+        radius=20 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
+    plot_with_bg_image(
+        radius=40 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
 
     # debug
-    plot_with_bg_image(
-        radius=15 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
+    # plot_with_bg_image(
+    #     radius=15 * 2, width=3840, height=2160, bg_image_name=bg_h_name)

@@ -17,7 +17,6 @@ from multiprocessing import Pool, cpu_count, Array
 # import my libraries
 import color_space as cs
 from common import MeasureExecTime
-import light
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -334,7 +333,8 @@ def calc_cusp_specific_hue(lut, hue):
     return lch[max_cc_idx]
 
 
-def calc_l_focal_specific_hue(inner_lut, outer_lut, hue):
+def calc_l_focal_specific_hue(
+        inner_lut, outer_lut, hue, maximum_l_focal=100, minimum_l_focal=50):
     """
     calc L_focal value
 
@@ -350,6 +350,14 @@ def calc_l_focal_specific_hue(inner_lut, outer_lut, hue):
         M is the number of the Hue.
     hue : float
         A Hue value. range is 0.0 - 360.0
+    maximum_l_focal : float
+        A maximum L_focal value.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
+    minimum_l_focal : float
+        A maximum L_focal value.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
 
     Returns
     -------
@@ -377,6 +385,11 @@ def calc_l_focal_specific_hue(inner_lut, outer_lut, hue):
     else:
         l_focal = y1
 
+    if l_focal > maximum_l_focal:
+        l_focal = maximum_l_focal
+    if l_focal < minimum_l_focal:
+        l_focal = minimum_l_focal
+
     return np.array([l_focal, 0, hue])
 
 
@@ -390,10 +403,10 @@ if __name__ == '__main__':
     #     hue_num=361, cs_name=cs.BT2020)
     # np.save("./lut_sample_50_361_8192.npy", lut)
 
-    # hue_sample = 9
-    # chroma_sample = 8192
-    # ll_num = 11
-    # cs_name = cs.BT709
+    # hue_sample = 1024
+    # chroma_sample = 32768
+    # ll_num = 1024
+    # cs_name = cs.P3_D65
     # lut = calc_chroma_boundary_lut(
     #     lightness_sample=ll_num, chroma_sample=chroma_sample,
     #     hue_sample=hue_sample, cs_name=cs_name)
@@ -416,7 +429,7 @@ if __name__ == '__main__':
     #     lut=np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy"),
     #     hue=20)
 
-    inner_lut = np.load("./lut/lut_sample_11_9_8192_ITU-R BT.709.npy")
-    outer_lut = np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy")
-    l_focal = calc_l_focal_specific_hue(inner_lut, outer_lut, 20)
-    print(l_focal)
+    # inner_lut = np.load("./lut/lut_sample_11_9_8192_ITU-R BT.709.npy")
+    # outer_lut = np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy")
+    # l_focal = calc_l_focal_specific_hue(inner_lut, outer_lut, 20)
+    # print(l_focal)
