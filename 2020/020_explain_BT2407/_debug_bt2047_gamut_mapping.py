@@ -895,11 +895,11 @@ def main_func():
     # _debug_lightness_mapping_for_rgb(
     #     outer_color_space_name=cs.BT2020,
     #     inner_color_space_name=cs.BT709)
-    # make_cielab_tp_ctrl(
-    #     outer_color_space_name=cs.BT2020,
-    #     inner_color_space_name=cs.BT709,
-    #     width=1920, height=1080,
-    #     h_block_num=16*2, v_block_num=int(9*2 + 0.5))
+    make_cielab_tp_ctrl(
+        outer_color_space_name=cs.BT2020,
+        inner_color_space_name=cs.BT709,
+        width=1920, height=1080,
+        h_block_num=int(16*2 + 0.999), v_block_num=int(9*2 + 0.999))
     # make_cielab_boundary_tp(
     #     color_space_name=cs.BT709,
     #     width=1920, height=1080, h_block_num=16*3, v_block_num=9*3)
@@ -918,21 +918,21 @@ def main_func():
     #     hue_idx=1, hue=np.deg2rad(270),
     #     outer_color_space_name=cs.BT2020,
     #     inner_color_space_name=cs.BT709)
-    make_3dlut(
-        grid_num=33,
-        outer_color_space_name=cs.BT2020,
-        inner_color_space_name=cs.BT709,
-        tfc=tf.GAMMA24)
-    make_3dlut(
-        grid_num=65,
-        outer_color_space_name=cs.BT2020,
-        inner_color_space_name=cs.BT709,
-        tfc=tf.GAMMA24)
-    make_3dlut(
-        grid_num=129,
-        outer_color_space_name=cs.BT2020,
-        inner_color_space_name=cs.BT709,
-        tfc=tf.GAMMA24)
+    # make_3dlut(
+    #     grid_num=33,
+    #     outer_color_space_name=cs.BT2020,
+    #     inner_color_space_name=cs.BT709,
+    #     tfc=tf.GAMMA24)
+    # make_3dlut(
+    #     grid_num=65,
+    #     outer_color_space_name=cs.BT2020,
+    #     inner_color_space_name=cs.BT709,
+    #     tfc=tf.GAMMA24)
+    # make_3dlut(
+    #     grid_num=129,
+    #     outer_color_space_name=cs.BT2020,
+    #     inner_color_space_name=cs.BT709,
+    #     tfc=tf.GAMMA24)
     pass
 
 

@@ -8,12 +8,13 @@
 
 import os
 from colour.models.rgb.rgb_colourspace import RGB_to_RGB
+from colour.utilities import tstack
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from colour.colorimetry import MSDS_CMFS, CCS_ILLUMINANTS
 from colour.models import XYZ_to_xy, xy_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
-from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ
+from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ, LCHab_to_Lab
 from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020
 from colour.utilities import normalise_maximum
 from colour import models
@@ -23,7 +24,10 @@ from scipy.ndimage.filters import convolve
 import math
 
 import transfer_functions as tf
-
+import create_gamut_booundary_lut as cgbl
+import font_control as fc
+import color_space as cs
+from common import is_img_shape
 
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
 D65_WHITE = CCS_ILLUMINANTS[CMFS_NAME]['D65']
@@ -59,6 +63,189 @@ def preview_image(img, order='rgb', over_disp=False):
     cv2.destroyAllWindows()
 
 
+def h_mono_line_to_img(line, height):
+    """
+    create image from horizontal line data.
+
+    Parameters
+    ----------
+    line : ndarray
+        line value
+    height : int
+        height
+
+    Examples
+    --------
+    >>> line = np.linespace(0, 1, 9)
+    >>> print(line)
+    [ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]
+
+    >>> img = h_mono_line_to_img(line, 6)
+    >>> print(img)
+    [[ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]
+     [ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]
+     [ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]
+     [ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]
+     [ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]
+     [ 0.     0.125  0.25   0.375  0.5    0.625  0.75   0.875  1.   ]]
+    """
+    return line.reshape(1, -1, 1).repeat(3, axis=2).repeat(height, axis=0)
+
+
+def v_mono_line_to_img(line, height):
+    """
+    create image from horizontal line data.
+
+    Parameters
+    ----------
+    line : ndarray
+        line value
+    height : int
+        height
+
+    Examples
+    --------
+    >>> line = np.linspace(0, 1, 5)
+    >>> print(line)
+    [ 0.    0.25  0.5   0.75  1.  ]
+
+    >>> img = v_mono_line_to_img(line, 6)
+    >>> print(img)
+    [[[ 0.    0.    0.  ]
+      [ 0.    0.    0.  ]
+      [ 0.    0.    0.  ]
+      [ 0.    0.    0.  ]]
+
+     [[ 0.25  0.25  0.25]
+      [ 0.25  0.25  0.25]
+      [ 0.25  0.25  0.25]
+      [ 0.25  0.25  0.25]]
+
+     [[ 0.5   0.5   0.5 ]
+      [ 0.5   0.5   0.5 ]
+      [ 0.5   0.5   0.5 ]
+      [ 0.5   0.5   0.5 ]]
+
+     [[ 0.75  0.75  0.75]
+      [ 0.75  0.75  0.75]
+      [ 0.75  0.75  0.75]
+      [ 0.75  0.75  0.75]]
+
+     [[ 1.    1.    1.  ]
+      [ 1.    1.    1.  ]
+      [ 1.    1.    1.  ]
+      [ 1.    1.    1.  ]]]
+    """
+    return line.reshape(-1, 1, 1).repeat(3, axis=2).repeat(height, axis=1)
+
+
+def h_color_line_to_img(line, height):
+    """
+    create image from horizontal line data.
+
+    Parameters
+    ----------
+    line : ndarray
+        color line value. shape is (N, M, 3) or (M, 3).
+    height : int
+        height
+
+    Examples
+    --------
+    >>> line_r = np.linspace(0, 4, 5)
+    >>> line_g = np.linspace(0, 4, 5) * 2
+    >>> line_b = np.linspace(0, 4, 5) * 3
+    >>> line_color = tstack([line_r, line_g, line_b])
+    >>> print(line_color)
+    [[  0.   0.   0.]
+     [  1.   2.   3.]
+     [  2.   4.   6.]
+     [  3.   6.   9.]
+     [  4.   8.  12.]]
+
+    >>> img = h_color_line_to_img(line_color, 4)
+    >>> print(img)
+    [[[  0.   0.   0.]
+      [  1.   2.   3.]
+      [  2.   4.   6.]
+      [  3.   6.   9.]
+      [  4.   8.  12.]]
+
+     [[  0.   0.   0.]
+      [  1.   2.   3.]
+      [  2.   4.   6.]
+      [  3.   6.   9.]
+      [  4.   8.  12.]]
+
+     [[  0.   0.   0.]
+      [  1.   2.   3.]
+      [  2.   4.   6.]
+      [  3.   6.   9.]
+      [  4.   8.  12.]]
+
+     [[  0.   0.   0.]
+      [  1.   2.   3.]
+      [  2.   4.   6.]
+      [  3.   6.   9.]
+      [  4.   8.  12.]]]
+    """
+    return line.reshape((1, -1, 3)).repeat(height, axis=0)
+
+
+def v_color_line_to_img(line, height):
+    """
+    create image from horizontal line data.
+
+    Parameters
+    ----------
+    line : ndarray
+        color line value. shape is (N, M, 3) or (M, 3).
+    height : int
+        height
+
+    Examples
+    --------
+    >>> line_r = np.linspace(0, 4, 5)
+    >>> line_g = np.linspace(0, 4, 5) * 2
+    >>> line_b = np.linspace(0, 4, 5) * 3
+    >>> line_color = tstack([line_r, line_g, line_b])
+    >>> print(line_color)
+    [[  0.   0.   0.]
+     [  1.   2.   3.]
+     [  2.   4.   6.]
+     [  3.   6.   9.]
+     [  4.   8.  12.]]
+
+    >>> img = v_color_line_to_img(line_color, 4)
+    >>> print(img)
+    [[[  0.   0.   0.]
+      [  0.   0.   0.]
+      [  0.   0.   0.]
+      [  0.   0.   0.]]
+
+     [[  1.   2.   3.]
+      [  1.   2.   3.]
+      [  1.   2.   3.]
+      [  1.   2.   3.]]
+
+     [[  2.   4.   6.]
+      [  2.   4.   6.]
+      [  2.   4.   6.]
+      [  2.   4.   6.]]
+
+     [[  3.   6.   9.]
+      [  3.   6.   9.]
+      [  3.   6.   9.]
+      [  3.   6.   9.]]
+
+     [[  4.   8.  12.]
+      [  4.   8.  12.]
+      [  4.   8.  12.]
+      [  4.   8.  12.]]]
+    """
+    return line.reshape((-1, 1, 3)).repeat(height, axis=1)
+
+
 def img_read(filename):
     """
     OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
@@ -86,7 +273,7 @@ def img_read_as_float(filename):
     return img_float
 
 
-def img_write(filename, img):
+def img_write(filename, img, comp_val=9):
     """
     OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
     """
@@ -99,12 +286,12 @@ def img_write(filename, img):
         img_save = np.dstack((b, g, r, a)).reshape((shape))
     else:
         raise ValueError("not supported img shape for immg_write")
-    cv2.imwrite(filename, img_save, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+    cv2.imwrite(filename, img_save, [cv2.IMWRITE_PNG_COMPRESSION, comp_val])
 
 
-def img_wirte_float_as_16bit_int(filename, img_float):
+def img_wirte_float_as_16bit_int(filename, img_float, comp_val=9):
     img_int = np.uint16(np.round(np.clip(img_float, 0.0, 1.0) * 0xFFFF))
-    img_write(filename, img_int)
+    img_write(filename, img_int, comp_val)
 
 
 def equal_devision(length, div_num):
@@ -822,11 +1009,45 @@ def merge_with_alpha(bg_img, fg_img, tf_str=tf.SRGB, pos=(0, 0)):
     fg_linear = tf.eotf_to_luminance(fg_img, tf_str)
     alpha = fg_linear[:, :, 3:] / tf.PEAK_LUMINANCE[tf_str]
 
-    out_linear = (1 - alpha) * bg_linear + fg_linear[:, :, :-1]
+    out_linear = (1 - alpha) * bg_linear + alpha * fg_linear[:, :, :-1]
     out_merge_area = tf.oetf_from_luminance(out_linear, tf_str)
     bg_img[pos[1]:f_height+pos[1], pos[0]:f_width+pos[0]] = out_merge_area
 
     return bg_img
+
+
+def merge_with_alpha2(bg_img, fg_img, tf_str=tf.SRGB, pos=(0, 0)):
+    """
+    合成する。今までは無駄が多かったので、必要なところだけ計算する。
+    具体的には alpha != 0 の最小の矩形を探して、その領域だけ合成する。
+
+    Parameters
+    ----------
+    bg_img : array_like(float, 3-channel)
+        image data.
+    fg_img : array_like(float, 4-channel)
+        image data
+    tf : strings
+        transfer function
+    pos : list(int)
+        (pos_h, pos_v)
+    """
+    f_width = fg_img.shape[1]
+    f_height = fg_img.shape[0]
+
+    not_transp = fg_img[..., 3] > 0
+
+    bg_merge_area = bg_img[pos[1]:f_height+pos[1], pos[0]:f_width+pos[0]]
+    bg_merge_img = bg_merge_area[not_transp]
+    fg_merge_img = fg_img[not_transp]
+    bg_linear = tf.eotf_to_luminance(bg_merge_img, tf_str)
+    fg_linear = tf.eotf_to_luminance(fg_merge_img, tf_str)
+    alpha = fg_linear[..., 3:] / tf.PEAK_LUMINANCE[tf_str]
+
+    out_linear = (1 - alpha) * bg_linear + alpha * fg_linear[..., :-1]
+    out_merge_area = tf.oetf_from_luminance(out_linear, tf_str)
+    bg_img[pos[1]:f_height+pos[1], pos[0]:f_width+pos[0]][not_transp]\
+        = out_merge_area
 
 
 def dot_pattern(dot_size=4, repeat=4, color=np.array([1.0, 1.0, 1.0])):
@@ -1923,6 +2144,203 @@ class IdPatch8bit10bitGenerator():
         return out_8bit, out_10bit
 
 
+def _calc_l_focal_to_cups_lch_array(
+        inner_lut, outer_lut, h_val, chroma_num,
+        l_focal_max=100, l_focal_min=0):
+    l_focal = cgbl.calc_l_focal_specific_hue(
+        inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val,
+        maximum_l_focal=l_focal_max, minimum_l_focal=l_focal_min)
+    cups = cgbl.calc_cusp_specific_hue(lut=outer_lut, hue=h_val)
+    cc_max = cups[1]
+    chroma = np.linspace(0, cc_max, chroma_num)
+    bb = l_focal[0]
+    aa = (cups[0] - l_focal[0]) / cc_max
+    lightness = aa * chroma + bb
+    hue_array = np.ones_like(lightness) * h_val
+    lch_array = tstack([lightness, chroma, hue_array])
+
+    return lch_array
+
+
+def make_bt2020_bt709_hue_chroma_pattern(
+        inner_lut, outer_lut, hue_num, width, height,
+        l_focal_max=90, l_focal_min=50):
+    """
+    Parameters
+    ----------
+    inner_lut : ndarray
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    outer_lut : ndarray
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    width : int
+        image width
+    height : int
+        image height
+    hue_num : int
+        the number of the hue block.
+    l_focal_max : float
+        An maximum value for l_focal.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
+        https://twitter.com/toru_ver15/status/1394645785929666561
+    l_focal_min : float
+        An minimum value for l_focal.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
+        https://twitter.com/toru_ver15/status/1394645785929666561
+
+    """
+    height_org = height
+    font_size = int(20 * height / 1080)
+    text_h_margin = int(6 * height / 1080)
+    font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
+    text = '"BT.2020 - DCI-P3 - BT.709 Hue-Chroma Pattern",   '
+    text += "Gamma 2.4,   BT.2020,   D65,   Revision 2,   "
+    text += "Copyright (C) 2021 - Toru Yoshihara,   "
+    text += "https://trev16.hatenablog.com/"
+    hue = np.linspace(0, 360, hue_num, endpoint=False)
+    text_width, text_height = fc.get_text_width_height(
+        text=text, font_path=font_path, font_size=font_size)
+    text_v_margin = int(text_height * 0.3)
+
+    img = np.ones((height, width, 3)) * 0.1
+    text_drawer = fc.TextDrawer(
+        img, text=text,
+        pos=(text_h_margin, height - text_height - text_v_margin),
+        font_color=(0.8, 0.8, 0.8), font_size=font_size, font_path=font_path)
+    text_drawer.draw()
+
+    height = height - text_height - 2 * text_v_margin
+    h_block_width = width / hue_num
+    chroma_num = int(round(height / h_block_width + 0.5))
+    h_block_size = equal_devision(width, hue_num)
+    v_block_size = equal_devision(height, chroma_num)
+    mark_size = max(v_block_size[0] // 10, 5)
+    mark_img_2020 = np.zeros((mark_size, mark_size, 3))
+    # mark_img_p3 = np.ones((mark_size, mark_size, 3)) * 0.5
+
+    h_buf = []
+    for h_idx, h_val in enumerate(hue):
+        # calc LCH value in specific HUE
+        lch_array = _calc_l_focal_to_cups_lch_array(
+            inner_lut=inner_lut, outer_lut=outer_lut,
+            h_val=h_val, chroma_num=chroma_num, l_focal_max=l_focal_max)
+        lab_array = LCHab_to_Lab(lch_array)
+        p3_idx = cgbl.is_outer_gamut(lab=lab_array, color_space_name=cs.BT709)
+        bt2020_idx = cgbl.is_outer_gamut(
+            lab=lab_array, color_space_name=cs.P3_D65)
+        v_buf = []
+        for c_idx, lab, in enumerate(lab_array):
+            rgb_linear = cs.lab_to_rgb(lab, cs.BT2020)
+            rgb = tf.oetf(np.clip(rgb_linear, 0.0, 1.0), tf.GAMMA24)
+            img_temp = np.ones((v_block_size[c_idx], h_block_size[h_idx], 3))\
+                * rgb
+            if p3_idx[c_idx]:
+                img_temp_p3 = mark_img_2020.copy()
+                img_temp_p3[1:-1, 1:-1]\
+                    = np.ones_like(img_temp_p3[1:-1, 1:-1]) * rgb
+                merge(img_temp, img_temp_p3, (0, 0))
+            if bt2020_idx[c_idx]:
+                merge(img_temp, mark_img_2020, (0, 0))
+            v_buf.append(img_temp)
+
+        h_buf.append(np.vstack(v_buf))
+    img_pat = np.hstack(h_buf)
+    merge(img, img_pat, (0, 0))
+
+    return img
+
+
+def make_bt2020_dci_p3_hue_chroma_pattern(
+        inner_lut, outer_lut, hue_num, width, height,
+        l_focal_max=90, l_focal_min=50):
+    """
+    Parameters
+    ----------
+    inner_lut : ndarray
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    outer_lut : ndarray
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    width : int
+        image width
+    height : int
+        image height
+    hue_num : int
+        the number of the hue block.
+    l_focal_max : float
+        An maximum value for l_focal.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
+        https://twitter.com/toru_ver15/status/1394645785929666561
+    l_focal_min : float
+        An minimum value for l_focal.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
+        https://twitter.com/toru_ver15/status/1394645785929666561
+    """
+    height_org = height
+    font_size = int(20 * height / 1080)
+    text_h_margin = int(6 * height / 1080)
+    font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
+    text = '"BT.2020 - DCI-P3 Hue-Chroma Pattern",   '
+    text += "Gamma 2.4,   BT.2020,   D65,   Revision 1,   "
+    text += "Copyright (C) 2021 - Toru Yoshihara,   "
+    text += "https://trev16.hatenablog.com/"
+    hue = np.linspace(0, 360, hue_num, endpoint=False)
+    text_width, text_height = fc.get_text_width_height(
+        text=text, font_path=font_path, font_size=font_size)
+    text_v_margin = int(text_height * 0.3)
+
+    img = np.ones((height, width, 3)) * 0.1
+    text_drawer = fc.TextDrawer(
+        img, text=text,
+        pos=(text_h_margin, height - text_height - text_v_margin),
+        font_color=(0.8, 0.8, 0.8), font_size=font_size, font_path=font_path)
+    text_drawer.draw()
+
+    height = height - text_height - 2 * text_v_margin
+    h_block_width = width / hue_num
+    chroma_num = int(round(height / h_block_width + 0.5))
+    h_block_size = equal_devision(width, hue_num)
+    v_block_size = equal_devision(height, chroma_num)
+    mark_size = max(v_block_size[0] // 10, 5)
+    mark_img_2020 = np.zeros((mark_size, mark_size, 3))
+    # mark_img_p3 = np.ones((mark_size, mark_size, 3)) * 0.5
+
+    h_buf = []
+    for h_idx, h_val in enumerate(hue):
+        # calc LCH value in specific HUE
+        lch_array = _calc_l_focal_to_cups_lch_array(
+            inner_lut=inner_lut, outer_lut=outer_lut,
+            h_val=h_val, chroma_num=chroma_num, l_focal_max=l_focal_max)
+        lab_array = LCHab_to_Lab(lch_array)
+        bt2020_idx = cgbl.is_outer_gamut(
+            lab=lab_array, color_space_name=cs.P3_D65)
+        v_buf = []
+        for c_idx, lab, in enumerate(lab_array):
+            rgb_linear = cs.lab_to_rgb(lab, cs.BT2020)
+            rgb = tf.oetf(np.clip(rgb_linear, 0.0, 1.0), tf.GAMMA24)
+            img_temp = np.ones((v_block_size[c_idx], h_block_size[h_idx], 3))\
+                * rgb
+            if bt2020_idx[c_idx]:
+                merge(img_temp, mark_img_2020, (0, 0))
+            v_buf.append(img_temp)
+
+        h_buf.append(np.vstack(v_buf))
+    img_pat = np.hstack(h_buf)
+    merge(img, img_pat, (0, 0))
+
+    return img
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
@@ -1933,5 +2351,37 @@ if __name__ == '__main__':
     # calc_rad_patch_idx2(outmost_num=9, current_num=7)
     # print(convert_luminance_to_color_value(100, tf.ST2084))
     # print(generate_color_checker_rgb_value(target_white=[0.3127, 0.3290]))
-    print(calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480)))
-    print(convert_luminance_to_code_value(100, tf.ST2084))
+    # print(calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480)))
+    # print(convert_luminance_to_code_value(100, tf.ST2084))
+    # make_hue_chroma_pattern(
+    #     inner_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
+    #     outer_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
+    #     width=2048, height=1180, hue_num=32)
+
+    # line = np.linspace(0, 1, 5)
+    # line_color = tstack([line, line, line])
+    # print(line)
+    # img = v_mono_line_to_img(line, 4)
+    # print(img)
+
+    # line_r = np.linspace(0, 4, 5)
+    # line_g = np.linspace(0, 4, 5) * 2
+    # line_b = np.linspace(0, 4, 5) * 3
+    # line_color = tstack([line_r, line_g, line_b])
+    # print(line_color)
+    # img = v_color_line_to_img(line_color, 4)
+    # print(img)
+
+    bg_img = np.ones((1080, 1920, 3)) * 0.5
+    fg_img = np.zeros((540, 960, 3), dtype=np.uint8)
+    fg_img = cv2.circle(
+        fg_img, (200, 100), 40,
+        color=[0, 192, 192], thickness=-1, lineType=cv2.LINE_AA)
+        # rmo_list[idx].calc_next_pos()  # マルチスレッド化にともない事前に計算
+    # alpha channel は正規化する。そうしないと中間調合成時に透けてしまう
+    alpha = np.max(fg_img, axis=-1)
+    alpha = alpha / np.max(alpha)
+    fg_img = np.dstack((fg_img / 0xFF, alpha))
+    merge_with_alpha2(bg_img=bg_img, fg_img=fg_img, pos=(200, 100))
+    img_wirte_float_as_16bit_int("fg.png", fg_img)
+    img_wirte_float_as_16bit_int("after_merge.png", bg_img)

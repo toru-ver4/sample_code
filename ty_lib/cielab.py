@@ -182,7 +182,7 @@ def solve_chroma(
 def is_inner_gamut(lab, color_space_name=cs.BT709):
     rgb = XYZ_to_RGB(
         Lab_to_XYZ(lab), cs.D65, cs.D65,
-        RGB_COLOURSPACES[color_space_name].XYZ_to_RGB_matrix)
+        RGB_COLOURSPACES[color_space_name].matrix_XYZ_to_RGB)
     r_judge = (rgb[..., 0] >= 0) & (rgb[..., 0] <= 1)
     g_judge = (rgb[..., 1] >= 0) & (rgb[..., 1] <= 1)
     b_judge = (rgb[..., 2] >= 0) & (rgb[..., 2] <= 1)

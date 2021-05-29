@@ -175,6 +175,7 @@ venv.bak/
 2021/06_improve_youtube_3dlut/luts/*.npy
 2021/06_improve_youtube_3dlut/apng/**/*.png
 2021/06_improve_youtube_3dlut/3DLUT/*.cube
+2021/09_gamut_boundary_lut/lut/*.npy
 temporary/**/**
 
 .gitconfig
