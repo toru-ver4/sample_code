@@ -2149,7 +2149,7 @@ def _calc_l_focal_to_cups_lch_array(
         l_focal_max=100, l_focal_min=0):
     l_focal = cgbl.calc_l_focal_specific_hue(
         inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val,
-        maximum_l_focal=l_focal_max)
+        maximum_l_focal=l_focal_max, minimum_l_focal=l_focal_min)
     cups = cgbl.calc_cusp_specific_hue(lut=outer_lut, hue=h_val)
     cc_max = cups[1]
     chroma = np.linspace(0, cc_max, chroma_num)
@@ -2198,7 +2198,8 @@ def make_bt2020_bt709_hue_chroma_pattern(
     font_size = int(20 * height / 1080)
     text_h_margin = int(6 * height / 1080)
     font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
-    text = '"BT.2020 - DCI-P3 - BT.709 Hue-Chroma Pattern",   Revision 2,   '
+    text = '"BT.2020 - DCI-P3 - BT.709 Hue-Chroma Pattern",   '
+    text += "Gamma 2.4,   BT.2020,   D65,   Revision 2,   "
     text += "Copyright (C) 2021 - Toru Yoshihara,   "
     text += "https://trev16.hatenablog.com/"
     hue = np.linspace(0, 360, hue_num, endpoint=False)
@@ -2213,7 +2214,7 @@ def make_bt2020_bt709_hue_chroma_pattern(
         font_color=(0.8, 0.8, 0.8), font_size=font_size, font_path=font_path)
     text_drawer.draw()
 
-    # height = height - text_height - 2 * text_v_margin
+    height = height - text_height - 2 * text_v_margin
     h_block_width = width / hue_num
     chroma_num = int(round(height / h_block_width + 0.5))
     h_block_size = equal_devision(width, hue_num)
@@ -2289,7 +2290,8 @@ def make_bt2020_dci_p3_hue_chroma_pattern(
     font_size = int(20 * height / 1080)
     text_h_margin = int(6 * height / 1080)
     font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
-    text = '"BT.2020 - DCI-P3 Hue-Chroma Pattern",   Revision 1,   '
+    text = '"BT.2020 - DCI-P3 Hue-Chroma Pattern",   '
+    text += "Gamma 2.4,   BT.2020,   D65,   Revision 1,   "
     text += "Copyright (C) 2021 - Toru Yoshihara,   "
     text += "https://trev16.hatenablog.com/"
     hue = np.linspace(0, 360, hue_num, endpoint=False)

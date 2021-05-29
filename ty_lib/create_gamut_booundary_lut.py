@@ -334,7 +334,7 @@ def calc_cusp_specific_hue(lut, hue):
 
 
 def calc_l_focal_specific_hue(
-        inner_lut, outer_lut, hue, maximum_l_focal=100, minimum_l_focal=50):
+        inner_lut, outer_lut, hue, maximum_l_focal=90, minimum_l_focal=50):
     """
     calc L_focal value
 
@@ -395,14 +395,8 @@ def calc_l_focal_specific_hue(
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # # calc_chroma_boundary_specific_l(ll=50, cs_name=cs.BT2020)
-    # chroma_sample = 32768
-    # lightness_sample = 1024
-    # lut = calc_chroma_boundary_lut(
-    #     lightness_sample=50, chroma_sample=8192, chroma_max=220,
-    #     hue_num=361, cs_name=cs.BT2020)
-    # np.save("./lut_sample_50_361_8192.npy", lut)
 
+    """ Create Gamut Boundary LUTs"""
     # hue_sample = 1024
     # chroma_sample = 32768
     # ll_num = 1024
@@ -414,6 +408,8 @@ if __name__ == '__main__':
     #     f"./lut/lut_sample_{ll_num}_{hue_sample}_{chroma_sample}_{cs_name}.npy",
     #     lut)
 
+
+    """ check interpolation """
     # lut = np.load("./lut/lut_sample_25_100_8192.npy")
     # # l = 13
     # # h = 15
@@ -425,6 +421,7 @@ if __name__ == '__main__':
     # print(lh_array)
     # get_gamut_boundary_lch_from_lut(lut=lut, lh_array=lh_array)
 
+    """ check cups """
     # calc_cusp_specific_hue(
     #     lut=np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy"),
     #     hue=20)

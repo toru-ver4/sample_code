@@ -9,7 +9,7 @@ calculate parameters for the ICC Profile
 import os
 
 # import third-party libraries
-from colour.adaptation import chromatic_adaptation_matrix_VonKries
+from colour.adaptation import matrix_chromatic_adaptation_VonKries
 from colour import xy_to_XYZ, XYZ_to_xy
 
 # import my libraries
@@ -56,7 +56,7 @@ def calc_chromatic_adaptation_matrix(src_white=cs.D65, dst_white=cs.D50):
     """
     src_XYZ = xy_to_XYZ(src_white)
     dst_XYZ = xy_to_XYZ(dst_white)
-    mtx = chromatic_adaptation_matrix_VonKries(
+    mtx = matrix_chromatic_adaptation_VonKries(
         src_XYZ, dst_XYZ, 'Bradford')
 
     return mtx
