@@ -1864,7 +1864,7 @@ def generate_color_checker_rgb_value(
     >>>  [ 0.08524707  0.08890587  0.09255774]
     >>>  [ 0.03038879  0.03118623  0.03279615]]
     """
-    colour_checker_param = COLOURCHECKERS.get('ColorChecker 2005')
+    colour_checker_param = CCS_COLOURCHECKERS.get('ColorChecker 2005')
     # 今回の処理では必要ないデータもあるので xyY と whitepoint だけ抽出
     # -------------------------------------------------------------
     _name, data, whitepoint = colour_checker_param
