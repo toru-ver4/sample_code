@@ -302,3 +302,5 @@ def jzczhz_to_jzazbz(jzczhz):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    print(st2084_eotf_like(0.4))
+    print(st2084_oetf_like(100))
