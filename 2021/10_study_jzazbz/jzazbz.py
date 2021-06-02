@@ -186,5 +186,119 @@ def jzazbz_to_large_xyz(jzazbz):
     return tstack([xx, yy, zz])
 
 
+def calc_hue_from_ab(aa, bb):
+    """
+    calculate hue.
+    output range is [0, 2pi).
+
+    Examples
+    --------
+    >>> aa = np.array([1.0, 0.5, 0.0, -0.5, -1.0, -0.5, 0.0, 0.5, 0.99])
+    >>> bb = np.array([0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5, -0.001])
+    >>> hue = calc_hue_from_ab(aa, bb)
+    [0.  45.  90.  135.  180.  225.  270.  315. 359.94212549]
+    """
+    hue = np.where(aa != 0, np.arctan(bb/aa), np.pi/2*np.sign(bb))
+    add_pi_idx = (aa < 0) & (bb >= 0)
+    sub_pi_idx = (aa < 0) & (bb < 0)
+    hue[add_pi_idx] = hue[add_pi_idx] + np.pi
+    hue[sub_pi_idx] = hue[sub_pi_idx] - np.pi
+
+    hue[hue < 0] = hue[hue < 0] + 2 * np.pi
+
+    return np.rad2deg(hue)
+
+
+def jzazbz_to_jzczhz(jzazbz):
+    """
+    convert from Jzazbz to JzCzhz
+
+    Parameters
+    ----------
+    jzazbz : ndarray
+        jzazbz data.
+
+    Examples
+    --------
+    >>> az = np.array([1.0, 0.5, 0.0, -0.5, -1.0, -0.5, 0.0, 0.5, 0.99])
+    >>> bz = np.array([0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5, -0.001])
+    >>> jz = np.linspace(0, 1, len(az))
+    >>> jzazbz = tstack([jz, az, bz])
+    >>> print(jzazbz)
+    [[ 0.     1.     0.   ]
+     [ 0.125  0.5    0.5  ]
+     [ 0.25   0.     1.   ]
+     [ 0.375 -0.5    0.5  ]
+     [ 0.5   -1.     0.   ]
+     [ 0.625 -0.5   -0.5  ]
+     [ 0.75   0.    -1.   ]
+     [ 0.875  0.5   -0.5  ]
+     [ 1.     0.99  -0.001]]
+
+    >>> jzczhz = jzazbz_to_jzczhz(jzazbz)
+    >>> print(jzczhz)
+    [[  0.00000000e+00   1.00000000e+00   0.00000000e+00]
+     [  1.25000000e-01   7.07106781e-01   4.50000000e+01]
+     [  2.50000000e-01   1.00000000e+00   9.00000000e+01]
+     [  3.75000000e-01   7.07106781e-01   1.35000000e+02]
+     [  5.00000000e-01   1.00000000e+00   1.80000000e+02]
+     [  6.25000000e-01   7.07106781e-01   2.25000000e+02]
+     [  7.50000000e-01   1.00000000e+00   2.70000000e+02]
+     [  8.75000000e-01   7.07106781e-01   3.15000000e+02]
+     [  1.00000000e+00   9.90000505e-01   3.59942125e+02]]
+    """
+    jz = jzazbz[..., 0]
+    az = jzazbz[..., 1]
+    bz = jzazbz[..., 2]
+
+    cz = (az ** 2 + bz ** 2) ** 0.5
+    hz = calc_hue_from_ab(az, bz)
+
+    return tstack([jz, cz, hz])
+
+
+def jzczhz_to_jzazbz(jzczhz):
+    """
+    convert from JzCzhz to Jzazbz
+
+    Parameters
+    ----------
+    jzczhz : ndarray
+        jzczhz data.
+
+    Examples
+    --------
+    >>> jzczhz = np.array(
+    ...     [[0.00000000e+00, 1.00000000e+00, 0.00000000e+00],
+    ...      [1.25000000e-01, 7.07106781e-01, 4.50000000e+01],
+    ...      [2.50000000e-01, 1.00000000e+00, 9.00000000e+01],
+    ...      [3.75000000e-01, 7.07106781e-01, 1.35000000e+02],
+    ...      [5.00000000e-01, 1.00000000e+00, 1.80000000e+02],
+    ...      [6.25000000e-01, 7.07106781e-01, 2.25000000e+02],
+    ...      [7.50000000e-01, 1.00000000e+00, 2.70000000e+02],
+    ...      [8.75000000e-01, 7.07106781e-01, 3.15000000e+02],
+    ...      [1.00000000e+00, 9.90000505e-01, 3.59942125e+02]])
+    >>> jzazbz_inverted = jzczhz_to_jzazbz(jzczhz)
+    [[  0.00000000e+00   1.00000000e+00   0.00000000e+00]
+     [  1.25000000e-01   5.00000000e-01   5.00000000e-01]
+     [  2.50000000e-01   6.12323400e-17   1.00000000e+00]
+     [  3.75000000e-01  -5.00000000e-01   5.00000000e-01]
+     [  5.00000000e-01  -1.00000000e+00   1.22464680e-16]
+     [  6.25000000e-01  -5.00000000e-01  -5.00000000e-01]
+     [  7.50000000e-01  -1.83697020e-16  -1.00000000e+00]
+     [  8.75000000e-01   5.00000000e-01  -5.00000000e-01]
+     [  1.00000000e+00   9.90000000e-01  -1.00000855e-03]]
+    """
+    jz = jzczhz[..., 0]
+    cz = jzczhz[..., 1]
+    hz = jzczhz[..., 2]
+
+    hz_rad = np.deg2rad(hz)
+    az = cz * np.cos(hz_rad)
+    bz = cz * np.sin(hz_rad)
+
+    return tstack([jz, az, bz])
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
