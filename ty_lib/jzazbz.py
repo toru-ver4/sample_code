@@ -9,6 +9,7 @@ import os
 # import third-party libraries
 import numpy as np
 from colour.utilities import tstack
+from numpy.lib.type_check import nan_to_num
 from scipy import linalg
 
 # import my libraries
@@ -84,6 +85,13 @@ def st2084_eotf_like(x):
     c3 = 2392/(2**7)
 
     y = ((c1 - (x ** (1/p))) / (c3 * (x ** (1/p)) - c2)) ** (1/n)
+    y = abs(y)
+
+    y = nan_to_num(y, nan=-1)
+    # try:
+    #     y = nan_to_num(y, nan=-1)
+    # except TypeError:
+    #     y = nan_to_num(y, nan=-1)
 
     return y * 10000
 

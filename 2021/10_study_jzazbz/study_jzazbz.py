@@ -65,7 +65,7 @@ def compare_reference_code():
     large_xyz = create_xyz_values_for_test()
     my_jzazbz = large_xyz_to_jzazbz(xyz=large_xyz)
 
-    np.testing.assert_array_almost_equal(ref_jzazbz, my_jzazbz)
+    np.testing.assert_array_almost_equal(ref_jzazbz, my_jzazbz, decimal=7)
     # print(my_jzazbz)
 
 
@@ -82,5 +82,5 @@ if __name__ == '__main__':
     # large_xyz = create_xyz_values_for_test()
     # save_data = dict(large_xyz=large_xyz)
     # savemat("./test_data.mat", save_data)
-    # compare_reference_code()
+    compare_reference_code()
     check_inverse_function()

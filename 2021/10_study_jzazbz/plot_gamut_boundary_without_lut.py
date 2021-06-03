@@ -9,6 +9,7 @@ import os
 # import third-party libraries
 import numpy as np
 from colour import XYZ_to_RGB, RGB_COLOURSPACES
+from multiprocessing import Pool, cpu_count
 
 # import my libraries
 import color_space as cs
@@ -67,11 +68,13 @@ def create_valid_ab_plane_image_st2084(
 
 
 def plot_ab_plane_st2084(
-        j_val=0.5, ab_max=1.0, ab_sample=512, color_space_name=cs.BT2020):
+        j_idx=0, j_val=0.5, ab_max=1.0, ab_sample=1536,
+        color_space_name=cs.BT2020):
     rgb_st2084 = create_valid_ab_plane_image_st2084(
         j_val=j_val, ab_max=ab_max, ab_sample=ab_sample,
         color_space_name=color_space_name)
-    luminance = int(round(st2084_eotf_like(j_val) + 0.5))
+    luminance = int(
+        round(st2084_eotf_like(j_val)) + 0.5)
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
@@ -93,9 +96,47 @@ def plot_ab_plane_st2084(
     ax1.plot([0], [0], '.')
     ax1.imshow(
         rgb_st2084, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
+    fname = "/work/overuse/2021/10_jzazbz/img_seq_ab/"
+    fname += f"azbz_plane_{color_space_name}_{j_idx}.png"
     pu.show_and_save(
-        fig=fig, legend_loc=None, show=False,
-        save_fname=f"./img/test_ab_j_val-{j_val}.png")
+        fig=fig, legend_loc=None, show=False, save_fname=fname)
+
+
+def thread_wrapper_plot_ab_plane_st2084(args):
+    plot_ab_plane_st2084(**args)
+
+
+def plot_ab_plane_seq(color_space_name):
+    """
+    Parameters
+    ----------
+    ty_lch_lut : ndarray
+        gamut boundary data.
+        shape is (Lightness_num, Hue_num, 3).
+        the data order is L*, C*, Hab
+    """
+    j_num = 501
+
+    total_process_num = j_num
+    block_process_num = cpu_count() // 4
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            j_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={j_idx}")  # User
+            if j_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                j_idx=j_idx, j_val=j_idx/(j_num-1), ab_max=0.5, ab_sample=1536,
+                color_space_name=color_space_name)
+            # plot_ab_plane_st2084(**d)
+            args.append(d)
+        #     break
+        # break
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_plot_ab_plane_st2084, args)
 
 
 if __name__ == '__main__':
@@ -106,5 +147,9 @@ if __name__ == '__main__':
     #     j_val=j_val, ab_max=0.5, ab_sample=1024, color_space_name=cs.BT2020,
     #     bg_rgb_luminance=np.array([20, 20, 20]))
     # img_wirte_float_as_16bit_int(f"./test_lum-{luminance}.png", img)
-    plot_ab_plane_st2084(
-        j_val=j_val, ab_max=0.5, ab_sample=1024, color_space_name=cs.BT2020)
+
+    # plot_ab_plane_st2084(
+    #     j_idx=0, j_val=j_val, ab_max=0.5, ab_sample=1024,
+    #     color_space_name=cs.BT2020)
+
+    plot_ab_plane_seq(color_space_name=cs.BT2020)
