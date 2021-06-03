@@ -14,7 +14,8 @@ from multiprocessing import Pool, cpu_count
 # import my libraries
 import color_space as cs
 import transfer_functions as tf
-from jzazbz import jzazbz_to_large_xyz, st2084_oetf_like, st2084_eotf_like
+from jzazbz import jzazbz_to_large_xyz, st2084_oetf_like, st2084_eotf_like,\
+    jzczhz_to_jzazbz
 from create_gamut_booundary_lut import is_out_of_gamut_rgb
 from test_pattern_generator2 import img_wirte_float_as_16bit_int
 import plot_utility as pu
@@ -65,6 +66,101 @@ def create_valid_ab_plane_image_st2084(
         np.clip(rgb_luminance, 0.0, 10000), tf.ST2084)
 
     return rgb_st2084
+
+
+def create_valid_cj_plane_image_st2084(
+        h_val=50, c_max=1, c_sample=1024, j_sample=1024,
+        color_space_name=cs.BT2020, bg_rgb_luminance=np.array([50, 50, 50])):
+    """
+    Create an image that indicates the valid area of the ab plane.
+
+    Parameters
+    ----------
+    h_val : float
+        A Hue value. range is 0.0 - 360.0
+    c_max : float
+        A maximum value of the chroma.
+    c_sapmle : int
+        A number of samples for the chroma.
+    l_sample : int
+        A number of samples for the lightness.
+    color_space_name : str
+        color space name for colour.RGB_COLOURSPACES
+    bg_lightness : float
+        background lightness value.
+    """
+    l_max = 1
+
+    cc_base = np.linspace(0, c_max, c_sample)
+    jj_base = np.linspace(0, l_max, j_sample)
+    cc = cc_base.reshape(1, c_sample)\
+        * np.ones_like(jj_base).reshape(j_sample, 1)
+    jj = jj_base.reshape(j_sample, 1)\
+        * np.ones_like(cc_base).reshape(1, c_sample)
+    hh = np.ones_like(cc) * h_val
+
+    jczhz = np.dstack([jj[::-1], cc, hh]).reshape((j_sample, c_sample, 3))
+    jzazbz = jzczhz_to_jzazbz(jczhz)
+    large_xyz = jzazbz_to_large_xyz(jzazbz)
+    rgb_luminance = XYZ_to_RGB(
+        large_xyz, cs.D65, cs.D65,
+        RGB_COLOURSPACES[color_space_name].matrix_XYZ_to_RGB)
+    ng_idx = is_out_of_gamut_rgb(rgb=rgb_luminance/10000)
+
+    rgb_luminance[ng_idx] = bg_rgb_luminance
+
+    rgb_st2084 = tf.oetf_from_luminance(
+        np.clip(rgb_luminance, 0.0, 10000), tf.ST2084)
+
+    return rgb_st2084
+
+
+def plot_czjz_plane_st2084(
+        h_idx, h_val, color_space_name):
+    """
+    Parameters
+    ----------
+    h_idx : int
+        A Hue index for ty_ch_lut
+    h_val : float
+        Hue Value of the ab plane
+    color_space_name : str
+        color space name for colour.RGB_COLOURSPACES
+    """
+    c_max = 0.5
+    c_sample = 1024
+    j_max = 1
+    j_sample = 1024
+
+    rgb_st2084 = create_valid_cj_plane_image_st2084(
+        h_val=h_val, c_max=c_max, c_sample=c_sample, j_sample=j_sample,
+        color_space_name=color_space_name,
+        bg_rgb_luminance=np.array([50, 50, 50]))
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 12),
+        bg_color=None,
+        graph_title=f"cl plane, H*={h_val:.2f}",
+        graph_title_size=None,
+        xlabel="Chroma", ylabel="Lightness",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[0, c_max],
+        ylim=[0, j_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=4,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.imshow(
+        rgb_st2084, extent=(0, c_max, 0, j_max), aspect='auto')
+    prefix = "/work/overuse/2021/10_jzazbz/img_seq_cj/"
+    fname = f"{prefix}/intp_cj_plane_{h_idx:04d}.png"
+    print(f"save file = {fname}")
+    pu.show_and_save(
+        fig=fig, legend_loc=None, show=False, save_fname=fname)
 
 
 def plot_ab_plane_st2084(
@@ -152,4 +248,14 @@ if __name__ == '__main__':
     #     j_idx=0, j_val=j_val, ab_max=0.5, ab_sample=1024,
     #     color_space_name=cs.BT2020)
 
-    plot_ab_plane_seq(color_space_name=cs.BT2020)
+    # plot_ab_plane_seq(color_space_name=cs.BT2020)
+
+    h_val = 0
+    for h_idx, h_val in enumerate(np.linspace(0, 360, 8, endpoint=False)):
+        # img = create_valid_cj_plane_image_st2084(
+        #     h_val=h_val, c_max=0.5, c_sample=1024, j_sample=1024,
+        #     color_space_name=cs.BT2020,
+        #     bg_rgb_luminance=np.array([50, 50, 50]))
+        # img_wirte_float_as_16bit_int(f"./img/test_czjz-{h_val}.png", img)
+        plot_czjz_plane_st2084(
+            h_idx=h_idx, h_val=h_val, color_space_name=cs.BT2020)
