@@ -131,7 +131,6 @@ def plot_czjz_plane_st2084(
     c_sample = 1024
     j_max = 1
     j_sample = 1024
-
     rgb_st2084 = create_valid_cj_plane_image_st2084(
         h_val=h_val, c_max=c_max, c_sample=c_sample, j_sample=j_sample,
         color_space_name=color_space_name,
@@ -141,9 +140,9 @@ def plot_czjz_plane_st2084(
         fontsize=20,
         figsize=(12, 12),
         bg_color=None,
-        graph_title=f"cl plane, H*={h_val:.2f}",
+        graph_title=f"Cz-Jz Plane, hz={h_val:.1f}°",
         graph_title_size=None,
-        xlabel="Chroma", ylabel="Lightness",
+        xlabel="Cz", ylabel="Jz",
         axis_label_size=None,
         legend_size=17,
         xlim=[0, c_max],
@@ -156,8 +155,8 @@ def plot_czjz_plane_st2084(
         minor_ytick_num=None)
     ax1.imshow(
         rgb_st2084, extent=(0, c_max, 0, j_max), aspect='auto')
-    prefix = "/work/overuse/2021/10_jzazbz/img_seq_cj/"
-    fname = f"{prefix}/intp_cj_plane_{h_idx:04d}.png"
+    prefix = "/work/overuse/2021/10_jzazbz/img_seq_cj"
+    fname = f"{prefix}/cj_plane_{h_idx:04d}.png"
     print(f"save file = {fname}")
     pu.show_and_save(
         fig=fig, legend_loc=None, show=False, save_fname=fname)
@@ -235,6 +234,35 @@ def plot_ab_plane_seq(color_space_name):
             pool.map(thread_wrapper_plot_ab_plane_st2084, args)
 
 
+def thread_wrapper_plot_czjz_plane_st2084(args):
+    plot_czjz_plane_st2084(**args)
+
+
+def plot_cj_plane_seq(color_space_name):
+    h_num = 721
+
+    total_process_num = h_num
+    block_process_num = cpu_count() // 2
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            h_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, h_idx={h_idx}")  # User
+            if h_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                h_idx=h_idx, h_val=h_idx/(h_num-1)*360,
+                color_space_name=color_space_name)
+            # plot_czjz_plane_st2084(**d)
+            args.append(d)
+        #     break
+        # break
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_plot_czjz_plane_st2084, args)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     luminance = 100
@@ -250,12 +278,14 @@ if __name__ == '__main__':
 
     # plot_ab_plane_seq(color_space_name=cs.BT2020)
 
-    h_val = 0
-    for h_idx, h_val in enumerate(np.linspace(0, 360, 8, endpoint=False)):
-        # img = create_valid_cj_plane_image_st2084(
-        #     h_val=h_val, c_max=0.5, c_sample=1024, j_sample=1024,
-        #     color_space_name=cs.BT2020,
-        #     bg_rgb_luminance=np.array([50, 50, 50]))
-        # img_wirte_float_as_16bit_int(f"./img/test_czjz-{h_val}.png", img)
-        plot_czjz_plane_st2084(
-            h_idx=h_idx, h_val=h_val, color_space_name=cs.BT2020)
+    # h_val = 0
+    # for h_idx, h_val in enumerate(np.linspace(0, 360, 8, endpoint=False)):
+    #     # img = create_valid_cj_plane_image_st2084(
+    #     #     h_val=h_val, c_max=0.5, c_sample=1024, j_sample=1024,
+    #     #     color_space_name=cs.BT2020,
+    #     #     bg_rgb_luminance=np.array([50, 50, 50]))
+    #     # img_wirte_float_as_16bit_int(f"./img/test_czjz-{h_val}.png", img)
+    #     plot_czjz_plane_st2084(
+    #         h_idx=h_idx, h_val=h_val, color_space_name=cs.BT2020)
+
+    plot_cj_plane_seq(color_space_name=cs.BT2020)
