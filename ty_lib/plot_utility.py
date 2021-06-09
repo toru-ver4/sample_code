@@ -494,8 +494,8 @@ def log_scale_settings(ax1, grid_alpha=0.5, bg_color="#E0E0E0"):
     https://stackoverflow.com/questions/44078409/matplotlib-semi-log-plot-minor-tick-marks-are-gone-when-range-is-large
     """
     # Log Scale
-    ax1.set_xscale('log', basex=10)
-    ax1.set_yscale('log', basey=10)
+    ax1.set_xscale('log', base=10)
+    ax1.set_yscale('log', base=10)
     ax1.tick_params(
         which='major', direction='in', top=True, right=True, length=8)
     ax1.tick_params(

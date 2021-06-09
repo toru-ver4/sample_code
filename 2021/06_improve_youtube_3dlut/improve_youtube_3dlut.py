@@ -357,10 +357,17 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # main_func()
     # debug_tone_mapping()
-    make_3dlut(prefix="YouTube_Custom_BT2446", on_hdr10=False, grid_num=65,
-               for_obs=True)
-    make_3dlut(prefix="YouTube_Custom_BT2446", on_hdr10=False, grid_num=65)
-    make_3dlut(prefix="YouTube_Custom_BT2446", on_hdr10=True, grid_num=65)
+    # make_3dlut(prefix="YouTube_Custom_BT2446", on_hdr10=False, grid_num=65,
+    #            for_obs=True)
+    # make_3dlut(prefix="YouTube_Custom_BT2446", on_hdr10=False, grid_num=65)
+    # make_3dlut(prefix="YouTube_Custom_BT2446", on_hdr10=True, grid_num=65)
     # create_youtube_org_on_hdr10()
     # apply_wrong_ycbcr_matrix()
     # matrix_check()
+    make_3dlut(
+        src_color_space_name=cs.BT2020, tfc=tf.ST2084,
+        alpha=0.15, sigma=0.0, gamma=2.2,
+        hdr_ref_luminance=203, hdr_peak_luminance=1000,
+        bt2407_gamut_mapping=True, grid_num=65,
+        prefix="YouTube_Custom_BT2446",
+        on_hdr10=False, for_obs=False)
