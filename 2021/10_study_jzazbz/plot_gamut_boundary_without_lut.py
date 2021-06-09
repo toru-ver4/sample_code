@@ -140,14 +140,16 @@ def plot_czjz_plane_st2084(
     rgb_st2084 = create_valid_cj_plane_image_st2084(
         h_val=h_val, c_max=c_max, c_sample=c_sample, j_sample=j_sample,
         color_space_name=color_space_name,
-        bg_rgb_luminance=np.array([50, 50, 50]),
+        bg_rgb_luminance=np.array([100, 100, 100]),
         maximum_luminance=maximum_luminance)
+    graph_title = f"CzJz Plane,  peak {maximum_luminance} nits,  "
+    graph_title += f"hz={h_val:.1f}°"
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(12, 12),
+        figsize=(10, 10),
         bg_color=None,
-        graph_title=f"Cz-Jz Plane, {maximum_luminance} nits, hz={h_val:.1f}°",
+        graph_title=graph_title,
         graph_title_size=None,
         xlabel="Cz", ylabel="Jz",
         axis_label_size=None,
@@ -174,15 +176,17 @@ def plot_ab_plane_st2084(
         color_space_name=cs.BT2020):
     rgb_st2084 = create_valid_ab_plane_image_st2084(
         j_val=j_val, ab_max=ab_max, ab_sample=ab_sample,
-        color_space_name=color_space_name)
+        color_space_name=color_space_name,
+        bg_rgb_luminance=np.array([100, 100, 100]))
     luminance = int(
         round(st2084_eotf_like(j_val)) + 0.5)
+    graph_title = f"azbz plane,  Jz={j_val:.2f},  Luminance={luminance} nits"
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(16, 16),
+        figsize=(10, 10),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title=f"Jz={j_val:.2f},  Luminance={luminance} [cd/m2]?",
+        graph_title=graph_title,
         graph_title_size=None,
         xlabel="az", ylabel="bz",
         axis_label_size=None,
@@ -195,11 +199,12 @@ def plot_ab_plane_st2084(
         linewidth=3,
         minor_xtick_num=None,
         minor_ytick_num=None)
-    ax1.plot([0], [0], '.')
+    # ax1.plot([0], [0], '.')
     ax1.imshow(
         rgb_st2084, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
     fname = "/work/overuse/2021/10_jzazbz/img_seq_ab/"
-    fname += f"azbz_plane_{color_space_name}_{j_idx}.png"
+    fname += f"azbz_plane_{color_space_name}_{j_idx:04d}.png"
+    print(fname)
     pu.show_and_save(
         fig=fig, legend_loc=None, show=False, save_fname=fname)
 
@@ -220,7 +225,7 @@ def plot_ab_plane_seq(color_space_name):
     j_num = 501
 
     total_process_num = j_num
-    block_process_num = cpu_count() // 4
+    block_process_num = cpu_count() // 2
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
     for b_idx in range(block_num):
@@ -246,7 +251,7 @@ def thread_wrapper_plot_czjz_plane_st2084(args):
 
 
 def plot_cj_plane_seq(color_space_name, maximum_luminance=10000):
-    h_num = 361
+    h_num = 721
 
     total_process_num = h_num
     block_process_num = cpu_count() // 2
@@ -307,7 +312,6 @@ def check_jz_val_for_luminance():
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     luminance = 1000
-    # check_iz_jz()
 
     # plot_ab_plane_seq(color_space_name=cs.BT2020)
     # plot_cj_plane_seq(color_space_name=cs.BT2020, maximum_luminance=100)

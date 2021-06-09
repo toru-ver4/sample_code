@@ -35,6 +35,7 @@ __all__ = []
 
 def create_xyz_values_for_test():
     color_checker_linear = tpg.generate_color_checker_rgb_value() * 100
+    black = np.array([[0, 0, 0]])
     rgbmycw_linear_100 = np.array(
         [[1, 0, 0], [0, 1, 0], [0, 0, 1],
          [1, 0, 1], [0, 1, 1], [1, 1, 0], [1, 1, 1]]) * 100
@@ -42,7 +43,8 @@ def create_xyz_values_for_test():
         [[1, 0, 0], [0, 1, 0], [0, 0, 1],
          [1, 0, 1], [0, 1, 1], [1, 1, 0], [1, 1, 1]]) * 10000
     test_rgb_linear = np.concatenate(
-        [color_checker_linear, rgbmycw_linear_100, rgbmycw_linear_10000])
+        [color_checker_linear, black,
+         rgbmycw_linear_100, rgbmycw_linear_10000])
 
     large_xyz = RGB_to_XYZ(
         test_rgb_linear, cs.D65, cs.D65,
@@ -230,9 +232,11 @@ def plot_xyz_prime_function_with_mpl():
     eq8_lab = XYZ_to_Lab(eq8_xyz)
 
     # plot!
-    plot_xyz_prime_scatter(lab=eq0_lab, color=src_srgb, suffix="original")
-    plot_xyz_prime_scatter(lab=eq5_lab, color=src_srgb, suffix="eq5")
-    plot_xyz_prime_scatter(lab=eq8_lab, color=src_srgb, suffix="eq8")
+    plot_xyz_prime_scatter(lab=eq0_lab, color=src_srgb, suffix="Original")
+    plot_xyz_prime_scatter(
+        lab=eq5_lab, color=src_srgb, suffix="Apply X'_D65")
+    plot_xyz_prime_scatter(
+        lab=eq8_lab, color=src_srgb, suffix="Apply X'_D65 and Y'_D65")
 
     # src_srgb = tf.oetf(np.clip(linear_rgb, 0.0, 1.0), tf.SRGB)
     # tpg.img_wirte_float_as_16bit_int(
@@ -287,10 +291,9 @@ def plot_oetf_like_and_pq_oetf():
         fig=fig, legend_loc="lower right", show=False, save_fname=fname)
 
 
-def check_iz_jz():
+def check_iz_jz_2nd():
     iz = np.linspace(0, 1, 16)
     jz_org = iz_to_jz(iz)
-    print(jz_org)
     jz_d0 = iz_to_jz(iz, d=0)
     jz_d_m064 = iz_to_jz(iz, d=-0.64)
     jz_d_11 = iz_to_jz(iz, d=1.1)
@@ -311,13 +314,28 @@ def check_iz_jz():
         linewidth=3,
         minor_xtick_num=None,
         minor_ytick_num=None)
-    ax1.plot(iz, jz_org, pu.RED, label='d=-0.56')
-    # ax1.plot(iz, jz_d0, pu.GREEN, label='d=0')
-    # ax1.plot(iz, jz_d_m064, pu.BLUE, label='d=-0.64')
-    # ax1.plot(iz, jz_d_11, pu.SKY, label='d=1.1')
+    ax1.plot(iz, jz_org, color=pu.RED, label='d = -0.56')
+    ax1.plot(iz, jz_d0, '--', color=pu.GREEN, label='d = 0', lw=1.3)
+    ax1.plot(iz, jz_d_m064, '--', color=pu.BLUE, label='d = -0.64', lw=1.3)
+    ax1.plot(iz, jz_d_11, '--', color=pu.SKY, label='d = 1.1', lw=1.3)
     fname = "./img/iz_vs_jz.png"
     pu.show_and_save(
         fig=fig, legend_loc='lower right', show=False, save_fname=fname)
+
+
+def compare_result_with_matlab_code():
+    # large_xyz = create_xyz_values_for_test()
+    # print(large_xyz)
+    # save_data = dict(large_xyz=large_xyz)
+    # savemat("./test_data.mat", save_data)
+
+    ref_jzazbz = loadmat("./result.mat")['result']
+    print(ref_jzazbz)
+
+    large_xyz = create_xyz_values_for_test()
+    my_jzazbz = large_xyz_to_jzazbz(xyz=large_xyz)
+
+    np.testing.assert_array_almost_equal(ref_jzazbz, my_jzazbz, decimal=7)
 
 
 if __name__ == '__main__':
@@ -328,14 +346,15 @@ if __name__ == '__main__':
     # savemat("./test_data.mat", save_data)
 
     # plot_diff_prime_function()
-    # plot_xyz_prime_function_with_mpl()
+    plot_xyz_prime_function_with_mpl()
 
     # plot eq.10
     # plot_oetf_like_and_pq_oetf()
 
     # plot eq.12
-    check_iz_jz()
+    # check_iz_jz_2nd()
 
     # # test code
+    # compare_result_with_matlab_code()
     # compare_reference_code()
     # check_inverse_function()
