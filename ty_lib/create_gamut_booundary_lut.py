@@ -17,6 +17,7 @@ from multiprocessing import Pool, cpu_count, Array
 # import my libraries
 import color_space as cs
 from common import MeasureExecTime
+from jzazbz import jzazbz_to_large_xyz
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -391,6 +392,47 @@ def calc_l_focal_specific_hue(
         l_focal = minimum_l_focal
 
     return np.array([l_focal, 0, hue])
+
+
+def calc_chroma_boundary_specific_ligheness_jzazbz(
+        lightness, hue_sample, cs_name, peak_luminance):
+    """
+    parameters
+    ----------
+    lightness : float
+        lightness value(Jzazbz). range is 0.0 - 1.0.
+    hue_sample : int
+        Sample number of the Hue
+    cs_name : string
+        A color space name. ex. "ITU-R BT.709", "ITU-R BT.2020"
+    """
+    # lch --> rgb
+
+    r_val_init = 1.0
+    trial_num = 20
+
+    hue = np.linspace(0, 2*np.pi, hue_sample)
+    r_val = r_val_init * np.ones_like(hue)
+    jj = lightness * np.ones_like(hue)
+
+    for t_idx in range(trial_num):
+        aa = r_val * np.cos(hue)
+        bb = r_val * np.sin(hue)
+        jzazbz = tstack((jj, aa, bb))
+        large_xyz = jzazbz_to_large_xyz(jzazbz)
+        rgb_luminance = XYZ_to_RGB(
+            large_xyz, cs.D65, cs.D65,
+            RGB_COLOURSPACES[cs_name].matrix_XYZ_to_RGB)
+
+        ng_idx = is_out_of_gamut_rgb(rgb=rgb_luminance/peak_luminance)
+        ok_idx = np.logical_not(ng_idx)
+        add_sub = r_val_init / (2 ** (t_idx + 1))
+        r_val[ok_idx] = r_val[ok_idx] + add_sub
+        r_val[~ok_idx] = r_val[~ok_idx] - add_sub
+
+    jzczhz = tstack([jj, r_val, np.rad2deg(hue)])
+
+    return jzczhz
 
 
 if __name__ == '__main__':
