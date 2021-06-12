@@ -10,6 +10,7 @@ import os
 import numpy as np
 from multiprocessing import Pool, cpu_count
 from colour import XYZ_to_RGB, RGB_COLOURSPACES
+from colour.utilities import tstack
 
 # import my libraries
 import color_space as cs
@@ -17,7 +18,8 @@ import plot_utility as pu
 import transfer_functions as tf
 from create_gamut_boundary_lut_jzazbz import make_lut_fname
 from jzazbz import jzazbz_to_large_xyz, jzczhz_to_jzazbz, st2084_eotf_like
-from create_gamut_booundary_lut import is_out_of_gamut_rgb
+from create_gamut_booundary_lut import is_out_of_gamut_rgb,\
+    get_gamut_boundary_lch_from_lut
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -165,6 +167,57 @@ def plot_cj_plane_without_interpolation_core(
         fig=fig, legend_loc=None, show=False, save_fname=fname)
 
 
+def plot_cj_plane_with_interpolation_core(
+        bg_lut, h_idx, h_val, color_space_name, maximum_luminance):
+    cc_max = 0.5
+    jj_max = 1.0
+    sample_num = 1024
+    jj_sample = 256
+    print(f"h_val={h_val}")
+    rgb_st2084 = create_valid_cj_plane_image_st2084(
+        h_val=h_val, c_max=0.5, c_sample=sample_num, j_sample=sample_num,
+        color_space_name=color_space_name,
+        bg_rgb_luminance=np.array([100, 100, 100]),
+        maximum_luminance=maximum_luminance)
+    graph_title = f"CzJz plane,  hue={h_val:.2f},  "
+    graph_title += f"target={maximum_luminance} nits"
+
+    jj_base = np.linspace(0, 1, jj_sample)
+    hh_base = np.ones_like(jj_base) * h_val
+    jh_array = tstack([jj_base, hh_base])
+    jzczhz = get_gamut_boundary_lch_from_lut(
+        lut=bg_lut, lh_array=jh_array, ll_normalize_val=1.0)
+
+    chroma = jzczhz[..., 1]
+    lightness = jzczhz[..., 0]
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=graph_title,
+        graph_title_size=None,
+        xlabel="Cz", ylabel="Jz",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[0, cc_max],
+        ylim=[0, jj_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.imshow(
+        rgb_st2084, extent=(0, cc_max, 0, jj_max), aspect='auto')
+    ax1.plot(chroma, lightness, color='k')
+    fname = "/work/overuse/2021/11_chroma_hue_jzazbz/img_seq_cj_intp/"
+    fname += f"CzJz_w_lut_{color_space_name}_{h_idx:04d}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc=None, show=False, save_fname=fname)
+
+
 def plot_ab_plane_without_interpolation_core(
         bg_lut, j_idx, j_val, color_space_name, maximum_luminance):
     ab_max = 0.5
@@ -215,6 +268,7 @@ def plot_ab_plane_with_interpolation_core(
         bg_lut, j_idx, j_val, color_space_name, maximum_luminance):
     ab_max = 0.5
     ab_sample = 1024
+    hue_sample = 256
     rgb_st2084 = create_valid_ab_plane_image_st2084(
         j_val=j_val, ab_max=ab_max, ab_sample=ab_sample,
         color_space_name=color_space_name,
@@ -224,7 +278,14 @@ def plot_ab_plane_with_interpolation_core(
         round(st2084_eotf_like(j_val)) + 0.5)
     graph_title = f"azbz plane,  Jz={j_val:.2f},  Luminance={luminance} nits"
 
-    jzczhz = bg_lut[j_idx]
+    hh_base = np.linspace(0, 360, hue_sample)
+    jj_base = np.ones_like(hh_base) * j_val
+    jh_array = tstack([jj_base, hh_base])
+    # lh_array = 
+
+    jzczhz = get_gamut_boundary_lch_from_lut(
+        lut=bg_lut, lh_array=jh_array, ll_normalize_val=1.0)
+    # jzczhz = bg_lut[j_idx]
     chroma = jzczhz[..., 1]
     hue = np.deg2rad(jzczhz[..., 2])
     aa = chroma * np.cos(hue)
@@ -250,7 +311,7 @@ def plot_ab_plane_with_interpolation_core(
     ax1.imshow(
         rgb_st2084, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
     ax1.plot(aa, bb, color='k')
-    fname = "/work/overuse/2021/11_chroma_hue_jzazbz/img_seq_ab/"
+    fname = "/work/overuse/2021/11_chroma_hue_jzazbz/img_seq_ab_intp/"
     fname += f"azbz_w_lut_{color_space_name}_{j_idx:04d}.png"
     print(fname)
     pu.show_and_save(
@@ -261,8 +322,16 @@ def thread_wrapper_plot_ab_plane_without_interpolation(args):
     plot_ab_plane_without_interpolation_core(**args)
 
 
+def thread_wrapper_plot_ab_plane_with_interpolation(args):
+    plot_ab_plane_with_interpolation_core(**args)
+
+
 def thread_wrapper_plot_cj_plane_without_interpolation(args):
     plot_cj_plane_without_interpolation_core(**args)
+
+
+def thread_wrapper_plot_cj_plane_with_interpolation(args):
+    plot_cj_plane_with_interpolation_core(**args)
 
 
 def plot_ab_plane_without_interpolation():
@@ -301,6 +370,42 @@ def plot_ab_plane_without_interpolation():
             pool.map(thread_wrapper_plot_ab_plane_without_interpolation, args)
 
 
+def plot_ab_plane_with_interpolation():
+    color_space_name = cs.BT2020
+    luminance = 10000
+    hue_sample = 64
+    lightness_sample = 64
+
+    lut_name = make_lut_fname(
+        color_space_name=color_space_name, luminance=luminance,
+        lightness_num=lightness_sample, hue_num=hue_sample)
+    lut = np.load(lut_name)
+
+    j_num = 256
+
+    total_process_num = j_num
+    block_process_num = cpu_count() // 2
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            j_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={j_idx}")  # User
+            if j_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                bg_lut=lut, j_idx=j_idx, j_val=j_idx/(j_num-1),
+                color_space_name=color_space_name,
+                maximum_luminance=luminance)
+            # plot_ab_plane_with_interpolation_core(**d)
+            args.append(d)
+        #     break
+        # break
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_plot_ab_plane_with_interpolation, args)
+
+
 def plot_cj_plane_without_interpolation():
     color_space_name = cs.BT2020
     luminance = 10000
@@ -337,7 +442,46 @@ def plot_cj_plane_without_interpolation():
             pool.map(thread_wrapper_plot_cj_plane_without_interpolation, args)
 
 
+def plot_cj_plane_with_interpolation():
+    color_space_name = cs.BT2020
+    luminance = 10000
+    hue_sample = 64
+    lightness_sample = 64
+
+    lut_name = make_lut_fname(
+        color_space_name=color_space_name, luminance=luminance,
+        lightness_num=lightness_sample, hue_num=hue_sample)
+    lut = np.load(lut_name)
+
+    h_num = 256
+
+    total_process_num = h_num
+    block_process_num = cpu_count() // 2
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            h_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={h_idx}")  # User
+            if h_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                bg_lut=lut, h_idx=h_idx, h_val=h_idx/(h_num-1)*360,
+                color_space_name=color_space_name,
+                maximum_luminance=luminance)
+            # plot_cj_plane_with_interpolation_core(**d)
+            args.append(d)
+        #     break
+        # break
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_plot_cj_plane_with_interpolation, args)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # plot_ab_plane_without_interpolation()
     # plot_cj_plane_without_interpolation()
+
+    plot_ab_plane_with_interpolation()
+    plot_cj_plane_with_interpolation()

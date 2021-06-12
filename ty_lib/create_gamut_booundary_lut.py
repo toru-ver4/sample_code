@@ -218,7 +218,7 @@ def calc_chroma_boundary_lut(
     return lut
 
 
-def get_gamut_boundary_lch_from_lut(lut, lh_array):
+def get_gamut_boundary_lch_from_lut(lut, lh_array, ll_normalize_val=100):
     """
     parameters
     ----------
@@ -226,6 +226,8 @@ def get_gamut_boundary_lch_from_lut(lut, lh_array):
         A Gamut boundary lut
     lh_array : ndarray
         lightness, hue array for interpolate.
+    ll_normalize_val : float
+        normalize value for lightness
 
     Examples
     --------
@@ -258,9 +260,10 @@ def get_gamut_boundary_lch_from_lut(lut, lh_array):
      [  90.           27.97189331   20.        ]
      [ 100.            0.           20.        ]]
     """
+    
     ll_num = lut.shape[0]
     hh_num = lut.shape[1]
-    ll_idx_float = lh_array[..., 0] / 100 * (ll_num - 1)
+    ll_idx_float = lh_array[..., 0] / ll_normalize_val * (ll_num - 1)
     ll_low_idx = np.int32(np.floor(ll_idx_float))
     ll_high_idx = ll_low_idx + 1
     ll_high_idx[ll_high_idx >= ll_num] = ll_num - 1
