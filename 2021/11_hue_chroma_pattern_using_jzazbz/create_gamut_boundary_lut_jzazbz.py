@@ -74,6 +74,15 @@ if __name__ == '__main__':
     # create_jzazbz_gamut_boundary_lut(
     #     hue_sample=256, lightness_sample=256,
     #     color_space_name=cs.BT2020, luminance=10000)
+    # create_jzazbz_gamut_boundary_lut(
+    #     hue_sample=64, lightness_sample=64,
+    #     color_space_name=cs.BT2020, luminance=10000)
     create_jzazbz_gamut_boundary_lut(
-        hue_sample=64, lightness_sample=64,
+        hue_sample=1024, lightness_sample=1024,
         color_space_name=cs.BT2020, luminance=10000)
+    create_jzazbz_gamut_boundary_lut(
+        hue_sample=1024, lightness_sample=1024,
+        color_space_name=cs.BT709, luminance=10000)
+    create_jzazbz_gamut_boundary_lut(
+        hue_sample=1024, lightness_sample=1024,
+        color_space_name=cs.P3_D65, luminance=10000)

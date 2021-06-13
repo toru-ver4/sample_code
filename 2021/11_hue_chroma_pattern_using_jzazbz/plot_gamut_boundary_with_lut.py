@@ -19,7 +19,8 @@ import transfer_functions as tf
 from create_gamut_boundary_lut_jzazbz import make_lut_fname
 from jzazbz import jzazbz_to_large_xyz, jzczhz_to_jzazbz, st2084_eotf_like
 from create_gamut_booundary_lut import is_out_of_gamut_rgb,\
-    get_gamut_boundary_lch_from_lut
+    get_gamut_boundary_lch_from_lut, calc_cusp_specific_hue,\
+    calc_l_focal_specific_hue
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -186,7 +187,7 @@ def plot_cj_plane_with_interpolation_core(
     hh_base = np.ones_like(jj_base) * h_val
     jh_array = tstack([jj_base, hh_base])
     jzczhz = get_gamut_boundary_lch_from_lut(
-        lut=bg_lut, lh_array=jh_array, ll_normalize_val=1.0)
+        lut=bg_lut, lh_array=jh_array, lightness_max=1.0)
 
     chroma = jzczhz[..., 1]
     lightness = jzczhz[..., 0]
@@ -284,7 +285,7 @@ def plot_ab_plane_with_interpolation_core(
     # lh_array = 
 
     jzczhz = get_gamut_boundary_lch_from_lut(
-        lut=bg_lut, lh_array=jh_array, ll_normalize_val=1.0)
+        lut=bg_lut, lh_array=jh_array, lightness_max=1.0)
     # jzczhz = bg_lut[j_idx]
     chroma = jzczhz[..., 1]
     hue = np.deg2rad(jzczhz[..., 2])
@@ -332,6 +333,10 @@ def thread_wrapper_plot_cj_plane_without_interpolation(args):
 
 def thread_wrapper_plot_cj_plane_with_interpolation(args):
     plot_cj_plane_with_interpolation_core(**args)
+
+
+def thread_wrapper_plot_cups_core(args):
+    plot_cups_core(**args)
 
 
 def plot_ab_plane_without_interpolation():
@@ -478,10 +483,144 @@ def plot_cj_plane_with_interpolation():
             pool.map(thread_wrapper_plot_cj_plane_with_interpolation, args)
 
 
+def load_gamut_boundary_lut(
+        color_space_name, lightness_sample_num, hue_sample_num,
+        maximum_luminance):
+    lut_name = make_lut_fname(
+        color_space_name=color_space_name, luminance=maximum_luminance,
+        lightness_num=lightness_sample_num, hue_num=hue_sample_num)
+    lut = np.load(lut_name)
+
+    return lut
+
+
+def get_interpolated_jzczhz(lut, jj_sample, h_val):
+    jj_base = np.linspace(0, 1, jj_sample)
+    hh_base = np.ones_like(jj_base) * h_val
+    jh_array = tstack([jj_base, hh_base])
+
+    jzczhz = get_gamut_boundary_lch_from_lut(
+        lut=lut, lh_array=jh_array, lightness_max=1.0)
+
+    return jzczhz
+
+
+def plot_cups_core(
+        h_idx, h_val, maximum_luminance):
+    cc_max = 0.5
+    jj_max = 1.0
+    sample_num = 1024
+    jj_sample = 1024
+    print(f"h_val={h_val}")
+    rgb_st2084 = create_valid_cj_plane_image_st2084(
+        h_val=h_val, c_max=0.5, c_sample=sample_num, j_sample=sample_num,
+        color_space_name=cs.BT2020,
+        bg_rgb_luminance=np.array([100, 100, 100]),
+        maximum_luminance=maximum_luminance)
+    graph_title = f"CzJz plane,  hue={h_val:.2f},  "
+    graph_title += f"target={maximum_luminance} nits"
+
+    outer_lut = load_gamut_boundary_lut(
+        color_space_name=cs.BT2020,
+        lightness_sample_num=sample_num, hue_sample_num=sample_num,
+        maximum_luminance=maximum_luminance)
+    inner_lut = load_gamut_boundary_lut(
+        color_space_name=cs.BT709,
+        lightness_sample_num=sample_num, hue_sample_num=sample_num,
+        maximum_luminance=maximum_luminance)
+
+    outer_jzczhz = get_interpolated_jzczhz(
+        lut=outer_lut, jj_sample=jj_sample, h_val=h_val)
+    inner_jzczhz = get_interpolated_jzczhz(
+        lut=inner_lut, jj_sample=jj_sample, h_val=h_val)
+
+    outer_chroma = outer_jzczhz[..., 1]
+    outer_lightness = outer_jzczhz[..., 0]
+    inner_chroma = inner_jzczhz[..., 1]
+    inner_lightness = inner_jzczhz[..., 0]
+
+    outer_cups = calc_cusp_specific_hue(
+        lut=outer_lut, hue=h_val, lightness_max=1.0)
+    inner_cups = calc_cusp_specific_hue(
+        lut=inner_lut, hue=h_val, lightness_max=1.0)
+    focal_point = calc_l_focal_specific_hue(
+        inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val,
+        maximum_l_focal=1.0, minimum_l_focal=0.0, lightness_max=1.0)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=graph_title,
+        graph_title_size=None,
+        xlabel="Cz", ylabel="Jz",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[0, cc_max],
+        ylim=[0, jj_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.imshow(
+        rgb_st2084, extent=(0, cc_max, 0, jj_max), aspect='auto')
+    ax1.plot(
+        inner_chroma, inner_lightness, color='k', label="BT.709",
+        lw=1.5, alpha=0.5)
+    ax1.plot(outer_chroma, outer_lightness, color='k', label="BT.2020")
+    ax1.plot(
+        [focal_point[..., 1], outer_cups[..., 1]],
+        [focal_point[..., 0], outer_cups[..., 0]], 'k--', lw=1)
+    ax1.plot(
+        inner_cups[..., 1], inner_cups[..., 0], 'D', markerfacecolor="None",
+        markeredgecolor='k', mew=2, ms=12, label="BT.709 Cups")
+    ax1.plot(
+        outer_cups[..., 1], outer_cups[..., 0], 's', markerfacecolor="None",
+        markeredgecolor='k', mew=2, ms=12, label="BT.2020 Cups")
+    ax1.plot(
+        focal_point[..., 1], focal_point[..., 0], 'o', markerfacecolor='None',
+        markeredgecolor='k', ms=8, label="Focal point?")
+    fname = "/work/overuse/2021/11_chroma_hue_jzazbz/img_seq_cups/"
+    fname += f"cups_{h_idx:04d}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc='lower right', show=False, save_fname=fname)
+
+
+def plot_cups():
+    luminance = 10000
+    h_num = 1024
+
+    total_process_num = h_num
+    block_process_num = int(round(cpu_count() / 1.5 + 0.5))
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            h_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={h_idx}")  # User
+            if h_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                h_idx=h_idx, h_val=h_idx/(h_num-1)*360,
+                maximum_luminance=luminance)
+            # plot_cups_core(**d)
+            args.append(d)
+        #     break
+        # break
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_plot_cups_core, args)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # plot_ab_plane_without_interpolation()
     # plot_cj_plane_without_interpolation()
 
-    plot_ab_plane_with_interpolation()
-    plot_cj_plane_with_interpolation()
+    # plot_ab_plane_with_interpolation()
+    # plot_cj_plane_with_interpolation()
+
+    plot_cups()

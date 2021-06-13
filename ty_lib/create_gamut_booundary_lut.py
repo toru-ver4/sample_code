@@ -218,7 +218,7 @@ def calc_chroma_boundary_lut(
     return lut
 
 
-def get_gamut_boundary_lch_from_lut(lut, lh_array, ll_normalize_val=100):
+def get_gamut_boundary_lch_from_lut(lut, lh_array, lightness_max=100):
     """
     parameters
     ----------
@@ -226,7 +226,7 @@ def get_gamut_boundary_lch_from_lut(lut, lh_array, ll_normalize_val=100):
         A Gamut boundary lut
     lh_array : ndarray
         lightness, hue array for interpolate.
-    ll_normalize_val : float
+    lightness_max : float
         normalize value for lightness
 
     Examples
@@ -263,7 +263,7 @@ def get_gamut_boundary_lch_from_lut(lut, lh_array, ll_normalize_val=100):
     
     ll_num = lut.shape[0]
     hh_num = lut.shape[1]
-    ll_idx_float = lh_array[..., 0] / ll_normalize_val * (ll_num - 1)
+    ll_idx_float = lh_array[..., 0] / lightness_max * (ll_num - 1)
     ll_low_idx = np.int32(np.floor(ll_idx_float))
     ll_high_idx = ll_low_idx + 1
     ll_high_idx[ll_high_idx >= ll_num] = ll_num - 1
@@ -299,7 +299,7 @@ def get_gamut_boundary_lch_from_lut(lut, lh_array, ll_normalize_val=100):
     return intp_lch
 
 
-def calc_cusp_specific_hue(lut, hue):
+def calc_cusp_specific_hue(lut, hue, lightness_max=100):
     """
     calc gamut's cusp using lut.
 
@@ -311,6 +311,8 @@ def calc_cusp_specific_hue(lut, hue):
         M is the number of the Hue.
     hue : float
         A Hue value. range is 0.0 - 360.0
+    lightness_max : float
+        maximum value of lightness
 
     Returns
     -------
@@ -326,19 +328,21 @@ def calc_cusp_specific_hue(lut, hue):
     [  60.          130.80209944   20.        ]
     """
     l_num = lut.shape[0]
-    ll_base = np.linspace(0, 100, l_num)
+    ll_base = np.linspace(0, lightness_max, l_num)
     hh_base = np.ones_like(ll_base) * hue
 
     lh_array = tstack([ll_base, hh_base])
 
-    lch = get_gamut_boundary_lch_from_lut(lut=lut, lh_array=lh_array)
+    lch = get_gamut_boundary_lch_from_lut(
+        lut=lut, lh_array=lh_array, lightness_max=lightness_max)
     max_cc_idx = np.argmax(lch[..., 1])
 
     return lch[max_cc_idx]
 
 
 def calc_l_focal_specific_hue(
-        inner_lut, outer_lut, hue, maximum_l_focal=90, minimum_l_focal=50):
+        inner_lut, outer_lut, hue, maximum_l_focal=90, minimum_l_focal=50,
+        lightness_max=100):
     """
     calc L_focal value
 
@@ -362,6 +366,8 @@ def calc_l_focal_specific_hue(
         A maximum L_focal value.
         This is a parameter to prevent the data from changing
         from l_focal to cups transitioning to Out-of-Gamut.
+    lightness_max : float
+        maximum value of lightness
 
     Returns
     -------
@@ -376,8 +382,10 @@ def calc_l_focal_specific_hue(
     >>> calc_l_focal_specific_hue(inner_lut, outer_lut, 20)
     [ 32.7255767   0.         20.       ]
     """
-    inner_cups = calc_cusp_specific_hue(lut=inner_lut, hue=hue)
-    outer_cups = calc_cusp_specific_hue(lut=outer_lut, hue=hue)
+    inner_cups = calc_cusp_specific_hue(
+        lut=inner_lut, hue=hue, lightness_max=lightness_max)
+    outer_cups = calc_cusp_specific_hue(
+        lut=outer_lut, hue=hue, lightness_max=lightness_max)
 
     x1 = inner_cups[1]
     y1 = inner_cups[0]
