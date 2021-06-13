@@ -416,6 +416,28 @@ def calc_chroma_boundary_specific_ligheness_jzazbz(
         Sample number of the Hue
     cs_name : string
         A color space name. ex. "ITU-R BT.709", "ITU-R BT.2020"
+
+    Examples
+    --------
+    >>> boundary_jch = calc_chroma_boundary_specific_ligheness_jzazbz(
+    ...     lightness=0.5, hue_sample=16, cs_name=cs.BT2020,
+    ...     peak_luminance=10000)
+    [[  5.00000000e-01   2.72627831e-01   0.00000000e+00]
+     [  5.00000000e-01   2.96944618e-01   2.40000000e+01]
+     [  5.00000000e-01   3.19167137e-01   4.80000000e+01]
+     [  5.00000000e-01   2.51322746e-01   7.20000000e+01]
+     [  5.00000000e-01   2.41002083e-01   9.60000000e+01]
+     [  5.00000000e-01   2.76854515e-01   1.20000000e+02]
+     [  5.00000000e-01   3.99024010e-01   1.44000000e+02]
+     [  5.00000000e-01   2.64456749e-01   1.68000000e+02]
+     [  5.00000000e-01   2.32390404e-01   1.92000000e+02]
+     [  5.00000000e-01   2.51740456e-01   2.16000000e+02]
+     [  5.00000000e-01   3.38995934e-01   2.40000000e+02]
+     [  5.00000000e-01   3.09918404e-01   2.64000000e+02]
+     [  5.00000000e-01   2.71250725e-01   2.88000000e+02]
+     [  5.00000000e-01   2.59991646e-01   3.12000000e+02]
+     [  5.00000000e-01   2.63157845e-01   3.36000000e+02]
+     [  5.00000000e-01   2.72627831e-01   3.60000000e+02]]
     """
     # lch --> rgb
 
@@ -444,6 +466,44 @@ def calc_chroma_boundary_specific_ligheness_jzazbz(
     jzczhz = tstack([jj, r_val, np.rad2deg(hue)])
 
     return jzczhz
+
+
+def create_focal_point_lut_jzazbz(inner_lut, outer_lut):
+    """
+    Examples
+    --------
+    >>> inner_lut = np.load(
+    ...     "./lut/JzChz_gb-lut_ITU-R BT.709_10000nits_jj-256_hh-16.npy")
+    >>> outer_lut = np.load(
+    ...     "./lut/JzChz_gb-lut_ITU-R BT.2020_10000nits_jj-256_hh-16.npy")
+    >>> focal_array = create_focal_point_lut_jzazbz(inner_lut, outer_lut)
+    [[  3.75796277e-01   0.00000000e+00   0.00000000e+00]
+     [  3.67347037e-01   0.00000000e+00   2.40000000e+01]
+     [  5.54695842e-02   0.00000000e+00   4.80000000e+01]
+     [  4.05505556e-01   0.00000000e+00   7.20000000e+01]
+     [  7.44164104e-01   0.00000000e+00   9.60000000e+01]
+     [  8.43137255e-01   0.00000000e+00   1.20000000e+02]
+     [  8.68700250e-01   0.00000000e+00   1.44000000e+02]
+     [  8.87831459e-01   0.00000000e+00   1.68000000e+02]
+     [  9.00159536e-01   0.00000000e+00   1.92000000e+02]
+     [  9.21095637e-01   0.00000000e+00   2.16000000e+02]
+     [  8.36714636e-01   0.00000000e+00   2.40000000e+02]
+     [  4.13055665e-01   0.00000000e+00   2.64000000e+02]
+     [  6.05061364e-01   0.00000000e+00   2.88000000e+02]
+     [  7.06398497e-01   0.00000000e+00   3.12000000e+02]
+     [  3.39021253e-01   0.00000000e+00   3.36000000e+02]
+     [  3.75796277e-01   0.00000000e+00   3.60000000e+02]]
+    """
+    hue_array = inner_lut[0, :, 2]
+    focal_array = []
+    for hue in hue_array:
+        focal = calc_l_focal_specific_hue(
+            inner_lut=inner_lut, outer_lut=outer_lut, hue=hue,
+            maximum_l_focal=1.0, minimum_l_focal=0.0, lightness_max=1.0)
+        focal_array.append(focal)
+    focal_array = np.array(focal_array)
+
+    return focal_array
 
 
 if __name__ == '__main__':
@@ -483,3 +543,16 @@ if __name__ == '__main__':
     # outer_lut = np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy")
     # l_focal = calc_l_focal_specific_hue(inner_lut, outer_lut, 20)
     # print(l_focal)
+
+    """ focal lut """
+    # inner_lut = np.load(
+    #     "./lut/JzChz_gb-lut_ITU-R BT.709_10000nits_jj-256_hh-16.npy")
+    # outer_lut = np.load(
+    #     "./lut/JzChz_gb-lut_ITU-R BT.2020_10000nits_jj-256_hh-16.npy")
+    # focal_array = create_focal_point_lut_jzazbz(inner_lut, outer_lut)
+    # print(focal_array)
+
+    # boundary_jch = calc_chroma_boundary_specific_ligheness_jzazbz(
+    #     lightness=0.5, hue_sample=16, cs_name=cs.BT2020,
+    #     peak_luminance=10000)
+    # print(boundary_jch)

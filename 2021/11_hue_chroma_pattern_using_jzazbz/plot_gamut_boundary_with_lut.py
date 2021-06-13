@@ -16,7 +16,8 @@ from colour.utilities import tstack
 import color_space as cs
 import plot_utility as pu
 import transfer_functions as tf
-from create_gamut_boundary_lut_jzazbz import make_lut_fname
+from create_gamut_boundary_lut_jzazbz import make_gb_lut_fname,\
+    make_focal_lut_fname
 from jzazbz import jzazbz_to_large_xyz, jzczhz_to_jzazbz, st2084_eotf_like
 from create_gamut_booundary_lut import is_out_of_gamut_rgb,\
     get_gamut_boundary_lch_from_lut, calc_cusp_specific_hue,\
@@ -345,7 +346,7 @@ def plot_ab_plane_without_interpolation():
     hue_sample = 256
     lightness_sample = 256
 
-    lut_name = make_lut_fname(
+    lut_name = make_gb_lut_fname(
         color_space_name=color_space_name, luminance=luminance,
         lightness_num=lightness_sample, hue_num=hue_sample)
     lut = np.load(lut_name)
@@ -381,7 +382,7 @@ def plot_ab_plane_with_interpolation():
     hue_sample = 64
     lightness_sample = 64
 
-    lut_name = make_lut_fname(
+    lut_name = make_gb_lut_fname(
         color_space_name=color_space_name, luminance=luminance,
         lightness_num=lightness_sample, hue_num=hue_sample)
     lut = np.load(lut_name)
@@ -417,7 +418,7 @@ def plot_cj_plane_without_interpolation():
     hue_sample = 256
     lightness_sample = 256
 
-    lut_name = make_lut_fname(
+    lut_name = make_gb_lut_fname(
         color_space_name=color_space_name, luminance=luminance,
         lightness_num=lightness_sample, hue_num=hue_sample)
     lut = np.load(lut_name)
@@ -453,7 +454,7 @@ def plot_cj_plane_with_interpolation():
     hue_sample = 64
     lightness_sample = 64
 
-    lut_name = make_lut_fname(
+    lut_name = make_gb_lut_fname(
         color_space_name=color_space_name, luminance=luminance,
         lightness_num=lightness_sample, hue_num=hue_sample)
     lut = np.load(lut_name)
@@ -486,7 +487,7 @@ def plot_cj_plane_with_interpolation():
 def load_gamut_boundary_lut(
         color_space_name, lightness_sample_num, hue_sample_num,
         maximum_luminance):
-    lut_name = make_lut_fname(
+    lut_name = make_gb_lut_fname(
         color_space_name=color_space_name, luminance=maximum_luminance,
         lightness_num=lightness_sample_num, hue_num=hue_sample_num)
     lut = np.load(lut_name)
@@ -509,11 +510,11 @@ def plot_cups_core(
         h_idx, h_val, maximum_luminance):
     cc_max = 0.5
     jj_max = 1.0
-    sample_num = 1024
-    jj_sample = 1024
+    sample_num = 4096
+    jj_sample = 4096
     print(f"h_val={h_val}")
     rgb_st2084 = create_valid_cj_plane_image_st2084(
-        h_val=h_val, c_max=0.5, c_sample=sample_num, j_sample=sample_num,
+        h_val=h_val, c_max=0.5, c_sample=1024, j_sample=1024,
         color_space_name=cs.BT2020,
         bg_rgb_luminance=np.array([100, 100, 100]),
         maximum_luminance=maximum_luminance)
@@ -594,7 +595,7 @@ def plot_cups():
     h_num = 1024
 
     total_process_num = h_num
-    block_process_num = int(round(cpu_count() / 1.5 + 0.5))
+    block_process_num = int(round(cpu_count() / 4 + 0.5))
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
     for b_idx in range(block_num):
@@ -615,6 +616,37 @@ def plot_cups():
             pool.map(thread_wrapper_plot_cups_core, args)
 
 
+def plot_focal_lut(
+        luminance, lightness_num, hue_num, prefix="BT709-BT2020"):
+    lut_name = make_focal_lut_fname(
+        luminance=luminance, lightness_num=lightness_num,
+        hue_num=hue_num, prefix=prefix)
+    lut = np.load(lut_name)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Focal Point",
+        graph_title_size=None,
+        xlabel="hz", ylabel="Jz",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(lut[..., 2], lut[..., 0])
+    fname = "./img/focal_sample.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc=None, show=False, save_fname=fname)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # plot_ab_plane_without_interpolation()
@@ -623,4 +655,7 @@ if __name__ == '__main__':
     # plot_ab_plane_with_interpolation()
     # plot_cj_plane_with_interpolation()
 
-    plot_cups()
+    # plot_cups()
+    plot_focal_lut(
+        luminance=10000, lightness_num=1024, hue_num=1024,
+        prefix="BT709-BT2020")
