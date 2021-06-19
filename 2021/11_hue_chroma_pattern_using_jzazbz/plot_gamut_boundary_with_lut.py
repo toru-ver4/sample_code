@@ -5,10 +5,11 @@ plot gamut boundary
 
 # import standard libraries
 import os
+import time
 
 # import third-party libraries
 import numpy as np
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool, cpu_count, shared_memory
 from colour import XYZ_to_RGB, RGB_COLOURSPACES
 from colour.utilities import tstack
 
@@ -31,6 +32,15 @@ __maintainer__ = 'Toru Yoshihara'
 __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
+
+L_SAMPLE_NUM = 1024
+H_SAMPLE_NUM = 1024
+COLOR_NUM = 3
+
+shm = shared_memory.SharedMemory(
+    create=True, size=L_SAMPLE_NUM*H_SAMPLE_NUM*3*4)
+g_buf = np.ndarray(
+    (L_SAMPLE_NUM, H_SAMPLE_NUM, 3), dtype=np.float32, buffer=shm.buf)
 
 
 def create_valid_ab_plane_image_st2084(
@@ -170,18 +180,22 @@ def plot_cj_plane_without_interpolation_core(
 
 
 def plot_cj_plane_with_interpolation_core(
-        bg_lut, h_idx, h_val, color_space_name, maximum_luminance):
+        bg_lut_name, h_idx, h_val, color_space_name, maximum_luminance):
+    bg_lut = np.load(bg_lut_name)
+    # bg_lut = g_buf.copy()
+    # bg_lut = g_buf
     cc_max = 0.5
     jj_max = 1.0
     sample_num = 1024
     jj_sample = 256
-    print(f"h_val={h_val}")
+    print(f"h_val={h_val} started")
+
     rgb_st2084 = create_valid_cj_plane_image_st2084(
         h_val=h_val, c_max=0.5, c_sample=sample_num, j_sample=sample_num,
         color_space_name=color_space_name,
         bg_rgb_luminance=np.array([100, 100, 100]),
         maximum_luminance=maximum_luminance)
-    graph_title = f"CzJz plane,  hue={h_val:.2f},  "
+    graph_title = f"CzJz plane,  {color_space_name},  hue={h_val:.1f}°,  "
     graph_title += f"target={maximum_luminance} nits"
 
     jj_base = np.linspace(0, 1, jj_sample)
@@ -448,21 +462,24 @@ def plot_cj_plane_without_interpolation():
             pool.map(thread_wrapper_plot_cj_plane_without_interpolation, args)
 
 
-def plot_cj_plane_with_interpolation():
-    color_space_name = cs.BT2020
+def plot_cj_plane_with_interpolation(color_space_name=cs.BT2020):
     luminance = 10000
-    hue_sample = 64
-    lightness_sample = 64
+    hue_sample = H_SAMPLE_NUM
+    lightness_sample = L_SAMPLE_NUM
 
     lut_name = make_gb_lut_fname(
         color_space_name=color_space_name, luminance=luminance,
         lightness_num=lightness_sample, hue_num=hue_sample)
-    lut = np.load(lut_name)
+    # lut = np.load(lut_name)
+    # shared_array[:] = lut
+    # g_buf[:] = lut
+    # print(g_buf)
 
-    h_num = 256
+    h_num = 1025
 
     total_process_num = h_num
-    block_process_num = cpu_count() // 2
+    block_process_num = int(cpu_count() / 1.0 + 0.9)
+    print(f"block_process_num {block_process_num}")
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
     for b_idx in range(block_num):
@@ -473,7 +490,7 @@ def plot_cj_plane_with_interpolation():
             if h_idx >= total_process_num:                         # User
                 break
             d = dict(
-                bg_lut=lut, h_idx=h_idx, h_val=h_idx/(h_num-1)*360,
+                bg_lut_name=lut_name, h_idx=h_idx, h_val=h_idx/(h_num-1)*360,
                 color_space_name=color_space_name,
                 maximum_luminance=luminance)
             # plot_cj_plane_with_interpolation_core(**d)
@@ -653,9 +670,10 @@ if __name__ == '__main__':
     # plot_cj_plane_without_interpolation()
 
     # plot_ab_plane_with_interpolation()
-    # plot_cj_plane_with_interpolation()
+    plot_cj_plane_with_interpolation(color_space_name=cs.BT709)
+    # plot_cj_plane_with_interpolation(color_space_name=cs.BT2020)
 
     # plot_cups()
-    plot_focal_lut(
-        luminance=10000, lightness_num=1024, hue_num=1024,
-        prefix="BT709-BT2020")
+    # plot_focal_lut(
+    #     luminance=10000, lightness_num=1024, hue_num=1024,
+    #     prefix="BT709-BT2020")

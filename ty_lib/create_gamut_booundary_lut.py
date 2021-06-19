@@ -17,7 +17,7 @@ from multiprocessing import Pool, cpu_count, Array
 # import my libraries
 import color_space as cs
 from common import MeasureExecTime
-from jzazbz import jzazbz_to_large_xyz
+from jzazbz import jzazbz_to_large_xyz, jzczhz_to_jzazbz
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -464,6 +464,78 @@ def calc_chroma_boundary_specific_ligheness_jzazbz(
         r_val[~ok_idx] = r_val[~ok_idx] - add_sub
 
     jzczhz = tstack([jj, r_val, np.rad2deg(hue)])
+
+    return jzczhz
+
+
+def calc_chroma_boundary_specific_ligheness_jzazbz_type2(
+        jj, chroma_sample, hue_num, cs_name, luminance=10000, **kwargs):
+    """
+    parameters
+    ----------
+    ll : float
+        Jz value
+    chroma_sample : int
+        Sample number of the Chroma
+        This value is related to accuracy.
+    hue_num : int
+        Sample number of the Hue
+    cs_name : string
+        A color space name. ex. "ITU-R BT.709", "ITU-R BT.2020"
+    luminance : float
+        A peak luminance
+
+    Examples
+    --------
+    >>> boundary_jch = calc_chroma_boundary_specific_ligheness_jzazbz(
+    ...     jj=0.5, chroma_sample=16384, hue_num=16,
+    ...     cs_name=cs.BT2020, luminance=10000)
+    [[  5.00000000e-01   2.72599646e-01   0.00000000e+00]
+     [  5.00000000e-01   2.96923640e-01   2.40000000e+01]
+     [  5.00000000e-01   3.19141793e-01   4.80000000e+01]
+     [  5.00000000e-01   2.51297076e-01   7.20000000e+01]
+     [  5.00000000e-01   2.40981505e-01   9.60000000e+01]
+     [  5.00000000e-01   2.76841848e-01   1.20000000e+02]
+     [  5.00000000e-01   3.99011170e-01   1.44000000e+02]
+     [  5.00000000e-01   2.64450955e-01   1.68000000e+02]
+     [  5.00000000e-01   2.32375023e-01   1.92000000e+02]
+     [  5.00000000e-01   2.51724348e-01   2.16000000e+02]
+     [  5.00000000e-01   3.38979430e-01   2.40000000e+02]
+     [  5.00000000e-01   3.09894403e-01   2.64000000e+02]
+     [  5.00000000e-01   2.71226271e-01   2.88000000e+02]
+     [  5.00000000e-01   2.59964597e-01   3.12000000e+02]
+     [  5.00000000e-01   2.63138619e-01   3.36000000e+02]
+     [  5.00000000e-01   2.72599646e-01   3.60000000e+02]]
+    """
+    # lch --> rgb
+    chroma_max = 0.5
+    hue_max = 360
+    hue_base = np.linspace(0, hue_max, hue_num)
+    jj_base = np.ones_like(hue_base) * jj
+    chroma_base = np.linspace(0, chroma_max, chroma_sample)
+    hh = hue_base.reshape((hue_num, 1))\
+        * np.ones_like(chroma_base).reshape((1, chroma_sample))
+    cc = chroma_base.reshape((1, chroma_sample))\
+        * np.ones_like(hue_base).reshape((hue_num, 1))
+    jj = np.ones_like(hh) * jj
+
+    jzczhz = tstack((jj, cc, hh))
+    jzazbz = jzczhz_to_jzazbz(jzczhz)
+
+    large_xyz = jzazbz_to_large_xyz(jzazbz)
+    rgb_luminance = XYZ_to_RGB(
+        large_xyz, cs.D65, cs.D65,
+        RGB_COLOURSPACES[cs_name].matrix_XYZ_to_RGB)
+    ng_idx = is_out_of_gamut_rgb(rgb=rgb_luminance / luminance)
+
+    chroma_array = np.zeros(hue_num)
+    for h_idx in range(hue_num):
+        chroma_ng_idx_array = np.where(ng_idx[h_idx] > 0)
+        chroma_ng_idx = np.min(chroma_ng_idx_array)
+        chroma_ng_idx = chroma_ng_idx - 1 if chroma_ng_idx > 0 else 0
+        chroma_array[h_idx] = chroma_ng_idx / (chroma_sample - 1) * chroma_max
+
+    jzczhz = tstack([jj_base, chroma_array, hue_base])
 
     return jzczhz
 
