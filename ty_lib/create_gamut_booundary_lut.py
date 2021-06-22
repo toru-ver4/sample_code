@@ -540,7 +540,67 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_type2(
     return jzczhz
 
 
-def create_focal_point_lut_jzazbz(inner_lut, outer_lut):
+def calc_l_focal_specific_hue_jzazbz(
+        inner_lut, outer_lut, hue, maximum_l_focal=90, minimum_l_focal=50):
+    """
+    calc L_focal value
+
+    Parameters
+    ----------
+    inner_lut : TyLchLut
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    outer_lut : TyLchLut
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    hue : float
+        A Hue value. range is 0.0 - 360.0
+    maximum_l_focal : float
+        A maximum L_focal value.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
+    minimum_l_focal : float
+        A maximum L_focal value.
+        This is a parameter to prevent the data from changing
+        from l_focal to cups transitioning to Out-of-Gamut.
+
+    Returns
+    -------
+    L_focal : ndarray
+        L_focal value.
+        [Lightness, Chroma, Hue].
+
+    Examples
+    --------
+    """
+
+    inner_cups = calc_cusp_specific_hue(
+        lut=inner_lut.lut, hue=hue, lightness_max=inner_lut.jz_max)
+    outer_cups = calc_cusp_specific_hue(
+        lut=outer_lut.lut, hue=hue, lightness_max=outer_lut.jz_max)
+
+    x1 = inner_cups[1]
+    y1 = inner_cups[0]
+    x2 = outer_cups[1]
+    y2 = outer_cups[0]
+
+    if x1 != x2:
+        l_focal = (y2 - y1) / (x2 - x1) * (-x1) + y1
+    else:
+        l_focal = y1
+
+    if l_focal > maximum_l_focal:
+        l_focal = maximum_l_focal
+    if l_focal < minimum_l_focal:
+        l_focal = minimum_l_focal
+
+    return np.array([l_focal, 0, hue])
+
+
+def create_focal_point_lut_jzazbz(
+        inner_lut, outer_lut, maximum_l_focal=0.8, minimum_l_focal=0.35):
     """
     Examples
     --------
@@ -566,12 +626,13 @@ def create_focal_point_lut_jzazbz(inner_lut, outer_lut):
      [  3.39021253e-01   0.00000000e+00   3.36000000e+02]
      [  3.75796277e-01   0.00000000e+00   3.60000000e+02]]
     """
-    hue_array = inner_lut[0, :, 2]
+    hue_array = inner_lut.lut[0, :, 2]
     focal_array = []
     for hue in hue_array:
-        focal = calc_l_focal_specific_hue(
+        focal = calc_l_focal_specific_hue_jzazbz(
             inner_lut=inner_lut, outer_lut=outer_lut, hue=hue,
-            maximum_l_focal=1.0, minimum_l_focal=0.0, lightness_max=1.0)
+            maximum_l_focal=maximum_l_focal,
+            minimum_l_focal=minimum_l_focal)
         focal_array.append(focal)
     focal_array = np.array(focal_array)
 
