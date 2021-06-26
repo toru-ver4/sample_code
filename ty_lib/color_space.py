@@ -355,6 +355,7 @@ def jzazbz_to_rgb(
     rgb_linear = large_xyz_to_rgb(
         xyz=large_xyz, color_space_name=color_space_name,
         xyz_white=xyz_white, rgb_white=rgb_white) / luminance
+    # print(rgb_linear[-4:])
     return rgb_linear
 
 

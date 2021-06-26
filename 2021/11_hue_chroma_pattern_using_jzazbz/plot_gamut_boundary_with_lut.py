@@ -747,6 +747,10 @@ if __name__ == '__main__':
     lightness_num = L_SAMPLE_NUM
     hue_num = H_SAMPLE_NUM
     prefix = "BT709-BT2020"
+    width = 1920
+    height = 1080
+    tp_hue_num = 32
+    oetf = tf.GAMMA24
 
     focal_lut_name = make_jzazbz_focal_lut_fname(
         luminance=luminance, lightness_num=lightness_num,
@@ -757,38 +761,35 @@ if __name__ == '__main__':
     inner_lut_name = make_jzazbz_gb_lut_fname(
         color_space_name=cs.BT709, luminance=luminance,
         lightness_num=lightness_num, hue_num=hue_num)
-    width = 1920
-    height = 1080
-    tp_hue_num = 32
     focal_lut = np.load(focal_lut_name)
-    outer_lut = np.load(out_lut_name)
-    inner_lut = np.load(inner_lut_name)
-    # img = tpg.make_bt2020_bt709_hue_chroma_pattern_jzazbz(
-    #     focal_lut=focal_lut, outer_lut=outer_lut, hue_num=tp_hue_num,
-    #     width=width, height=height, luminance=luminance)
-    # tp_fname = f"./img/BT2020-BT709_HC_Pattern_{width}x{height}_h-{hue_num}_"
-    # tp_fname += f"{luminance}nits.png"
-    # tpg.img_wirte_float_as_16bit_int(filename=tp_fname, img_float=img)
-
-    # icc_profile =\
-    #     './icc_profile/Gamma2.4_BT.2020_D65.icc'
-    # fname_with_profile =\
-    #     "./img/" + Path(tp_fname).stem + "_icc_profile.png"
-    # cmd = [
-    #     'convert', tp_fname, '-profile', icc_profile, fname_with_profile]
-    # subprocess.run(cmd)
-
-    img = tpg.make_bt709_hue_chroma_pattern_jzazbz(
-        focal_lut=focal_lut, outer_lut=inner_lut, hue_num=tp_hue_num,
-        width=width, height=height, luminance=luminance)
-    tp_fname = f"./img/BT709_HC_Pattern_{width}x{height}_h-{hue_num}_"
-    tp_fname += f"{luminance}nits.png"
+    outer_lut = TyLchLut(np.load(out_lut_name))
+    inner_lut = TyLchLut(np.load(inner_lut_name))
+    img = tpg.make_bt2020_bt709_hue_chroma_pattern_jzazbz(
+        focal_lut=focal_lut, outer_lut=outer_lut, hue_num=tp_hue_num,
+        width=width, height=height, luminance=luminance, oetf=oetf)
+    tp_fname = f"./img/BT2020-BT709_HC_Pattern_{width}x{height}_"
+    tp_fname += f"h-{tp_hue_num}_{luminance}nits.png"
     tpg.img_wirte_float_as_16bit_int(filename=tp_fname, img_float=img)
 
     icc_profile =\
-        './icc_profile/Gamma2.4_BT.709_D65.icc'
+        './icc_profile/Gamma2.4_BT.2020_D65.icc'
     fname_with_profile =\
         "./img/" + Path(tp_fname).stem + "_icc_profile.png"
     cmd = [
         'convert', tp_fname, '-profile', icc_profile, fname_with_profile]
     subprocess.run(cmd)
+
+    # img = tpg.make_bt709_hue_chroma_pattern_jzazbz(
+    #     focal_lut=focal_lut, outer_lut=inner_lut, hue_num=tp_hue_num,
+    #     width=width, height=height, luminance=luminance)
+    # tp_fname = f"./img/BT709_HC_Pattern_{width}x{height}_h-{hue_num}_"
+    # tp_fname += f"{luminance}nits.png"
+    # tpg.img_wirte_float_as_16bit_int(filename=tp_fname, img_float=img)
+
+    # icc_profile =\
+    #     './icc_profile/Gamma2.4_BT.709_D65.icc'
+    # fname_with_profile =\
+    #     "./img/" + Path(tp_fname).stem + "_icc_profile.png"
+    # cmd = [
+    #     'convert', tp_fname, '-profile', icc_profile, fname_with_profile]
+    # subprocess.run(cmd)

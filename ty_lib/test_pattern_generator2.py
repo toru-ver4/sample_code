@@ -2165,7 +2165,10 @@ def _calc_l_focal_to_cups_lch_array(
 
 def _calc_l_focal_to_cups_lch_array_jzazbz(
         focal_lut, outer_lut, h_val, chroma_num):
-    cups = cgbl.calc_cusp_specific_hue(lut=outer_lut, hue=h_val)
+    cups = cgbl.calc_cusp_specific_hue(
+        lut=outer_lut.lut, hue=h_val,
+        lightness_max=outer_lut.ll_max)
+    print(f"cups={cups}")
     focal_point = cgbl.get_focal_point_from_lut(
         focal_point_lut=focal_lut, h_val=h_val)
     cc_max = cups[1]
@@ -2359,7 +2362,8 @@ def make_bt2020_dci_p3_hue_chroma_pattern(
 
 
 def make_bt2020_bt709_hue_chroma_pattern_jzazbz(
-        focal_lut, outer_lut, hue_num, width, height, luminance):
+        focal_lut, outer_lut, hue_num, width, height, luminance,
+        oetf=tf.ST2084):
     """
     Parameters
     ----------
@@ -2367,7 +2371,7 @@ def make_bt2020_bt709_hue_chroma_pattern_jzazbz(
         A inner gamut boundary lut. shape is (N, M, 3).
         N is the number of the Lightness.
         M is the number of the Hue.
-    outer_lut : ndarray
+    outer_lut : TyLchLut
         A inner gamut boundary lut. shape is (N, M, 3).
         N is the number of the Lightness.
         M is the number of the Hue.
@@ -2412,10 +2416,14 @@ def make_bt2020_bt709_hue_chroma_pattern_jzazbz(
         lch_array = _calc_l_focal_to_cups_lch_array_jzazbz(
             focal_lut=focal_lut, outer_lut=outer_lut, h_val=h_val,
             chroma_num=chroma_num)
+        # print(lch_array[-4:])
         jzazbz = jzczhz_to_jzazbz(lch_array)
         rgb_linear = cs.jzazbz_to_rgb(
             jzazbz=jzazbz, color_space_name=cs.BT2020, luminance=luminance)
-        rgb = tf.oetf(np.clip(rgb_linear, 0.0, 1.0), tf.GAMMA24)
+        print(rgb_linear[-4:])
+        rgb = tf.oetf_from_luminance(
+            np.clip(rgb_linear, 0.0, 1.0) * luminance, oetf)
+        print(rgb[-4:])
         p3_idx = cgbl.is_outer_gamut_jzazbz(
             jzazbz=jzazbz, color_space_name=cs.BT709, luminance=luminance)
         bt2020_idx = cgbl.is_outer_gamut_jzazbz(
@@ -2492,6 +2500,7 @@ def make_bt709_hue_chroma_pattern_jzazbz(
         lch_array = _calc_l_focal_to_cups_lch_array_jzazbz(
             focal_lut=focal_lut, outer_lut=outer_lut, h_val=h_val,
             chroma_num=chroma_num)
+        print(lch_array[-4:])
         jzazbz = jzczhz_to_jzazbz(lch_array)
         rgb_linear = cs.jzazbz_to_rgb(
             jzazbz=jzazbz, color_space_name=cs.BT709, luminance=luminance)

@@ -13,7 +13,7 @@ from colour.utilities import tstack
 from colour import LCHab_to_Lab, Lab_to_XYZ, XYZ_to_RGB, xy_to_XYZ
 from colour import RGB_COLOURSPACES
 from multiprocessing import Pool, cpu_count, Array
-from scipy import signal
+from scipy import signal, interpolate
 
 # import my libraries
 import color_space as cs
@@ -48,6 +48,21 @@ def is_outer_gamut(lab, color_space_name):
     rgb = XYZ_to_RGB(
         Lab_to_XYZ(lab), cs.D65, cs.D65,
         RGB_COLOURSPACES[color_space_name].matrix_XYZ_to_RGB)
+    r_judge = (rgb[..., 0] < min_val) | (rgb[..., 0] > max_val)
+    g_judge = (rgb[..., 1] < min_val) | (rgb[..., 1] > max_val)
+    b_judge = (rgb[..., 2] < min_val) | (rgb[..., 2] > max_val)
+    judge = (r_judge | g_judge) | b_judge
+
+    return judge
+
+
+def is_outer_gamut_jzazbz(jzazbz, color_space_name, luminance=10000):
+    min_val = -DELTA
+    max_val = 1 + DELTA
+    rgb = XYZ_to_RGB(
+        jzazbz_to_large_xyz(jzazbz), cs.D65, cs.D65,
+        RGB_COLOURSPACES[color_space_name].matrix_XYZ_to_RGB)
+    rgb = rgb / luminance
     r_judge = (rgb[..., 0] < min_val) | (rgb[..., 0] > max_val)
     g_judge = (rgb[..., 1] < min_val) | (rgb[..., 1] > max_val)
     b_judge = (rgb[..., 2] < min_val) | (rgb[..., 2] > max_val)
@@ -841,6 +856,24 @@ def apply_lpf_to_focal_lut(
         prefix=prefix)
     np.save(focal_lut_w_lpf_name, focal_array_w_lpf)
     np.save(focal_lut_wo_lpf_name, focal_array_wo_lpf)
+
+
+def get_focal_point_from_lut(focal_point_lut, h_val):
+    """
+    Parameters
+    ----------
+    focal_point_lut : ndarray
+        lut. shape is (N, 3).
+    h_val : ndarray
+        hue value. unit is degree.
+        ex. h_val = 120, h_val = 359.
+    """
+    xx = focal_point_lut[..., 2]  # hue
+    yy = focal_point_lut[..., 0]  # lightness
+    func = interpolate.interp1d(xx, yy)
+    focal_point = func(h_val)
+
+    return focal_point
 
 
 if __name__ == '__main__':
