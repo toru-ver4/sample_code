@@ -2168,10 +2168,11 @@ def _calc_l_focal_to_cups_lch_array_jzazbz(
     cups = cgbl.calc_cusp_specific_hue(
         lut=outer_lut.lut, hue=h_val,
         lightness_max=outer_lut.ll_max)
-    print(f"cups={cups}")
     focal_point = cgbl.get_focal_point_from_lut(
         focal_point_lut=focal_lut, h_val=h_val)
+    print(f"cups={cups}, focal_point={focal_point}")
     cc_max = cups[1]
+    # cc_max = cc_max - 0.005
     chroma = np.linspace(0, cc_max, chroma_num)
     bb = focal_point
     aa = (cups[0] - bb) / cc_max
@@ -2420,10 +2421,10 @@ def make_bt2020_bt709_hue_chroma_pattern_jzazbz(
         jzazbz = jzczhz_to_jzazbz(lch_array)
         rgb_linear = cs.jzazbz_to_rgb(
             jzazbz=jzazbz, color_space_name=cs.BT2020, luminance=luminance)
-        print(rgb_linear[-4:])
+        # print(rgb_linear[-4:])
         rgb = tf.oetf_from_luminance(
             np.clip(rgb_linear, 0.0, 1.0) * luminance, oetf)
-        print(rgb[-4:])
+        # print(rgb[-4:])
         p3_idx = cgbl.is_outer_gamut_jzazbz(
             jzazbz=jzazbz, color_space_name=cs.BT709, luminance=luminance)
         bt2020_idx = cgbl.is_outer_gamut_jzazbz(

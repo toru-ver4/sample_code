@@ -351,10 +351,10 @@ def rgb_to_lab(
 def jzazbz_to_rgb(
         jzazbz, color_space_name, xyz_white=D65, rgb_white=D65,
         luminance=10000):
-    large_xyz = jzazbz_to_large_xyz(jzazbz=jzazbz)
+    large_xyz = jzazbz_to_large_xyz(jzazbz=jzazbz) / luminance
     rgb_linear = large_xyz_to_rgb(
         xyz=large_xyz, color_space_name=color_space_name,
-        xyz_white=xyz_white, rgb_white=rgb_white) / luminance
+        xyz_white=xyz_white, rgb_white=rgb_white)
     # print(rgb_linear[-4:])
     return rgb_linear
 

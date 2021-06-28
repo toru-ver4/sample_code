@@ -459,7 +459,7 @@ def calc_chroma_boundary_specific_ligheness_jzazbz(
     # lch --> rgb
 
     r_val_init = 1.0
-    trial_num = 20
+    trial_num = 30
 
     hue = np.linspace(0, 2*np.pi, hue_sample)
     r_val = r_val_init * np.ones_like(hue)
@@ -537,13 +537,24 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_type2(
     jj = np.ones_like(hh) * jj
 
     jzczhz = tstack((jj, cc, hh))
+
+    # delete
+    del hh
+    del cc
+    del jj
+
     jzazbz = jzczhz_to_jzazbz(jzczhz)
 
     large_xyz = jzazbz_to_large_xyz(jzazbz)
+    del jzazbz
+
     rgb_luminance = XYZ_to_RGB(
         large_xyz, cs.D65, cs.D65,
         RGB_COLOURSPACES[cs_name].matrix_XYZ_to_RGB)
+    del large_xyz
+
     ng_idx = is_out_of_gamut_rgb(rgb=rgb_luminance / luminance)
+    del rgb_luminance
 
     chroma_array = np.zeros(hue_num)
     for h_idx in range(hue_num):
@@ -690,6 +701,15 @@ def make_jzazbz_gb_lut_fname(
     return fname
 
 
+def make_jzazbz_gb_lut_fname_old(
+        color_space_name, luminance, lightness_num, hue_num):
+    fname = f"./lut/JzChz_gb-lut_type1_{color_space_name}_"
+    fname += f"{luminance}nits_jj-{lightness_num}_"
+    fname += f"hh-{hue_num}.npy"
+
+    return fname
+
+
 def make_jzazbz_focal_lut_fname(
         luminance, lightness_num, hue_num, prefix="BT709_BT2020"):
     fname = f"./lut/JzChz_focal-lut_{prefix}_"
@@ -737,7 +757,7 @@ def create_jzazbz_gamut_boundary_lut(
     met.end()
     lut = np.array(lut)
 
-    fname = make_jzazbz_gb_lut_fname(
+    fname = make_jzazbz_gb_lut_fname_old(
         color_space_name=color_space_name, luminance=luminance,
         lightness_num=lightness_sample, hue_num=hue_sample)
     np.save(fname, np.float32(lut))
@@ -778,7 +798,7 @@ def create_jzazbz_gamut_boundary_lut_type2(
 
     total_process_num = lightness_sample
     # block_process_num = cpu_count()
-    block_process_num = 4  # for 32768 sample
+    block_process_num = 2  # for 32768 sample
     block_num = int(round(total_process_num / block_process_num + 0.5))
     max_jz = large_xyz_to_jzazbz(xy_to_XYZ(cs.D65) * luminance)[0]
     print(f"max_Jz = {max_jz}")
@@ -829,7 +849,7 @@ def apply_lpf_to_focal_lut(
     inner_lut_name = make_jzazbz_gb_lut_fname(
         color_space_name=cs.BT709, luminance=luminance,
         lightness_num=lightness_num, hue_num=hue_num)
-    outer_lut_name = make_jzazbz_gb_lut_fname(
+    outer_lut_name = make_jzazbz_gb_lut_fname_old(
         color_space_name=cs.BT2020, luminance=luminance,
         lightness_num=lightness_num, hue_num=hue_num)
     inner_lut = TyLchLut(lut=np.load(inner_lut_name))

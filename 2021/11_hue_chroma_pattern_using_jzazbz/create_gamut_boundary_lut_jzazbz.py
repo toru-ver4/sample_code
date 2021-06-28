@@ -18,7 +18,8 @@ from colour import xy_to_XYZ
 import color_space as cs
 from create_gamut_booundary_lut\
     import create_jzazbz_gamut_boundary_lut_type2,\
-        apply_lpf_to_focal_lut, make_jzazbz_gb_lut_fname
+        apply_lpf_to_focal_lut, make_jzazbz_gb_lut_fname,\
+        create_jzazbz_gamut_boundary_lut
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -50,7 +51,21 @@ if __name__ == '__main__':
     lightness_sample_num = 1024
     hue_sample_num = 4096
     luminance = 10000
-    chroma_sample = 16384
+    # chroma_sample = 16384
+    chroma_sample = 65536
+    # create_jzazbz_gamut_boundary_lut_type2(
+    #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
+    #     chroma_sample=chroma_sample, color_space_name=cs.BT709,
+    #     luminance=luminance)
+    # create_jzazbz_gamut_boundary_lut(
+    #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
+    #     color_space_name=cs.BT2020, luminance=luminance)
+    # create_jzazbz_gamut_boundary_lut_type2(
+    #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
+    #     chroma_sample=chroma_sample, color_space_name=cs.P3_D65,
+    #     luminance=luminance)
+
+    # luminance = 4000
     # create_jzazbz_gamut_boundary_lut_type2(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
     #     chroma_sample=chroma_sample, color_space_name=cs.BT709,
@@ -64,49 +79,47 @@ if __name__ == '__main__':
     #     chroma_sample=chroma_sample, color_space_name=cs.P3_D65,
     #     luminance=luminance)
 
-    # luminance = 1000
+    luminance = 1000
     # create_jzazbz_gamut_boundary_lut_type2(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
     #     chroma_sample=chroma_sample, color_space_name=cs.BT709,
     #     luminance=luminance)
-    # create_jzazbz_gamut_boundary_lut_type2(
+    # create_jzazbz_gamut_boundary_lut(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
-    #     chroma_sample=chroma_sample, color_space_name=cs.BT2020,
-    #     luminance=luminance)
+    #     color_space_name=cs.BT2020, luminance=luminance)
     # create_jzazbz_gamut_boundary_lut_type2(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
     #     chroma_sample=chroma_sample, color_space_name=cs.P3_D65,
     #     luminance=luminance)
 
-    # luminance = 100
+    luminance = 100
     # create_jzazbz_gamut_boundary_lut_type2(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
     #     chroma_sample=chroma_sample, color_space_name=cs.BT709,
     #     luminance=luminance)
-    # create_jzazbz_gamut_boundary_lut_type2(
+    # create_jzazbz_gamut_boundary_lut(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
-    #     chroma_sample=chroma_sample, color_space_name=cs.BT2020,
-    #     luminance=luminance)
+    #     color_space_name=cs.BT2020, luminance=luminance)
     # create_jzazbz_gamut_boundary_lut_type2(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
     #     chroma_sample=chroma_sample, color_space_name=cs.P3_D65,
     #     luminance=luminance)
 
-    luminance = 10000
-    apply_lpf_to_focal_lut(
-        luminance, lightness_sample_num, hue_sample_num,
-        prefix="BT709-BT2020",
-        maximum_l_focal=0.8, minimum_l_focal=0.3)
+    # luminance = 10000
+    # apply_lpf_to_focal_lut(
+    #     luminance, lightness_sample_num, hue_sample_num,
+    #     prefix="BT709-BT2020",
+    #     maximum_l_focal=0.8, minimum_l_focal=0.3)
     luminance = 1000
     apply_lpf_to_focal_lut(
         luminance, lightness_sample_num, hue_sample_num,
         prefix="BT709-BT2020",
         maximum_l_focal=0.33, minimum_l_focal=0.155)
-    luminance = 100
-    apply_lpf_to_focal_lut(
-        luminance, lightness_sample_num, hue_sample_num,
-        prefix="BT709-BT2020",
-        maximum_l_focal=0.132, minimum_l_focal=0.06)
+    # luminance = 100
+    # apply_lpf_to_focal_lut(
+    #     luminance, lightness_sample_num, hue_sample_num,
+    #     prefix="BT709-BT2020",
+    #     maximum_l_focal=0.132, minimum_l_focal=0.06)
 
     # lut_name = make_jzazbz_gb_lut_fname(
     #     color_space_name=cs.BT709, luminance=luminance,
