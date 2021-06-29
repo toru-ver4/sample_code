@@ -5,14 +5,18 @@ create gamut boundary lut.
 
 # import standard libraries
 import os
+import sys
 import ctypes
+from colour.models.rgb.derivation import RGB_luminance
 
 # import third-party libraries
 import numpy as np
 from colour.utilities import tstack
 from colour import LCHab_to_Lab, Lab_to_XYZ, XYZ_to_RGB, xy_to_XYZ
 from colour import RGB_COLOURSPACES
-from multiprocessing import Pool, cpu_count, Array
+from multiprocessing import Pool, cpu_count
+from multiprocessing import shared_memory
+# from multiprocessing import Array
 from scipy import signal, interpolate
 
 # import my libraries
@@ -29,15 +33,21 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
 
-L_SAMPLE_NUM_MAX = 1024
+# L_SAMPLE_NUM_MAX = 1024
 H_SAMPLE_NUM_MAX = 4096
 COLOR_NUM = 3
+FLOAT_SIZE = 4
 
-shared_array_type = ctypes.c_float
-shared_array_elem_size = ctypes.sizeof(shared_array_type)
-shared_array = Array(
-    typecode_or_type=shared_array_type,
-    size_or_initializer=L_SAMPLE_NUM_MAX*H_SAMPLE_NUM_MAX*COLOR_NUM)
+# shared_array_type = ctypes.c_float
+# shared_array_elem_size = ctypes.sizeof(shared_array_type)
+# shared_array = Array(
+#     typecode_or_type=shared_array_type,
+#     size_or_initializer=L_SAMPLE_NUM_MAX*H_SAMPLE_NUM_MAX*COLOR_NUM)
+
+shm = shared_memory.SharedMemory(
+    create=True, size=H_SAMPLE_NUM_MAX*COLOR_NUM*FLOAT_SIZE)
+shm_buf = np.ndarray(
+    (1, H_SAMPLE_NUM_MAX, 3), dtype=np.float32, buffer=shm.buf)
 
 DELTA = 10 ** -8
 
@@ -694,7 +704,7 @@ class TyLchLut():
 
 def make_jzazbz_gb_lut_fname(
         color_space_name, luminance, lightness_num, hue_num):
-    fname = f"./lut/JzChz_gb-lut_type2_{color_space_name}_"
+    fname = f"./lut/JzChz_gb-lut_type3_{color_space_name}_"
     fname += f"{luminance}nits_jj-{lightness_num}_"
     fname += f"hh-{hue_num}.npy"
 
@@ -829,6 +839,186 @@ def create_jzazbz_gamut_boundary_lut_type2(
     lut = np.array(
         shared_array[:lightness_sample*hue_sample*3]).reshape(
             (lightness_sample, hue_sample, 3))
+
+    fname = make_jzazbz_gb_lut_fname(
+        color_space_name=color_space_name, luminance=luminance,
+        lightness_num=lightness_sample, hue_num=hue_sample)
+    np.save(fname, np.float32(lut))
+
+
+def thread_wrapper_create_jzazbz_gamut_boundary_lut_type3(args):
+    calc_chroma_boundary_specific_ligheness_jzazbz_type3(**args)
+
+    # h_min_idx = args['hue_min_idx']
+    # h_max_idx = args['hue_max_idx']
+
+    # for h_idx in range(h_min_idx, h_max_idx):
+    #     addr = h_idx * 3
+    #     shared_array[addr:addr+3] = np.float32(jzczhz[h_idx-h_min_idx])
+
+
+def calc_chroma_boundary_specific_ligheness_jzazbz_type3(
+        jj, chroma_sample, hue_min_idx, hue_max_idx, hue_num, cs_name,
+        luminance=10000, **kwargs):
+    """
+    parameters
+    ----------
+    ll : float
+        Jz value
+    chroma_sample : int
+        Sample number of the Chroma
+        This value is related to accuracy.
+    hue_num : int
+        Sample number of the Hue
+    cs_name : string
+        A color space name. ex. "ITU-R BT.709", "ITU-R BT.2020"
+    luminance : float
+        A peak luminance
+
+    Examples
+    --------
+    >>> boundary_jch = calc_chroma_boundary_specific_ligheness_jzazbz(
+    ...     jj=0.5, chroma_sample=16384, hue_num=16,
+    ...     cs_name=cs.BT2020, luminance=10000)
+    [[  5.00000000e-01   2.72599646e-01   0.00000000e+00]
+     [  5.00000000e-01   2.96923640e-01   2.40000000e+01]
+     [  5.00000000e-01   3.19141793e-01   4.80000000e+01]
+     [  5.00000000e-01   2.51297076e-01   7.20000000e+01]
+     [  5.00000000e-01   2.40981505e-01   9.60000000e+01]
+     [  5.00000000e-01   2.76841848e-01   1.20000000e+02]
+     [  5.00000000e-01   3.99011170e-01   1.44000000e+02]
+     [  5.00000000e-01   2.64450955e-01   1.68000000e+02]
+     [  5.00000000e-01   2.32375023e-01   1.92000000e+02]
+     [  5.00000000e-01   2.51724348e-01   2.16000000e+02]
+     [  5.00000000e-01   3.38979430e-01   2.40000000e+02]
+     [  5.00000000e-01   3.09894403e-01   2.64000000e+02]
+     [  5.00000000e-01   2.71226271e-01   2.88000000e+02]
+     [  5.00000000e-01   2.59964597e-01   3.12000000e+02]
+     [  5.00000000e-01   2.63138619e-01   3.36000000e+02]
+     [  5.00000000e-01   2.72599646e-01   3.60000000e+02]]
+    """
+    # lch --> rgb
+    chroma_max = 0.5
+    hue_max = 360
+    hue_base_all = np.linspace(0, hue_max, hue_num)
+    hue_base = hue_base_all[hue_min_idx:hue_max_idx]
+
+    hue_base_limited = len(hue_base)
+
+    jj_base = np.ones_like(hue_base) * jj
+    chroma_base = np.linspace(0, chroma_max, chroma_sample)
+    hh = hue_base.reshape((hue_base_limited, 1))\
+        * np.ones_like(chroma_base).reshape((1, chroma_sample))
+    cc = chroma_base.reshape((1, chroma_sample))\
+        * np.ones_like(hue_base).reshape((hue_base_limited, 1))
+    jj = np.ones_like(hh) * jj
+
+    jzczhz = tstack((jj, cc, hh))
+
+    # delete
+    del hh
+    del cc
+    del jj
+
+    jzazbz = jzczhz_to_jzazbz(jzczhz)
+
+    large_xyz = jzazbz_to_large_xyz(jzazbz)
+    del jzazbz
+
+    rgb_luminance = XYZ_to_RGB(
+        large_xyz, cs.D65, cs.D65,
+        RGB_COLOURSPACES[cs_name].matrix_XYZ_to_RGB)
+    del large_xyz
+
+    ng_idx = is_out_of_gamut_rgb(rgb=rgb_luminance / luminance)
+    del rgb_luminance
+
+    chroma_array = np.zeros(hue_base_limited)
+    for h_idx in range(hue_base_limited):
+        chroma_ng_idx_array = np.where(ng_idx[h_idx] > 0)
+        chroma_ng_idx = np.min(chroma_ng_idx_array)
+        chroma_ng_idx = chroma_ng_idx - 1 if chroma_ng_idx > 0 else 0
+        chroma_array[h_idx] = chroma_ng_idx / (chroma_sample - 1) * chroma_max
+
+    jzczhz = tstack([jj_base, chroma_array, hue_base])
+
+    h_min_idx = hue_min_idx
+    h_max_idx = hue_max_idx
+
+    for h_idx in range(h_min_idx, h_max_idx):
+        addr = h_idx * 3
+        shm_buf[addr:addr+3] = np.float32(jzczhz[h_idx-h_min_idx])
+
+    return jzczhz
+
+
+def create_jzazbz_gamut_boundary_lut_type3(
+        hue_sample=256, lightness_sample=256, chroma_sample=32768,
+        color_space_name=cs.BT2020, luminance=10000):
+    """
+    Parameters
+    ----------
+    hue_sample : int
+        The number of hue
+    lightness_sample : int
+        The number of lightness
+    chroma_sample : int
+        The number of chroma.
+        This value is related to accuracy.
+    color_space_name : strings
+        color space name for colour.RGB_COLOURSPACES
+    luminance : float
+        peak luminance for Jzazbz color space
+    """
+    hue_div_num = 4
+    hue_idx_step = 4
+
+    total_process_num = hue_sample // hue_div_num
+    if (total_process_num != int(hue_sample / hue_div_num)):
+        print("invalid hue_sample!!")
+        sys.exit(1)
+    block_process_num = 16
+    block_num = int(
+        round(total_process_num / (block_process_num * hue_idx_step) + 0.5))
+    max_jz = large_xyz_to_jzazbz(xy_to_XYZ(cs.D65) * luminance)[0]
+    print(f"max_Jz = {max_jz}")
+    lut = np.zeros((lightness_sample, hue_sample, 3))
+
+    mtime = MeasureExecTime()
+    mtime.start()
+    for l_idx in range(lightness_sample):
+        jj = l_idx/(lightness_sample-1) * max_jz
+        for h_block_idx in range(hue_div_num):
+            h_idx_base = h_block_idx * total_process_num
+            for b_idx in range(block_num):
+                args = []
+                for p_idx in range(block_process_num):
+                    local_h_idx = b_idx * block_process_num * hue_idx_step\
+                        + p_idx * hue_idx_step
+                    h_idx_st = h_idx_base + local_h_idx
+                    h_idx_ed = h_idx_st + hue_idx_step
+                    msg = f"l_idx={l_idx}, h_b_idx={h_block_idx}, "
+                    msg += f"b_idx={b_idx}, p_idx={p_idx}, "
+                    msg += f"h_idx_st={h_idx_st}, h_idx_ed={h_idx_ed}"
+                    print(msg)
+                    if h_idx_ed > h_idx_base + total_process_num:
+                        break
+                    d = dict(
+                        jj=jj, hue_min_idx=h_idx_st, hue_max_idx=h_idx_ed,
+                        chroma_sample=chroma_sample,
+                        hue_num=hue_sample, cs_name=color_space_name,
+                        luminance=luminance, l_idx=l_idx)
+                    args.append(d)
+                    # thread_wrapper_create_jzazbz_gamut_boundary_lut_type3(d)
+                with Pool(block_process_num) as pool:
+                    pool.map(
+                        thread_wrapper_create_jzazbz_gamut_boundary_lut_type3,
+                        args)
+                print("p roop finished")
+                print(f"block_num={block_num}, hue_div_num={hue_div_num}")
+                mtime.lap()
+        lut[l_idx] = np.array(
+            shm_buf[:hue_sample*3]).reshape(1, hue_sample, 3)
 
     fname = make_jzazbz_gb_lut_fname(
         color_space_name=color_space_name, luminance=luminance,

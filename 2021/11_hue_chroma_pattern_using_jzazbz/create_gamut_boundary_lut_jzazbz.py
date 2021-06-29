@@ -19,7 +19,10 @@ import color_space as cs
 from create_gamut_booundary_lut\
     import create_jzazbz_gamut_boundary_lut_type2,\
         apply_lpf_to_focal_lut, make_jzazbz_gb_lut_fname,\
-        create_jzazbz_gamut_boundary_lut
+        create_jzazbz_gamut_boundary_lut,\
+        create_jzazbz_gamut_boundary_lut_type3
+
+from create_gamut_booundary_lut import shm, shm_buf
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -50,9 +53,15 @@ if __name__ == '__main__':
     #     color_space_name=cs.BT709, luminance=10000)
     lightness_sample_num = 1024
     hue_sample_num = 4096
-    luminance = 10000
-    # chroma_sample = 16384
-    chroma_sample = 65536
+    luminance = 1000
+    # chroma_sample = 8192
+    chroma_sample = 2 ** 18
+
+    create_jzazbz_gamut_boundary_lut_type3(
+        hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
+        chroma_sample=chroma_sample, color_space_name=cs.BT709,
+        luminance=luminance)
+
     # create_jzazbz_gamut_boundary_lut_type2(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
     #     chroma_sample=chroma_sample, color_space_name=cs.BT709,
@@ -111,10 +120,10 @@ if __name__ == '__main__':
     #     prefix="BT709-BT2020",
     #     maximum_l_focal=0.8, minimum_l_focal=0.3)
     luminance = 1000
-    apply_lpf_to_focal_lut(
-        luminance, lightness_sample_num, hue_sample_num,
-        prefix="BT709-BT2020",
-        maximum_l_focal=0.33, minimum_l_focal=0.155)
+    # apply_lpf_to_focal_lut(
+    #     luminance, lightness_sample_num, hue_sample_num,
+    #     prefix="BT709-BT2020",
+    #     maximum_l_focal=0.33, minimum_l_focal=0.155)
     # luminance = 100
     # apply_lpf_to_focal_lut(
     #     luminance, lightness_sample_num, hue_sample_num,
@@ -125,3 +134,6 @@ if __name__ == '__main__':
     #     color_space_name=cs.BT709, luminance=luminance,
     #     lightness_num=lightness_sample_num, hue_num=hue_sample_num)
     # lut = TyLchLut(lut=np.load(lut_name))
+    del shm_buf
+    shm.close()
+    shm.unlink()
