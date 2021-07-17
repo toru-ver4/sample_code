@@ -26,6 +26,7 @@ from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab,\
     Lab_to_XYZ
 from colour.adaptation import matrix_chromatic_adaptation_VonKries as cat02_mtx
 from scipy import linalg
+from jzazbz import jzazbz_to_large_xyz
 
 # Define
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
@@ -345,6 +346,17 @@ def rgb_to_lab(
     lab = XYZ_to_Lab(large_xyz)
 
     return lab
+
+
+def jzazbz_to_rgb(
+        jzazbz, color_space_name, xyz_white=D65, rgb_white=D65,
+        luminance=10000):
+    large_xyz = jzazbz_to_large_xyz(jzazbz=jzazbz) / luminance
+    rgb_linear = large_xyz_to_rgb(
+        xyz=large_xyz, color_space_name=color_space_name,
+        xyz_white=xyz_white, rgb_white=rgb_white)
+    # print(rgb_linear[-4:])
+    return rgb_linear
 
 
 if __name__ == '__main__':
