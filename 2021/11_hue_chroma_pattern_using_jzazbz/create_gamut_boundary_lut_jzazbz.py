@@ -85,20 +85,20 @@ def create_focal_lut():
     lightness_sample_num = 1024
     hue_sample_num = 4096
     luminance = 10000
-    # apply_lpf_to_focal_lut(
-    #     luminance, lightness_sample_num, hue_sample_num,
-    #     prefix="BT709-BT2020",
-    #     maximum_l_focal=0.8, minimum_l_focal=0.5, wn=0.06)
+    apply_lpf_to_focal_lut(
+        luminance, lightness_sample_num, hue_sample_num,
+        prefix="BT709-BT2020",
+        maximum_l_focal=0.8, minimum_l_focal=0.5, wn=0.06)
     luminance = 1000
-    # apply_lpf_to_focal_lut(
-    #     luminance, lightness_sample_num, hue_sample_num,
-    #     prefix="BT709-BT2020",
-    #     maximum_l_focal=0.33, minimum_l_focal=0.173, wn=0.06)
+    apply_lpf_to_focal_lut(
+        luminance, lightness_sample_num, hue_sample_num,
+        prefix="BT709-BT2020",
+        maximum_l_focal=0.33, minimum_l_focal=0.173, wn=0.06)
     luminance = 100
-    # apply_lpf_to_focal_lut(
-    #     luminance, lightness_sample_num, hue_sample_num,
-    #     prefix="BT709-BT2020",
-    #     maximum_l_focal=0.132, minimum_l_focal=0.068, wn=0.06)
+    apply_lpf_to_focal_lut(
+        luminance, lightness_sample_num, hue_sample_num,
+        prefix="BT709-BT2020",
+        maximum_l_focal=0.132, minimum_l_focal=0.068, wn=0.06)
 
     luminance = 10000
     apply_lpf_to_focal_lut(
