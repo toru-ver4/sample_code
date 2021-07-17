@@ -25,7 +25,7 @@ from create_gamut_booundary_lut import calc_l_focal_specific_hue_jzazbz,\
     get_gamut_boundary_lch_from_lut, calc_cusp_specific_hue,\
     calc_l_focal_specific_hue,\
     make_jzazbz_focal_lut_fname_wo_lpf,\
-    make_jzazbz_gb_lut_fname, make_jzazbz_focal_lut_fname, TyLchLut
+    make_jzazbz_gb_lut_fname, make_jzazbz_focal_lut_fname, TyLchLut, make_jzazbz_gb_lut_fname_old
 import test_pattern_generator2 as tpg
 
 # information
@@ -370,6 +370,7 @@ def thread_wrapper_plot_cj_plane_with_interpolation(args):
 
 def thread_wrapper_plot_cups_core(args):
     plot_cups_core(**args)
+    # plot_cups_core_p3(**args)
 
 
 def plot_ab_plane_without_interpolation():
@@ -386,7 +387,7 @@ def plot_ab_plane_without_interpolation():
     j_num = lightness_sample
 
     total_process_num = j_num
-    block_process_num = cpu_count() // 2
+    block_process_num = cpu_count() // 3
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
     for b_idx in range(block_num):
@@ -482,22 +483,27 @@ def plot_cj_plane_without_interpolation():
 
 
 def plot_cj_plane_with_interpolation(
-        color_space_name=cs.BT2020, luminance=10000):
+        color_space_name=cs.BT2020, luminance=10000, lut_type='old'):
     hue_sample = H_SAMPLE_NUM
     lightness_sample = L_SAMPLE_NUM
 
-    lut_name = make_jzazbz_gb_lut_fname(
-        color_space_name=color_space_name, luminance=luminance,
-        lightness_num=lightness_sample, hue_num=hue_sample)
+    if lut_type == 'old':
+        lut_name = make_jzazbz_gb_lut_fname_old(
+            color_space_name=color_space_name, luminance=luminance,
+            lightness_num=lightness_sample, hue_num=hue_sample)
+    else:
+        lut_name = make_jzazbz_gb_lut_fname(
+            color_space_name=color_space_name, luminance=luminance,
+            lightness_num=lightness_sample, hue_num=hue_sample)
     # lut = np.load(lut_name)
     # shared_array[:] = lut
     # g_buf[:] = lut
     # print(g_buf)
 
-    h_num = 361
+    h_num = 721
 
     total_process_num = h_num
-    block_process_num = int(cpu_count() / 1.0 + 0.9)
+    block_process_num = int(cpu_count() / 3 + 0.9)
     print(f"block_process_num {block_process_num}")
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
@@ -520,7 +526,18 @@ def plot_cj_plane_with_interpolation(
             pool.map(thread_wrapper_plot_cj_plane_with_interpolation, args)
 
 
-def load_gamut_boundary_lut(
+def load_gamut_boundary_lut_old(
+        color_space_name, lightness_sample_num, hue_sample_num,
+        maximum_luminance):
+    lut_name = make_jzazbz_gb_lut_fname_old(
+        color_space_name=color_space_name, luminance=maximum_luminance,
+        lightness_num=lightness_sample_num, hue_num=hue_sample_num)
+    lut = TyLchLut(np.load(lut_name))
+
+    return lut
+
+
+def load_gamut_boundary_lut_new(
         color_space_name, lightness_sample_num, hue_sample_num,
         maximum_luminance):
     lut_name = make_jzazbz_gb_lut_fname(
@@ -567,11 +584,11 @@ def plot_cups_core(
     graph_title = f"CzJz plane,  hue={h_val:.2f},  "
     graph_title += f"target={maximum_luminance} nits"
 
-    outer_lut = load_gamut_boundary_lut(
+    outer_lut = load_gamut_boundary_lut_old(
         color_space_name=cs.BT2020,
         lightness_sample_num=ll_sample_num, hue_sample_num=hh_sample_num,
         maximum_luminance=maximum_luminance)
-    inner_lut = load_gamut_boundary_lut(
+    inner_lut = load_gamut_boundary_lut_new(
         color_space_name=cs.BT709,
         lightness_sample_num=ll_sample_num, hue_sample_num=hh_sample_num,
         maximum_luminance=maximum_luminance)
@@ -643,11 +660,111 @@ def plot_cups_core(
         fig=fig, legend_loc='lower right', show=False, save_fname=fname)
 
 
+def plot_cups_core_p3(
+        h_idx, h_val, maximum_luminance):
+    if maximum_luminance <= 101:
+        cc_max = 0.3
+        jj_max = 0.2
+    elif maximum_luminance <= 1001:
+        cc_max = 0.3
+        jj_max = 0.5
+    else:
+        cc_max = 0.4
+        jj_max = 1.0
+    ll_sample_num = 1024
+    hh_sample_num = 4096
+    jj_sample = 4096
+    print(f"h_val={h_val}")
+    rgb_st2084 = create_valid_cj_plane_image_st2084(
+        h_val=h_val, c_max=cc_max, l_max=jj_max,
+        c_sample=1024, j_sample=1024,
+        color_space_name=cs.P3_D65,
+        bg_rgb_luminance=np.array([100, 100, 100]),
+        maximum_luminance=maximum_luminance)
+    graph_title = f"CzJz plane,  hue={h_val:.2f},  "
+    graph_title += f"target={maximum_luminance} nits"
+
+    outer_lut = load_gamut_boundary_lut_old(
+        color_space_name=cs.P3_D65,
+        lightness_sample_num=ll_sample_num, hue_sample_num=hh_sample_num,
+        maximum_luminance=maximum_luminance)
+    inner_lut = load_gamut_boundary_lut_new(
+        color_space_name=cs.BT709,
+        lightness_sample_num=ll_sample_num, hue_sample_num=hh_sample_num,
+        maximum_luminance=maximum_luminance)
+
+    outer_jzczhz = get_interpolated_jzczhz(
+        lut=outer_lut, jj_sample=jj_sample, h_val=h_val)
+    inner_jzczhz = get_interpolated_jzczhz(
+        lut=inner_lut, jj_sample=jj_sample, h_val=h_val)
+
+    outer_chroma = outer_jzczhz[..., 1]
+    outer_lightness = outer_jzczhz[..., 0]
+    inner_chroma = inner_jzczhz[..., 1]
+    inner_lightness = inner_jzczhz[..., 0]
+
+    outer_cups = calc_cusp_specific_hue(
+        lut=outer_lut.lut, hue=h_val, lightness_max=outer_lut.ll_max)
+    inner_cups = calc_cusp_specific_hue(
+        lut=inner_lut.lut, hue=h_val, lightness_max=inner_lut.ll_max)
+    focal_point = calc_l_focal_specific_hue_jzazbz(
+        inner_lut=inner_lut, outer_lut=outer_lut, hue=h_val,
+        maximum_l_focal=1.0, minimum_l_focal=0.0)
+    hh_idx = int(h_val / 360 * (hh_sample_num - 1) + 0.9999)
+
+    focal_point_name = make_jzazbz_focal_lut_fname(
+        luminance=maximum_luminance, lightness_num=ll_sample_num,
+        hue_num=hh_sample_num, prefix="BT709-P3D65")
+    focal_point = np.load(focal_point_name)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=graph_title,
+        graph_title_size=None,
+        xlabel="Cz", ylabel="Jz",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[0, cc_max],
+        ylim=[0, jj_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.imshow(
+        rgb_st2084, extent=(0, cc_max, 0, jj_max), aspect='auto')
+    ax1.plot(
+        inner_chroma, inner_lightness, color='k', label="BT.709",
+        lw=1.5, alpha=0.5)
+    ax1.plot(outer_chroma, outer_lightness, color='k', label="P3D65")
+    ax1.plot(
+        [focal_point[hh_idx, 1], outer_cups[..., 1]],
+        [focal_point[hh_idx, 0], outer_cups[..., 0]], 'k--', lw=1)
+    ax1.plot(
+        inner_cups[..., 1], inner_cups[..., 0], 'D', markerfacecolor="None",
+        markeredgecolor='k', mew=2, ms=12, label="BT.709 Cups")
+    ax1.plot(
+        outer_cups[..., 1], outer_cups[..., 0], 's', markerfacecolor="None",
+        markeredgecolor='k', mew=2, ms=12, label="P3D65 Cups")
+    ax1.plot(
+        focal_point[hh_idx, 1], focal_point[hh_idx, 0], 'o',
+        markerfacecolor='None',
+        markeredgecolor='k', ms=8, label="Focal point?")
+    fname = "/work/overuse/2021/11_chroma_hue_jzazbz/img_seq_cups/"
+    fname += f"cups_P3D65_{maximum_luminance}-nits_{h_idx:04d}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc='lower right', show=False, save_fname=fname)
+
+
 def plot_cups(luminance=10000):
     h_num = 721
 
     total_process_num = h_num
-    block_process_num = int(round(cpu_count() / 2.0 + 0.5))
+    block_process_num = int(round(cpu_count() / 1.2 + 0.5))
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
     for b_idx in range(block_num):
@@ -683,14 +800,14 @@ def plot_focal_lut(
         fontsize=20,
         figsize=(10, 10),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title=f"Focal Point,  {luminance}-nits",
+        graph_title=f"Focal Point,  {prefix},   {luminance}-nits",
         graph_title_size=None,
         xlabel="hz", ylabel="Jz",
         axis_label_size=None,
         legend_size=17,
         xlim=None,
         ylim=None,
-        xtick=None,
+        xtick=[x * 30 for x in range(13)],
         ytick=None,
         xtick_size=None, ytick_size=None,
         linewidth=3,
@@ -698,11 +815,11 @@ def plot_focal_lut(
         minor_ytick_num=None)
     ax1.plot(
         lut_wo_lpf[..., 2], lut_wo_lpf[..., 0], label="without LPF",
-        color=pu.RED, lw=5, alpha=0.5)
+        color=pu.RED, lw=5, alpha=0.7)
     ax1.plot(
         lut_w_lpf[..., 2], lut_w_lpf[..., 0], label="with LPF",
         color='k', lw=2)
-    fname = f"./img/focal_sample_{luminance}-nits.png"
+    fname = f"./img/focal_sample_{prefix}_{luminance}-nits.png"
     print(fname)
     pu.show_and_save(
         fig=fig, legend_loc='upper right', show=False, save_fname=fname)
@@ -775,8 +892,317 @@ def plot_rgb_near_cups():
         legend_loc='upper left', save_fname="./img/st2084.png")
 
 
+def plot_100_1000_10000_hc_plane():
+    jj_sample = 1024
+    cc_max = 0.5
+    jj_max = 1.0
+
+    graph_title = "CzJz plane,  BT.2020,  hue=0.0°"
+
+    bg_lut_name_10000 = make_jzazbz_gb_lut_fname_old(
+        color_space_name=cs.BT2020, luminance=10000,
+        lightness_num=1024, hue_num=4096)
+    gb_lut_10000 = TyLchLut(lut=np.load(bg_lut_name_10000))
+    jj_base = np.linspace(0, gb_lut_10000.ll_max, jj_sample)
+    hh_base = np.ones_like(jj_base) * 0.0
+    jh_array = tstack([jj_base, hh_base])
+    jzczhz_10000 = gb_lut_10000.interpolate(lh_array=jh_array)
+    chroma_10000 = jzczhz_10000[..., 1]
+    lightness_10000 = jzczhz_10000[..., 0]
+
+    bg_lut_name_1000 = make_jzazbz_gb_lut_fname_old(
+        color_space_name=cs.BT2020, luminance=1000,
+        lightness_num=1024, hue_num=4096)
+    gb_lut_1000 = TyLchLut(lut=np.load(bg_lut_name_1000))
+    jj_base = np.linspace(0, gb_lut_1000.ll_max, jj_sample)
+    hh_base = np.ones_like(jj_base) * 0.0
+    jh_array = tstack([jj_base, hh_base])
+    jzczhz_1000 = gb_lut_1000.interpolate(lh_array=jh_array)
+    chroma_1000 = jzczhz_1000[..., 1]
+    lightness_1000 = jzczhz_1000[..., 0]
+
+    bg_lut_name_100 = make_jzazbz_gb_lut_fname_old(
+        color_space_name=cs.BT2020, luminance=100,
+        lightness_num=1024, hue_num=4096)
+    gb_lut_100 = TyLchLut(lut=np.load(bg_lut_name_100))
+    jj_base = np.linspace(0, gb_lut_100.ll_max, jj_sample)
+    hh_base = np.ones_like(jj_base) * 0.0
+    jh_array = tstack([jj_base, hh_base])
+    jzczhz_100 = gb_lut_100.interpolate(lh_array=jh_array)
+    chroma_100 = jzczhz_100[..., 1]
+    lightness_100 = jzczhz_100[..., 0]
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=graph_title,
+        graph_title_size=None,
+        xlabel="Cz", ylabel="Jz",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[0, cc_max],
+        ylim=[0, jj_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(chroma_10000, lightness_10000, 'k-', label="10000 nits")
+    ax1.plot(
+        chroma_1000, lightness_1000, '--', color=pu.RED, label="1000 nits")
+    ax1.plot(
+        chroma_100, lightness_100, '-.', color=pu.BLUE, label="100 nits")
+    ax1.plot(0.1, 0.1, 'ko', ms=12, label="P0: (Cz, Jz) = (0.1, 0.1)")
+    ax1.plot(0.2, 0.3, 'kD', ms=10, label="P1: (Cz, Jz) = (0.2, 0.3)")
+    ax1.plot(0.25, 0.6, 'kv', ms=12, label="P2: (Cz, Jz) = (0.25, 0.6)")
+    ax1.plot(0.3, 0.8, 'ks', ms=10, label="P3: (Cz, Jz) = (0.3, 0.8)")
+    fname = "./img/100_1000_10000.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc='lower right', show=False, save_fname=fname)
+
+
+def save_as_csv(jch, jzazbz, xyz, rgb_10000, rgb_1000, rgb_100):
+    with open("./out.csv", 'w') as f:
+        buf = "R,G,B\n"
+        f.write(buf)
+
+        ndarray_list = [jch, jzazbz, xyz, rgb_10000, rgb_1000, rgb_100]
+        for ndarray in ndarray_list:
+            buf = ""
+            for line in ndarray:
+                buf += f"{line[0]},{line[1]},{line[2]},"
+            f.write(buf + "\n")
+
+
+def calc_blog_param():
+    jch = np.array(
+        [[0.1, 0.1, 0.0], [0.3, 0.2, 0.0], [0.6, 0.25, 0.0], [0.8, 0.3, 0.0]])
+    jzazbz = jzczhz_to_jzazbz(jzczhz=jch)
+    xyz = jzazbz_to_large_xyz(jzazbz)
+    rgb = XYZ_to_RGB(
+        xyz, cs.D65, cs.D65,
+        RGB_COLOURSPACES[cs.BT2020].matrix_XYZ_to_RGB)
+    rgb_10000 = rgb / 10000
+    rgb_1000 = rgb / 1000
+    rgb_100 = rgb / 100
+    save_as_csv(jch, jzazbz, xyz, rgb_10000, rgb_1000, rgb_100)
+
+
+def plot_bt2020_bt709_tp():
+    # Hue-Chroma Pattern
+
+    # lightness_num = L_SAMPLE_NUM
+    # hue_num = H_SAMPLE_NUM
+    # prefix = "BT709-BT2020"
+    # luminance_list = [1000, 10000]
+    # resolution_list = [[1920, 1080], [3840, 2160]]
+    # hue_num_list = [32, 48, 64]
+    # oetf = tf.ST2084
+
+    # for luminance in luminance_list:
+    #     for resolution in resolution_list:
+    #         for tp_hue_num in hue_num_list:
+    #             width = resolution[0]
+    #             height = resolution[1]
+
+    #             focal_lut_name = make_jzazbz_focal_lut_fname(
+    #                 luminance=luminance, lightness_num=lightness_num,
+    #                 hue_num=hue_num, prefix=prefix)
+    #             focal_lut = np.load(focal_lut_name)
+    #             outer_lut = load_gamut_boundary_lut_old(
+    #                 color_space_name=cs.BT2020,
+    #                 lightness_sample_num=lightness_num,
+    #                 hue_sample_num=hue_num, maximum_luminance=luminance)
+    #             inner_lut = load_gamut_boundary_lut_new(
+    #                 color_space_name=cs.BT709,
+    #                 lightness_sample_num=lightness_num,
+    #                 hue_sample_num=hue_num, maximum_luminance=luminance)
+    #             img = tpg.make_bt2020_bt709_hue_chroma_pattern_jzazbz(
+    #                 focal_lut=focal_lut, outer_lut=outer_lut,
+    #                 hue_num=tp_hue_num, width=width, height=height,
+    #                 luminance=luminance, oetf=oetf)
+    #             tp_fname = f"./img/BT2020-BT709_HC_Pattern_{width}x{height}_"
+    #             tp_fname += f"h-{tp_hue_num}_{luminance}nits.png"
+    #             tpg.img_wirte_float_as_16bit_int(
+    #                 filename=tp_fname, img_float=img)
+
+    luminance = 100
+    resolution_list = [[1920, 1080], [3840, 2160]]
+    hue_num_list = [32, 48, 64]
+    lightness_num = L_SAMPLE_NUM
+    hue_num = H_SAMPLE_NUM
+    prefix = "BT709-BT2020"
+    oetf = tf.GAMMA24
+
+    for resolution in resolution_list:
+        for tp_hue_num in hue_num_list:
+            width = resolution[0]
+            height = resolution[1]
+
+            focal_lut_name = make_jzazbz_focal_lut_fname(
+                luminance=luminance, lightness_num=lightness_num,
+                hue_num=hue_num, prefix=prefix)
+            focal_lut = np.load(focal_lut_name)
+            outer_lut = load_gamut_boundary_lut_old(
+                color_space_name=cs.BT2020, lightness_sample_num=lightness_num,
+                hue_sample_num=hue_num, maximum_luminance=luminance)
+            inner_lut = load_gamut_boundary_lut_new(
+                color_space_name=cs.BT709, lightness_sample_num=lightness_num,
+                hue_sample_num=hue_num, maximum_luminance=luminance)
+            img = tpg.make_bt2020_bt709_hue_chroma_pattern_jzazbz(
+                focal_lut=focal_lut, outer_lut=outer_lut, hue_num=tp_hue_num,
+                width=width, height=height, luminance=luminance, oetf=oetf)
+            tp_fname = f"./img/BT2020-BT709_HC_Pattern_{width}x{height}_"
+            tp_fname += f"h-{tp_hue_num}_{luminance}nits.png"
+            tpg.img_wirte_float_as_16bit_int(filename=tp_fname, img_float=img)
+
+            icc_profile =\
+                './icc_profile/Gamma2.4_BT.2020_D65.icc'
+            fname_with_profile =\
+                "./img/" + Path(tp_fname).stem + "_icc_profile.png"
+            cmd = [
+                'convert', tp_fname, '-profile', icc_profile,
+                fname_with_profile]
+            subprocess.run(cmd)
+
+            img = tpg.make_bt709_hue_chroma_pattern_jzazbz(
+                focal_lut=focal_lut, outer_lut=inner_lut, hue_num=tp_hue_num,
+                width=width, height=height, luminance=luminance)
+            tp_fname = f"./img/BT709_HC_Pattern_{width}x{height}_h-{hue_num}_"
+            tp_fname += f"{luminance}nits.png"
+            tpg.img_wirte_float_as_16bit_int(filename=tp_fname, img_float=img)
+
+            icc_profile =\
+                './icc_profile/Gamma2.4_BT.709_D65.icc'
+            fname_with_profile =\
+                "./img/" + Path(tp_fname).stem + "_icc_profile.png"
+            cmd = [
+                'convert', tp_fname, '-profile', icc_profile,
+                fname_with_profile]
+            subprocess.run(cmd)
+
+
+def plot_p3d65_bt709_tp():
+    # Hue-Chroma Pattern
+
+    # lightness_num = L_SAMPLE_NUM
+    # hue_num = H_SAMPLE_NUM
+    # prefix = "BT709-P3D65"
+    # luminance_list = [1000, 10000]
+    # resolution_list = [[1920, 1080], [3840, 2160]]
+    # hue_num_list = [32, 48, 64]
+    # oetf = tf.ST2084
+
+    # for luminance in luminance_list:
+    #     for resolution in resolution_list:
+    #         for tp_hue_num in hue_num_list:
+    #             width = resolution[0]
+    #             height = resolution[1]
+
+    #             focal_lut_name = make_jzazbz_focal_lut_fname(
+    #                 luminance=luminance, lightness_num=lightness_num,
+    #                 hue_num=hue_num, prefix=prefix)
+    #             focal_lut = np.load(focal_lut_name)
+    #             outer_lut = load_gamut_boundary_lut_old(
+    #                 color_space_name=cs.P3_D65,
+    #                 lightness_sample_num=lightness_num,
+    #                 hue_sample_num=hue_num, maximum_luminance=luminance)
+    #             img = tpg.make_p3d65_bt709_hue_chroma_pattern_jzazbz(
+    #                 focal_lut=focal_lut, outer_lut=outer_lut,
+    #                 hue_num=tp_hue_num, width=width, height=height,
+    #                 luminance=luminance, oetf=oetf)
+    #             tp_fname = f"./img/P3D65-BT709_HC_Pattern_{width}x{height}_"
+    #             tp_fname += f"h-{tp_hue_num}_{luminance}nits.png"
+    #             tpg.img_wirte_float_as_16bit_int(
+    #                 filename=tp_fname, img_float=img)
+
+    luminance = 100
+    resolution_list = [[1920, 1080], [3840, 2160]]
+    hue_num_list = [32, 48, 64]
+    lightness_num = L_SAMPLE_NUM
+    hue_num = H_SAMPLE_NUM
+    prefix = "BT709-P3D65"
+    oetf = tf.GAMMA24
+
+    for resolution in resolution_list:
+        for tp_hue_num in hue_num_list:
+            width = resolution[0]
+            height = resolution[1]
+
+            focal_lut_name = make_jzazbz_focal_lut_fname(
+                luminance=luminance, lightness_num=lightness_num,
+                hue_num=hue_num, prefix=prefix)
+            focal_lut = np.load(focal_lut_name)
+            outer_lut = load_gamut_boundary_lut_old(
+                color_space_name=cs.P3_D65, lightness_sample_num=lightness_num,
+                hue_sample_num=hue_num, maximum_luminance=luminance)
+            inner_lut = load_gamut_boundary_lut_new(
+                color_space_name=cs.BT709, lightness_sample_num=lightness_num,
+                hue_sample_num=hue_num, maximum_luminance=luminance)
+            img = tpg.make_p3d65_bt709_hue_chroma_pattern_jzazbz(
+                focal_lut=focal_lut, outer_lut=outer_lut, hue_num=tp_hue_num,
+                width=width, height=height, luminance=luminance, oetf=oetf)
+            tp_fname = f"./img/P3D65-BT709_HC_Pattern_{width}x{height}_"
+            tp_fname += f"h-{tp_hue_num}_{luminance}nits.png"
+            tpg.img_wirte_float_as_16bit_int(filename=tp_fname, img_float=img)
+
+            icc_profile =\
+                './icc_profile/Gamma2.4_DCI-P3_D65.icc'
+            fname_with_profile =\
+                "./img/" + Path(tp_fname).stem + "_icc_profile.png"
+            cmd = [
+                'convert', tp_fname, '-profile', icc_profile,
+                fname_with_profile]
+            subprocess.run(cmd)
+
+            img = tpg.make_bt709_hue_chroma_pattern_jzazbz(
+                focal_lut=focal_lut, outer_lut=inner_lut, hue_num=tp_hue_num,
+                width=width, height=height, luminance=luminance)
+            tp_fname = f"./img/BT709_HC_Pattern_{width}x{height}_h-{hue_num}_"
+            tp_fname += f"{luminance}nits.png"
+            tpg.img_wirte_float_as_16bit_int(filename=tp_fname, img_float=img)
+
+            icc_profile =\
+                './icc_profile/Gamma2.4_BT.709_D65.icc'
+            fname_with_profile =\
+                "./img/" + Path(tp_fname).stem + "_icc_profile.png"
+            cmd = [
+                'convert', tp_fname, '-profile', icc_profile,
+                fname_with_profile]
+            subprocess.run(cmd)
+
+
+def plot_focal_lut_all():
+    plot_focal_lut(
+        luminance=10000, lightness_num=1024, hue_num=4096,
+        prefix="BT709-BT2020")
+    plot_focal_lut(
+        luminance=1000, lightness_num=1024, hue_num=4096,
+        prefix="BT709-BT2020")
+    plot_focal_lut(
+        luminance=100, lightness_num=1024, hue_num=4096,
+        prefix="BT709-BT2020")
+
+    plot_focal_lut(
+        luminance=10000, lightness_num=1024, hue_num=4096,
+        prefix="BT709-P3D65")
+    plot_focal_lut(
+        luminance=1000, lightness_num=1024, hue_num=4096,
+        prefix="BT709-P3D65")
+    plot_focal_lut(
+        luminance=100, lightness_num=1024, hue_num=4096,
+        prefix="BT709-P3D65")
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # plot_focal_lut_all()
+    # plot_bt2020_bt709_tp()
+    # plot_p3d65_bt709_tp()
+
     # plot_ab_plane_without_interpolation()
     # plot_cj_plane_without_interpolation()
 
@@ -797,71 +1223,18 @@ if __name__ == '__main__':
     # plot_cj_plane_with_interpolation(
     #     color_space_name=cs.BT2020, luminance=100)
 
-    # plot_focal_lut(
-    #     luminance=10000, lightness_num=1024, hue_num=4096,
-    #     prefix="BT709-BT2020")
-    plot_focal_lut(
-        luminance=1000, lightness_num=1024, hue_num=4096,
-        prefix="BT709-BT2020")
-    # plot_focal_lut(
-    #     luminance=100, lightness_num=1024, hue_num=4096,
-    #     prefix="BT709-BT2020")
-    # plot_cups(luminance=10000)
-    # plot_cups(luminance=1000)
-    # plot_cups(luminance=100)
+    # plot_cj_plane_with_interpolation(
+    #     color_space_name=cs.P3_D65, luminance=10000)
+    # plot_cj_plane_with_interpolation(
+    #     color_space_name=cs.P3_D65, luminance=1000)
+    # plot_cj_plane_with_interpolation(
+    #     color_space_name=cs.P3_D65, luminance=100)
 
+    plot_cups(luminance=10000)
+    plot_cups(luminance=1000)
+    plot_cups(luminance=100)
 
-    # Hue-Chroma Pattern
+    # plot_rgb_near_cups()
 
-    # luminance = 1000
-    # lightness_num = L_SAMPLE_NUM
-    # hue_num = H_SAMPLE_NUM
-    # prefix = "BT709-BT2020"
-    # width = 1920
-    # height = 1080
-    # tp_hue_num = 32
-    # oetf = tf.ST2084
-
-    # focal_lut_name = make_jzazbz_focal_lut_fname(
-    #     luminance=luminance, lightness_num=lightness_num,
-    #     hue_num=hue_num, prefix=prefix)
-    # out_lut_name = make_jzazbz_gb_lut_fname(
-    #     color_space_name=cs.BT2020, luminance=luminance,
-    #     lightness_num=lightness_num, hue_num=hue_num)
-    # inner_lut_name = make_jzazbz_gb_lut_fname(
-    #     color_space_name=cs.BT709, luminance=luminance,
-    #     lightness_num=lightness_num, hue_num=hue_num)
-    # focal_lut = np.load(focal_lut_name)
-    # outer_lut = TyLchLut(np.load(out_lut_name))
-    # inner_lut = TyLchLut(np.load(inner_lut_name))
-    # img = tpg.make_bt2020_bt709_hue_chroma_pattern_jzazbz(
-    #     focal_lut=focal_lut, outer_lut=outer_lut, hue_num=tp_hue_num,
-    #     width=width, height=height, luminance=luminance, oetf=oetf)
-    # tp_fname = f"./img/BT2020-BT709_HC_Pattern_{width}x{height}_"
-    # tp_fname += f"h-{tp_hue_num}_{luminance}nits.png"
-    # tpg.img_wirte_float_as_16bit_int(filename=tp_fname, img_float=img)
-
-    # icc_profile =\
-    #     './icc_profile/Gamma2.4_BT.2020_D65.icc'
-    # fname_with_profile =\
-    #     "./img/" + Path(tp_fname).stem + "_icc_profile.png"
-    # cmd = [
-    #     'convert', tp_fname, '-profile', icc_profile, fname_with_profile]
-    # subprocess.run(cmd)
-
-    # img = tpg.make_bt709_hue_chroma_pattern_jzazbz(
-    #     focal_lut=focal_lut, outer_lut=inner_lut, hue_num=tp_hue_num,
-    #     width=width, height=height, luminance=luminance)
-    # tp_fname = f"./img/BT709_HC_Pattern_{width}x{height}_h-{hue_num}_"
-    # tp_fname += f"{luminance}nits.png"
-    # tpg.img_wirte_float_as_16bit_int(filename=tp_fname, img_float=img)
-
-    # icc_profile =\
-    #     './icc_profile/Gamma2.4_BT.709_D65.icc'
-    # fname_with_profile =\
-    #     "./img/" + Path(tp_fname).stem + "_icc_profile.png"
-    # cmd = [
-    #     'convert', tp_fname, '-profile', icc_profile, fname_with_profile]
-    # subprocess.run(cmd)
-
-    plot_rgb_near_cups()
+    # plot_100_1000_10000_hc_plane()
+    # calc_blog_param()

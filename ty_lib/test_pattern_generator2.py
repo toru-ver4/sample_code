@@ -2387,7 +2387,7 @@ def make_bt2020_bt709_hue_chroma_pattern_jzazbz(
     text_h_margin = int(6 * height / 1080)
     font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
     text = '"BT.2020 - DCI-P3 - BT.709 Hue-Chroma Pattern",   '
-    text += "Gamma 2.4,   BT.2020,   D65,   Revision 3,   "
+    text += f"{oetf},   BT.2020,   D65,   {luminance}nits,   Revision 3,   "
     text += "Copyright (C) 2021 - Toru Yoshihara,   "
     text += "https://trev16.hatenablog.com/"
     hue = np.linspace(0, 360, hue_num, endpoint=False)
@@ -2450,6 +2450,90 @@ def make_bt2020_bt709_hue_chroma_pattern_jzazbz(
     return img
 
 
+def make_p3d65_bt709_hue_chroma_pattern_jzazbz(
+        focal_lut, outer_lut, hue_num, width, height, luminance,
+        oetf=tf.ST2084):
+    """
+    Parameters
+    ----------
+    inner_lut : ndarray
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    outer_lut : TyLchLut
+        A inner gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    width : int
+        image width
+    height : int
+        image height
+    hue_num : int
+        the number of the hue block.
+    """
+    font_size = int(20 * height / 1080)
+    text_h_margin = int(6 * height / 1080)
+    font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
+    text = '"DCI-P3 - BT.709 Hue-Chroma Pattern",   '
+    text += f"{oetf},   DCI-P3,   D65,   {luminance}nits,   Revision 3,   "
+    text += "Copyright (C) 2021 - Toru Yoshihara,   "
+    text += "https://trev16.hatenablog.com/"
+    hue = np.linspace(0, 360, hue_num, endpoint=False)
+    text_width, text_height = fc.get_text_width_height(
+        text=text, font_path=font_path, font_size=font_size)
+    text_v_margin = int(text_height * 0.3)
+
+    img = np.ones((height, width, 3)) * 0.1
+    text_drawer = fc.TextDrawer(
+        img, text=text,
+        pos=(text_h_margin, height - text_height - text_v_margin),
+        font_color=(0.8, 0.8, 0.8), font_size=font_size, font_path=font_path)
+    text_drawer.draw()
+
+    height = height - text_height - 2 * text_v_margin
+    h_block_width = width / hue_num
+    chroma_num = int(round(height / h_block_width + 0.5))
+    h_block_size = equal_devision(width, hue_num)
+    v_block_size = equal_devision(height, chroma_num)
+    mark_size = max(v_block_size[0] // 10, 5)
+    mark_img_2020 = np.zeros((mark_size, mark_size, 3))
+    # mark_img_p3 = np.ones((mark_size, mark_size, 3)) * 0.5
+
+    h_buf = []
+    for h_idx, h_val in enumerate(hue):
+        # calc LCH value in specific HUE
+        lch_array = _calc_l_focal_to_cups_lch_array_jzazbz(
+            focal_lut=focal_lut, outer_lut=outer_lut, h_val=h_val,
+            chroma_num=chroma_num)
+        # print(lch_array[-4:])
+        jzazbz = jzczhz_to_jzazbz(lch_array)
+        rgb_linear = cs.jzazbz_to_rgb(
+            jzazbz=jzazbz, color_space_name=cs.P3_D65, luminance=luminance)
+        # print(rgb_linear[-4:])
+        rgb = tf.oetf_from_luminance(
+            np.clip(rgb_linear, 0.0, 1.0) * luminance, oetf)
+        # print(rgb[-4:])
+        p3_idx = cgbl.is_outer_gamut_jzazbz(
+            jzazbz=jzazbz, color_space_name=cs.BT709, luminance=luminance)
+        v_buf = []
+        for c_idx in range(len(lch_array)):
+            # rgb_linear = cs.lab_to_rgb(lab, cs.BT2020)
+            img_temp = np.ones((v_block_size[c_idx], h_block_size[h_idx], 3))\
+                * rgb[c_idx]
+            if p3_idx[c_idx]:
+                img_temp_p3 = mark_img_2020.copy()
+                img_temp_p3[1:-1, 1:-1]\
+                    = np.ones_like(img_temp_p3[1:-1, 1:-1]) * rgb[c_idx]
+                merge(img_temp, img_temp_p3, (0, 0))
+            v_buf.append(img_temp)
+
+        h_buf.append(np.vstack(v_buf))
+    img_pat = np.hstack(h_buf)
+    merge(img, img_pat, (0, 0))
+
+    return img
+
+
 def make_bt709_hue_chroma_pattern_jzazbz(
         focal_lut, outer_lut, hue_num, width, height, luminance):
     """
@@ -2501,7 +2585,7 @@ def make_bt709_hue_chroma_pattern_jzazbz(
         lch_array = _calc_l_focal_to_cups_lch_array_jzazbz(
             focal_lut=focal_lut, outer_lut=outer_lut, h_val=h_val,
             chroma_num=chroma_num)
-        print(lch_array[-4:])
+        # print(lch_array[-4:])
         jzazbz = jzczhz_to_jzazbz(lch_array)
         rgb_linear = cs.jzazbz_to_rgb(
             jzazbz=jzazbz, color_space_name=cs.BT709, luminance=luminance)

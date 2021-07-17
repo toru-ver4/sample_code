@@ -34,33 +34,16 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-if __name__ == '__main__':
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # create_jzazbz_gamut_boundary_lut(
-    #     hue_sample=256, lightness_sample=256,
-    #     color_space_name=cs.BT2020, luminance=10000)
-    # create_jzazbz_gamut_boundary_lut(
-    #     hue_sample=16, lightness_sample=256,
-    #     color_space_name=cs.BT2020, luminance=10000)
-    # create_jzazbz_gamut_boundary_lut(
-    #     hue_sample=16, lightness_sample=256,
-    #     color_space_name=cs.BT709, luminance=10000)
-    # create_jzazbz_gamut_boundary_lut(
-    #     hue_sample=64, lightness_sample=64,
-    #     color_space_name=cs.BT2020, luminance=10000)
-    # create_jzazbz_gamut_boundary_lut(
-    #     hue_sample=64, lightness_sample=64,
-    #     color_space_name=cs.BT709, luminance=10000)
+def create_gamut_boundary():
     lightness_sample_num = 1024
     hue_sample_num = 4096
-    luminance = 1000
-    # chroma_sample = 8192
-    chroma_sample = 2 ** 18
+    luminance = 10000
+    chroma_sample = 2 ** 16
 
-    create_jzazbz_gamut_boundary_lut_type3(
-        hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
-        chroma_sample=chroma_sample, color_space_name=cs.BT709,
-        luminance=luminance)
+    # create_jzazbz_gamut_boundary_lut_type3(
+    #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
+    #     chroma_sample=chroma_sample, color_space_name=cs.BT709,
+    #     luminance=luminance)
 
     # create_jzazbz_gamut_boundary_lut_type2(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
@@ -69,24 +52,9 @@ if __name__ == '__main__':
     # create_jzazbz_gamut_boundary_lut(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
     #     color_space_name=cs.BT2020, luminance=luminance)
-    # create_jzazbz_gamut_boundary_lut_type2(
+    # create_jzazbz_gamut_boundary_lut(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
-    #     chroma_sample=chroma_sample, color_space_name=cs.P3_D65,
-    #     luminance=luminance)
-
-    # luminance = 4000
-    # create_jzazbz_gamut_boundary_lut_type2(
-    #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
-    #     chroma_sample=chroma_sample, color_space_name=cs.BT709,
-    #     luminance=luminance)
-    # create_jzazbz_gamut_boundary_lut_type2(
-    #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
-    #     chroma_sample=chroma_sample, color_space_name=cs.BT2020,
-    #     luminance=luminance)
-    # create_jzazbz_gamut_boundary_lut_type2(
-    #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
-    #     chroma_sample=chroma_sample, color_space_name=cs.P3_D65,
-    #     luminance=luminance)
+    #     color_space_name=cs.P3_D65, luminance=luminance)
 
     luminance = 1000
     # create_jzazbz_gamut_boundary_lut_type2(
@@ -96,10 +64,9 @@ if __name__ == '__main__':
     # create_jzazbz_gamut_boundary_lut(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
     #     color_space_name=cs.BT2020, luminance=luminance)
-    # create_jzazbz_gamut_boundary_lut_type2(
+    # create_jzazbz_gamut_boundary_lut(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
-    #     chroma_sample=chroma_sample, color_space_name=cs.P3_D65,
-    #     luminance=luminance)
+    #     color_space_name=cs.P3_D65, luminance=luminance)
 
     luminance = 100
     # create_jzazbz_gamut_boundary_lut_type2(
@@ -109,31 +76,55 @@ if __name__ == '__main__':
     # create_jzazbz_gamut_boundary_lut(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
     #     color_space_name=cs.BT2020, luminance=luminance)
-    # create_jzazbz_gamut_boundary_lut_type2(
+    # create_jzazbz_gamut_boundary_lut(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
-    #     chroma_sample=chroma_sample, color_space_name=cs.P3_D65,
-    #     luminance=luminance)
+    #     color_space_name=cs.P3_D65, luminance=luminance)
 
-    # luminance = 10000
+
+def create_focal_lut():
+    lightness_sample_num = 1024
+    hue_sample_num = 4096
+    luminance = 10000
     # apply_lpf_to_focal_lut(
     #     luminance, lightness_sample_num, hue_sample_num,
     #     prefix="BT709-BT2020",
-    #     maximum_l_focal=0.8, minimum_l_focal=0.3)
+    #     maximum_l_focal=0.8, minimum_l_focal=0.5, wn=0.06)
     luminance = 1000
     # apply_lpf_to_focal_lut(
     #     luminance, lightness_sample_num, hue_sample_num,
     #     prefix="BT709-BT2020",
-    #     maximum_l_focal=0.33, minimum_l_focal=0.155)
-    # luminance = 100
+    #     maximum_l_focal=0.33, minimum_l_focal=0.173, wn=0.06)
+    luminance = 100
     # apply_lpf_to_focal_lut(
     #     luminance, lightness_sample_num, hue_sample_num,
     #     prefix="BT709-BT2020",
-    #     maximum_l_focal=0.132, minimum_l_focal=0.06)
+    #     maximum_l_focal=0.132, minimum_l_focal=0.068, wn=0.06)
 
-    # lut_name = make_jzazbz_gb_lut_fname(
-    #     color_space_name=cs.BT709, luminance=luminance,
-    #     lightness_num=lightness_sample_num, hue_num=hue_sample_num)
-    # lut = TyLchLut(lut=np.load(lut_name))
+    luminance = 10000
+    apply_lpf_to_focal_lut(
+        luminance, lightness_sample_num, hue_sample_num,
+        prefix="BT709-P3D65",
+        maximum_l_focal=0.81, minimum_l_focal=0.4, wn=0.1,
+        inner_cs_name=cs.BT709, outer_cs_name=cs.P3_D65)
+    luminance = 1000
+    apply_lpf_to_focal_lut(
+        luminance, lightness_sample_num, hue_sample_num,
+        prefix="BT709-P3D65",
+        maximum_l_focal=0.34, minimum_l_focal=0.18, wn=0.1,
+        inner_cs_name=cs.BT709, outer_cs_name=cs.P3_D65)
+    luminance = 100
+    apply_lpf_to_focal_lut(
+        luminance, lightness_sample_num, hue_sample_num,
+        prefix="BT709-P3D65",
+        maximum_l_focal=0.13, minimum_l_focal=0.07, wn=0.1,
+        inner_cs_name=cs.BT709, outer_cs_name=cs.P3_D65)
+
+
+if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # create_gamut_boundary()
+    create_focal_lut()
+
     del shm_buf
     shm.close()
     shm.unlink()

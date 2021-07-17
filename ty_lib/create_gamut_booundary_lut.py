@@ -16,7 +16,7 @@ from colour import LCHab_to_Lab, Lab_to_XYZ, XYZ_to_RGB, xy_to_XYZ
 from colour import RGB_COLOURSPACES
 from multiprocessing import Pool, cpu_count
 from multiprocessing import shared_memory
-# from multiprocessing import Array
+from multiprocessing import Array
 from scipy import signal, interpolate
 
 # import my libraries
@@ -33,16 +33,16 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
 
-# L_SAMPLE_NUM_MAX = 1024
+L_SAMPLE_NUM_MAX = 1024
 H_SAMPLE_NUM_MAX = 4096
 COLOR_NUM = 3
 FLOAT_SIZE = 4
 
-# shared_array_type = ctypes.c_float
-# shared_array_elem_size = ctypes.sizeof(shared_array_type)
-# shared_array = Array(
-#     typecode_or_type=shared_array_type,
-#     size_or_initializer=L_SAMPLE_NUM_MAX*H_SAMPLE_NUM_MAX*COLOR_NUM)
+shared_array_type = ctypes.c_float
+shared_array_elem_size = ctypes.sizeof(shared_array_type)
+shared_array = Array(
+    typecode_or_type=shared_array_type,
+    size_or_initializer=L_SAMPLE_NUM_MAX*H_SAMPLE_NUM_MAX*COLOR_NUM)
 
 shm = shared_memory.SharedMemory(
     create=True, size=H_SAMPLE_NUM_MAX*COLOR_NUM*FLOAT_SIZE)
@@ -898,6 +898,8 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_type3(
      [  5.00000000e-01   2.72599646e-01   3.60000000e+02]]
     """
     # lch --> rgb
+    met = MeasureExecTime()
+    met.start()
     chroma_max = 0.5
     hue_max = 360
     hue_base_all = np.linspace(0, hue_max, hue_num)
@@ -915,6 +917,7 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_type3(
 
     jzczhz = tstack((jj, cc, hh))
 
+    met.lap(f"{hue_min_idx:04d} A ")
     # delete
     del hh
     del cc
@@ -922,17 +925,21 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_type3(
 
     jzazbz = jzczhz_to_jzazbz(jzczhz)
 
+    met.lap(f"{hue_min_idx:04d} B ")
     large_xyz = jzazbz_to_large_xyz(jzazbz)
     del jzazbz
 
+    met.lap(f"{hue_min_idx:04d} C ")
     rgb_luminance = XYZ_to_RGB(
         large_xyz, cs.D65, cs.D65,
         RGB_COLOURSPACES[cs_name].matrix_XYZ_to_RGB)
     del large_xyz
 
+    met.lap(f"{hue_min_idx:04d} D ")
     ng_idx = is_out_of_gamut_rgb(rgb=rgb_luminance / luminance)
     del rgb_luminance
 
+    met.lap(f"{hue_min_idx:04d} E ")
     chroma_array = np.zeros(hue_base_limited)
     for h_idx in range(hue_base_limited):
         chroma_ng_idx_array = np.where(ng_idx[h_idx] > 0)
@@ -940,15 +947,18 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_type3(
         chroma_ng_idx = chroma_ng_idx - 1 if chroma_ng_idx > 0 else 0
         chroma_array[h_idx] = chroma_ng_idx / (chroma_sample - 1) * chroma_max
 
+    met.lap(f"{hue_min_idx:04d} F ")
     jzczhz = tstack([jj_base, chroma_array, hue_base])
 
     h_min_idx = hue_min_idx
     h_max_idx = hue_max_idx
 
+    met.lap(f"{hue_min_idx:04d} G ")
     for h_idx in range(h_min_idx, h_max_idx):
         addr = h_idx * 3
         shm_buf[addr:addr+3] = np.float32(jzczhz[h_idx-h_min_idx])
 
+    met.lap(f"{hue_min_idx:04d} H ")
     return jzczhz
 
 
@@ -971,7 +981,7 @@ def create_jzazbz_gamut_boundary_lut_type3(
         peak luminance for Jzazbz color space
     """
     hue_div_num = 4
-    hue_idx_step = 4
+    hue_idx_step = 16
 
     total_process_num = hue_sample // hue_div_num
     if (total_process_num != int(hue_sample / hue_div_num)):
@@ -1035,12 +1045,19 @@ def low_pass_filter2(x, nn=4, wn=0.25):
 
 def apply_lpf_to_focal_lut(
         luminance, lightness_num, hue_num, prefix="BT709-BT2020",
-        maximum_l_focal=1.0, minimum_l_focal=0.0):
-    inner_lut_name = make_jzazbz_gb_lut_fname(
-        color_space_name=cs.BT709, luminance=luminance,
-        lightness_num=lightness_num, hue_num=hue_num)
+        maximum_l_focal=1.0, minimum_l_focal=0.0, wn=0.06,
+        inner_cs_name=cs.BT709, outer_cs_name=cs.BT2020):
+    if inner_cs_name == cs.BT709:
+        inner_lut_name = make_jzazbz_gb_lut_fname(
+            color_space_name=inner_cs_name, luminance=luminance,
+            lightness_num=lightness_num, hue_num=hue_num)
+    else:
+        inner_lut_name = make_jzazbz_gb_lut_fname_old(
+            color_space_name=inner_cs_name, luminance=luminance,
+            lightness_num=lightness_num, hue_num=hue_num)
+
     outer_lut_name = make_jzazbz_gb_lut_fname_old(
-        color_space_name=cs.BT2020, luminance=luminance,
+        color_space_name=outer_cs_name, luminance=luminance,
         lightness_num=lightness_num, hue_num=hue_num)
     inner_lut = TyLchLut(lut=np.load(inner_lut_name))
     outer_lut = TyLchLut(lut=np.load(outer_lut_name))
@@ -1051,7 +1068,7 @@ def apply_lpf_to_focal_lut(
 
     ll = focal_array_wo_lpf[..., 0]
     ll_new = low_pass_filter2(
-        ll, nn=4, wn=0.1)
+        ll, nn=4, wn=wn)
 
     focal_array_w_lpf = tstack(
         [ll_new, focal_array_wo_lpf[..., 1], focal_array_wo_lpf[..., 2]])
