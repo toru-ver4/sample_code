@@ -159,5 +159,5 @@ def make_countdown_sound_99s(sampling_rate=48000):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    make_countdown_sound()
+    # make_countdown_sound()
     make_countdown_sound_99s()

@@ -98,8 +98,8 @@ __all__ = []
 # improved chroma-subsampling chaker patterns.
 # added checker board pattern to distinguish 10bit.
 # REVISION = 5
-
-REVISION = 6  # added 8bit-10bit identification pattern.
+# REVISION = 6  # added 8bit-10bit identification pattern.
+REVISION = 7  # added audio-sync pattern
 
 
 SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
@@ -108,7 +108,7 @@ SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
     fg_luminance=90.0,
     sound_lumiannce=22.0,
     object_outline_luminance=1.0,
-    step_ramp_code_values=([x * 64 for x in range(16)] + [1023]),
+    step_ramp_code_values=([x * 32 for x in range(32)] + [1023]),
     gamut='ITU-R BT.709',
     text_info_luminance=50,
     crosshatch_luminance=28.0,
@@ -125,7 +125,7 @@ HDR_BG_COLOR_PARAM = BackgroundImageColorParam(
     fg_luminance=90.0,
     sound_lumiannce=22.0,
     object_outline_luminance=1.0,
-    step_ramp_code_values=([x * 64 for x in range(16)] + [1023]),
+    step_ramp_code_values=([x * 32 for x in range(32)] + [1023]),
     gamut='ITU-R BT.2020',
     text_info_luminance=50,
     crosshatch_luminance=28.0,
@@ -139,20 +139,30 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     height=1080,
     crosscross_line_width=4,
     outline_width=2,
-    ramp_pos_v_from_center=400,
-    ramp_height=84,
+    ramp_pos_v_from_center=448,
+    ramp_width=1766,
+    ramp_height=56,
     ramp_outline_width=4,
-    step_ramp_font_size=20,
+    step_ramp_font_size=16,
     step_ramp_font_offset_x=5,
     step_ramp_font_offset_y=5,
     sound_text_font_size=200,
     info_text_font_size=25,
     limited_text_font_size=96,
     crosshatch_size=128,
-    dot_dropped_text_size=133,
+    dot_dropped_text_size=118,
+    dot_dropped_center_pos=1640,
     lab_patch_each_size=48,
     even_odd_info_text_size=16,
-    ramp_10bit_info_text_size=22
+    ramp_10bit_info_text_size=22,
+    bit_8_10_id_pattern_width=380,
+    bit_8_10_id_pattern_st_offset_v=200,
+    bit_8_10_id_pattern_st_offset_h=100,
+    audio_sync_height=90,
+    audio_sync_st_pos_v=930,
+    audio_sync_marker_st_pos_v=946,
+    audio_sync_padding=100,
+    audio_snnc_block_height=56
 )
 
 
@@ -200,6 +210,17 @@ COUNTDOWN_COORDINATE_PARAM_04P = CountDownImageCoordinateParam(
     radius3=313,
     radius4=315,
     fps=4,
+    crosscross_line_width=4,
+    font_size=570,
+    font_path=NOTO_SANS_MONO_EX_BOLD
+)
+
+COUNTDOWN_COORDINATE_PARAM_50P = CountDownImageCoordinateParam(
+    radius1=360,
+    radius2=320,
+    radius3=313,
+    radius4=315,
+    fps=50,
     crosscross_line_width=4,
     font_size=570,
     font_path=NOTO_SANS_MONO_EX_BOLD
@@ -272,6 +293,7 @@ def make_countdown_movie(
     bg_image_maker.sound_text = " "
     bg_image_maker.is_even_number = True
     bg_image_maker.make()  # dummy make for 8bit 10bit id pattern
+    frame_marker_list = bg_image_maker.frame_marker_list
     generator_list = make_8bit_10bit_id_pat_generator(
         bg_image_maker, scale_factor, dynamic_range)
 
@@ -319,6 +341,15 @@ def make_countdown_movie(
             make_8bit_10bit_pattern(
                 bg_image_maker, bg_image, generator_list,
                 cnt=g_frame_cnt)
+
+            # =========================================
+            # merge audio sync pattern specific frame
+            # =========================================
+            frame_marker_list[0].fill(bg_image, color='center')
+            for idx in range(1, cd_coordinate_param.fps):
+                frame_marker_list[idx].fill(bg_image, color='bg')
+            frame_marker_list[frame].fill(bg_image, color='fg')
+
             g_frame_cnt += 1
 
             d = dict(
@@ -327,11 +358,11 @@ def make_countdown_movie(
                 bg_image=bg_image.copy(), merge_st_pos=merge_st_pos,
                 dynamic_range=dynamic_range)
             args.append(d)
-            # composite_sequence(**d)
+            composite_sequence(**d)
             counter += 1
             # break
-        with Pool(cpu_count()) as pool:
-            pool.map(thread_wrapper_composite_sequence, args)
+        # with Pool(cpu_count()) as pool:
+        #     pool.map(thread_wrapper_composite_sequence, args)
         # break
 
 
@@ -385,8 +416,12 @@ def make_sequence():
     cd_coordinate_param_list = [
         COUNTDOWN_COORDINATE_PARAM_24P,
         COUNTDOWN_COORDINATE_PARAM_30P,
+        COUNTDOWN_COORDINATE_PARAM_50P,
         COUNTDOWN_COORDINATE_PARAM_60P]
-    for scale_factor in [1, 2]:
+    # cd_coordinate_param_list = [
+    #     COUNTDOWN_COORDINATE_PARAM_24P]
+    # for scale_factor in [1, 2]:
+    for scale_factor in [1]:
         for cd_coordinate_param in cd_coordinate_param_list:
             make_countdown_movie(
                 bg_color_param=SDR_BG_COLOR_PARAM,
@@ -395,14 +430,14 @@ def make_sequence():
                 bg_coordinate_param=BG_COODINATE_PARAM,
                 cd_coordinate_param=cd_coordinate_param,
                 scale_factor=scale_factor)
-            make_countdown_movie(
-                bg_color_param=HDR_BG_COLOR_PARAM,
-                cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
-                dynamic_range='HDR',
-                bg_coordinate_param=BG_COODINATE_PARAM,
-                cd_coordinate_param=cd_coordinate_param,
-                scale_factor=scale_factor)
-        make_countdown_sound()
+            # make_countdown_movie(
+            #     bg_color_param=HDR_BG_COLOR_PARAM,
+            #     cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
+            #     dynamic_range='HDR',
+            #     bg_coordinate_param=BG_COODINATE_PARAM,
+            #     cd_coordinate_param=cd_coordinate_param,
+            #     scale_factor=scale_factor)
+        # make_countdown_sound()
 
 
 if __name__ == '__main__':

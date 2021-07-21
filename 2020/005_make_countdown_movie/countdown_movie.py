@@ -20,6 +20,7 @@ import test_pattern_generator2 as tpg
 from font_control import TextDrawer
 from font_control import NOTO_SANS_MONO_BOLD, NOTO_SANS_MONO_BLACK,\
     NOTO_SANS_MONO_REGULAR
+from audio_sync_pattern import create_frame_marker_list, FrameMarker
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -45,6 +46,12 @@ class BackgroundImageColorParam(NamedTuple):
         [504, 506], [506, 508], [508, 510], [510, 512]]
     ramp_10bit_levels: list = [400, 425]
     dot_droped_luminance: float = 90.0
+    audio_sync_bg_luminance: np.ndarray\
+        = tf.eotf_to_luminance(np.array([36, 36, 36]) / 255, tf.GAMMA24)
+    audio_sync_fg_luminance: np.ndarray\
+        = tf.eotf_to_luminance(np.array([192, 192, 192]) / 255, tf.GAMMA24)
+    audio_sync_center_luminance: np.ndarray\
+        = tf.eotf_to_luminance(np.array([174, 194, 238]) / 255, tf.GAMMA24)
 
 
 class BackgroundImageCoodinateParam(NamedTuple):
@@ -54,6 +61,7 @@ class BackgroundImageCoodinateParam(NamedTuple):
     crosscross_line_width: int = 4
     outline_width: int = 8
     ramp_pos_v_from_center: int = 360
+    ramp_width: int = 1728
     ramp_height: int = 216
     ramp_outline_width: int = 2
     step_ramp_font_size: float = 10
@@ -67,10 +75,19 @@ class BackgroundImageCoodinateParam(NamedTuple):
     limited_text_font_path: str = NOTO_SANS_MONO_BLACK
     crosshatch_size: int = 128
     dot_dropped_text_size: float = 100
+    dot_dropped_center_pos: int = 1536
     lab_patch_each_size: int = 32
     even_odd_info_text_size: int = 10
     ramp_10bit_info_text_size: int = 10
-    tp_obj_outline_width: int = 1
+    tp_obj_outline_width: int = 1,
+    bit_8_10_id_pattern_width: int = 360
+    bit_8_10_id_pattern_st_offset_v: int = 300
+    bit_8_10_id_pattern_st_offset_h: int = 100
+    audio_sync_height: int = 100
+    audio_sync_st_pos_v: int = 800
+    audio_sync_marker_st_pos_v: int = 832
+    audio_sync_padding: int = 100
+    audio_snnc_block_height: int = 50
 
 
 def convert_from_pillow_to_numpy(img):
@@ -107,6 +124,12 @@ class BackgroundImage():
         self.ramp_10bit_levels = color_param.ramp_10bit_levels
         self.dot_droped_code_value = tpg.convert_luminance_to_code_value(
             color_param.dot_droped_luminance, self.transfer_function)
+        self.audio_sync_bg_level = tpg.convert_luminance_to_code_value(
+            color_param.audio_sync_bg_luminance, self.transfer_function)
+        self.audio_sync_fg_level = tpg.convert_luminance_to_code_value(
+            color_param.audio_sync_fg_luminance, self.transfer_function)
+        self.audio_sync_center_level = tpg.convert_luminance_to_code_value(
+            color_param.audio_sync_center_luminance, self.transfer_function)
 
         # text settings
         self.__sound_text = " "
@@ -127,16 +150,15 @@ class BackgroundImage():
         self.height = param.height * scale_factor
         self.cc_line_width = param.crosscross_line_width * scale_factor
         self.outline_width = param.outline_width * scale_factor
-        self.ramp_pos_v = (param.ramp_pos_v_from_center + param.height // 2)\
-            * scale_factor
         self.ramp_obj_height = param.ramp_height * scale_factor
-        self.ramp_obj_width\
-            = (1024 + param.ramp_outline_width * 2) * scale_factor
+        self.ramp_obj_width = param.ramp_width * scale_factor
         self.ramp_outline_width\
             = param.ramp_outline_width * scale_factor
         self.step_ramp_pos_v\
             = ((param.height // 2 - param.ramp_pos_v_from_center
                 - param.ramp_height)) * scale_factor
+        self.ramp_pos_v = self.step_ramp_pos_v\
+            + self.ramp_obj_height - self.outline_width * 2
         self.step_ramp_font_size\
             = param.step_ramp_font_size * scale_factor
         self.step_ramp_font_offset_x\
@@ -164,6 +186,24 @@ class BackgroundImage():
             = param.ramp_10bit_info_text_size * scale_factor
         self.tp_obj_outline_width\
             = param.tp_obj_outline_width * scale_factor
+        self.bit_8_10_id_ptn_width\
+            = param.bit_8_10_id_pattern_width * scale_factor
+        self.bit_8_10_id_ptn_st_offset_v\
+            = param.bit_8_10_id_pattern_st_offset_v * scale_factor
+        self.bit_8_10_id_ptn_st_offset_h\
+            = param.bit_8_10_id_pattern_st_offset_h * scale_factor
+        self.dot_dropped_center_pos\
+            = param.dot_dropped_center_pos * scale_factor
+        self.audio_sync_height\
+            = param.audio_sync_height * scale_factor
+        self.audio_sync_st_pos_v\
+            = param.audio_sync_st_pos_v * scale_factor
+        self.audio_sync_marker_st_pos_v\
+            = param.audio_sync_marker_st_pos_v * scale_factor
+        self.audio_sync_padding\
+            = param.audio_sync_padding * scale_factor
+        self.audio_snnc_block_height\
+            = param.audio_snnc_block_height * scale_factor
 
     @property
     def sound_text(self):
@@ -538,14 +578,11 @@ class BackgroundImage():
                 dot_factor=dot_factor, offset=dot_offset)
 
         # 背景画像と合成
-        temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
-        pos_v = pos_mask & (self.limited_range_ed_pos_v + temp // 2)
+        pos_v = pos_mask & self.bit_8_10_id_ptn_st_offset_v
         pos_h_left_img =\
-            pos_mask &\
-            (self.limited_range_high_center_pos_h - drop_pixel // 2 - width)
+            pos_mask & (self.dot_dropped_center_pos - drop_pixel // 2 - width)
         pos_h_right_img =\
-            pos_mask &\
-            (self.limited_range_high_center_pos_h + drop_pixel // 2)
+            pos_mask & (self.dot_dropped_center_pos + drop_pixel // 2)
 
         if not self.is_even_number:
             left_img = img_even
@@ -693,17 +730,14 @@ class BackgroundImage():
         8bit と 10bit の識別パターンを描画する
         """
         even_mask = 0x100000000 - 2
-        total_width = int(self.dot_drop_width * 3) & even_mask
-        patch_height = (total_width // 3) % even_mask
+        total_width = int(self.bit_8_10_id_ptn_width) & even_mask
+        patch_height = (int(total_width / 3.5)) % even_mask
         patch_internal_margin_v = 2
-        patch_rest_margin_v = (patch_height // 2) & even_mask
+        patch_rest_margin_v = (patch_height // 8) & even_mask
         patch_pos_v_offset\
             = patch_height * 2 + patch_rest_margin_v + patch_internal_margin_v
-        temp = ((self.height // 2) - self.limited_range_ed_pos_v) // 2
-        st_pos_v = (self.limited_range_ed_pos_v + temp // 2) % even_mask
-        pos_st_h_base\
-            = (self.limited_range_low_center_pos_h - total_width // 2)\
-            % even_mask
+        st_pos_v = self.bit_8_10_id_ptn_st_offset_v % even_mask
+        pos_st_h_base = self.bit_8_10_id_ptn_st_offset_h % even_mask
         text_width, text_height = self.get_text_size(
             text="10bit", font_size=self.ramp_10bit_info_text_size,
             font_path=self.info_text_font_path)
@@ -756,6 +790,35 @@ class BackgroundImage():
             internal_margin_v=self.internal_margin_v,
             patch_v_offset=self.patch_v_offset)
 
+    def draw_audio_sync_base(self):
+        outer_img\
+            = np.ones((self.audio_sync_height, self.ramp_obj_width, 3))\
+            * self.obj_outline_color
+
+        ramp_width = self.ramp_obj_width - self.ramp_outline_width * 2
+        ramp_height = self.audio_sync_height - self.ramp_outline_width * 2
+        inner_img = np.ones((ramp_height, ramp_width, 3)) * self.bg_color
+
+        tpg.merge(outer_img, inner_img,
+                  (self.ramp_outline_width, self.ramp_outline_width))
+        ramp_pos_h\
+            = (self.width // 2) - (ramp_width // 2) - self.ramp_outline_width
+        tpg.merge(
+            self.img, outer_img, pos=(ramp_pos_h, self.audio_sync_st_pos_v))
+
+        self.frame_marker_list = create_frame_marker_list(
+            width=self.width, height=self.height, fps=self.fps,
+            padding=self.audio_sync_padding,
+            marker_st_pos_v=self.audio_sync_marker_st_pos_v,
+            block_height=self.audio_snnc_block_height,
+            fg_color=self.audio_sync_fg_level,
+            bg_color=self.audio_sync_bg_level,
+            center_color=self.audio_sync_center_level)
+
+        self.frame_marker_list[0].fill(self.img, color='center')
+        for idx in range(1, self.fps):
+            self.frame_marker_list[idx].fill(self.img, color='bg')
+
     def make(self):
         """
         背景画像を生成する
@@ -769,11 +832,10 @@ class BackgroundImage():
         self.draw_step_ramp_pattern()
         self.draw_sound_text(self.sound_text)
         self.draw_information()
-        self.draw_limited_range_text()
+        # self.draw_limited_range_text()
         self.draw_dot_dropped_text()
-        # self.draw_10bit_detection()
-        # self.draw_10bit_v_ramp()
         self.draw_8bit_10bit_identification_patterns()
+        self.draw_audio_sync_base()
 
         # tpg.preview_image(self.img)
 
