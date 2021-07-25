@@ -49,7 +49,7 @@ class BackgroundImageColorParam(NamedTuple):
     audio_sync_bg_luminance: np.ndarray\
         = tf.eotf_to_luminance(np.array([36, 36, 36]) / 255, tf.GAMMA24)
     audio_sync_fg_luminance: np.ndarray\
-        = tf.eotf_to_luminance(np.array([192, 192, 192]) / 255, tf.GAMMA24)
+        = tf.eotf_to_luminance(np.array([224, 224, 224]) / 255, tf.GAMMA24)
     audio_sync_center_luminance: np.ndarray\
         = tf.eotf_to_luminance(np.array([174, 194, 238]) / 255, tf.GAMMA24)
 
@@ -69,6 +69,8 @@ class BackgroundImageCoodinateParam(NamedTuple):
     step_ramp_font_offset_y: int = 10
     sound_text_font_size: float = 50
     sound_text_font_path: str = NOTO_SANS_MONO_BLACK
+    sound_text_pos_offset_h: int = 300
+    sound_text_pos_offset_v: int = 300
     info_text_font_size: float = 10
     info_text_font_path: str = NOTO_SANS_MONO_REGULAR
     limited_text_font_size: float = 100
@@ -168,6 +170,10 @@ class BackgroundImage():
         self.sound_text_font_size\
             = param.sound_text_font_size * scale_factor
         self.sound_text_font_path = param.sound_text_font_path
+        self.sound_text_pos_offset_h\
+            = param.sound_text_pos_offset_h * scale_factor
+        self.sound_text_pos_offset_v\
+            = param.sound_text_pos_offset_v * scale_factor
         self.dummy_img_size = 1024 * scale_factor
         self.into_text_font_size\
             = param.info_text_font_size * scale_factor
@@ -257,10 +263,12 @@ class BackgroundImage():
 
         ramp_width = self.ramp_obj_width - self.ramp_outline_width * 2
         ramp_height = self.ramp_obj_height - self.ramp_outline_width * 2
-        ramp_img = tpg.gen_step_gradation(
-            width=ramp_width, height=ramp_height, step_num=1025,
-            bit_depth=10, color=(1.0, 1.0, 1.0), direction='h')
-        ramp_img = ramp_img / self.code_value_max
+        # ramp_img = tpg.gen_step_gradation(
+        #     width=ramp_width, height=ramp_height, step_num=1025,
+        #     bit_depth=10, color=(1.0, 1.0, 1.0), direction='h')
+        ramp = np.linspace(0, 1, ramp_width)
+        ramp_img = tpg.h_mono_line_to_img(ramp, ramp_height)
+        # ramp_img = ramp_img / self.code_value_max
 
         tpg.merge(ramp_obj_img, ramp_img,
                   (self.ramp_outline_width, self.ramp_outline_width))
@@ -336,20 +344,33 @@ class BackgroundImage():
             text="0", font_size=self.sound_text_font_size,
             font_path=self.sound_text_font_path)
 
-        upper_left\
-            = (self.ramp_pos_h + width // 4,
-               self.step_ramp_pos_v + self.ramp_obj_height + height // 4)
-        upper_right\
-            = (self.width - (self.ramp_pos_h + width // 4) - width,
-               self.step_ramp_pos_v + self.ramp_obj_height + height // 4)
-        lower_left\
-            = (self.ramp_pos_h + width // 4,
-               self.height - (self.step_ramp_pos_v + self.ramp_obj_height
-                              + height // 4) - height)
-        lower_right\
-            = (self.width - (self.ramp_pos_h + width // 4) - width,
-               self.height - (self.step_ramp_pos_v + self.ramp_obj_height
-                              + height // 4) - height)
+        # upper_left\
+        #     = (self.ramp_pos_h + width // 4,
+        #        self.step_ramp_pos_v + self.ramp_obj_height + height // 4)
+        # upper_right\
+        #     = (self.width - (self.ramp_pos_h + width // 4) - width,
+        #        self.step_ramp_pos_v + self.ramp_obj_height + height // 4)
+        # lower_left\
+        #     = (self.ramp_pos_h + width // 4,
+        #        self.height - (self.step_ramp_pos_v + self.ramp_obj_height
+        #                       + height // 4) - height)
+        # lower_right\
+        #     = (self.width - (self.ramp_pos_h + width // 4) - width,
+        #        self.height - (self.step_ramp_pos_v + self.ramp_obj_height
+        #                       + height // 4) - height)
+
+        upper_left = (
+            (self.width // 2) - self.sound_text_pos_offset_h - (width // 2),
+            (self.height // 2) - self.sound_text_pos_offset_v - (height // 2))
+        upper_right = (
+            (self.width // 2) + self.sound_text_pos_offset_h - (width // 2),
+            (self.height // 2) - self.sound_text_pos_offset_v - (height // 2))
+        lower_left = (
+            (self.width // 2) - self.sound_text_pos_offset_h - (width // 2),
+            (self.height // 2) + self.sound_text_pos_offset_v - (height // 2))
+        lower_right = (
+            (self.width // 2) + self.sound_text_pos_offset_h - (width // 2),
+            (self.height // 2) + self.sound_text_pos_offset_v - (height // 2))
 
         if text == "L" or text == "C":
             text_drawer = TextDrawer(
@@ -401,11 +422,21 @@ class BackgroundImage():
             text=text, font_size=self.into_text_font_size,
             font_path=self.info_text_font_path)
 
-        st_pos_v = self.height - self.outline_width * 4 - height
-        st_pos_h = self.outline_width * 4
+        self.info_text_st_pos_v = self.height - self.outline_width * 4 - height
+        self.info_text_st_pos_h = self.outline_width * 4
+
+        fill_rect_pos_v = int(self.info_text_st_pos_v - height * 0.3)
+        fill_rect_pos_h = self.outline_width
+        fill_rect_height = self.height - fill_rect_pos_v - self.outline_width
+        fill_rect_width = self.width - self.outline_width * 2
+        fill_img = np.ones((fill_rect_height, fill_rect_width, 3))\
+            * self.obj_outline_color
+
+        tpg.merge(self.img, fill_img, (fill_rect_pos_h, fill_rect_pos_v))
 
         text_drawer = TextDrawer(
-            self.img, text, pos=(st_pos_h, st_pos_v),
+            self.img, text,
+            pos=(self.info_text_st_pos_h, self.info_text_st_pos_v),
             font_color=self.text_info_color,
             font_size=self.into_text_font_size,
             fg_transfer_functions=self.transfer_function,
@@ -422,7 +453,7 @@ class BackgroundImage():
             text=text, font_size=self.into_text_font_size,
             font_path=self.info_text_font_path)
 
-        st_pos_v = self.height - self.outline_width * 4 - height
+        st_pos_v = self.info_text_st_pos_v
         st_pos_h = self.width - self.outline_width * 4 - width
 
         text_drawer = TextDrawer(
@@ -731,7 +762,7 @@ class BackgroundImage():
         """
         even_mask = 0x100000000 - 2
         total_width = int(self.bit_8_10_id_ptn_width) & even_mask
-        patch_height = (int(total_width / 3.5)) % even_mask
+        patch_height = (int(total_width / 3.29)) % even_mask
         patch_internal_margin_v = 2
         patch_rest_margin_v = (patch_height // 8) & even_mask
         patch_pos_v_offset\

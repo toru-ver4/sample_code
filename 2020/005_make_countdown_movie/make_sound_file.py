@@ -91,7 +91,8 @@ def make_countdown_sound(sampling_rate=48000):
     beep_sec = 0.06
     fade_in_out_sec = 0.0065
     total_sample = count_down_sec * sampling_rate
-    offset_sample = int(fade_in_out_sec * sampling_rate * 0.5)
+    # offset_sample = int(fade_in_out_sec * sampling_rate * 0.5)
+    offset_sample = int(0.0)
 
     # 無音ファイル
     np.zeros((total_sample), dtype=np.int16)
@@ -131,7 +132,8 @@ def make_countdown_sound_99s(sampling_rate=48000):
     beep_sec = 0.06
     fade_in_out_sec = 0.0065
     total_sample = count_down_sec * sampling_rate
-    offset_sample = int(fade_in_out_sec * sampling_rate * 0.5)
+    # offset_sample = int(fade_in_out_sec * sampling_rate * 0.5)
+    offset_sample = 0.0
 
     # 無音ファイル
     np.zeros((total_sample), dtype=np.int16)
@@ -159,5 +161,5 @@ def make_countdown_sound_99s(sampling_rate=48000):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # make_countdown_sound()
-    make_countdown_sound_99s()
+    make_countdown_sound()
+    # make_countdown_sound_99s()

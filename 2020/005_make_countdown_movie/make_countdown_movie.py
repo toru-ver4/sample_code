@@ -147,22 +147,24 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     step_ramp_font_offset_x=5,
     step_ramp_font_offset_y=5,
     sound_text_font_size=200,
+    sound_text_pos_offset_h=400,
+    sound_text_pos_offset_v=280,
     info_text_font_size=25,
     limited_text_font_size=96,
     crosshatch_size=128,
     dot_dropped_text_size=118,
-    dot_dropped_center_pos=1640,
+    dot_dropped_center_pos=1600,
     lab_patch_each_size=48,
     even_odd_info_text_size=16,
     ramp_10bit_info_text_size=22,
-    bit_8_10_id_pattern_width=380,
+    bit_8_10_id_pattern_width=360,
     bit_8_10_id_pattern_st_offset_v=200,
     bit_8_10_id_pattern_st_offset_h=100,
-    audio_sync_height=90,
-    audio_sync_st_pos_v=930,
-    audio_sync_marker_st_pos_v=946,
+    audio_sync_height=90 - 8,
+    audio_sync_st_pos_v=934,
+    audio_sync_marker_st_pos_v=950,
     audio_sync_padding=100,
-    audio_snnc_block_height=56
+    audio_snnc_block_height=56 - 8
 )
 
 
@@ -338,9 +340,10 @@ def make_countdown_movie(
                 bg_image = bg_image_with_sound_indicator
 
             # merge 8bit 10bit identification pattern
+            # make_8bit_10bit_pattern(
+            #     bg_image_maker, bg_image, generator_list, cnt=g_frame_cnt)
             make_8bit_10bit_pattern(
-                bg_image_maker, bg_image, generator_list,
-                cnt=g_frame_cnt)
+                bg_image_maker, bg_image, generator_list, cnt=None)
 
             # =========================================
             # merge audio sync pattern specific frame
@@ -376,17 +379,17 @@ def make_8bit_10bit_id_pat_generator(
         width=id_param['patch_width'], height=id_param['patch_height'],
         total_step=step, level=tpg.L_LOW_C_HIGH,
         slide_step=slide_step*scale_factor,
-        hdr10=hdr10)
+        hdr10=hdr10, scroll_direction='right')
     generator_m = tpg.IdPatch8bit10bitGenerator(
         width=id_param['patch_width'], height=id_param['patch_height'],
         total_step=step, level=tpg.L_MIDDLE_C_HIGH,
         slide_step=slide_step*scale_factor,
-        hdr10=hdr10)
+        hdr10=hdr10, scroll_direction='right')
     generator_h = tpg.IdPatch8bit10bitGenerator(
         width=id_param['patch_width'], height=id_param['patch_height'],
         total_step=step, level=tpg.L_HIGH_C_HIGH,
         slide_step=slide_step*scale_factor,
-        hdr10=hdr10)
+        hdr10=hdr10, scroll_direction='right')
     generator_list = [generator_l, generator_m, generator_h]
 
     return generator_list
@@ -419,9 +422,9 @@ def make_sequence():
         COUNTDOWN_COORDINATE_PARAM_50P,
         COUNTDOWN_COORDINATE_PARAM_60P]
     # cd_coordinate_param_list = [
-    #     COUNTDOWN_COORDINATE_PARAM_24P]
-    # for scale_factor in [1, 2]:
-    for scale_factor in [1]:
+    #     COUNTDOWN_COORDINATE_PARAM_60P]
+    for scale_factor in [1, 2]:
+    # for scale_factor in [1]:
         for cd_coordinate_param in cd_coordinate_param_list:
             make_countdown_movie(
                 bg_color_param=SDR_BG_COLOR_PARAM,
@@ -430,13 +433,13 @@ def make_sequence():
                 bg_coordinate_param=BG_COODINATE_PARAM,
                 cd_coordinate_param=cd_coordinate_param,
                 scale_factor=scale_factor)
-            # make_countdown_movie(
-            #     bg_color_param=HDR_BG_COLOR_PARAM,
-            #     cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
-            #     dynamic_range='HDR',
-            #     bg_coordinate_param=BG_COODINATE_PARAM,
-            #     cd_coordinate_param=cd_coordinate_param,
-            #     scale_factor=scale_factor)
+            make_countdown_movie(
+                bg_color_param=HDR_BG_COLOR_PARAM,
+                cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
+                dynamic_range='HDR',
+                bg_coordinate_param=BG_COODINATE_PARAM,
+                cd_coordinate_param=cd_coordinate_param,
+                scale_factor=scale_factor)
         # make_countdown_sound()
 
 
