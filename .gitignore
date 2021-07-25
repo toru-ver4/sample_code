@@ -184,3 +184,4 @@ temporary/**/**
 .local/**
 .vscode-server/**
 ~/.pyenv/plugins/pyenv-update/
+2020/005_make_countdown_movie/ffmpeg.exe

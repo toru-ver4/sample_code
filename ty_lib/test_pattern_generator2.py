@@ -2113,13 +2113,15 @@ class IdPatch8bit10bitGenerator():
     """
     def __init__(
             self, width=512, height=1024, total_step=20,
-            level='middle', slide_step=2, hdr10=False):
+            level='middle', slide_step=2, hdr10=False,
+            scroll_direction='left'):
         self.width = width
         self.height = height
         self.total_step = total_step
         direction = 'h'
         self.step = slide_step
         self.cnt = 0
+        self.scroll_direction = scroll_direction
 
         img_8bit, img_10bit = create_8bit_10bit_id_patch(
             width=self.width, height=self.height, total_step=self.total_step,
@@ -2140,7 +2142,10 @@ class IdPatch8bit10bitGenerator():
         out_8bit = self.extract_based_on_cnt(self.img_8bit_buf, cnt)
         out_10bit = self.extract_based_on_cnt(self.img_10bit_buf, cnt)
         if not cnt:
-            self.cnt += self.step
+            if self.scroll_direction == 'left':
+                self.cnt += self.step
+            elif self.scroll_direction == 'right':
+                self.cnt -= self.step
 
         return out_8bit, out_10bit
 
@@ -2635,16 +2640,21 @@ if __name__ == '__main__':
     # img = v_color_line_to_img(line_color, 4)
     # print(img)
 
-    bg_img = np.ones((1080, 1920, 3)) * 0.5
-    fg_img = np.zeros((540, 960, 3), dtype=np.uint8)
-    fg_img = cv2.circle(
-        fg_img, (200, 100), 40,
-        color=[0, 192, 192], thickness=-1, lineType=cv2.LINE_AA)
-        # rmo_list[idx].calc_next_pos()  # マルチスレッド化にともない事前に計算
-    # alpha channel は正規化する。そうしないと中間調合成時に透けてしまう
-    alpha = np.max(fg_img, axis=-1)
-    alpha = alpha / np.max(alpha)
-    fg_img = np.dstack((fg_img / 0xFF, alpha))
-    merge_with_alpha2(bg_img=bg_img, fg_img=fg_img, pos=(200, 100))
-    img_wirte_float_as_16bit_int("fg.png", fg_img)
-    img_wirte_float_as_16bit_int("after_merge.png", bg_img)
+    # bg_img = np.ones((1080, 1920, 3)) * 0.5
+    # fg_img = np.zeros((540, 960, 3), dtype=np.uint8)
+    # fg_img = cv2.circle(
+    #     fg_img, (200, 100), 40,
+    #     color=[0, 192, 192], thickness=-1, lineType=cv2.LINE_AA)
+    #     # rmo_list[idx].calc_next_pos()  # マルチスレッド化にともない事前に計算
+    # # alpha channel は正規化する。そうしないと中間調合成時に透けてしまう
+    # alpha = np.max(fg_img, axis=-1)
+    # alpha = alpha / np.max(alpha)
+    # fg_img = np.dstack((fg_img / 0xFF, alpha))
+    # merge_with_alpha2(bg_img=bg_img, fg_img=fg_img, pos=(200, 100))
+    # img_wirte_float_as_16bit_int("fg.png", fg_img)
+    # img_wirte_float_as_16bit_int("after_merge.png", bg_img)
+
+    line = np.linspace(0, 1, 9)
+    print(line)
+    img = h_mono_line_to_img(line, 6)
+    print(img)
