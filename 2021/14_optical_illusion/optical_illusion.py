@@ -6,6 +6,7 @@
 
 # import standard libraries
 import os
+import sys
 from multiprocessing import Pool, cpu_count
 from typing import NamedTuple
 
@@ -47,6 +48,10 @@ edge_color = cs.lab_to_rgb(edge_lab, cs.BT709)
 fg_color[fg_color <= 0] = 0.001
 edge_color[edge_color <= 0] = 0.001
 
+FPS = 60
+CYCLE_NUM = 6
+CYCLE_SEC = 0.7
+
 
 class BaseParam(NamedTuple):
     amp: int = 200
@@ -57,9 +62,9 @@ class BaseParam(NamedTuple):
     dst_height: int = 1000
     width: int = 2000
     height: int = 2000
-    fps: int = 60
-    cycle_num: int = 6
-    cycle_sec: float = 0.8
+    fps: int = FPS
+    cycle_num: int = CYCLE_NUM
+    cycle_sec: float = CYCLE_SEC
     cycle_sec_offset: float = 0.0
     amp_offset: int = 0
     tile_v_num: int = 4
@@ -101,7 +106,6 @@ def create_bg_dot_pattern(
     img[img <= 0] = base_value
     img[inv_mask] = np.array([[[1.0, 1.0, 1.0]]])
     img = cv2.circle(img, center, radius_out, fg_color, -1)
-
     img = cv2.circle(img, center, radius_in, edge_color, -1)
 
     img_non_linear = np.uint16(tf.oetf(np.clip(img, 0, 1), tf.SRGB) * 0xFFFF)
@@ -247,7 +251,7 @@ def create_multi_move_pattern_core(
     fname_base = base_dir + "multi_test_seq_{idx:04d}.png"
     fname = fname_base.format(idx=f_idx)
     print(fname)
-    tpg.img_write(fname, out_img)
+    tpg.img_write(fname, out_img, comp_val=7)
 
 
 def calc_pos_list(bp: BaseParam):
@@ -264,7 +268,7 @@ def calc_pos_list(bp: BaseParam):
     return pos_list
 
 
-def create_multi_color_movie_sample():
+def create_multi_color_movie_sample(st_frame, ed_frame):
     g_bg_width = 3840
     g_bg_height = 2160
 
@@ -277,11 +281,6 @@ def create_multi_color_movie_sample():
         dst_height=g_bg_height//4,
         width=g_bg_width//4,
         height=g_bg_height//2,
-        fps=60,
-        cycle_num=6,
-        cycle_sec=0.8,
-        cycle_sec_offset=0.0,
-        amp_offset=0,
         tile_v_num=4,
         tile_h_num=8,
     )
@@ -289,41 +288,62 @@ def create_multi_color_movie_sample():
     fg_color_list = create_fg_color_list(sample_num=sample_color_num)
     pos_list = calc_pos_list(bp=bp)
 
-    frame_num = len(pos_list)
-
-    total_process_num = frame_num
-    block_process_num = int(cpu_count())
-    block_num = int(round(total_process_num / block_process_num + 0.5))
-
     mt = MeasureExecTime()
     mt.start()
-    for b_idx in range(block_num):
-        args = []
-        for p_idx in range(block_process_num):
-            f_idx = b_idx * block_process_num + p_idx              # User
-            print(f"b_idx={b_idx}, p_idx={p_idx}, f_idx={f_idx}")  # User
-            if f_idx >= total_process_num:                         # User
-                break
-            d = dict(
-                f_idx=f_idx, bp=bp,
-                fg_color_list=fg_color_list, pos_list=pos_list)
-            # print(d)
-            # create_multi_move_pattern_core(**d)
-            args.append(d)
-        #     break
-        # break
-        with Pool(block_process_num) as pool:
-            pool.map(thread_wrapper_create_multi_move_pattern_core, args)
+    for idx in range(st_frame, ed_frame):
+        d = dict(
+            f_idx=idx, bp=bp,
+            fg_color_list=fg_color_list, pos_list=pos_list)
+        create_multi_move_pattern_core(**d)
         mt.lap()
     mt.end()
+
+    # frame_num = len(pos_list)
+    # process_num = 32
+    # len_list = tpg.equal_devision(frame_num, process_num)
+    # frame_st_ed_list = calc_st_ed_frame_ed_for_blodk(len_list)
+
+    # print(frame_st_ed_list)
+
+    # total_process_num = frame_num
+    # block_process_num = int(cpu_count())
+    # block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    # mt = MeasureExecTime()
+    # mt.start()
+    # for b_idx in range(block_num):
+    #     args = []
+    #     for p_idx in range(block_process_num):
+    #         f_idx = b_idx * block_process_num + p_idx              # User
+    #         print(f"b_idx={b_idx}, p_idx={p_idx}, f_idx={f_idx}")  # User
+    #         if f_idx >= total_process_num:                         # User
+    #             break
+    #         d = dict(
+    #             f_idx=f_idx, bp=bp,
+    #             fg_color_list=fg_color_list, pos_list=pos_list)
+    #         # print(d)
+    #         # create_multi_move_pattern_core(**d)
+    #         args.append(d)
+    #     #     break
+    #     # break
+    #     with Pool(block_process_num) as pool:
+    #         pool.map(thread_wrapper_create_multi_move_pattern_core, args)
+    #     mt.lap()
+    # mt.end()
 
 
 def thread_wrapper_create_multi_move_pattern_core(args):
     create_multi_move_pattern_core(**args)
 
 
+def wrapper_subprocess_create_multi_move_pattern_core():
+    pass
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_move_seq_1st_sample()
     # create_fg_color_list()
-    create_multi_color_movie_sample()
+    st_frame = int(sys.argv[1])
+    ed_frame = int(sys.argv[2])
+    create_multi_color_movie_sample(st_frame, ed_frame)
