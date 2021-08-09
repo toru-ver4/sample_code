@@ -23,6 +23,7 @@ import test_pattern_generator2 as tpg
 import transfer_functions as tf
 import color_space as cs
 from common import MeasureExecTime
+from create_gamut_booundary_lut import get_gamut_boundary_lch_from_lut
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -33,20 +34,43 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
 
-lightness = 70
-base_chroma = 50
-base_hue = 270
+# L = 75
+lightness = 75
+base_chroma = 25
 
+# # L = 70
+# lightness = 70
+# base_chroma = 30
+
+# L = 60
+# lightness = 60
+# base_chroma = 38
+
+# # L = 50
+# lightness = 50
+# base_chroma = 45
+
+# L = 40
+# lightness = 40
+# base_chroma = 50
+
+# # L = 30
+# lightness = 30
+# base_chroma = 45
+
+# base layer luminance
+base_value = 0.0
+
+base_hue = 270
 edge_lch = np.array([lightness, base_chroma, base_hue])
 edge_lab = LCHab_to_Lab(edge_lch)
 fg_lab = np.array([lightness, 0, 50])
 
-base_value = 0.0
 fg_color = cs.lab_to_rgb(fg_lab, cs.BT709)
 edge_color = cs.lab_to_rgb(edge_lab, cs.BT709)
 
-fg_color[fg_color <= 0] = 0.001
-edge_color[edge_color <= 0] = 0.001
+fg_color[fg_color <= 0] = 0.01
+edge_color[edge_color <= 0] = 0.01
 
 FPS = 60
 CYCLE_NUM = 6
@@ -69,15 +93,20 @@ class BaseParam(NamedTuple):
     amp_offset: int = 0
     tile_v_num: int = 4
     tile_h_num: int = 2
+    fname_prefix: str = "sample"
 
 
 def create_fg_color_list(sample_num):
-    st_hue = base_hue + 90
+    st_hue = base_hue + 45
     ed_hue = st_hue + 180
-    hh = np.linspace(st_hue, ed_hue, sample_num)
+    hh = np.linspace(st_hue, ed_hue, sample_num) % 360
     ll = np.ones_like(hh) * lightness
-    cc = np.ones_like(hh) * base_chroma
-    lch = tstack([ll, cc, hh])
+    lh_array = tstack([ll, hh])
+    gb_lut = np.load("./lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy")
+    lch = get_gamut_boundary_lch_from_lut(
+        lut=gb_lut, lh_array=lh_array)
+    # cc = np.ones_like(hh) * base_chroma
+    # lch = tstack([ll, cc, hh])
     lab = LCHab_to_Lab(lch)
     rgb = cs.lab_to_rgb(lab, cs.BT709)
     rgb = np.clip(rgb, 0.0, 1.0)
@@ -94,17 +123,18 @@ def create_bg_dot_pattern(
     np.random.seed(100)
 
     mask = np.random.randint(0, 2, (dot_img_height, dot_img_width, 1))
-    inv_mask = np.uint8(1 - mask)
+    # inv_mask = (np.uint8(1 - mask)).reshape(dot_img_height, dot_img_width)
     temp_img = mask
     dot_img = np.dstack([temp_img, temp_img, temp_img])
     img = cv2.resize(
         dot_img, (width, height), interpolation=cv2.INTER_NEAREST)
+    back_mask = img <= 0
 
     center = (width//2, height//2)
 
     img = img * fg_color
-    img[img <= 0] = base_value
-    img[inv_mask] = np.array([[[1.0, 1.0, 1.0]]])
+    img[back_mask] = base_value
+    # img[inv_mask] = np.array([[[base_value, base_value, base_value]]])
     img = cv2.circle(img, center, radius_out, fg_color, -1)
     img = cv2.circle(img, center, radius_in, edge_color, -1)
 
@@ -159,7 +189,7 @@ def thread_wrapper_create_move_seq_core(args):
 
 def create_move_seq_1st_sample():
     amp = 200
-    dot_pattern_rate = 16
+    dot_pattern_rate = 8
     radius_out = 250
     radius_in = 150
     dst_width = radius_out * 4
@@ -248,8 +278,8 @@ def create_multi_move_pattern_core(
     out_img = np.vstack(v_img_buf)
 
     base_dir = "/work/overuse/2021/14_optical_illusion/multi_move_sample/"
-    fname_base = base_dir + "multi_test_seq_{idx:04d}.png"
-    fname = fname_base.format(idx=f_idx)
+    fname_base = base_dir + "multi_test_seq_{prefix}_{idx:04d}.png"
+    fname = fname_base.format(prefix=bp.fname_prefix, idx=f_idx)
     print(fname)
     tpg.img_write(fname, out_img, comp_val=7)
 
@@ -273,16 +303,17 @@ def create_multi_color_movie_sample(st_frame, ed_frame):
     g_bg_height = 2160
 
     bp = BaseParam(
-        amp=g_bg_width//26,
-        dot_pattern_rate=16,
-        radius_out=100,
-        radius_in=70,
-        dst_width=g_bg_width//8,
+        amp=g_bg_width//32,
+        dot_pattern_rate=12,
+        radius_out=int(g_bg_width * 0.055),
+        radius_in=int(g_bg_width * 0.04),
+        dst_width=g_bg_width//6,
         dst_height=g_bg_height//4,
         width=g_bg_width//4,
         height=g_bg_height//2,
         tile_v_num=4,
-        tile_h_num=8,
+        tile_h_num=6,
+        fname_prefix=f"B-{base_value:.02f}_L-{lightness}"
     )
     sample_color_num = bp.tile_v_num * bp.tile_h_num
     fg_color_list = create_fg_color_list(sample_num=sample_color_num)
