@@ -34,9 +34,9 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
 
-# L = 75
-lightness = 75
-base_chroma = 25
+# # L = 75
+# lightness = 75
+# base_chroma = 25
 
 # # L = 70
 # lightness = 70
@@ -50,16 +50,16 @@ base_chroma = 25
 # lightness = 50
 # base_chroma = 45
 
-# L = 40
-# lightness = 40
-# base_chroma = 50
+L = 40
+lightness = 40
+base_chroma = 0
 
 # # L = 30
 # lightness = 30
 # base_chroma = 45
 
 # base layer luminance
-base_value = 0.0
+base_value = 0.8
 
 base_hue = 270
 edge_lch = np.array([lightness, base_chroma, base_hue])
@@ -73,8 +73,10 @@ fg_color[fg_color <= 0] = 0.01
 edge_color[edge_color <= 0] = 0.01
 
 FPS = 60
-CYCLE_NUM = 6
-CYCLE_SEC = 0.7
+CYCLE_NUM = 14
+CYCLE_SEC = 0.5
+
+pekomon_file = "./img/carrot_pekomon_189_0_59_rev6.png"
 
 
 class BaseParam(NamedTuple):
@@ -97,8 +99,10 @@ class BaseParam(NamedTuple):
 
 
 def create_fg_color_list(sample_num):
-    st_hue = base_hue + 45
-    ed_hue = st_hue + 180
+    # st_hue = base_hue + 45
+    # ed_hue = st_hue + 180
+    st_hue = base_hue + 0
+    ed_hue = st_hue + 360
     hh = np.linspace(st_hue, ed_hue, sample_num) % 360
     ll = np.ones_like(hh) * lightness
     lh_array = tstack([ll, hh])
@@ -137,6 +141,17 @@ def create_bg_dot_pattern(
     # img[inv_mask] = np.array([[[base_value, base_value, base_value]]])
     img = cv2.circle(img, center, radius_out, fg_color, -1)
     img = cv2.circle(img, center, radius_in, edge_color, -1)
+
+    icon = cv2.imread(
+        "./img/GitHubIcon.png", cv2.IMREAD_UNCHANGED) / 255
+    icon = (icon ** 2.2)
+    shape = icon.shape
+    b, g, r, a = np.dsplit(icon, 4)
+    icon = np.dstack((r, g, b, a)).reshape((shape))
+    dsize = (int(radius_in * 1.6), int(radius_in * 1.6))
+    icon = cv2.resize(icon, dsize=dsize)
+    pos = [(width//2 - dsize[0]//2), (height//2 - dsize[1]//2)]
+    # tpg.merge_with_alpha2(img, icon, pos=pos)
 
     img_non_linear = np.uint16(tf.oetf(np.clip(img, 0, 1), tf.SRGB) * 0xFFFF)
 
@@ -298,6 +313,20 @@ def calc_pos_list(bp: BaseParam):
     return pos_list
 
 
+def calc_pos_list_v(bp: BaseParam):
+    offset_list = create_horizontal_movement(
+        fps=bp.fps, cycle_num=bp.cycle_num, cycle_sec=bp.cycle_sec,
+        cycle_sec_offset=bp.cycle_sec_offset, amp=bp.amp,
+        amp_offset=bp.amp_offset)
+    v_pos_list = np.uint16(
+        np.round((bp.height // 2) - offset_list - (bp.dst_height // 2)))
+    h_pos_list = np.ones_like(v_pos_list)\
+        * ((bp.width // 2) - (bp.dst_width // 2))
+    pos_list = np.uint16(tstack([h_pos_list, v_pos_list]))
+
+    return pos_list
+
+
 def create_multi_color_movie_sample(st_frame, ed_frame):
     g_bg_width = 3840
     g_bg_height = 2160
@@ -306,17 +335,18 @@ def create_multi_color_movie_sample(st_frame, ed_frame):
         amp=g_bg_width//32,
         dot_pattern_rate=12,
         radius_out=int(g_bg_width * 0.055),
-        radius_in=int(g_bg_width * 0.04),
+        radius_in=int(g_bg_width * 0.035),
         dst_width=g_bg_width//6,
         dst_height=g_bg_height//4,
         width=g_bg_width//4,
         height=g_bg_height//2,
         tile_v_num=4,
         tile_h_num=6,
-        fname_prefix=f"B-{base_value:.02f}_L-{lightness}"
+        fname_prefix=f"B-{base_value:.02f}_L-{lightness}_C{base_chroma:d}"
     )
     sample_color_num = bp.tile_v_num * bp.tile_h_num
     fg_color_list = create_fg_color_list(sample_num=sample_color_num)
+    print(fg_color_list)
     pos_list = calc_pos_list(bp=bp)
 
     mt = MeasureExecTime()
@@ -371,10 +401,100 @@ def wrapper_subprocess_create_multi_move_pattern_core():
     pass
 
 
+def create_bg_189_0_59():
+    fg_color = np.array([189, 0, 59], dtype=np.uint8)
+    width = 1080
+    height = 1920
+    dot_pattern_rate = 12
+    dot_img_width = width // dot_pattern_rate
+    dot_img_height = height // dot_pattern_rate
+    np.random.seed(100)
+
+    mask = np.random.randint(0, 2, (dot_img_height, dot_img_width, 1))
+    # inv_mask = (np.uint8(1 - mask)).reshape(dot_img_height, dot_img_width)
+    temp_img = mask
+    dot_img = np.dstack([temp_img, temp_img, temp_img])
+    img = cv2.resize(
+        dot_img, (width, height), interpolation=cv2.INTER_NEAREST)
+    img = np.uint8(img)
+    back_mask = img <= 0
+    img = img * fg_color
+    img[back_mask] = 230
+
+    tpg.img_write("./img/photoshop_bg_189_0_59.png", img)
+
+
+def crop_and_move_h_189_0_59():
+    img = tpg.img_read(pekomon_file)
+    width = img.shape[1]
+    height = img.shape[0]
+
+    amp_rate = 0.05
+    base_width = int(width * (1 + amp_rate * 3 + 0.01) + 0.9999) & 0xFFF0
+    rate = base_width / width
+    base_height = int(height * rate)
+
+    img = cv2.resize(img, (base_width, base_height))
+
+    bp = BaseParam(
+        amp=int(width * amp_rate),
+        dst_width=width,
+        dst_height=height,
+        width=base_width,
+        height=base_height,
+    )
+    pos_list = calc_pos_list(bp=bp)
+
+    base_dir = "/work/overuse/2021/14_optical_illusion/pekomon_rev01/"
+    fname_base = base_dir + "pekomon_{prefix}_{idx:04d}.png"
+
+    for idx in range(len(pos_list)):
+        out_img = trim_image(
+            base_img=img, idx=idx, pos_list=pos_list, bp=bp)        
+        fname = fname_base.format(prefix="hhh", idx=idx)
+        print(fname)
+        tpg.img_write(fname, out_img)
+
+
+def crop_and_move_v_189_0_59():
+    img = tpg.img_read(pekomon_file)
+    width = img.shape[1]
+    height = img.shape[0]
+
+    amp_rate = 0.05
+    base_width = int(width * (1 + amp_rate * 3 + 0.01) + 0.9999) & 0xFFF0
+    rate = base_width / width
+    base_height = int(height * rate)
+
+    img = cv2.resize(img, (base_width, base_height))
+
+    bp = BaseParam(
+        amp=int(width * amp_rate),
+        dst_width=width,
+        dst_height=height,
+        width=base_width,
+        height=base_height,
+    )
+    pos_list = calc_pos_list_v(bp=bp)
+
+    base_dir = "/work/overuse/2021/14_optical_illusion/pekomon_rev01/"
+    fname_base = base_dir + "pekomon_{prefix}_{idx:04d}.png"
+
+    for idx in range(len(pos_list)):
+        out_img = trim_image(
+            base_img=img, idx=idx, pos_list=pos_list, bp=bp)        
+        fname = fname_base.format(prefix="vvv", idx=idx)
+        print(fname)
+        tpg.img_write(fname, out_img)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_move_seq_1st_sample()
     # create_fg_color_list()
-    st_frame = int(sys.argv[1])
-    ed_frame = int(sys.argv[2])
-    create_multi_color_movie_sample(st_frame, ed_frame)
+    # st_frame = int(sys.argv[1])
+    # ed_frame = int(sys.argv[2])
+    # create_multi_color_movie_sample(st_frame, ed_frame)
+    # create_bg_189_0_59()
+    crop_and_move_h_189_0_59()
+    crop_and_move_v_189_0_59()

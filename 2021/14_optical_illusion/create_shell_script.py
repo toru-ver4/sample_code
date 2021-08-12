@@ -54,7 +54,7 @@ def calc_st_ed_frame_ed_for_block(len_list):
 
 def main_func():
     fname = "./multi_color_sample.sh"
-    process_num = 32
+    process_num = 8
     len_list = tpg.equal_devision(FRAME_NUM, process_num)
     st_ed_frame = calc_st_ed_frame_ed_for_block(len_list)
     src_file_name = "./optical_illusion.py"
