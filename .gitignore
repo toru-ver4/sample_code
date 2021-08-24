@@ -177,6 +177,7 @@ venv.bak/
 2021/06_improve_youtube_3dlut/3DLUT/*.cube
 2021/09_gamut_boundary_lut/lut/*.npy
 2021/11_hue_chroma_pattern_using_jzazbz/lut/*.npy
+2021/14_optical_illusion/lut/*.npy
 temporary/**/**
 
 .gitconfig

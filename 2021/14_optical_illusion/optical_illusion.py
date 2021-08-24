@@ -24,6 +24,7 @@ import transfer_functions as tf
 import color_space as cs
 from common import MeasureExecTime
 from create_gamut_booundary_lut import get_gamut_boundary_lch_from_lut
+from test_pattern_coordinate import GridCoordinate
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -73,10 +74,14 @@ fg_color[fg_color <= 0] = 0.01
 edge_color[edge_color <= 0] = 0.01
 
 FPS = 60
-CYCLE_NUM = 14
+CYCLE_NUM = 20
 CYCLE_SEC = 0.5
 
-pekomon_file = "./img/carrot_pekomon_189_0_59_rev6.png"
+# FPS = 60
+# CYCLE_NUM = 6
+# CYCLE_SEC = 0.6
+
+pekomon_file = "./img/carrot_pekomon_189_0_59_rev7.png"
 
 
 class BaseParam(NamedTuple):
@@ -141,17 +146,6 @@ def create_bg_dot_pattern(
     # img[inv_mask] = np.array([[[base_value, base_value, base_value]]])
     img = cv2.circle(img, center, radius_out, fg_color, -1)
     img = cv2.circle(img, center, radius_in, edge_color, -1)
-
-    icon = cv2.imread(
-        "./img/GitHubIcon.png", cv2.IMREAD_UNCHANGED) / 255
-    icon = (icon ** 2.2)
-    shape = icon.shape
-    b, g, r, a = np.dsplit(icon, 4)
-    icon = np.dstack((r, g, b, a)).reshape((shape))
-    dsize = (int(radius_in * 1.6), int(radius_in * 1.6))
-    icon = cv2.resize(icon, dsize=dsize)
-    pos = [(width//2 - dsize[0]//2), (height//2 - dsize[1]//2)]
-    # tpg.merge_with_alpha2(img, icon, pos=pos)
 
     img_non_linear = np.uint16(tf.oetf(np.clip(img, 0, 1), tf.SRGB) * 0xFFFF)
 
@@ -445,7 +439,39 @@ def crop_and_move_h_189_0_59():
     )
     pos_list = calc_pos_list(bp=bp)
 
-    base_dir = "/work/overuse/2021/14_optical_illusion/pekomon_rev01/"
+    base_dir = "/work/overuse/2021/14_optical_illusion/pekomon_rev02/"
+    fname_base = base_dir + "pekomon_{prefix}_{idx:04d}.png"
+
+    for idx in range(len(pos_list)):
+        out_img = trim_image(
+            base_img=img, idx=idx, pos_list=pos_list, bp=bp)        
+        fname = fname_base.format(prefix="hhh", idx=idx)
+        print(fname)
+        tpg.img_write(fname, out_img)
+
+
+def crop_and_move_h_with_edge():
+    img = tpg.img_read("./img/carrot_pekomon_with_edge.png")
+    width = img.shape[1]
+    height = img.shape[0]
+
+    amp_rate = 0.05
+    base_width = int(width * (1 + amp_rate * 3 + 0.01) + 0.9999) & 0xFFF0
+    rate = base_width / width
+    base_height = int(height * rate)
+
+    img = cv2.resize(img, (base_width, base_height))
+
+    bp = BaseParam(
+        amp=int(width * amp_rate),
+        dst_width=width,
+        dst_height=height,
+        width=base_width,
+        height=base_height,
+    )
+    pos_list = calc_pos_list(bp=bp)
+
+    base_dir = "/work/overuse/2021/14_optical_illusion/pekomon_no_sakushi/"
     fname_base = base_dir + "pekomon_{prefix}_{idx:04d}.png"
 
     for idx in range(len(pos_list)):
@@ -483,9 +509,59 @@ def crop_and_move_v_189_0_59():
     for idx in range(len(pos_list)):
         out_img = trim_image(
             base_img=img, idx=idx, pos_list=pos_list, bp=bp)        
-        fname = fname_base.format(prefix="vvv", idx=idx)
+        fname = fname_base.format(prefix="with_edge", idx=idx)
         print(fname)
         tpg.img_write(fname, out_img)
+
+
+def create_demo():
+    height = 1920
+    width = 1080
+    radius_out = 130
+    radius_in = 70
+    amp = 30
+
+    bp = BaseParam(
+        amp=amp,
+        dot_pattern_rate=12,
+        radius_out=radius_out,
+        radius_in=radius_in,
+        dst_width=width//2,
+        dst_height=height//6,
+        width=width,
+        height=height,
+        tile_v_num=3,
+        tile_h_num=1,
+        fname_prefix=f"amp-{amp}_r-out-{radius_out}_r-in-{radius_in}"
+    )
+    fg_color = tf.eotf(np.array([189, 0, 59]) / 255, tf.SRGB)
+    edge_color_list = np.array(
+        [[94, 94, 94], [132, 132, 132], [235, 235, 235]]) / 255
+    edge_color_list = tf.eotf(edge_color_list, tf.SRGB)
+    pos_list = calc_pos_list(bp=bp)
+
+    for f_idx in range(len(pos_list)):
+        v_img_buf = []
+        for v_idx in range(bp.tile_v_num):
+            h_img_buf = []
+            for h_idx in range(bp.tile_h_num):
+                c_idx = v_idx * bp.tile_h_num + h_idx
+                base_img = create_bg_dot_pattern(
+                    width=bp.width, height=bp.height,
+                    dot_pattern_rate=bp.dot_pattern_rate,
+                    radius_out=bp.radius_out, radius_in=bp.radius_in,
+                    fg_color=fg_color, edge_color=edge_color_list[c_idx])
+                img = trim_image(
+                    base_img=base_img, idx=f_idx, pos_list=pos_list, bp=bp)
+                h_img_buf.append(img)
+            v_img_buf.append(np.hstack(h_img_buf))
+
+        out_img = np.vstack(v_img_buf)
+        base_dir = "/work/overuse/2021/14_optical_illusion/illusion_demo/"
+        fname_base = base_dir + "demo_{prefix}_{idx:04d}.png"
+        fname = fname_base.format(prefix=bp.fname_prefix, idx=f_idx)
+        print(fname)
+        tpg.img_write(fname, out_img, comp_val=7)
 
 
 if __name__ == '__main__':
@@ -496,5 +572,7 @@ if __name__ == '__main__':
     # ed_frame = int(sys.argv[2])
     # create_multi_color_movie_sample(st_frame, ed_frame)
     # create_bg_189_0_59()
-    crop_and_move_h_189_0_59()
-    crop_and_move_v_189_0_59()
+    # crop_and_move_h_189_0_59()
+    # crop_and_move_v_189_0_59()
+    # crop_and_move_h_with_edge()
+    create_demo()
