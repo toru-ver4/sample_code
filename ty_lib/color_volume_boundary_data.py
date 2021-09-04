@@ -323,7 +323,7 @@ class GamutBoundaryData():
         outline_data = self._calc_outline_data(
             ab_plane_div_num=ab_plane_div_num, rad_rate=rad_rate,
             l_step=l_step)
-        return self._conv_Lab_to_abL(outline_data)  
+        return self._conv_Lab_to_abL(outline_data)
 
 
 def is_inner_gamut_xyY(xyY, color_space_name=cs.BT2020, white=cs.D65):

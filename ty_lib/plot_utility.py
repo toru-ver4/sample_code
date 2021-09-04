@@ -10,8 +10,6 @@ plot補助ツール群
 * [Customizing matplotlib](http://matplotlib.org/users/customizing.html)
 
 """
-
-from copy import Error
 import numpy as np
 from matplotlib import ticker
 import matplotlib.pyplot as plt
@@ -263,12 +261,12 @@ def plot_xyY_with_scatter3D(
         alpha value.
     """
     if color == 'rgb':
-        color = calc_rgb_from_xyY_for_mpl(
+        color2 = calc_rgb_from_xyY_for_mpl(
             xyY=xyY, color_space_name=color_space_name, oetf_str=oetf_str)
     else:
-        color = color
+        color2 = color
     x, y, z = cs.split_tristimulus_values(xyY)
-    ax.scatter3D(x, y, z, s=ms, c=color, alpha=alpha)
+    ax.scatter3D(x, y, z, s=ms, c=color2, alpha=alpha)
 
 
 def plot_xyY_with_gl_GLScatterPlotItem(
@@ -415,8 +413,6 @@ def plot_1_graph(fontsize=20, **kwargs):
 
     if _exist_key('graph_title', **kwargs):
         ax1.set_title(kwargs['graph_title'])
-    else:
-        ax1.set_title("Title")
 
     if _exist_key('xlabel', **kwargs):
         ax1.set_xlabel(kwargs['xlabel'])
@@ -567,7 +563,8 @@ def plot_3d_init(
     plt.rcParams['grid.color'] = grid_color if grid_color else text_color
     fig = plt.figure(figsize=figsize)
     plt.gca().patch.set_facecolor(face_color)
-    ax = Axes3D(fig)
+    # ax = Axes3D(fig)
+    ax = fig.add_subplot(projection='3d')
     ax.set_facecolor(face_color)
     ax.w_xaxis.set_pane_color(plane_color)
     ax.w_yaxis.set_pane_color(plane_color)
@@ -590,7 +587,7 @@ def plot_3d_init(
     return fig, ax
 
 
-def show_and_save(fig, legend_loc='upper right', save_fname=None, show=True):
+def show_and_save(fig, legend_loc='upper right', save_fname=None, show=False):
     if legend_loc is not None:
         plt.legend(loc=legend_loc)
 
