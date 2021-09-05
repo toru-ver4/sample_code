@@ -8,12 +8,10 @@
 import os
 from pathlib import Path
 from colour.models.cie_lab import LCHab_to_Lab
-from matplotlib.pyplot import arrow
 
 # import third-party libraries
 import numpy as np
 from colour.utilities import tstack
-from numpy.core.shape_base import stack
 from multiprocessing import Pool, cpu_count
 
 # import my libraries
@@ -21,7 +19,7 @@ import plot_utility as pu
 import color_space as cs
 from create_gamut_booundary_lut import TyLchLut, calc_chroma_boundary_lut
 from color_space_plot import create_valid_cielab_ab_plane_image_gm24
-from color_volume_boundary_data import GamutBoundaryData
+from jzazbz import jzczhz_to_jzazbz, jzazbz_to_large_xyz
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -38,6 +36,12 @@ i_asset_dir = "/work/overuse/2021/14_optical_illusion/intermediate/"
 
 def get_cielab_bg_lut_name(color_space_name=cs.BT709):
     return f"./lut/lut_sample_1024_1024_32768_{color_space_name}.npy"
+
+
+def get_jzazbz_bg_lut_name(color_space_name=cs.BT709, luminance=100):
+    fname = f"./lut/JzChz_gb-lut_type3_{color_space_name}_{luminance}nits"
+    fname += "_jj-1024_hh-4096.npy"
+    return fname
 
 
 def hue_deg_to_boundary_ab(l_val, hue_deg, color_space_name=cs.BT709):
@@ -386,6 +390,73 @@ def plot_gamut_boundary_cielab_core(idx):
         fig=fig, legend_loc=None, save_fname=fname, show=False)
 
 
+def thread_wrapper_plot_gamut_boundary_jzazbz_core(args):
+    plot_gamut_boundary_jzazbz_core(**args)
+
+
+def plot_gamut_boundary_jzazbz():
+    idx_num = 360
+
+    total_process_num = idx_num
+    block_process_num = cpu_count() // 2
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            main_index = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={main_index}")  # User
+            if main_index >= total_process_num:                         # User
+                break
+            d = dict(idx=main_index)
+            args.append(d)
+        #     break
+        # break
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_plot_gamut_boundary_jzazbz_core, args)
+
+
+def plot_gamut_boundary_jzazbz_core(idx=0):
+    color_space_name = cs.BT709
+    luminance = 100
+    jzczhz_lut = np.load(
+        get_jzazbz_bg_lut_name(
+            color_space_name=color_space_name, luminance=luminance))
+    jzazbz_lut = jzczhz_to_jzazbz(jzczhz_lut).reshape(1024*4096, 3)
+    jzazbz = jzazbz_lut
+    azbzczjz = _conv_Lab_to_abL(Lab=jzazbz)
+    rgb = cs.jzazbz_to_rgb(
+        jzazbz=jzazbz, color_space_name=color_space_name,
+        luminance=luminance)
+    rgb_gm24 = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
+
+    fig, ax = pu.plot_3d_init(
+        figsize=(10, 10),
+        title="Jzazbz BT.709 Gamut Boundary",
+        title_font_size=18,
+        face_color=(0.1, 0.1, 0.1),
+        plane_color=(0.2, 0.2, 0.2, 1.0),
+        text_color=(0.5, 0.5, 0.5),
+        grid_color=(0.3, 0.3, 0.3),
+        x_label="a",
+        y_label="b",
+        z_label="L*",
+        xlim=[-0.21, 0.21],
+        ylim=[-0.21, 0.21],
+        zlim=[-0.02, 0.2])
+    pu.plot_xyY_with_scatter3D(ax, azbzczjz, color=rgb_gm24)
+    ax.view_init(elev=20, azim=-120+idx)
+    fname = "/work/overuse/2021/15_2_pass_gamut_boundary/img_seq_jzazbz/"
+    fname += f"jzazbz_3d_bg709_{idx:04d}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc=None, save_fname=fname, show=False)
+
+
+def plot_color_volume_cielab_rough(grid=8, idx=0):
+    pass
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # hue_deg_list = np.linspace(0, 360, 16, endpoint=False)
@@ -396,4 +467,6 @@ if __name__ == '__main__':
     # plot_ab_plane_with_rough_lut(grid=16)
     # plot_ab_plane_with_rough_lut(grid=32)
     # plot_ab_plane_with_rough_lut(grid=64)
-    plot_gamut_boundary_cielab()
+    # plot_gamut_boundary_cielab()
+    # plot_gamut_boundary_jzazbz_core(idx=0)
+    plot_gamut_boundary_jzazbz()
