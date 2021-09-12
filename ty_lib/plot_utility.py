@@ -240,7 +240,7 @@ def add_alpha_channel_to_rgb(rgb, alpha=1.0):
 
 def plot_xyY_with_scatter3D(
         ax, xyY, ms=2, color_space_name=cs.BT709, color='rgb',
-        alpha=None, oetf_str=tf.GAMMA24):
+        alpha=None, oetf_str=tf.GAMMA24, edgecolors=None):
     """
     plot xyY data with ax.scatter3D.
 
@@ -266,7 +266,7 @@ def plot_xyY_with_scatter3D(
     else:
         color2 = color
     x, y, z = cs.split_tristimulus_values(xyY)
-    ax.scatter3D(x, y, z, s=ms, c=color2, alpha=alpha)
+    ax.scatter3D(x, y, z, s=ms, c=color2, alpha=alpha, edgecolors=edgecolors)
 
 
 def plot_xyY_with_gl_GLScatterPlotItem(
@@ -298,17 +298,17 @@ def plot_xyY_with_gl_GLScatterPlotItem(
 
 
 class Arrow3D(FancyArrowPatch):
-    def __init__(self, x, y, z, dx, dy, dz, *args, **kwargs):
+    # def __init__(self, x, y, z, dx, dy, dz, *args, **kwargs):
+    def __init__(self, x1, y1, z1, x2, y2, z2, *args, **kwargs):
         super().__init__((0, 0), (0, 0), *args, **kwargs)
-        self._xyz = (x, y, z)
-        self._dxdydz = (dx, dy, dz)
+        self._xyz1 = (x1, y1, z1)
+        self._xyz2 = (x2, y2, z2)
 
     def draw(self, renderer):
-        x1, y1, z1 = self._xyz
-        dx, dy, dz = self._dxdydz
-        x2, y2, z2 = (x1 + dx, y1 + dy, z1 + dz)
+        x1, y1, z1 = self._xyz1
+        x2, y2, z2 = self._xyz2
 
-        xs, ys, zs = proj_transform((x1, x2), (y1, y2), (z1, z2), renderer.M)
+        xs, ys, zs = proj_transform((x1, x2), (y1, y2), (z1, z2), self.axes.M)
         self.set_positions((xs[0], ys[0]), (xs[1], ys[1]))
         super().draw(renderer)
 
@@ -441,7 +441,7 @@ def plot_1_graph(fontsize=20, **kwargs):
             axis='y', which='minor', length=0.0, grid_linestyle='--')
 
     if _exist_key('bg_color', **kwargs):
-        print(f"bg_color = {kwargs['bg_color']}")
+        # print(f"bg_color = {kwargs['bg_color']}")
         ax1.set_facecolor(kwargs['bg_color'])
     else:
         ax1.set_facecolor((0.96, 0.96, 0.96))
@@ -562,9 +562,9 @@ def plot_3d_init(
         pass
     plt.rcParams['grid.color'] = grid_color if grid_color else text_color
     fig = plt.figure(figsize=figsize)
-    plt.gca().patch.set_facecolor(face_color)
+    # plt.gca().patch.set_facecolor(face_color)
     # ax = Axes3D(fig)
-    ax = fig.add_subplot(projection='3d')
+    ax = fig.add_subplot(1, 1, 1, projection='3d')
     ax.set_facecolor(face_color)
     ax.w_xaxis.set_pane_color(plane_color)
     ax.w_yaxis.set_pane_color(plane_color)

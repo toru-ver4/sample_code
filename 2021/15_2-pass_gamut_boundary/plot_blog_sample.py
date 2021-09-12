@@ -17,7 +17,8 @@ from multiprocessing import Pool, cpu_count
 # import my libraries
 import plot_utility as pu
 import color_space as cs
-from create_gamut_booundary_lut import TyLchLut, calc_chroma_boundary_lut
+from create_gamut_booundary_lut import TyLchLut, calc_chroma_boundary_lut,\
+    is_out_of_gamut_rgb
 from color_space_plot import create_valid_cielab_ab_plane_image_gm24
 from jzazbz import jzczhz_to_jzazbz, jzazbz_to_large_xyz
 
@@ -90,59 +91,91 @@ def plot_arc_for_hue_deg(ax1, hue_deg=60, radius=10):
 
     plot_annotate_line(
         ax1, st_pos=st_pos, ed_pos=ed_pos, color=(0.1, 0.1, 0.1),
-        is_arrow=True, is_curve=True, is_negative=is_negative)
+        is_curve=True, is_negative=is_negative)
 
 
-def plot_annnotate_text_for_hue_deg(ax1, hue_deg=60, radius=10, text=""):
+def plot_annnotate_text_for_hue_deg(
+        ax1, hue_deg=60, radius=10, text="",
+        rate=1.02, ha='right', va='center'):
     hue_deg_new = conv_deg_to_n180_p180(hue_deg)
     hue_rad = np.deg2rad(hue_deg_new / 2)
-    st_pos = (radius * np.cos(hue_rad), radius * np.sin(hue_rad))
+    pos = (radius * np.cos(hue_rad), radius * np.sin(hue_rad))
 
-    plot_annotate_line(
-        ax1=ax1, st_pos=st_pos, color=(0.1, 0.1, 0.1),
-        is_line=False, text=text)
+    # plot_annotate_line(
+    #     ax1=ax1, st_pos=st_pos, color=(0.1, 0.1, 0.1), text=text)
+    plot_annotate_text_only(
+        ax1=ax1, pos=pos, text=text, rate=rate, ha=ha, va=va)
 
 
 def plot_annotate_line(
         ax1, st_pos=(0, 0), ed_pos=(0, 0), color=(0.1, 0.1, 0.1),
         arrowstyle='-|>', linestyle='-', is_curve=False, is_negative=False,
-        text="", scale_rate=1.0, width=1):
+        text=None, alpha=1.0):
     rad = 0.6
-    # if is_line:
-    #     if is_arrow:
-    #         headwidth = 12 * scale_rate
-    #         headlength = 16 * scale_rate
-    #     else:
-    #         headwidth = width
-    #         headlength = 0.00001
-    # else:
-    #     headwidth = 0
-    #     headlength = 0
-
     if is_curve:
         if is_negative:
             connectionstyle = f"arc3,rad=-{rad}"
         else:
             connectionstyle = f"arc3,rad={rad}"
-
     else:
         connectionstyle = None
 
     arrowprops = dict(
         facecolor='#000000',
-        # headwidth=headwidth, headlength=headlength,
         arrowstyle=arrowstyle, linestyle=linestyle,
-        alpha=1.0, connectionstyle=connectionstyle,
+        alpha=alpha, connectionstyle=connectionstyle,
     )
     arrowprops['facecolor'] = np.array(color)
     ax1.annotate(
         text=text, xy=ed_pos, xytext=st_pos, xycoords='data',
         textcoords='data', ha='center', va='center',
         arrowprops=arrowprops)
-    # ax1.annotate(
-    #     "", xy=ed_pos, xytext=st_pos, xycoords='data',
-    #     textcoords='data', ha='left', va='bottom',
-    #     arrowstyle=None)
+
+
+def plot_annotate_text_only(
+        ax1=None, pos=(0, 0), text="hoge", rate=1.01, ha='left', va='bottom'):
+    x_min, x_max = ax1.get_xlim()
+    x_len = x_max - x_min
+    y_min, y_max = ax1.get_ylim()
+    y_len = y_max - y_min
+
+    text_x = pos[0]
+    text_y = pos[1]
+    if ha == 'left':
+        text_x += x_len * (rate - 1)
+    elif ha == 'right':
+        text_x -= x_len * (rate - 1)
+    else:
+        None
+
+    if va == 'bottom':
+        text_y += y_len * (rate - 1)
+    elif va == 'top':
+        text_y -= y_len * (rate - 1)
+
+    ax1.annotate(text, xy=pos, xytext=(text_x, text_y), ha=ha, va=va)
+
+
+def hue_chroma_to_ab(hue_deg=180, chroma=60):
+    """
+    Examples
+    --------
+    >>> hue_chroma_to_ab(hue_deg=180, chroma=60)
+    -60.0, 7.3478807948841199e-15
+    >>> hue_deg = np.linspace(0, 360, 8)
+    >>> chroma = np.linspace(50, 100, 8)
+    >>> hue_chroma_to_ab(hue_deg=hue_deg, chroma=chroma)
+    [50., 35.62798868, -14.30491718, -64.35491914, -70.79041105,
+     -19.07322291,   57.8954816 ,  100.],
+    [0.00000000e+00, 4.46760847e+01, 6.26739372e+01, 3.09916957e+01,
+     -3.40908652e+01, -8.35652496e+01, -7.25986377e+01,  -2.44929360e-14]
+    """
+    rad = np.deg2rad(hue_deg)
+
+    a = chroma * np.cos(rad)
+    b = chroma * np.sin(rad)
+
+    return a, b
 
 
 def plot_ab_plane(l_val=70, hue_deg=0):
@@ -360,10 +393,6 @@ def plot_gamut_boundary_cielab_core(idx):
     lab_lut = LCHab_to_Lab(lch_lut).reshape(1024*1024, 3)
     lab = lab_lut
     abl = _conv_Lab_to_abL(Lab=lab)
-    # bgd = GamutBoundaryData(Lab=lab_lut)
-    # abl = bgd.get_outline_mesh_data_as_abL(
-    #     ab_plane_div_num=50, rad_rate=5, l_step=5)
-    # lab = bgd._conv_abL_to_Lab(abL=abl)
     rgb = cs.lab_to_rgb(lab=lab, color_space_name=cs.BT709)
     rgb_gm24 = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
 
@@ -453,8 +482,255 @@ def plot_gamut_boundary_jzazbz_core(idx=0):
         fig=fig, legend_loc=None, save_fname=fname, show=False)
 
 
-def plot_color_volume_cielab_rough(grid=8, idx=0):
-    pass
+def plot_color_volume_cielab_rough_core(grid=8, idx=0):
+    lut_name = f"./lut/2dlut_{grid}x{grid}.npy"
+    color_space_name = cs.BT709
+    lch_lut = np.load(lut_name)
+    lab_lut = LCHab_to_Lab(lch_lut)
+    lab = lab_lut
+    abl = _conv_Lab_to_abL(Lab=lab)
+    rgb = cs.lab_to_rgb(lab=lab, color_space_name=color_space_name)
+    rgb_gm24 = np.clip(rgb, 0.0, 1.0) ** (1/2.4)
+
+    fig, ax = pu.plot_3d_init(
+        figsize=(10, 10),
+        title=f"CIELAB BT.709 Gamut Boundary ({grid}x{grid} 2DLUT)",
+        title_font_size=18,
+        face_color=(0.1, 0.1, 0.1),
+        plane_color=(0.2, 0.2, 0.2, 1.0),
+        text_color=(0.5, 0.5, 0.5),
+        grid_color=(0.3, 0.3, 0.3),
+        x_label="a",
+        y_label="b",
+        z_label="L*",
+        xlim=[-120, 120],
+        ylim=[-120, 120],
+        zlim=[-5, 105])
+
+    for l_idx in range(grid):
+        abl_l_idx = abl[l_idx]
+        rgb_l_idx = rgb_gm24[l_idx]
+        pu.plot_xyY_with_scatter3D(
+            ax, abl_l_idx, color=rgb_l_idx, ms=50, edgecolors='k')
+
+        for h_idx in range(len(abl_l_idx)):
+            ax.arrow3D(
+                0, 0, abl_l_idx[h_idx, 2],
+                abl_l_idx[h_idx, 0],
+                abl_l_idx[h_idx, 1],
+                abl_l_idx[h_idx, 2],
+                mutation_scale=16, arrowstyle="-", linestyle='--')
+    ax.view_init(elev=20, azim=-120+idx)
+    fname = "/work/overuse/2021/15_2_pass_gamut_boundary/3d_rough_lut/"
+    fname += f"cielab_3d_rough_bg709_grid-{grid}_{idx:04d}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc=None, save_fname=fname, show=False)
+
+
+def thread_wrapper_plot_color_volume_cielab_rough_core(args):
+    plot_color_volume_cielab_rough_core(**args)
+
+
+def plot_color_volume_cielab_rough(grid=8):
+    idx_num = 360
+
+    total_process_num = idx_num
+    block_process_num = cpu_count() // 2
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            main_index = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={main_index}")  # User
+            if main_index >= total_process_num:                         # User
+                break
+            d = dict(grid=grid, idx=main_index)
+            args.append(d)
+            # plot_color_volume_cielab_rough_core(**d)
+        #     break
+        # break
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_plot_color_volume_cielab_rough_core, args)
+
+
+def calc_chroma_candidate_list(
+        r_val_init=160, lightness=100, hue_sample=8, cs_name=cs.BT709):
+    """
+    """
+    # lch --> rgb
+    trial_num = 30
+
+    hue = np.linspace(0, 2*np.pi, hue_sample)
+    r_val = r_val_init * np.ones_like(hue)
+    r_temp = np.zeros((trial_num + 1, hue_sample))
+    r_temp[0] = r_val_init
+    ll = lightness * np.ones_like(hue)
+
+    for t_idx in range(trial_num):
+        aa = r_val * np.cos(hue)
+        bb = r_val * np.sin(hue)
+        lab = tstack((ll, aa, bb))
+        rgb = cs.lab_to_rgb(lab=lab, color_space_name=cs_name)
+
+        ng_idx = is_out_of_gamut_rgb(rgb=rgb)
+        ok_idx = np.logical_not(ng_idx)
+        add_sub = r_val_init / (2 ** (t_idx + 1))
+        r_val[ok_idx] = r_val[ok_idx] + add_sub
+        r_val[~ok_idx] = r_val[~ok_idx] - add_sub
+        r_temp[t_idx + 1] = r_val
+
+    # jzczhz = tstack([jj, r_val, np.rad2deg(hue)])
+
+    return r_temp
+
+
+def plot_length_line_marker(
+        ax1, aa_list, bb_list, idx_list=[-1, 2, 4], offset_x=0, offset_y=0):
+    plot_length_line_marker_core(
+        ax1, aa_list, bb_list, idx_list[0], idx_list[1], offset_x, offset_y)
+    plot_length_line_marker_core(
+        ax1, aa_list, bb_list, idx_list[1], idx_list[2], offset_x, offset_y)
+
+    for idx in idx_list:
+        plot_vertical_aux_line(
+            ax1, aa_list, bb_list, idx, offset_x, offset_y)
+
+
+def plot_length_line_marker_core(
+        ax1, aa_list, bb_list, list_idx1, list_idx2, offset_x, offset_y):
+    if list_idx1 < 0:
+        base_x = 0
+        base_y = 0
+    else:
+        base_x = aa_list[list_idx1]
+        base_y = bb_list[list_idx1]
+    plot_annotate_line(
+        ax1=ax1,
+        st_pos=(base_x+offset_x, base_y+offset_y),
+        ed_pos=(aa_list[list_idx2]+offset_x, bb_list[list_idx2]+offset_y),
+        color=(0.1, 0.1, 0.1), arrowstyle='<->')
+
+
+def plot_vertical_aux_line(
+        ax1, aa_list, bb_list, list_idx, offset_x, offset_y):
+    if list_idx < 0:
+        base_x = 0
+        base_y = 0
+    else:
+        base_x = aa_list[list_idx]
+        base_y = bb_list[list_idx]
+
+    plot_annotate_line(
+        ax1=ax1,
+        st_pos=(base_x, base_y),
+        ed_pos=(base_x+offset_x, base_y+offset_y),
+        color=(0.1, 0.1, 0.1), arrowstyle='-', linestyle='--')
+
+
+def plot_method_a(grid=8, hue_idx=1):
+    hue_sample = grid
+    chroma_init = 140
+    h_val = np.linspace(0, 360, hue_sample)[hue_idx]
+    x_max = int(chroma_init * np.cos(np.deg2rad(h_val)) * 1.2)
+    y_max = int(chroma_init * np.sin(np.deg2rad(h_val)) * 1.2)
+    xy_max = max([x_max, y_max])
+    l_val_dummy = 70
+    lut_name = f"./lut/2dlut_{grid}x{grid}.npy"
+    cs_name = cs.BT709
+    ops_bak = np.get_printoptions()
+    np.set_printoptions(precision=1)
+    np.set_printoptions(**ops_bak)
+
+    lut = np.load(lut_name)
+    np.set_printoptions(precision=2)
+    lightness_idx = int(round(l_val_dummy / (100 / (grid - 1))))
+    print(f"lightness_idx = {lightness_idx}")
+    l_val_lut = lut[lightness_idx][..., 0]
+    l_val = l_val_lut[0]
+
+    ab_max = 80
+    ab_sample = 1024
+
+    bl = 0.96 ** 2.4  # background luminance
+    rgb_img = create_valid_cielab_ab_plane_image_gm24(
+        l_val=l_val, ab_max=ab_max, ab_sample=ab_sample,
+        color_space_name=cs_name,
+        bg_rgb_luminance=np.array([bl, bl, bl]))
+
+    cc_list = calc_chroma_candidate_list(
+        r_val_init=chroma_init, lightness=l_val, hue_sample=grid,
+        cs_name=cs.BT709)[..., hue_idx]
+    # aa_list = cc_list * np.cos(np.deg2rad(h_val))
+    # bb_list = cc_list * np.sin(np.deg2rad(h_val))
+    aa_list, bb_list = hue_chroma_to_ab(hue_deg=h_val, chroma=cc_list)
+
+    title = f"a-b plane (L*={l_val:.2f}, Grid={grid}x{grid}, Gamut={cs_name})"
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=title,
+        graph_title_size=None,
+        xlabel="a", ylabel="b",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[-xy_max, xy_max],
+        ylim=[-xy_max, xy_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.imshow(
+        rgb_img, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
+
+    ms = 8
+    text_rate = 1.02
+    ax1.plot(aa_list[:4], bb_list[:4], 'ko', ms=ms)
+
+    plot_annotate_line(
+        ax1=ax1, st_pos=(0, 0), ed_pos=(xy_max, 0), color=(0.1, 0.1, 0.1),
+        arrowstyle='-')
+
+    plot_annotate_line(
+        ax1=ax1, st_pos=(0, 0), ed_pos=(aa_list[0], bb_list[0]),
+        color=(0.1, 0.1, 0.1), arrowstyle='-')
+
+    plot_annotate_text_only(
+        ax1=ax1, pos=(aa_list[0], bb_list[0]), rate=text_rate,
+        text=r"$P_{i,k}$", ha='left', va='center')
+    plot_annotate_text_only(
+        ax1=ax1, pos=(aa_list[1], bb_list[1]), rate=text_rate,
+        text=r"$P_{i,k+1}$", ha='left', va='center')
+    plot_annotate_text_only(
+        ax1=ax1, pos=(aa_list[2], bb_list[2]), rate=text_rate,
+        text=r"$P_{i,k+2}$", ha='left', va='center')
+    plot_annotate_text_only(
+        ax1=ax1, pos=(aa_list[3], bb_list[3]), rate=text_rate,
+        text=r"$P_{i,k+3}$", ha='left', va='center')
+
+    radius = 20
+    plot_arc_for_hue_deg(ax1=ax1, hue_deg=h_val, radius=radius)
+    plot_annnotate_text_for_hue_deg(
+        ax1, hue_deg=h_val, radius=radius, text=r"$h^{*}_{i}$",
+        rate=text_rate, ha='left', va='center')
+
+    line_dist_list = [21, 14, 7]
+    idx_list_list = [[-1, 1, 0], [-1, 2, 1], [1, 3, 2]]
+
+    for line_dist, idx_list in zip(line_dist_list, idx_list_list):
+        offset_x, offset_y = hue_chroma_to_ab(
+            hue_deg=h_val+90, chroma=line_dist)
+        plot_length_line_marker(
+            ax1, aa_list, bb_list, idx_list, offset_x, offset_y)
+
+    pu.show_and_save(
+        fig=fig, legend_loc=None, show=False,
+        save_fname=f"./img/medhod_a_{grid}x{grid}_h-{hue_idx}.png")
 
 
 if __name__ == '__main__':
@@ -469,4 +745,16 @@ if __name__ == '__main__':
     # plot_ab_plane_with_rough_lut(grid=64)
     # plot_gamut_boundary_cielab()
     # plot_gamut_boundary_jzazbz_core(idx=0)
-    plot_gamut_boundary_jzazbz()
+    # plot_gamut_boundary_jzazbz()
+    # plot_color_volume_cielab_rough_core(grid=8, idx=0)
+    # plot_color_volume_cielab_rough_core(grid=16, idx=0)
+    # plot_color_volume_cielab_rough_core(grid=32, idx=0)
+    # plot_color_volume_cielab_rough_core(grid=64, idx=0)
+    # plot_color_volume_cielab_rough(grid=8)
+    # plot_color_volume_cielab_rough(grid=16)
+    # plot_color_volume_cielab_rough(grid=32)
+    # plot_color_volume_cielab_rough(grid=64)
+    plot_method_a(grid=8, hue_idx=1)
+    # r_temp = calc_chroma_candidate_list(
+    #     r_val_init=160, lightness=71.4, hue_sample=8, cs_name=cs.BT709)
+    # print(r_temp[..., 1])

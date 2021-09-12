@@ -50,10 +50,6 @@ def create_valid_cielab_ab_plane_image_gm24(
     """
     aa_base = np.linspace(-ab_max, ab_max, ab_sample)
     bb_base = np.linspace(-ab_max, ab_max, ab_sample)
-    # aa = aa_base.reshape((1, ab_sample))\
-    #     * np.ones_like(bb_base).reshape((ab_sample, 1))
-    # bb = bb_base.reshape((ab_sample, 1))\
-    #     * np.ones_like(aa_base).reshape((1, ab_sample))
     aa = aa_base.reshape(-1, ab_sample).repeat(ab_sample, axis=0)
     bb = bb_base.reshape(ab_sample, -1).repeat(ab_sample, axis=1)
 
