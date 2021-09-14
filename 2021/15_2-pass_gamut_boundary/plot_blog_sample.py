@@ -786,6 +786,9 @@ def cielab_method_b_ng_plot():
         save_fname="./img/method_b_cielab_ng.png")
 
 
+def 
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # hue_deg_list = np.linspace(0, 360, 16, endpoint=False)
@@ -811,4 +814,4 @@ if __name__ == '__main__':
     # r_temp = calc_chroma_candidate_list(
     #     r_val_init=160, lightness=71.4, hue_sample=8, cs_name=cs.BT709)
     # print(r_temp[..., 1])
-    cielab_method_b_ng_plot()
+    # cielab_method_b_ng_plot()
