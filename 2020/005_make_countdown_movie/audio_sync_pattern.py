@@ -150,7 +150,13 @@ def create_frame_marker_list(
         width=1920, height=1080, fps=60, padding=96, block_height=52,
         marker_st_pos_v=800,
         fg_color=None, bg_color=None, center_color=None):
-    block_width = int(((width - padding * 2) / fps)) // 2
+
+    if (width == 2048) or (width == 1920):
+        m_width = 1920
+    elif (width == 4096) or (width == 3840):
+        m_width = 3840
+
+    block_width = int(((m_width - padding * 2) / fps)) // 2
     margin = block_width
 
     frame_marker_list = create_pos_list(

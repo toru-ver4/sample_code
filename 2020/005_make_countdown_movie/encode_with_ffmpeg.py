@@ -22,7 +22,7 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
 
-REVISION = 7
+REVISION = 8
 SRC_DIR = "D:/abuse/2020/005_make_countdown_movie/movie_seq/"
 DST_DIR = "D:/abuse/2020/005_make_countdown_movie/ffmpeg_out/"
 
@@ -64,7 +64,7 @@ def encode_sdr_444(width, height, fps, dr):
     ]
     args = [cmd] + ops
     print(" ".join(args))
-    # subprocess.run(args)
+    subprocess.run(args)
 
 
 def encode_sdr_420(width, height, fps, dr):
@@ -114,7 +114,7 @@ def encode_hdr_444(width, height, fps, dr):
     ]
     args = [cmd] + ops
     print(" ".join(args))
-    # subprocess.run(args)
+    subprocess.run(args)
 
 
 def encode_hdr_420(width, height, fps, dr):
@@ -143,7 +143,7 @@ def encode_hdr_420(width, height, fps, dr):
 
 
 def encode_each_data():
-    resolution_list = [[1920, 1080], [3840, 2160]]
+    resolution_list = [[1920, 1080], [2048, 1080], [4096, 2160], [3840, 2160]]
     fps_list = [24, 30, 50, 60]
     dynamic_range_list = ['SDR', 'HDR']
     for resolution, fps, dynamic_range in product(
@@ -152,12 +152,12 @@ def encode_each_data():
         height = resolution[1]
         encode_sdr_444(
             width=width, height=height, fps=fps, dr=dynamic_range)
-        # encode_hdr_444(
-        #     width=width, height=height, fps=fps, dr=dynamic_range)
-        # encode_sdr_420(
-        #     width=width, height=height, fps=fps, dr=dynamic_range)
-        # encode_hdr_420(
-        #     width=width, height=height, fps=fps, dr=dynamic_range)
+        encode_hdr_444(
+            width=width, height=height, fps=fps, dr=dynamic_range)
+        encode_sdr_420(
+            width=width, height=height, fps=fps, dr=dynamic_range)
+        encode_hdr_420(
+            width=width, height=height, fps=fps, dr=dynamic_range)
 
 
 if __name__ == '__main__':

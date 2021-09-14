@@ -99,7 +99,8 @@ __all__ = []
 # added checker board pattern to distinguish 10bit.
 # REVISION = 5
 # REVISION = 6  # added 8bit-10bit identification pattern.
-REVISION = 7  # added audio-sync pattern
+# REVISION = 7  # added audio-sync pattern
+REVISION = 8  # added DCI-4K resolution
 
 
 SDR_BG_COLOR_PARAM = BackgroundImageColorParam(
@@ -160,6 +161,40 @@ BG_COODINATE_PARAM = BackgroundImageCoodinateParam(
     bit_8_10_id_pattern_width=360,
     bit_8_10_id_pattern_st_offset_v=200,
     bit_8_10_id_pattern_st_offset_h=100,
+    audio_sync_height=90 - 8,
+    audio_sync_st_pos_v=934,
+    audio_sync_marker_st_pos_v=950,
+    audio_sync_padding=100,
+    audio_snnc_block_height=56 - 8
+)
+
+
+BG_COODINATE_PARAM_DCI = BackgroundImageCoodinateParam(
+    width=2048,
+    height=1080,
+    crosscross_line_width=4,
+    outline_width=2,
+    ramp_pos_v_from_center=448,
+    ramp_width=1766,
+    ramp_height=56,
+    ramp_outline_width=4,
+    step_ramp_font_size=16,
+    step_ramp_font_offset_x=5,
+    step_ramp_font_offset_y=5,
+    sound_text_font_size=200,
+    sound_text_pos_offset_h=400,
+    sound_text_pos_offset_v=280,
+    info_text_font_size=25,
+    limited_text_font_size=96,
+    crosshatch_size=128,
+    dot_dropped_text_size=118,
+    dot_dropped_center_pos=1600+((2048-1920)//2),
+    lab_patch_each_size=48,
+    even_odd_info_text_size=16,
+    ramp_10bit_info_text_size=22,
+    bit_8_10_id_pattern_width=360,
+    bit_8_10_id_pattern_st_offset_v=200,
+    bit_8_10_id_pattern_st_offset_h=100+((2048-1920)//2),
     audio_sync_height=90 - 8,
     audio_sync_st_pos_v=934,
     audio_sync_marker_st_pos_v=950,
@@ -270,7 +305,10 @@ def composite_sequence(
         dynamic_range, bg_image.shape[1], bg_image.shape[0],
         count_down_seq_maker.fps, counter)
     print(fname)
-    cv2.imwrite(fname, np.uint16(np.round(img[..., ::-1] * 0xFFFF)))
+    # cv2.imwrite(fname, np.uint16(np.round(img[..., ::-1] * 0xFFFF)))
+    cv2.imwrite(
+        fname, np.uint16(np.round(img[..., ::-1] * 65340)),
+        [cv2.IMWRITE_PNG_COMPRESSION, 7])
 
 
 def thread_wrapper_composite_sequence(args):
@@ -361,11 +399,11 @@ def make_countdown_movie(
                 bg_image=bg_image.copy(), merge_st_pos=merge_st_pos,
                 dynamic_range=dynamic_range)
             args.append(d)
-            composite_sequence(**d)
+            # composite_sequence(**d)
             counter += 1
             # break
-        # with Pool(cpu_count()) as pool:
-        #     pool.map(thread_wrapper_composite_sequence, args)
+        with Pool(cpu_count()) as pool:
+            pool.map(thread_wrapper_composite_sequence, args)
         # break
 
 
@@ -424,7 +462,6 @@ def make_sequence():
     # cd_coordinate_param_list = [
     #     COUNTDOWN_COORDINATE_PARAM_60P]
     for scale_factor in [1, 2]:
-    # for scale_factor in [1]:
         for cd_coordinate_param in cd_coordinate_param_list:
             make_countdown_movie(
                 bg_color_param=SDR_BG_COLOR_PARAM,
@@ -434,10 +471,24 @@ def make_sequence():
                 cd_coordinate_param=cd_coordinate_param,
                 scale_factor=scale_factor)
             make_countdown_movie(
+                bg_color_param=SDR_BG_COLOR_PARAM,
+                cd_color_param=SDR_COUNTDOWN_COLOR_PARAM,
+                dynamic_range='SDR',
+                bg_coordinate_param=BG_COODINATE_PARAM_DCI,
+                cd_coordinate_param=cd_coordinate_param,
+                scale_factor=scale_factor)
+            make_countdown_movie(
                 bg_color_param=HDR_BG_COLOR_PARAM,
                 cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
                 dynamic_range='HDR',
                 bg_coordinate_param=BG_COODINATE_PARAM,
+                cd_coordinate_param=cd_coordinate_param,
+                scale_factor=scale_factor)
+            make_countdown_movie(
+                bg_color_param=HDR_BG_COLOR_PARAM,
+                cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
+                dynamic_range='HDR',
+                bg_coordinate_param=BG_COODINATE_PARAM_DCI,
                 cd_coordinate_param=cd_coordinate_param,
                 scale_factor=scale_factor)
         # make_countdown_sound()
