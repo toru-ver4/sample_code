@@ -631,7 +631,7 @@ def plot_vertical_aux_line(
 
 def plot_method_a(grid=8, hue_idx=1):
     hue_sample = grid
-    chroma_init = 140
+    chroma_init = 100
     h_val = np.linspace(0, 360, hue_sample)[hue_idx]
     x_max = int(chroma_init * np.cos(np.deg2rad(h_val)) * 1.2)
     y_max = int(chroma_init * np.sin(np.deg2rad(h_val)) * 1.2)
@@ -677,8 +677,8 @@ def plot_method_a(grid=8, hue_idx=1):
         xlabel="a", ylabel="b",
         axis_label_size=None,
         legend_size=17,
-        xlim=[-xy_max, xy_max],
-        ylim=[-xy_max, xy_max],
+        xlim=[-80, xy_max],
+        ylim=[-80, xy_max],
         xtick=None,
         ytick=None,
         xtick_size=None, ytick_size=None,
@@ -702,25 +702,25 @@ def plot_method_a(grid=8, hue_idx=1):
 
     plot_annotate_text_only(
         ax1=ax1, pos=(aa_list[0], bb_list[0]), rate=text_rate,
-        text=r"$P_{i,k}$", ha='left', va='center')
+        text=r"$P_{j,k}$", ha='left', va='center')
     plot_annotate_text_only(
         ax1=ax1, pos=(aa_list[1], bb_list[1]), rate=text_rate,
-        text=r"$P_{i,k+1}$", ha='left', va='center')
+        text=r"$P_{j,k+1}$", ha='left', va='center')
     plot_annotate_text_only(
         ax1=ax1, pos=(aa_list[2], bb_list[2]), rate=text_rate,
-        text=r"$P_{i,k+2}$", ha='left', va='center')
+        text=r"$P_{j,k+2}$", ha='left', va='center')
     plot_annotate_text_only(
         ax1=ax1, pos=(aa_list[3], bb_list[3]), rate=text_rate,
-        text=r"$P_{i,k+3}$", ha='left', va='center')
+        text=r"$P_{j,k+3}$", ha='left', va='center')
 
-    radius = 20
+    radius = 13
     plot_arc_for_hue_deg(ax1=ax1, hue_deg=h_val, radius=radius)
     plot_annnotate_text_for_hue_deg(
-        ax1, hue_deg=h_val, radius=radius, text=r"$h^{*}_{i}$",
+        ax1, hue_deg=h_val, radius=radius, text=r"$h^{*}_{j}$",
         rate=text_rate, ha='left', va='center')
 
-    line_dist_list = [21, 14, 7]
-    idx_list_list = [[-1, 1, 0], [-1, 2, 1], [1, 3, 2]]
+    line_dist_list = [15, 10, 5]
+    idx_list_list = [[-1, 1, 0], [0, 2, 1], [1, 3, 2]]
 
     for line_dist, idx_list in zip(line_dist_list, idx_list_list):
         offset_x, offset_y = hue_chroma_to_ab(
@@ -731,6 +731,59 @@ def plot_method_a(grid=8, hue_idx=1):
     pu.show_and_save(
         fig=fig, legend_loc=None, show=False,
         save_fname=f"./img/medhod_a_{grid}x{grid}_h-{hue_idx}.png")
+
+
+def cielab_method_b_ng_plot():
+    l_val = 97
+    cs_name = cs.BT709
+    ab_max = 100
+    ab_sample = 2048
+    h_val = np.rad2deg(np.arctan2(90, -20)) + 0.2
+
+    bl = 0.7 ** 2.4  # background luminance
+    rgb_img = create_valid_cielab_ab_plane_image_gm24(
+        l_val=l_val, ab_max=ab_max, ab_sample=ab_sample,
+        color_space_name=cs_name,
+        bg_rgb_luminance=np.array([bl, bl, bl]))
+
+    title = f"a-b plane L*={l_val}, h*={h_val:.1f}°"
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=title,
+        graph_title_size=None,
+        xlabel="a", ylabel="b",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[-60, 60],
+        ylim=[-20, 100],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.grid(b=True, which='major', axis='both', color="#909090")
+    ax1.imshow(
+        rgb_img, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
+    a_end, b_end = hue_chroma_to_ab(hue_deg=h_val, chroma=102)
+    plot_annotate_line(
+        ax1=ax1, st_pos=(0, 0), ed_pos=(a_end, b_end), color=(0.1, 0.1, 0.1),
+        arrowstyle='-', linestyle='-')
+    plot_annotate_line(
+        ax1=ax1, st_pos=(0, 0), ed_pos=(60, 0), color=(0.1, 0.1, 0.1),
+        arrowstyle='-', linestyle='-')
+    radius = 6
+    plot_arc_for_hue_deg(ax1=ax1, hue_deg=h_val, radius=radius)
+    plot_annnotate_text_for_hue_deg(
+        ax1, hue_deg=h_val, radius=radius, text=r"$h^{*}$",
+        rate=1.03, ha='left', va='center')
+
+    pu.show_and_save(
+        fig=fig, legend_loc=None, show=False,
+        save_fname="./img/method_b_cielab_ng.png")
 
 
 if __name__ == '__main__':
@@ -754,7 +807,8 @@ if __name__ == '__main__':
     # plot_color_volume_cielab_rough(grid=16)
     # plot_color_volume_cielab_rough(grid=32)
     # plot_color_volume_cielab_rough(grid=64)
-    plot_method_a(grid=8, hue_idx=1)
+    # plot_method_a(grid=8, hue_idx=1)
     # r_temp = calc_chroma_candidate_list(
     #     r_val_init=160, lightness=71.4, hue_sample=8, cs_name=cs.BT709)
     # print(r_temp[..., 1])
+    cielab_method_b_ng_plot()
