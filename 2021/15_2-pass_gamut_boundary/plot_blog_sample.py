@@ -19,7 +19,8 @@ import plot_utility as pu
 import color_space as cs
 from create_gamut_booundary_lut import TyLchLut, calc_chroma_boundary_lut,\
     is_out_of_gamut_rgb
-from color_space_plot import create_valid_cielab_ab_plane_image_gm24
+from color_space_plot import create_valid_cielab_ab_plane_image_gm24,\
+    create_valid_jzazbz_ab_plane_image_gm24
 from jzazbz import jzczhz_to_jzazbz, jzazbz_to_large_xyz
 
 # information
@@ -121,11 +122,11 @@ def plot_annotate_line(
         connectionstyle = None
 
     arrowprops = dict(
-        facecolor='#000000',
+        facecolor=color,
+        edgecolor=color,
         arrowstyle=arrowstyle, linestyle=linestyle,
         alpha=alpha, connectionstyle=connectionstyle,
     )
-    arrowprops['facecolor'] = np.array(color)
     ax1.annotate(
         text=text, xy=ed_pos, xytext=st_pos, xycoords='data',
         textcoords='data', ha='center', va='center',
@@ -586,6 +587,37 @@ def calc_chroma_candidate_list(
     return r_temp
 
 
+def calc_chroma_candidate_list_method_c(
+        r_val_init=1.0, c0=0.5, lightness=100, hue_sample=8, cs_name=cs.BT709):
+    """
+    """
+    # lch --> rgb
+    trial_num = 20
+
+    hue = np.linspace(0, 2*np.pi, hue_sample)
+    r_val = r_val_init * np.ones_like(hue)
+    r_temp = np.zeros((trial_num + 1, hue_sample))
+    r_temp[0] = r_val_init
+    ll = lightness * np.ones_like(hue)
+
+    for t_idx in range(trial_num):
+        aa = r_val * np.cos(hue)
+        bb = r_val * np.sin(hue)
+        lab = tstack((ll, aa, bb))
+        rgb = cs.lab_to_rgb(lab=lab, color_space_name=cs_name)
+
+        ng_idx = is_out_of_gamut_rgb(rgb=rgb)
+        ok_idx = np.logical_not(ng_idx)
+        add_sub = c0 / (2 ** (t_idx + 0))  # NOT "t_idx + 1"
+        r_val[ok_idx] = r_val[ok_idx] + add_sub
+        r_val[~ok_idx] = r_val[~ok_idx] - add_sub
+        r_temp[t_idx + 1] = r_val
+
+    # jzczhz = tstack([jj, r_val, np.rad2deg(hue)])
+
+    return r_temp
+
+
 def plot_length_line_marker(
         ax1, aa_list, bb_list, idx_list=[-1, 2, 4], offset_x=0, offset_y=0):
     plot_length_line_marker_core(
@@ -733,7 +765,7 @@ def plot_method_a(grid=8, hue_idx=1):
         save_fname=f"./img/medhod_a_{grid}x{grid}_h-{hue_idx}.png")
 
 
-def cielab_method_b_ng_plot():
+def cielab_method_b_ng_plot_cielab():
     l_val = 97
     cs_name = cs.BT709
     ab_max = 100
@@ -786,7 +818,172 @@ def cielab_method_b_ng_plot():
         save_fname="./img/method_b_cielab_ng.png")
 
 
-def 
+def cielab_method_b_ng_plot_jzazbz(j_val=0.368):
+    # j_val = 0.368
+    cs_name = cs.BT709
+    ab_max = 0.35
+    ab_sample = 16384
+    h_val = 252.8
+
+    bl = 5000  # background luminance
+    rgb_img = create_valid_jzazbz_ab_plane_image_gm24(
+        j_val=j_val, ab_max=ab_max, ab_sample=ab_sample,
+        color_space_name=cs_name,
+        bg_rgb_luminance=np.array([bl, bl, bl]))
+
+    title = f"a-b plane Jz={j_val}, hz={h_val:.1f}°"
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=title,
+        graph_title_size=None,
+        xlabel="a", ylabel="b",
+        axis_label_size=None,
+        legend_size=17,
+        # xlim=[-0.15, 0.25],
+        # ylim=[-0.35, 0.05],
+        xlim=[-0.12, -0.05],
+        ylim=[-0.32, -0.25],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.grid(b=True, which='major', axis='both', color="#909090")
+    ax1.imshow(
+        rgb_img, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
+    a_end, b_end = hue_chroma_to_ab(hue_deg=h_val, chroma=0.33)
+    a_st, b_st = hue_chroma_to_ab(hue_deg=h_val, chroma=0.265)
+    plot_annotate_line(
+        ax1=ax1, st_pos=(a_st, b_st), ed_pos=(a_end, b_end),
+        color=(1.0, 0.3, 0.3), arrowstyle='-', linestyle='-')
+    plot_annotate_line(
+        ax1=ax1, st_pos=(0, 0), ed_pos=(0.25, 0), color=(0.1, 0.1, 0.1),
+        arrowstyle='-', linestyle='-')
+    radius = 0.03
+    plot_arc_for_hue_deg(ax1=ax1, hue_deg=h_val, radius=radius)
+    plot_annnotate_text_for_hue_deg(
+        ax1, hue_deg=h_val, radius=radius, text=r"$h^{*}$",
+        rate=1.03, ha='left', va='center')
+
+    fname = f"./img/method_b_jzazbz_ng_{j_val:.3f}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc=None, show=False, save_fname=fname)
+
+
+def plot_method_c_part1(grid=8, hue_idx=1):
+    hue_sample = grid
+    method_a_num = 8
+    chroma_init = 100
+    c0 = chroma_init / (method_a_num - 1)
+    h_val = np.linspace(0, 360, hue_sample)[hue_idx]
+    x_max = int(chroma_init * np.cos(np.deg2rad(h_val)) * 1.2)
+    y_max = int(chroma_init * np.sin(np.deg2rad(h_val)) * 1.2)
+    xy_max = max([x_max, y_max])
+    l_val_dummy = 70
+    cs_name = cs.BT709
+    ops_bak = np.get_printoptions()
+    np.set_printoptions(precision=1)
+    np.set_printoptions(**ops_bak)
+
+    l_val = l_val_dummy
+
+    ab_max = 80
+    ab_sample = 1024
+
+    bl = 0.96 ** 2.4  # background luminance
+    rgb_img = create_valid_cielab_ab_plane_image_gm24(
+        l_val=l_val, ab_max=ab_max, ab_sample=ab_sample,
+        color_space_name=cs_name,
+        bg_rgb_luminance=np.array([bl, bl, bl]))
+
+    cc_list = np.linspace(0, chroma_init, method_a_num)
+    aa_list, bb_list = hue_chroma_to_ab(hue_deg=h_val, chroma=cc_list)
+
+    cc_list_a = calc_chroma_candidate_list_method_c(
+        r_val_init=c0*4, c0=c0, lightness=l_val,
+        hue_sample=hue_sample, cs_name=cs.BT709)[..., hue_idx]
+    aa_a_list, bb_a_list = hue_chroma_to_ab(hue_deg=h_val, chroma=cc_list_a)
+
+    title = f"a-b plane (L*={l_val:.2f}, Gamut={cs_name})"
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=title,
+        graph_title_size=None,
+        xlabel="a", ylabel="b",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[-80, xy_max],
+        ylim=[-80, xy_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.imshow(
+        rgb_img, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
+
+    oms = 8
+    sms = 12
+    text_rate = 1.03
+    ax1.plot(aa_list, bb_list, 'ks', ms=sms, mfc='w', zorder=5)
+    ax1.plot(aa_a_list[0], bb_a_list[0], 'ko', ms=oms, mfc='k', zorder=5)
+    ax1.plot(aa_a_list[1], bb_a_list[1], 'ko', ms=oms, mfc='k', zorder=5)
+    ax1.plot(aa_a_list[2], bb_a_list[2], 'ko', ms=oms, mfc='k', zorder=5)
+
+    plot_annotate_line(
+        ax1=ax1, st_pos=(0, 0), ed_pos=(xy_max, 0), color=(0.1, 0.1, 0.1),
+        arrowstyle='-')
+
+    plot_annotate_line(
+        ax1=ax1, st_pos=(0, 0), ed_pos=(aa_list[-1], bb_list[-1]),
+        color=(0.1, 0.1, 0.1), arrowstyle='-')
+
+    plot_annotate_text_only(
+        ax1=ax1, pos=(aa_list[-1], bb_list[-1]), rate=text_rate,
+        text=r"$Q_{j}$", ha='left', va='center')
+    plot_annotate_text_only(
+        ax1=ax1, pos=(aa_a_list[0], bb_a_list[0]), rate=text_rate,
+        text=r"$P_{j,k=0}$", ha='left', va='center')
+    plot_annotate_text_only(
+        ax1=ax1, pos=(aa_a_list[1], bb_a_list[1]), rate=text_rate,
+        text=r"$P_{j,k=1}$", ha='left', va='center')
+    plot_annotate_text_only(
+        ax1=ax1, pos=(aa_a_list[2], bb_a_list[2]), rate=text_rate,
+        text=r"$P_{j,k=2}$", ha='left', va='center')
+    # plot_annotate_text_only(
+    #     ax1=ax1, pos=(aa_list[2], bb_list[2]), rate=text_rate,
+    #     text=r"$P_{j,k+2}$", ha='left', va='center')
+    # plot_annotate_text_only(
+    #     ax1=ax1, pos=(aa_list[3], bb_list[3]), rate=text_rate,
+    #     text=r"$P_{j,k+3}$", ha='left', va='center')
+
+    radius = 10
+    plot_arc_for_hue_deg(ax1=ax1, hue_deg=h_val, radius=radius)
+    plot_annnotate_text_for_hue_deg(
+        ax1, hue_deg=h_val, radius=radius, text=r"$h^{*}_{j}$",
+        rate=text_rate, ha='left', va='center')
+
+    line_dist_list = [5]
+    idx_list_list = [[0, 2, 1]]
+
+    for line_dist, idx_list in zip(line_dist_list, idx_list_list):
+        offset_x, offset_y = hue_chroma_to_ab(
+            hue_deg=h_val+90, chroma=line_dist)
+        plot_length_line_marker(
+            ax1, aa_a_list, bb_a_list, idx_list, offset_x, offset_y)
+
+    pu.show_and_save(
+        fig=fig, legend_loc=None, show=False,
+        save_fname="./img/medhod_c.png")
 
 
 if __name__ == '__main__':
@@ -814,4 +1011,9 @@ if __name__ == '__main__':
     # r_temp = calc_chroma_candidate_list(
     #     r_val_init=160, lightness=71.4, hue_sample=8, cs_name=cs.BT709)
     # print(r_temp[..., 1])
-    # cielab_method_b_ng_plot()
+    # cielab_method_b_ng_plot_cielab()
+    # cielab_method_b_ng_plot_jzazbz(j_val=0.362)
+    # for idx in range(10):
+    #     j_val = 0.36 + idx / 1000
+    #     cielab_method_b_ng_plot_jzazbz(j_val=j_val)
+    plot_method_c_part1(grid=8, hue_idx=1)
