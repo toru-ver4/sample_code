@@ -881,8 +881,8 @@ def plot_method_c_part1(grid=8, hue_idx=1):
     chroma_init = 100
     c0 = chroma_init / (method_a_num - 1)
     h_val = np.linspace(0, 360, hue_sample)[hue_idx]
-    x_max = int(chroma_init * np.cos(np.deg2rad(h_val)) * 1.2)
-    y_max = int(chroma_init * np.sin(np.deg2rad(h_val)) * 1.2)
+    x_max = int(chroma_init * np.cos(np.deg2rad(h_val)) * 1.1)
+    y_max = int(chroma_init * np.sin(np.deg2rad(h_val)) * 1.1)
     xy_max = max([x_max, y_max])
     l_val_dummy = 70
     cs_name = cs.BT709
@@ -931,10 +931,107 @@ def plot_method_c_part1(grid=8, hue_idx=1):
     ax1.imshow(
         rgb_img, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
 
+    sms = 12
+    text_rate = 1.03
+    ax1.plot(aa_list, bb_list, 'ks', ms=sms, mfc='w', zorder=5)
+
+    ax1.plot(
+        aa_list[4], bb_list[4], 'ks', ms=sms, mfc=pu.RED, zorder=5)
+
+    plot_annotate_line(
+        ax1=ax1, st_pos=(0, 0), ed_pos=(xy_max, 0), color=(0.1, 0.1, 0.1),
+        arrowstyle='-')
+
+    plot_annotate_line(
+        ax1=ax1, st_pos=(0, 0), ed_pos=(aa_list[-1], bb_list[-1]),
+        color=(0.1, 0.1, 0.1), arrowstyle='-')
+
+    plot_annotate_text_only(
+        ax1=ax1, pos=(aa_list[-1], bb_list[-1]), rate=text_rate,
+        text=r"$Q_{j, n=N-1}$", ha='right', va='center')
+    plot_annotate_text_only(
+        ax1=ax1, pos=(aa_list[0], bb_list[0]), rate=text_rate,
+        text=r"$Q_{j, n=0}$", ha='right', va='center')
+    plot_annotate_text_only(
+        ax1=ax1, pos=(aa_list[1], bb_list[1]), rate=text_rate,
+        text=r"$Q_{j, n=1}$", ha='right', va='center')
+    plot_annotate_text_only(
+        ax1=ax1, pos=(aa_list[4], bb_list[4]), rate=text_rate,
+        text=r"$Q_{j, n=4}$", ha='right', va='center')
+
+    radius = 10
+    plot_arc_for_hue_deg(ax1=ax1, hue_deg=h_val, radius=radius)
+    plot_annnotate_text_for_hue_deg(
+        ax1, hue_deg=h_val, radius=radius, text=r"$h^{*}_{j}$",
+        rate=text_rate, ha='left', va='center')
+
+    pu.show_and_save(
+        fig=fig, legend_loc=None, show=False,
+        save_fname="./img/medhod_c.png")
+
+
+def plot_method_c_part2(grid=8, hue_idx=1):
+    hue_sample = grid
+    method_a_num = 8
+    chroma_init = 100
+    c0 = chroma_init / (method_a_num - 1)
+    h_val = np.linspace(0, 360, hue_sample)[hue_idx]
+    x_max = int(chroma_init * np.cos(np.deg2rad(h_val)) * 1.1)
+    y_max = int(chroma_init * np.sin(np.deg2rad(h_val)) * 1.1)
+    xy_max = max([x_max, y_max])
+    l_val_dummy = 70
+    cs_name = cs.BT709
+    ops_bak = np.get_printoptions()
+    np.set_printoptions(precision=1)
+    np.set_printoptions(**ops_bak)
+
+    l_val = l_val_dummy
+
+    ab_max = 80
+    ab_sample = 1024
+
+    bl = 0.96 ** 2.4  # background luminance
+    rgb_img = create_valid_cielab_ab_plane_image_gm24(
+        l_val=l_val, ab_max=ab_max, ab_sample=ab_sample,
+        color_space_name=cs_name,
+        bg_rgb_luminance=np.array([bl, bl, bl]))
+
+    cc_list = np.linspace(0, chroma_init, method_a_num)
+    aa_list, bb_list = hue_chroma_to_ab(hue_deg=h_val, chroma=cc_list)
+
+    cc_list_a = calc_chroma_candidate_list_method_c(
+        r_val_init=c0*4, c0=c0, lightness=l_val,
+        hue_sample=hue_sample, cs_name=cs.BT709)[..., hue_idx]
+    aa_a_list, bb_a_list = hue_chroma_to_ab(hue_deg=h_val, chroma=cc_list_a)
+
+    title = f"a-b plane (L*={l_val:.2f}, Gamut={cs_name})"
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=title,
+        graph_title_size=None,
+        xlabel="a", ylabel="b",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[-10, xy_max],
+        ylim=[-10, xy_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.imshow(
+        rgb_img, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
+
     oms = 8
     sms = 12
     text_rate = 1.03
     ax1.plot(aa_list, bb_list, 'ks', ms=sms, mfc='w', zorder=5)
+    ax1.plot(
+        aa_list[4], bb_list[4], 'ks', ms=sms, mfc=pu.RED, zorder=5)
     ax1.plot(aa_a_list[0], bb_a_list[0], 'ko', ms=oms, mfc='k', zorder=5)
     ax1.plot(aa_a_list[1], bb_a_list[1], 'ko', ms=oms, mfc='k', zorder=5)
     ax1.plot(aa_a_list[2], bb_a_list[2], 'ko', ms=oms, mfc='k', zorder=5)
@@ -949,7 +1046,7 @@ def plot_method_c_part1(grid=8, hue_idx=1):
 
     plot_annotate_text_only(
         ax1=ax1, pos=(aa_list[-1], bb_list[-1]), rate=text_rate,
-        text=r"$Q_{j}$", ha='left', va='center')
+        text=r"$Q_{j, n=N-1}$", ha='left', va='center')
     plot_annotate_text_only(
         ax1=ax1, pos=(aa_a_list[0], bb_a_list[0]), rate=text_rate,
         text=r"$P_{j,k=0}$", ha='left', va='center')
@@ -983,7 +1080,7 @@ def plot_method_c_part1(grid=8, hue_idx=1):
 
     pu.show_and_save(
         fig=fig, legend_loc=None, show=False,
-        save_fname="./img/medhod_c.png")
+        save_fname="./img/medhod_c_after.png")
 
 
 if __name__ == '__main__':
@@ -1016,4 +1113,5 @@ if __name__ == '__main__':
     # for idx in range(10):
     #     j_val = 0.36 + idx / 1000
     #     cielab_method_b_ng_plot_jzazbz(j_val=j_val)
-    plot_method_c_part1(grid=8, hue_idx=1)
+    # plot_method_c_part1(grid=8, hue_idx=1)
+    plot_method_c_part2(grid=8, hue_idx=1)
