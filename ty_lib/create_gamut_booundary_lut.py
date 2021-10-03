@@ -37,6 +37,7 @@ L_SAMPLE_NUM_MAX = 1024
 H_SAMPLE_NUM_MAX = 4096
 COLOR_NUM = 3
 FLOAT_SIZE = 4
+JZAZBZ_CHROMA_MAX = 0.5
 
 shared_array_type = ctypes.c_float
 shared_array_elem_size = ctypes.sizeof(shared_array_type)
@@ -535,7 +536,7 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_type2(
      [  5.00000000e-01   2.72599646e-01   3.60000000e+02]]
     """
     # lch --> rgb
-    chroma_max = 0.5
+    chroma_max = JZAZBZ_CHROMA_MAX
     hue_max = 360
     hue_base = np.linspace(0, hue_max, hue_num)
     jj_base = np.ones_like(hue_base) * jj
@@ -711,6 +712,24 @@ def make_jzazbz_gb_lut_fname(
     return fname
 
 
+def make_jzazbz_gb_lut_fname_methodb_b(
+        color_space_name, luminance, lightness_num, hue_num):
+    fname = f"./lut/JzChz_gb-lut_method_b_{color_space_name}_"
+    fname += f"{luminance}nits_jj-{lightness_num}_"
+    fname += f"hh-{hue_num}.npy"
+
+    return fname
+
+
+def make_jzazbz_gb_lut_fname_method_c(
+        color_space_name, luminance, lightness_num, hue_num):
+    fname = f"./lut/JzChz_gb-lut_method_c_{color_space_name}_"
+    fname += f"{luminance}nits_jj-{lightness_num}_"
+    fname += f"hh-{hue_num}.npy"
+
+    return fname
+
+
 def make_jzazbz_gb_lut_fname_old(
         color_space_name, luminance, lightness_num, hue_num):
     fname = f"./lut/JzChz_gb-lut_type1_{color_space_name}_"
@@ -840,7 +859,7 @@ def create_jzazbz_gamut_boundary_lut_type2(
         shared_array[:lightness_sample*hue_sample*3]).reshape(
             (lightness_sample, hue_sample, 3))
 
-    fname = make_jzazbz_gb_lut_fname(
+    fname = make_jzazbz_gb_lut_fname_methodb_b(
         color_space_name=color_space_name, luminance=luminance,
         lightness_num=lightness_sample, hue_num=hue_sample)
     np.save(fname, np.float32(lut))
@@ -898,9 +917,7 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_type3(
      [  5.00000000e-01   2.72599646e-01   3.60000000e+02]]
     """
     # lch --> rgb
-    met = MeasureExecTime()
-    met.start()
-    chroma_max = 0.5
+    chroma_max = JZAZBZ_CHROMA_MAX
     hue_max = 360
     hue_base_all = np.linspace(0, hue_max, hue_num)
     hue_base = hue_base_all[hue_min_idx:hue_max_idx]
@@ -917,7 +934,6 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_type3(
 
     jzczhz = tstack((jj, cc, hh))
 
-    met.lap(f"{hue_min_idx:04d} A ")
     # delete
     del hh
     del cc
@@ -925,21 +941,17 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_type3(
 
     jzazbz = jzczhz_to_jzazbz(jzczhz)
 
-    met.lap(f"{hue_min_idx:04d} B ")
     large_xyz = jzazbz_to_large_xyz(jzazbz)
     del jzazbz
 
-    met.lap(f"{hue_min_idx:04d} C ")
     rgb_luminance = XYZ_to_RGB(
         large_xyz, cs.D65, cs.D65,
         RGB_COLOURSPACES[cs_name].matrix_XYZ_to_RGB)
     del large_xyz
 
-    met.lap(f"{hue_min_idx:04d} D ")
     ng_idx = is_out_of_gamut_rgb(rgb=rgb_luminance / luminance)
     del rgb_luminance
 
-    met.lap(f"{hue_min_idx:04d} E ")
     chroma_array = np.zeros(hue_base_limited)
     for h_idx in range(hue_base_limited):
         chroma_ng_idx_array = np.where(ng_idx[h_idx] > 0)
@@ -947,18 +959,15 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_type3(
         chroma_ng_idx = chroma_ng_idx - 1 if chroma_ng_idx > 0 else 0
         chroma_array[h_idx] = chroma_ng_idx / (chroma_sample - 1) * chroma_max
 
-    met.lap(f"{hue_min_idx:04d} F ")
     jzczhz = tstack([jj_base, chroma_array, hue_base])
 
     h_min_idx = hue_min_idx
     h_max_idx = hue_max_idx
 
-    met.lap(f"{hue_min_idx:04d} G ")
     for h_idx in range(h_min_idx, h_max_idx):
         addr = h_idx * 3
         shm_buf[addr:addr+3] = np.float32(jzczhz[h_idx-h_min_idx])
 
-    met.lap(f"{hue_min_idx:04d} H ")
     return jzczhz
 
 
