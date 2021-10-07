@@ -17,7 +17,7 @@ from multiprocessing import Pool, cpu_count
 # import my libraries
 import plot_utility as pu
 import color_space as cs
-from create_gamut_booundary_lut import TyLchLut, calc_chroma_boundary_lut,\
+from create_gamut_booundary_lut import TyLchLut, create_cielab_gamut_boundary_lut_method_b,\
     is_out_of_gamut_rgb
 from color_space_plot import create_valid_cielab_ab_plane_image_gm24,\
     create_valid_jzazbz_ab_plane_image_gm24
@@ -246,7 +246,7 @@ def plot_ab_plane_with_rough_lut(grid=16, l_val=70):
     lut_name = f"./lut/2dlut_{grid}x{grid}.npy"
     chroma_sample = 32768
     cs_name = cs.BT709
-    lut = calc_chroma_boundary_lut(
+    lut = create_cielab_gamut_boundary_lut_method_b(
         lightness_sample=ll_num, chroma_sample=chroma_sample,
         hue_sample=hue_sample, cs_name=cs_name)
     np.save(lut_name, lut)

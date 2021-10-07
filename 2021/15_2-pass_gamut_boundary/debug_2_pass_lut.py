@@ -6,11 +6,7 @@
 
 # import standard libraries
 import os
-from colour.colorimetry.lightness import lightness
-from colour.colorimetry.luminance import luminance
-from colour.io.luts import lut
 from multiprocessing import Pool, cpu_count
-from colour.models import jzazbz
 
 # import third-party libraries
 import numpy as np
@@ -20,12 +16,15 @@ from colour import XYZ_to_RGB, xy_to_XYZ, RGB_COLOURSPACES
 # import my libraries
 import plot_utility as pu
 import color_space as cs
-from create_gamut_booundary_lut import TyLchLut,\
+from create_gamut_booundary_lut import CIELAB_CHROMA_MAX, TyLchLut,\
     create_jzazbz_gamut_boundary_lut_type2, is_out_of_gamut_rgb,\
     JZAZBZ_CHROMA_MAX, make_jzazbz_gb_lut_fname_method_c,\
-    make_jzazbz_gb_lut_fname_methodb_b
-from jzazbz import jzazbz_to_large_xyz, jzczhz_to_jzazbz
-from color_space_plot import create_valid_ab_plane_image_st2084
+    make_jzazbz_gb_lut_fname_methodb_b,\
+    create_cielab_gamut_boundary_lut_method_b,\
+    make_cielab_gb_lut_fname_method_b, make_cielab_gb_lut_fname_method_c
+from jzazbz import jzazbz_to_large_xyz, jzczhz_to_jzazbz, large_xyz_to_jzazbz
+from color_space_plot import create_valid_jzazbz_ab_plane_image_st2084,\
+    create_valid_jzazbz_cj_plane_image_st2084
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -37,8 +36,8 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-def calc_chroma_boundary_specific_ligheness_jzazbz_method_c(
-        lch, cs_name, peak_luminance, c0):
+def calc_chroma_boundary_specific_ligheness_cielab_method_c(
+        lch, cs_name, c0):
     """
     parameters
     ----------
@@ -73,7 +72,7 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_method_c(
     """
     # lch --> rgb
 
-    jj = lch[..., 0]
+    ll = lch[..., 0]
     chroma_init = lch[..., 1]
     hue = np.deg2rad(lch[..., 2])
 
@@ -84,171 +83,112 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_method_c(
     for t_idx in range(trial_num):
         aa = r_val * np.cos(hue)
         bb = r_val * np.sin(hue)
-        jzazbz = tstack((jj, aa, bb))
-        large_xyz = jzazbz_to_large_xyz(jzazbz)
-        rgb_luminance = XYZ_to_RGB(
-            large_xyz, cs.D65, cs.D65,
-            RGB_COLOURSPACES[cs_name].matrix_XYZ_to_RGB)
+        lab = tstack((ll, aa, bb))
+        rgb = cs.lab_to_rgb(lab, cs_name)
 
-        ng_idx = is_out_of_gamut_rgb(rgb=rgb_luminance/peak_luminance)
+        ng_idx = is_out_of_gamut_rgb(rgb=rgb)
         ok_idx = np.logical_not(ng_idx)
         add_sub = c0 / (2 ** (t_idx))
         r_val[ok_idx] = r_val[ok_idx] + add_sub
         r_val[~ok_idx] = r_val[~ok_idx] - add_sub
 
-    jzczhz = tstack([jj, r_val, np.rad2deg(hue)])
+    zero_idx = (chroma_init <= 0)
+    r_val[zero_idx] = 0.0
 
-    return jzczhz
+    lch_result = tstack([ll, r_val, np.rad2deg(hue)])
 
-
-def create_jzazbz_gamut_boundary_method_c(
-        hue_sample=8, lightness_sample=8, chroma_sample=1024,
-        color_space_name=cs.BT709, luminance=100):
-
-    c0 = JZAZBZ_CHROMA_MAX / (chroma_sample - 1)
-    # create 2d lut using method B
-    create_jzazbz_gamut_boundary_lut_type2(
-        hue_sample=hue_sample, lightness_sample=lightness_sample,
-        chroma_sample=chroma_sample, color_space_name=color_space_name,
-        luminance=luminance)
-
-    lut_b = np.load(
-        make_jzazbz_gb_lut_fname_methodb_b(
-            color_space_name=color_space_name, luminance=luminance,
-            lightness_num=lightness_sample, hue_num=hue_sample))
-
-    # create 2d lut using method C
-    lut_c = np.zeros_like(lut_b)
-    for l_idx in range(lightness_sample):
-        jzczhz_init = lut_b[l_idx]
-        jzczhz = calc_chroma_boundary_specific_ligheness_jzazbz_method_c(
-            lch=jzczhz_init, cs_name=color_space_name,
-            peak_luminance=luminance, c0=c0)
-        lut_c[l_idx] = jzczhz
-
-    fname = make_jzazbz_gb_lut_fname_method_c(
-        color_space_name=color_space_name, luminance=luminance,
-        lightness_num=lightness_sample, hue_num=hue_sample)
-    np.save(fname, np.float32(lut_c))
+    return lch_result
 
 
-def thread_wrapper_plot_ab_plane_with_interpolation(args):
-    plot_ab_plane_with_interpolation_core(**args)
-
-
-def plot_ab_plane_with_interpolation_core(
-        bg_lut_name, j_idx, j_val, color_space_name, maximum_luminance):
-    if maximum_luminance <= 101:
-        ab_max = 0.25
-    elif maximum_luminance <= 1001:
-        ab_max = 0.30
-    else:
-        ab_max = 0.50
-    ab_sample = 1024
-    hue_sample = 1024
-    bg_lut = TyLchLut(np.load(bg_lut_name))
-    rgb_st2084 = create_valid_ab_plane_image_st2084(
-        j_val=j_val, ab_max=ab_max, ab_sample=ab_sample,
-        color_space_name=color_space_name,
-        bg_rgb_luminance=np.array([100, 100, 100]),
-        maximum_luminance=maximum_luminance)
-
-    hh_base = np.linspace(0, 360, hue_sample)
-    jj_base = np.ones_like(hh_base) * j_val
-    jh_array = tstack([jj_base, hh_base])
-
-    jzczhz = bg_lut.interpolate(lh_array=jh_array)
-    chroma = jzczhz[..., 1]
-    hue = np.deg2rad(jzczhz[..., 2])
-    aa = chroma * np.cos(hue)
-    bb = chroma * np.sin(hue)
-
-    jzazbz_luminance = jzczhz_to_jzazbz(jzczhz[0])
-    print(jzczhz[0])
-    print(jzazbz_luminance)
-
-    large_xyz = jzazbz_to_large_xyz(jzazbz_luminance)
-    luminance = large_xyz[1]
-    graph_title = f"azbz plane,  {color_space_name},  "
-    graph_title += f"Jz={j_val:.2f},  Luminance={luminance:.2f} nits"
+def plot_d65_multi_luminance():
+    range = 0.0003
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(10, 10),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title=graph_title,
+        graph_title="D65 in the az-bz plane",
         graph_title_size=None,
         xlabel="az", ylabel="bz",
         axis_label_size=None,
         legend_size=17,
-        xlim=[-ab_max, ab_max],
-        ylim=[-ab_max, ab_max],
+        xlim=[-range, range],
+        ylim=[-range, range],
         xtick=None,
         ytick=None,
         xtick_size=None, ytick_size=None,
         linewidth=3,
         minor_xtick_num=None,
         minor_ytick_num=None)
-    ax1.imshow(
-        rgb_st2084, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
-    ax1.plot(aa, bb, color='k')
-    fname = "/work/overuse/2021/15_2_pass_gamut_boundary/img_seq_azbz/"
-    fname += f"azbz_w_lut_{color_space_name}_"
-    fname += f"{maximum_luminance}nits_{j_idx:04d}.png"
+
+    luminance_list = [0, 0.01, 0.1, 1, 10, 100, 1000, 10000]
+    for luminance in luminance_list:
+        d65_xyz = xy_to_XYZ(cs.D65) * luminance
+        jzazbz = large_xyz_to_jzazbz(d65_xyz)
+        az = jzazbz[..., 1]
+        bz = jzazbz[..., 2]
+        ax1.plot(az, bz, 'o', label=f"{luminance} nits")
+
+    fname = "./img/white_posi.png"
     print(fname)
     pu.show_and_save(
-        fig=fig, legend_loc=None, show=False, save_fname=fname)
+        fig=fig, legend_loc='upper right', show=False, save_fname=fname)
 
 
-def debug_plot_azbz_plane_with_interpolation(
-        hue_sample=256, lightness_sample=256,
-        color_space_name=cs.BT2020, luminance=10000):
+def create_lab_gamut_boundary_method_c(
+        hue_sample=8, lightness_sample=8, chroma_sample=1024,
+        color_space_name=cs.BT709, luminance=100):
 
-    lut_name = make_jzazbz_gb_lut_fname_method_c(
-        color_space_name=color_space_name, luminance=luminance,
+    ll_num = lightness_sample
+    lut = create_cielab_gamut_boundary_lut_method_b(
+        lightness_sample=ll_num, chroma_sample=chroma_sample,
+        hue_sample=hue_sample, cs_name=color_space_name)
+    np.save(make_cielab_gb_lut_fname_method_b(
+        color_space_name=color_space_name, lightness_num=lightness_sample,
+        hue_num=hue_sample), lut)
+
+    # create 2d lut using method B
+    lut_b = np.load(
+        make_cielab_gb_lut_fname_method_b(
+            color_space_name=color_space_name, lightness_num=lightness_sample,
+            hue_num=hue_sample))
+
+    # create 2d lut using method C
+    c0 = CIELAB_CHROMA_MAX / (chroma_sample - 1)
+    lut_c = np.zeros_like(lut_b)
+    for l_idx in range(lightness_sample):
+        jzczhz_init = lut_b[l_idx]
+        jzczhz = calc_chroma_boundary_specific_ligheness_cielab_method_c(
+            lch=jzczhz_init, cs_name=color_space_name,
+            peak_luminance=luminance, c0=c0)
+        lut_c[l_idx] = jzczhz
+
+    fname = make_cielab_gb_lut_fname_method_c(
+        color_space_name=color_space_name,
         lightness_num=lightness_sample, hue_num=hue_sample)
-    bg_lut = TyLchLut(np.load(lut_name))
-    j_max = bg_lut.ll_max
+    np.save(fname, np.float32(lut_c))
 
-    j_num = 512
 
-    total_process_num = j_num
-    block_process_num = int(cpu_count() / 2 + 0.999)
-    block_num = int(round(total_process_num / block_process_num + 0.5))
-
-    for b_idx in range(block_num):
-        args = []
-        for p_idx in range(block_process_num):
-            j_idx = b_idx * block_process_num + p_idx              # User
-            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={j_idx}")  # User
-            if j_idx >= total_process_num:                         # User
-                break
-            j_idx = j_num - 1
-            d = dict(
-                bg_lut_name=lut_name, j_idx=j_idx,
-                j_val=j_idx/(j_num-1) * j_max,
-                color_space_name=color_space_name,
-                maximum_luminance=luminance)
-            plot_ab_plane_with_interpolation_core(**d)
-            args.append(d)
-            break
-        break
-        # with Pool(block_process_num) as pool:
-        #     pool.map(thread_wrapper_plot_ab_plane_with_interpolation, args)
+def debug_plot_cielab():
+    chroma_sample = 256
+    hue_sample = 1024
+    lightness_sample = 1024
+    luminance = 100
+    h_num_intp = 128
+    l_num_intp = 128
+    color_space_name = cs.BT709
+    create_lab_gamut_boundary_method_c(
+        hue_sample=hue_sample, lightness_sample=lightness_sample,
+        chroma_sample=chroma_sample,
+        color_space_name=color_space_name, luminance=luminance)
+    debug_plot_cielab_ab_plane_with_interpolation(
+        hue_sample=hue_sample, lightness_sample=lightness_sample,
+        j_num_intp=j_num_intp,
+        color_space_name=color_space_name, luminance=luminance)
+    plot_cielab_cl_plane_with_interpolation(
+        hue_sample=hue_sample, lightness_sample=lightness_sample,
+        h_num_intp=h_num_intp,
+        color_space_name=color_space_name, luminance=luminance)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-    chroma_sample = 1024
-    hue_sample = 256
-    lightness_sample = 256
-    luminance = 100
-    color_space_name = cs.BT709
-    # create_jzazbz_gamut_boundary_method_c(
-    #     hue_sample=hue_sample, lightness_sample=lightness_sample,
-    #     chroma_sample=chroma_sample,
-    #     color_space_name=color_space_name, luminance=luminance)
-    debug_plot_azbz_plane_with_interpolation(
-        hue_sample=hue_sample, lightness_sample=lightness_sample,
-        color_space_name=color_space_name, luminance=luminance)
-

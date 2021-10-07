@@ -38,6 +38,7 @@ H_SAMPLE_NUM_MAX = 4096
 COLOR_NUM = 3
 FLOAT_SIZE = 4
 JZAZBZ_CHROMA_MAX = 0.5
+CIELAB_CHROMA_MAX = 220
 
 shared_array_type = ctypes.c_float
 shared_array_elem_size = ctypes.sizeof(shared_array_type)
@@ -138,7 +139,7 @@ def calc_chroma_boundary_specific_l(
     return hue_base, chroma_array
 
 
-def calc_chroma_boundary_specific_hue(
+def calc_chroma_boundary_specific_hue_method_b(
         hue, chroma_sample, lightness_sample, cs_name, **kwargs):
     """
     parameters
@@ -155,7 +156,7 @@ def calc_chroma_boundary_specific_hue(
     # lch --> rgb
     ll_max = 100
     ll_base = np.linspace(0, ll_max, lightness_sample)
-    chroma_max = 220
+    chroma_max = CIELAB_CHROMA_MAX
     chroma_base = np.linspace(0, chroma_max, chroma_sample)
     ll = ll_base.reshape((lightness_sample, 1))\
         * np.ones_like(chroma_base).reshape((1, chroma_sample))
@@ -181,8 +182,9 @@ def calc_chroma_boundary_specific_hue(
     return ll_base, chroma_array
 
 
-def thread_wrapper_calc_chroma_boundary_specific_hue(args):
-    lightness_array, chroma_array = calc_chroma_boundary_specific_hue(**args)
+def thread_wrapper_calc_chroma_boundary_method_b_specific_hue(args):
+    lightness_array, chroma_array =\
+        calc_chroma_boundary_specific_hue_method_b(**args)
     hue_array = np.ones_like(lightness_array) * args['hue']
     plane_lut = tstack([lightness_array, chroma_array, hue_array])
     ll_len = args['lightness_sample']
@@ -196,7 +198,7 @@ def thread_wrapper_calc_chroma_boundary_specific_hue(args):
         shared_array[addr:addr+3] = np.float32(plane_lut[l_idx])
 
 
-def calc_chroma_boundary_lut(
+def create_cielab_gamut_boundary_lut_method_b(
         lightness_sample, chroma_sample, hue_sample, cs_name):
     """
     parameters
@@ -233,7 +235,9 @@ def calc_chroma_boundary_lut(
             args.append(d)
             # thread_wrapper_calc_chroma_boundary_specific_hue(d)
         with Pool(cpu_count()) as pool:
-            pool.map(thread_wrapper_calc_chroma_boundary_specific_hue, args)
+            pool.map(
+                thread_wrapper_calc_chroma_boundary_method_b_specific_hue,
+                args)
             # mtime.lap()
         mtime.lap()
     mtime.end()
@@ -703,6 +707,22 @@ class TyLchLut():
             lut=self.lut, lh_array=lh_array, lightness_max=self.ll_max)
 
 
+def make_cielab_gb_lut_fname_method_b(
+        color_space_name, lightness_num, hue_num):
+    fname = f"./lut/cielab_gb-lut_method_b_{color_space_name}_"
+    fname += f"ll-{lightness_num}_hh-{hue_num}.npy"
+
+    return fname
+
+
+def make_cielab_gb_lut_fname_method_c(
+        color_space_name, lightness_num, hue_num):
+    fname = f"./lut/cielab_gb-lut_method_c_{color_space_name}_"
+    fname += f"ll-{lightness_num}_hh-{hue_num}.npy"
+
+    return fname
+
+
 def make_jzazbz_gb_lut_fname(
         color_space_name, luminance, lightness_num, hue_num):
     fname = f"./lut/JzChz_gb-lut_type3_{color_space_name}_"
@@ -827,7 +847,7 @@ def create_jzazbz_gamut_boundary_lut_type2(
 
     total_process_num = lightness_sample
     # block_process_num = cpu_count()
-    block_process_num = 2  # for 32768 sample
+    block_process_num = 12  # for 32768 sample
     block_num = int(round(total_process_num / block_process_num + 0.5))
     max_jz = large_xyz_to_jzazbz(xy_to_XYZ(cs.D65) * luminance)[0]
     print(f"max_Jz = {max_jz}")

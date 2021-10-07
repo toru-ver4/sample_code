@@ -19,7 +19,7 @@ import plot_utility as pu
 import color_space as cs
 import transfer_functions as tf
 from create_gamut_booundary_lut import is_out_of_gamut_rgb
-from jzazbz import jzazbz_to_large_xyz
+from jzazbz import jzazbz_to_large_xyz, jzczhz_to_jzazbz
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -104,7 +104,7 @@ def create_valid_jzazbz_ab_plane_image_gm24(
     return rgb_gm24
 
 
-def create_valid_ab_plane_image_st2084(
+def create_valid_jzazbz_ab_plane_image_st2084(
         j_val=0.5, ab_max=1.0, ab_sample=512, color_space_name=cs.BT2020,
         bg_rgb_luminance=np.array([50, 50, 50]), maximum_luminance=10000):
     """
@@ -138,6 +138,54 @@ def create_valid_ab_plane_image_st2084(
 
     ng_idx = is_out_of_gamut_rgb(rgb=rgb_luminance/maximum_luminance)
     rgb_luminance[ng_idx] = bg_rgb_luminance
+    rgb_st2084 = tf.oetf_from_luminance(
+        np.clip(rgb_luminance, 0.0, 10000), tf.ST2084)
+
+    return rgb_st2084
+
+
+def create_valid_jzazbz_cj_plane_image_st2084(
+        h_val=50, c_max=1, l_max=1, c_sample=1024, j_sample=1024,
+        color_space_name=cs.BT2020, bg_rgb_luminance=np.array([50, 50, 50]),
+        maximum_luminance=10000):
+    """
+    Create an image that indicates the valid area of the ab plane.
+
+    Parameters
+    ----------
+    h_val : float
+        A Hue value. range is 0.0 - 360.0
+    c_max : float
+        A maximum value of the chroma.
+    c_sapmle : int
+        A number of samples for the chroma.
+    l_sample : int
+        A number of samples for the lightness.
+    color_space_name : str
+        color space name for colour.RGB_COLOURSPACES
+    bg_lightness : float
+        background lightness value.
+    maximum_luminance : float
+        maximum luminance of the target display device.
+    """
+    cc_base = np.linspace(0, c_max, c_sample)
+    jj_base = np.linspace(0, l_max, j_sample)
+    cc = cc_base.reshape(1, c_sample)\
+        * np.ones_like(jj_base).reshape(j_sample, 1)
+    jj = jj_base.reshape(j_sample, 1)\
+        * np.ones_like(cc_base).reshape(1, c_sample)
+    hh = np.ones_like(cc) * h_val
+
+    jczhz = np.dstack([jj[::-1], cc, hh]).reshape((j_sample, c_sample, 3))
+    jzazbz = jzczhz_to_jzazbz(jczhz)
+    large_xyz = jzazbz_to_large_xyz(jzazbz)
+    rgb_luminance = XYZ_to_RGB(
+        large_xyz, cs.D65, cs.D65,
+        RGB_COLOURSPACES[color_space_name].matrix_XYZ_to_RGB)
+    ng_idx = is_out_of_gamut_rgb(rgb=rgb_luminance/maximum_luminance)
+
+    rgb_luminance[ng_idx] = bg_rgb_luminance
+
     rgb_st2084 = tf.oetf_from_luminance(
         np.clip(rgb_luminance, 0.0, 10000), tf.ST2084)
 
