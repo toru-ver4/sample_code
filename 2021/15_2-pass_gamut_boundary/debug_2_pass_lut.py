@@ -6,7 +6,6 @@
 
 # import standard libraries
 import os
-from multiprocessing import Pool, cpu_count
 
 # import third-party libraries
 import numpy as np
@@ -167,28 +166,6 @@ def create_lab_gamut_boundary_method_c(
     np.save(fname, np.float32(lut_c))
 
 
-def debug_plot_cielab():
-    chroma_sample = 256
-    hue_sample = 1024
-    lightness_sample = 1024
-    luminance = 100
-    h_num_intp = 128
-    l_num_intp = 128
-    color_space_name = cs.BT709
-    create_lab_gamut_boundary_method_c(
-        hue_sample=hue_sample, lightness_sample=lightness_sample,
-        chroma_sample=chroma_sample,
-        color_space_name=color_space_name, luminance=luminance)
-    debug_plot_cielab_ab_plane_with_interpolation(
-        hue_sample=hue_sample, lightness_sample=lightness_sample,
-        j_num_intp=j_num_intp,
-        color_space_name=color_space_name, luminance=luminance)
-    plot_cielab_cl_plane_with_interpolation(
-        hue_sample=hue_sample, lightness_sample=lightness_sample,
-        h_num_intp=h_num_intp,
-        color_space_name=color_space_name, luminance=luminance)
-
-
 def calc_chroma_boundary_specific_ligheness_jzazbz_method_c(
         lch, cs_name, peak_luminance, c0):
     """
@@ -305,6 +282,28 @@ def create_jzazbz_2dlut_using_method_c_and_plot():
         color_space_name=color_space_name)
 
 
+def create_cielab_2dlut_using_method_c_and_plot():
+    chroma_sample = 256
+    hue_sample = 1024
+    lightness_sample = 1024
+    luminance = 100
+    h_num_intp = 128
+    l_num_intp = 128
+    color_space_name = cs.BT709
+    create_lab_gamut_boundary_method_c(
+        hue_sample=hue_sample, lightness_sample=lightness_sample,
+        chroma_sample=chroma_sample,
+        color_space_name=color_space_name, luminance=luminance)
+    debug_plot_cielab_ab_plane_with_interpolation(
+        hue_sample=hue_sample, lightness_sample=lightness_sample,
+        j_num_intp=j_num_intp,
+        color_space_name=color_space_name, luminance=luminance)
+    plot_cielab_cl_plane_with_interpolation(
+        hue_sample=hue_sample, lightness_sample=lightness_sample,
+        h_num_intp=h_num_intp,
+        color_space_name=color_space_name, luminance=luminance)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    create_jzazbz_2dlut_using_method_c_and_plot()
+    # create_jzazbz_2dlut_using_method_c_and_plot()
