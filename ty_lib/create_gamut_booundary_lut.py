@@ -38,7 +38,7 @@ H_SAMPLE_NUM_MAX = 4096
 COLOR_NUM = 3
 FLOAT_SIZE = 4
 JZAZBZ_CHROMA_MAX = 0.5
-CIELAB_CHROMA_MAX = 220
+CIELAB_CHROMA_MAX = 250
 
 shared_array_type = ctypes.c_float
 shared_array_elem_size = ctypes.sizeof(shared_array_type)
@@ -215,8 +215,8 @@ def create_cielab_gamut_boundary_lut_method_b(
     """
 
     total_process_num = hue_sample
-    # block_process_num = cpu_count()
-    block_process_num = 3  # for 32768 sample
+    block_process_num = cpu_count() // 2
+    # block_process_num = 3  # for 32768 sample
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
     mtime = MeasureExecTime()

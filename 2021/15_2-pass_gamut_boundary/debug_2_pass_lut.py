@@ -23,6 +23,7 @@ from create_gamut_booundary_lut import CIELAB_CHROMA_MAX, TyLchLut,\
     make_cielab_gb_lut_fname_method_b, make_cielab_gb_lut_fname_method_c
 from jzazbz import large_xyz_to_jzazbz, jzazbz_to_large_xyz
 from jzazbz_azbz_czhz_plot import debug_plot_jzazbz
+from cielab_ab_cl_plot import debug_plot_cielab
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -134,7 +135,7 @@ def plot_d65_multi_luminance():
 
 def create_lab_gamut_boundary_method_c(
         hue_sample=8, lightness_sample=8, chroma_sample=1024,
-        color_space_name=cs.BT709, luminance=100):
+        color_space_name=cs.BT709):
 
     ll_num = lightness_sample
     lut = create_cielab_gamut_boundary_lut_method_b(
@@ -154,11 +155,10 @@ def create_lab_gamut_boundary_method_c(
     c0 = CIELAB_CHROMA_MAX / (chroma_sample - 1)
     lut_c = np.zeros_like(lut_b)
     for l_idx in range(lightness_sample):
-        jzczhz_init = lut_b[l_idx]
-        jzczhz = calc_chroma_boundary_specific_ligheness_cielab_method_c(
-            lch=jzczhz_init, cs_name=color_space_name,
-            peak_luminance=luminance, c0=c0)
-        lut_c[l_idx] = jzczhz
+        lch_init = lut_b[l_idx]
+        lch_result = calc_chroma_boundary_specific_ligheness_cielab_method_c(
+            lch=lch_init, cs_name=color_space_name, c0=c0)
+        lut_c[l_idx] = lch_result
 
     fname = make_cielab_gb_lut_fname_method_c(
         color_space_name=color_space_name,
@@ -283,27 +283,23 @@ def create_jzazbz_2dlut_using_method_c_and_plot():
 
 
 def create_cielab_2dlut_using_method_c_and_plot():
-    chroma_sample = 256
-    hue_sample = 1024
-    lightness_sample = 1024
-    luminance = 100
+    chroma_sample = 8
+    hue_sample = 256
+    lightness_sample = 256
     h_num_intp = 128
     l_num_intp = 128
     color_space_name = cs.BT709
-    create_lab_gamut_boundary_method_c(
+    # create_lab_gamut_boundary_method_c(
+    #     hue_sample=hue_sample, lightness_sample=lightness_sample,
+    #     chroma_sample=chroma_sample,
+    #     color_space_name=color_space_name)
+    debug_plot_cielab(
         hue_sample=hue_sample, lightness_sample=lightness_sample,
-        chroma_sample=chroma_sample,
-        color_space_name=color_space_name, luminance=luminance)
-    debug_plot_cielab_ab_plane_with_interpolation(
-        hue_sample=hue_sample, lightness_sample=lightness_sample,
-        j_num_intp=j_num_intp,
-        color_space_name=color_space_name, luminance=luminance)
-    plot_cielab_cl_plane_with_interpolation(
-        hue_sample=hue_sample, lightness_sample=lightness_sample,
-        h_num_intp=h_num_intp,
-        color_space_name=color_space_name, luminance=luminance)
+        h_num_intp=h_num_intp, l_num_intp=l_num_intp,
+        color_space_name=color_space_name)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_jzazbz_2dlut_using_method_c_and_plot()
+    create_cielab_2dlut_using_method_c_and_plot()

@@ -10,18 +10,15 @@ from multiprocessing import Pool, cpu_count
 
 # import third-party libraries
 import numpy as np
-from colour import Lab_to_XYZ, XYZ_to_RGB
-from colour.models import RGB_COLOURSPACES
 from colour.utilities import tstack
 
 # import my libraries
 import plot_utility as pu
 import color_space as cs
-import transfer_functions as tf
 from create_gamut_booundary_lut import TyLchLut,\
     make_cielab_gb_lut_fname_method_c
-from jzazbz import jzazbz_to_large_xyz, jzczhz_to_jzazbz
-from color_space_plot import create_valid_cielab_cl_plane_image_gm24
+from color_space_plot import create_valid_cielab_cl_plane_image_gm24,\
+    create_valid_cielab_ab_plane_image_gm24
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -34,14 +31,14 @@ __all__ = []
 
 
 def debug_plot_cielab_ab_plane_with_interpolation(
-        hue_sample=256, lightness_sample=256, ll_num_intp=256,
+        hue_sample=256, lightness_sample=256, l_num_intp=256,
         color_space_name=cs.BT2020):
 
     lut_name = make_cielab_gb_lut_fname_method_c(
         color_space_name=color_space_name,
         lightness_num=lightness_sample, hue_num=hue_sample)
     ll_max = 100
-    ll_num = ll_num_intp
+    ll_num = l_num_intp
 
     total_process_num = ll_num
     block_process_num = int(cpu_count() / 3 + 0.999)
@@ -50,14 +47,14 @@ def debug_plot_cielab_ab_plane_with_interpolation(
     for b_idx in range(block_num):
         args = []
         for p_idx in range(block_process_num):
-            j_idx = b_idx * block_process_num + p_idx              # User
-            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={j_idx}")  # User
-            if j_idx >= total_process_num:                         # User
+            l_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
+            if l_idx >= total_process_num:                         # User
                 break
             # j_idx = j_num - 1
             d = dict(
-                bg_lut_name=lut_name, j_idx=j_idx,
-                j_val=j_idx/(ll_num-1) * ll_max,
+                bg_lut_name=lut_name, l_idx=l_idx,
+                l_val=l_idx/(ll_num-1) * ll_max,
                 color_space_name=color_space_name)
             # plot_ab_plane_with_interpolation_core(**d)
             args.append(d)
@@ -72,7 +69,7 @@ def thread_wrapper_plot_ab_plane_with_interpolation(args):
 
 
 def plot_ab_plane_with_interpolation_core(
-        bg_lut_name, j_idx, l_val, color_space_name):
+        bg_lut_name, l_idx, l_val, color_space_name):
     if color_space_name == cs.BT709:
         ab_max = 150
     elif color_space_name == cs.P3_D65:
@@ -97,7 +94,7 @@ def plot_ab_plane_with_interpolation_core(
     aa = chroma * np.cos(hue)
     bb = chroma * np.sin(hue)
 
-    graph_title = f"azbz plane,  {color_space_name},  L*={l_val:.2f}"
+    graph_title = f"ab plane,  {color_space_name},  L*={l_val:.2f}"
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(10, 10),
@@ -119,7 +116,7 @@ def plot_ab_plane_with_interpolation_core(
         rgb_gm24, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
     ax1.plot(aa, bb, color='k')
     fname = "/work/overuse/2021/15_2_pass_gamut_boundary/img_seq_cielab_ab/"
-    fname += f"ab_w_lut_{color_space_name}_{j_idx:04d}.png"
+    fname += f"ab_w_lut_{color_space_name}_{l_idx:04d}.png"
     print(fname)
     pu.show_and_save(
         fig=fig, legend_loc=None, show=False, save_fname=fname)
@@ -200,7 +197,7 @@ def plot_cielab_cl_plane_with_interpolation(
         args = []
         for p_idx in range(block_process_num):
             h_idx = b_idx * block_process_num + p_idx              # User
-            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={h_idx}")  # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, h_idx={h_idx}")  # User
             if h_idx >= total_process_num:                         # User
                 break
             d = dict(
@@ -216,13 +213,12 @@ def plot_cielab_cl_plane_with_interpolation(
                 thread_wrapper_plot_cielab_cl_plane_with_interpolation, args)
 
 
-def debug_plot_jzazbz(
+def debug_plot_cielab(
         hue_sample=256, lightness_sample=128,
-        luminance=100, h_num_intp=100, j_num_intp=100,
-        color_space_name=cs.BT709):
+        h_num_intp=100, l_num_intp=100, color_space_name=cs.BT709):
     debug_plot_cielab_ab_plane_with_interpolation(
         hue_sample=hue_sample, lightness_sample=lightness_sample,
-        j_num_intp=j_num_intp,
+        l_num_intp=l_num_intp,
         color_space_name=color_space_name)
     plot_cielab_cl_plane_with_interpolation(
         hue_sample=hue_sample, lightness_sample=lightness_sample,
