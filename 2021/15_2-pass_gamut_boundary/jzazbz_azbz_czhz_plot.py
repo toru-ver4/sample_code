@@ -52,7 +52,7 @@ def debug_plot_azbz_plane_with_interpolation(
     j_num = j_num_intp
 
     total_process_num = j_num
-    block_process_num = int(cpu_count() / 3 + 0.999)
+    block_process_num = int(cpu_count() / 4 + 0.999)
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
     for b_idx in range(block_num):
@@ -83,13 +83,13 @@ def thread_wrapper_plot_ab_plane_with_interpolation(args):
 def plot_ab_plane_with_interpolation_core(
         bg_lut_name, j_idx, j_val, color_space_name, maximum_luminance):
     if maximum_luminance <= 101:
-        ab_max = 0.25
+        ab_max = 0.20
     elif maximum_luminance <= 1001:
         ab_max = 0.30
     else:
-        ab_max = 0.50
-    ab_sample = 1024
-    hue_sample = 1024
+        ab_max = 0.40
+    ab_sample = 1536
+    hue_sample = 1536
     bg_lut = TyLchLut(np.load(bg_lut_name))
     rgb_st2084 = create_valid_jzazbz_ab_plane_image_st2084(
         j_val=j_val, ab_max=ab_max, ab_sample=ab_sample,
@@ -129,7 +129,7 @@ def plot_ab_plane_with_interpolation_core(
     graph_title += f"Jz={j_val:.2f},  Luminance={luminance:.2f} nits"
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(10, 10),
+        figsize=(12, 12),
         bg_color=(0.96, 0.96, 0.96),
         graph_title=graph_title,
         graph_title_size=None,
@@ -141,7 +141,7 @@ def plot_ab_plane_with_interpolation_core(
         xtick=None,
         ytick=None,
         xtick_size=None, ytick_size=None,
-        linewidth=3,
+        linewidth=2,
         minor_xtick_num=None,
         minor_ytick_num=None)
     ax1.imshow(
@@ -162,17 +162,38 @@ def thread_wrapper_plot_cj_plane_with_interpolation(args):
 def plot_cj_plane_with_interpolation_core(
         bg_lut_name, h_idx, h_val, color_space_name, maximum_luminance):
     bg_lut = TyLchLut(lut=np.load(bg_lut_name))
-    sample_num = 1024
-    jj_sample = 1024
+    sample_num = 1536
+    jj_sample = 1536
     if maximum_luminance <= 101:
-        cc_max = 0.25
-        jj_max = 0.2
+        if color_space_name == cs.BT709:
+            cc_max = 0.17
+            jj_max = 0.18
+        elif color_space_name == cs.P3_D65:
+            cc_max = 0.18
+            jj_max = 0.18
+        else:
+            cc_max = 0.22
+            jj_max = 0.18
     elif maximum_luminance <= 1001:
-        cc_max = 0.3
-        jj_max = 0.5
+        if color_space_name == cs.BT709:
+            cc_max = 0.27
+            jj_max = 0.43
+        elif color_space_name == cs.P3_D65:
+            cc_max = 0.30
+            jj_max = 0.43
+        else:
+            cc_max = 0.37
+            jj_max = 0.43
     else:
-        cc_max = 0.5
-        jj_max = 1.0
+        if color_space_name == cs.BT709:
+            cc_max = 0.35
+            jj_max = 1.0
+        elif color_space_name == cs.P3_D65:
+            cc_max = 0.36
+            jj_max = 1.0
+        else:
+            cc_max = 0.45
+            jj_max = 1.0
     print(f"h_val={h_val} started")
 
     rgb_st2084 = create_valid_jzazbz_cj_plane_image_st2084(
@@ -196,7 +217,7 @@ def plot_cj_plane_with_interpolation_core(
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(10, 10),
+        figsize=(12, 12),
         bg_color=(0.96, 0.96, 0.96),
         graph_title=graph_title,
         graph_title_size=None,
@@ -208,7 +229,7 @@ def plot_cj_plane_with_interpolation_core(
         xtick=None,
         ytick=None,
         xtick_size=None, ytick_size=None,
-        linewidth=3,
+        linewidth=2,
         minor_xtick_num=None,
         minor_ytick_num=None)
     ax1.imshow(
@@ -231,7 +252,7 @@ def plot_cj_plane_with_interpolation(
         lightness_num=lightness_sample, hue_num=hue_sample)
 
     total_process_num = h_num_intp
-    block_process_num = int(cpu_count() / 3 + 0.9)
+    block_process_num = int(cpu_count() / 4 + 0.9)
     print(f"block_process_num {block_process_num}")
     block_num = int(round(total_process_num / block_process_num + 0.5))
 

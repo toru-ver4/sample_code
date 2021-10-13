@@ -215,7 +215,7 @@ def create_cielab_gamut_boundary_lut_method_b(
     """
 
     total_process_num = hue_sample
-    block_process_num = cpu_count() // 2
+    block_process_num = 10
     # block_process_num = 3  # for 32768 sample
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
@@ -847,7 +847,7 @@ def create_jzazbz_gamut_boundary_lut_type2(
 
     total_process_num = lightness_sample
     # block_process_num = cpu_count()
-    block_process_num = 12  # for 32768 sample
+    block_process_num = 10  # for 32768 sample
     block_num = int(round(total_process_num / block_process_num + 0.5))
     max_jz = large_xyz_to_jzazbz(xy_to_XYZ(cs.D65) * luminance)[0]
     print(f"max_Jz = {max_jz}")

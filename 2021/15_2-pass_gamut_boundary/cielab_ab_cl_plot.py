@@ -41,7 +41,7 @@ def debug_plot_cielab_ab_plane_with_interpolation(
     ll_num = l_num_intp
 
     total_process_num = ll_num
-    block_process_num = int(cpu_count() / 3 + 0.999)
+    block_process_num = int(cpu_count() / 4 + 0.999)
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
     for b_idx in range(block_num):
@@ -71,13 +71,13 @@ def thread_wrapper_plot_ab_plane_with_interpolation(args):
 def plot_ab_plane_with_interpolation_core(
         bg_lut_name, l_idx, l_val, color_space_name):
     if color_space_name == cs.BT709:
-        ab_max = 150
+        ab_max = 120
     elif color_space_name == cs.P3_D65:
-        ab_max = 180
+        ab_max = 140
     else:
-        ab_max = 200
-    ab_sample = 1024
-    hue_sample = 1024
+        ab_max = 190
+    ab_sample = 1536
+    hue_sample = 1536
     bg_lut = TyLchLut(np.load(bg_lut_name))
     rgb_gm24 = create_valid_cielab_ab_plane_image_gm24(
         l_val=l_val, ab_max=ab_max, ab_sample=ab_sample,
@@ -97,7 +97,7 @@ def plot_ab_plane_with_interpolation_core(
     graph_title = f"ab plane,  {color_space_name},  L*={l_val:.2f}"
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(10, 10),
+        figsize=(12, 12),
         bg_color=(0.96, 0.96, 0.96),
         graph_title=graph_title,
         graph_title_size=None,
@@ -109,7 +109,7 @@ def plot_ab_plane_with_interpolation_core(
         xtick=None,
         ytick=None,
         xtick_size=None, ytick_size=None,
-        linewidth=3,
+        linewidth=2,
         minor_xtick_num=None,
         minor_ytick_num=None)
     ax1.imshow(
@@ -129,15 +129,15 @@ def thread_wrapper_plot_cielab_cl_plane_with_interpolation(args):
 def plot_cielab_cl_plane_with_interpolation_core(
         bg_lut_name, h_idx, h_val, color_space_name):
     bg_lut = TyLchLut(lut=np.load(bg_lut_name))
-    sample_num = 1024
-    jj_sample = 1024
+    sample_num = 1536
+    jj_sample = 1536
     ll_max = 100
     if color_space_name == cs.BT709:
-        cc_max = 150
+        cc_max = 160
     elif color_space_name == cs.P3_D65:
         cc_max = 180
     else:
-        cc_max = 230
+        cc_max = 220
     print(f"h_val={h_val} started")
 
     rgb_gm24 = create_valid_cielab_cl_plane_image_gm24(
@@ -155,7 +155,7 @@ def plot_cielab_cl_plane_with_interpolation_core(
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(10, 10),
+        figsize=(12, 12),
         bg_color=(0.96, 0.96, 0.96),
         graph_title=graph_title,
         graph_title_size=None,
@@ -165,9 +165,9 @@ def plot_cielab_cl_plane_with_interpolation_core(
         xlim=[0, cc_max],
         ylim=[0, ll_max],
         xtick=None,
-        ytick=None,
+        ytick=[x * 10 for x in range(11)],
         xtick_size=None, ytick_size=None,
-        linewidth=3,
+        linewidth=2,
         minor_xtick_num=None,
         minor_ytick_num=None)
     ax1.imshow(
@@ -189,7 +189,7 @@ def plot_cielab_cl_plane_with_interpolation(
         lightness_num=lightness_sample, hue_num=hue_sample)
 
     total_process_num = h_num_intp
-    block_process_num = int(cpu_count() / 3 + 0.9)
+    block_process_num = int(cpu_count() / 4 + 0.9)
     print(f"block_process_num {block_process_num}")
     block_num = int(round(total_process_num / block_process_num + 0.5))
 

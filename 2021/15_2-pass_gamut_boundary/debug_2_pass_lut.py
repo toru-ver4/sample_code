@@ -264,14 +264,13 @@ def create_jzazbz_gamut_boundary_method_c(
     np.save(fname, np.float32(lut_c))
 
 
-def create_jzazbz_2dlut_using_method_c_and_plot():
-    hue_num = 128
-    lightness_sample = 128
-    chroma_sample = 1024
-    color_space_name = cs.BT709
-    luminance = 100
-    h_num_intp = 100
-    j_num_intp = 100
+def create_jzazbz_2dlut_using_method_c_and_plot(
+        luminance=1000, color_space_name=cs.BT709):
+    hue_num = 4096
+    lightness_sample = 1024
+    chroma_sample = 512
+    h_num_intp = 1200
+    j_num_intp = 1200
     create_jzazbz_gamut_boundary_method_c(
         hue_sample=hue_num, lightness_sample=lightness_sample,
         chroma_sample=chroma_sample, color_space_name=color_space_name,
@@ -282,17 +281,17 @@ def create_jzazbz_2dlut_using_method_c_and_plot():
         color_space_name=color_space_name)
 
 
-def create_cielab_2dlut_using_method_c_and_plot():
-    chroma_sample = 8
-    hue_sample = 256
-    lightness_sample = 256
-    h_num_intp = 128
-    l_num_intp = 128
-    color_space_name = cs.BT709
-    # create_lab_gamut_boundary_method_c(
-    #     hue_sample=hue_sample, lightness_sample=lightness_sample,
-    #     chroma_sample=chroma_sample,
-    #     color_space_name=color_space_name)
+def create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.BT709):
+    chroma_sample = 512
+    hue_sample = 4096
+    lightness_sample = 1024
+    h_num_intp = 1200
+    l_num_intp = 1200
+
+    create_lab_gamut_boundary_method_c(
+        hue_sample=hue_sample, lightness_sample=lightness_sample,
+        chroma_sample=chroma_sample,
+        color_space_name=color_space_name)
     debug_plot_cielab(
         hue_sample=hue_sample, lightness_sample=lightness_sample,
         h_num_intp=h_num_intp, l_num_intp=l_num_intp,
@@ -301,5 +300,25 @@ def create_cielab_2dlut_using_method_c_and_plot():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # create_jzazbz_2dlut_using_method_c_and_plot()
-    create_cielab_2dlut_using_method_c_and_plot()
+    create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.BT709)
+    create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.P3_D65)
+    create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.BT2020)
+
+    create_jzazbz_2dlut_using_method_c_and_plot(
+        luminance=100, color_space_name=cs.BT2020)
+    create_jzazbz_2dlut_using_method_c_and_plot(
+        luminance=1000, color_space_name=cs.BT2020)
+    create_jzazbz_2dlut_using_method_c_and_plot(
+        luminance=10000, color_space_name=cs.BT2020)
+    create_jzazbz_2dlut_using_method_c_and_plot(
+        luminance=100, color_space_name=cs.BT709)
+    create_jzazbz_2dlut_using_method_c_and_plot(
+        luminance=1000, color_space_name=cs.BT709)
+    create_jzazbz_2dlut_using_method_c_and_plot(
+        luminance=10000, color_space_name=cs.BT709)
+    create_jzazbz_2dlut_using_method_c_and_plot(
+        luminance=100, color_space_name=cs.P3_D65)
+    create_jzazbz_2dlut_using_method_c_and_plot(
+        luminance=1000, color_space_name=cs.P3_D65)
+    create_jzazbz_2dlut_using_method_c_and_plot(
+        luminance=10000, color_space_name=cs.P3_D65)
