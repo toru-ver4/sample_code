@@ -39,6 +39,8 @@ COLOR_NUM = 3
 FLOAT_SIZE = 4
 JZAZBZ_CHROMA_MAX = 0.5
 CIELAB_CHROMA_MAX = 250
+L_SAMPLE_DEFAULT = 1024
+H_SAMPLE_DEFAULT = 4096
 
 shared_array_type = ctypes.c_float
 shared_array_elem_size = ctypes.sizeof(shared_array_type)
@@ -215,7 +217,7 @@ def create_cielab_gamut_boundary_lut_method_b(
     """
 
     total_process_num = hue_sample
-    block_process_num = 10
+    block_process_num = 16
     # block_process_num = 3  # for 32768 sample
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
@@ -700,11 +702,40 @@ class TyLchLut():
         self.lut = lut
         self.ll_min = lut[0, 0, 0]
         self.ll_max = lut[-1, 0, 0]
-        print(f"min, max = {self.ll_min}, {self.ll_max}")
+        print(f"LUT loaded. min, max = {self.ll_min}, {self.ll_max}")
 
     def interpolate(self, lh_array):
         return get_gamut_boundary_lch_from_lut(
             lut=self.lut, lh_array=lh_array, lightness_max=self.ll_max)
+
+    def get_cusp(self, hue):
+        """
+        calc gamut's cusp using lut.
+
+        Parameters
+        ----------
+        hue : float
+            A Hue value. range is 0.0 - 360.0
+        lightness_max : float
+            maximum value of lightness
+
+        Returns
+        -------
+        cusp : ndarray
+            gamut's cusp.
+            [Lightness, Chroma, Hue].
+
+        Examples
+        --------
+        >>> calc_cusp_specific_hue(
+        ...     lut=np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy"),
+        ...     hue=20)
+        [  60.          130.80209944   20.        ]
+        """
+        cusp_lch = calc_cusp_specific_hue(
+            lut=self.lut, hue=hue, lightness_max=self.ll_max)
+
+        return cusp_lch
 
 
 def make_cielab_gb_lut_fname_method_b(
@@ -742,7 +773,8 @@ def make_jzazbz_gb_lut_fname_methodb_b(
 
 
 def make_jzazbz_gb_lut_fname_method_c(
-        color_space_name, luminance, lightness_num, hue_num):
+        color_space_name, luminance,
+        lightness_num=L_SAMPLE_DEFAULT, hue_num=H_SAMPLE_DEFAULT):
     fname = f"./lut/JzChz_gb-lut_method_c_{color_space_name}_"
     fname += f"{luminance}nits_jj-{lightness_num}_"
     fname += f"hh-{hue_num}.npy"
@@ -847,7 +879,7 @@ def create_jzazbz_gamut_boundary_lut_type2(
 
     total_process_num = lightness_sample
     # block_process_num = cpu_count()
-    block_process_num = 10  # for 32768 sample
+    block_process_num = 16  # for 32768 sample
     block_num = int(round(total_process_num / block_process_num + 0.5))
     max_jz = large_xyz_to_jzazbz(xy_to_XYZ(cs.D65) * luminance)[0]
     print(f"max_Jz = {max_jz}")
@@ -1182,3 +1214,31 @@ if __name__ == '__main__':
     #     lightness=0.5, hue_sample=16, cs_name=cs.BT2020,
     #     peak_luminance=10000)
     # print(boundary_jch)
+
+    # lut = np.zeros((4, 9, 3))
+    # hue = np.linspace(0, 360, 9)
+    # # chroma_0 = np.ones_like(hue) * 0
+    # # chroma_1 = np.ones_like(hue) * 4.0
+    # # chroma_2 = np.ones_like(hue) * 8.0
+    # # chroma_3 = np.ones_like(hue) * 16.0
+    # chroma_0 = np.linspace(0, 1, len(hue)) * 0
+    # chroma_1 = np.linspace(0, 1, len(hue)) * 4
+    # chroma_2 = np.linspace(0, 1, len(hue)) * 8
+    # chroma_3 = np.linspace(0, 1, len(hue)) * 16
+    # lightness_0 = np.ones_like(hue) * 0
+    # lightness_1 = np.ones_like(hue) * 20
+    # lightness_2 = np.ones_like(hue) * 40
+    # lightness_3 = np.ones_like(hue) * 60
+    # lch_0 = tstack([lightness_0, chroma_0, hue])
+    # lch_1 = tstack([lightness_1, chroma_1, hue])
+    # lch_2 = tstack([lightness_2, chroma_2, hue])
+    # lch_3 = tstack([lightness_3, chroma_3, hue])
+    # lut[0] = lch_0
+    # lut[1] = lch_1
+    # lut[2] = lch_2
+    # lut[3] = lch_3
+    # print(lut)
+    # lh_array = np.array([[55, 45 * 3/4]])
+    # lch = get_gamut_boundary_lch_from_lut(
+    #     lut=lut, lh_array=lh_array, lightness_max=60)
+    # print(lch)

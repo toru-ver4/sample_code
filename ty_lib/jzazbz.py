@@ -158,6 +158,13 @@ def jzazbz_to_large_xyz(jzazbz):
 
     Examples
     --------
+    >>> large_xyz = np.array([95.047, 100, 108.883])
+    >>> jzazbz = large_xyz_to_jzazbz(xyz=large_xyz)
+    >>> print(jzazbz)
+    [  1.67173549e-01  -1.34044078e-04  -8.24666380e-05]
+    >>> large_xyz = jzazbz_to_large_xyz(jzazbz)
+    >>> print(large_xyz)
+    [  95.047  100.     108.883]
     """
     b = 1.15
     g = 0.66
@@ -310,5 +317,11 @@ def jzczhz_to_jzazbz(jzczhz):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    print(st2084_eotf_like(0.4))
-    print(st2084_oetf_like(100))
+    # print(st2084_eotf_like(0.4))
+    # print(st2084_oetf_like(100))
+    large_xyz = np.array([95.047, 100, 108.883])
+    jzazbz = large_xyz_to_jzazbz(xyz=large_xyz)
+    print(jzazbz)
+    large_xyz = jzazbz_to_large_xyz(jzazbz)
+    print(large_xyz)
+

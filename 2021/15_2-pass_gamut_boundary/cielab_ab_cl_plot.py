@@ -41,7 +41,7 @@ def debug_plot_cielab_ab_plane_with_interpolation(
     ll_num = l_num_intp
 
     total_process_num = ll_num
-    block_process_num = int(cpu_count() / 4 + 0.999)
+    block_process_num = int(cpu_count() / 2 + 0.999)
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
     for b_idx in range(block_num):
@@ -109,7 +109,7 @@ def plot_ab_plane_with_interpolation_core(
         xtick=None,
         ytick=None,
         xtick_size=None, ytick_size=None,
-        linewidth=2,
+        linewidth=1,
         minor_xtick_num=None,
         minor_ytick_num=None)
     ax1.imshow(
@@ -167,7 +167,7 @@ def plot_cielab_cl_plane_with_interpolation_core(
         xtick=None,
         ytick=[x * 10 for x in range(11)],
         xtick_size=None, ytick_size=None,
-        linewidth=2,
+        linewidth=1,
         minor_xtick_num=None,
         minor_ytick_num=None)
     ax1.imshow(
@@ -189,7 +189,7 @@ def plot_cielab_cl_plane_with_interpolation(
         lightness_num=lightness_sample, hue_num=hue_sample)
 
     total_process_num = h_num_intp
-    block_process_num = int(cpu_count() / 4 + 0.9)
+    block_process_num = int(cpu_count() / 2 + 0.9)
     print(f"block_process_num {block_process_num}")
     block_num = int(round(total_process_num / block_process_num + 0.5))
 

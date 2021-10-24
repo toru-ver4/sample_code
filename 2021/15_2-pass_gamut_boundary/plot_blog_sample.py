@@ -965,6 +965,29 @@ def plot_method_c_part1(grid=8, hue_idx=1):
         ax1, hue_deg=h_val, radius=radius, text=r"$h^{*}_{j}$",
         rate=text_rate, ha='left', va='center')
 
+    rot90_len = 20
+    rot90_rad = np.deg2rad(h_val - 90)
+    rot90_ofst_a = rot90_len * np.cos(rot90_rad)
+    rot90_ofst_b = rot90_len * np.sin(rot90_rad)
+    plot_annotate_line(
+        ax1=ax1, st_pos=(0, 0), ed_pos=(rot90_ofst_a, rot90_ofst_b),
+        color=(0.1, 0.1, 0.1), arrowstyle='-', linestyle='--')
+    plot_annotate_line(
+        ax1=ax1,
+        st_pos=(aa_list[-1], bb_list[-1]),
+        ed_pos=(aa_list[-1] + rot90_ofst_a, bb_list[-1]+rot90_ofst_b),
+        color=(0.1, 0.1, 0.1), arrowstyle='-', linestyle='--')
+    plot_annotate_line(
+        ax1=ax1,
+        st_pos=(rot90_ofst_a, rot90_ofst_b),
+        ed_pos=(aa_list[-1] + rot90_ofst_a, bb_list[-1]+rot90_ofst_b),
+        color=(0.1, 0.1, 0.1), arrowstyle='<->', linestyle='-')
+    t_st_a = rot90_ofst_a + aa_list[-1] / 2
+    t_st_b = rot90_ofst_b + bb_list[-1] / 2
+    plot_annotate_text_only(
+        ax1=ax1, pos=(t_st_a, t_st_b), rate=text_rate,
+        text=r"$Q^{*}_{Q, j}$", ha='left', va='center')
+
     pu.show_and_save(
         fig=fig, legend_loc=None, show=False,
         save_fname="./img/medhod_c.png")
@@ -1113,5 +1136,5 @@ if __name__ == '__main__':
     # for idx in range(10):
     #     j_val = 0.36 + idx / 1000
     #     cielab_method_b_ng_plot_jzazbz(j_val=j_val)
-    # plot_method_c_part1(grid=8, hue_idx=1)
-    plot_method_c_part2(grid=8, hue_idx=1)
+    plot_method_c_part1(grid=8, hue_idx=1)
+    # plot_method_c_part2(grid=8, hue_idx=1)
