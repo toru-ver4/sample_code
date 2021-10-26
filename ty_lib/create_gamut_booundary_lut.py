@@ -737,6 +737,41 @@ class TyLchLut():
 
         return cusp_lch
 
+    def get_cusp_without_intp(self, hue):
+        """
+        calc gamut's cusp without interpolation from lut.
+
+        Parameters
+        ----------
+        hue : float
+            A Hue value. range is 0.0 - 360.0
+        lightness_max : float
+            maximum value of lightness
+
+        Returns
+        -------
+        cusp : ndarray
+            gamut's cusp.
+            [Lightness, Chroma, Hue].
+
+        Examples
+        --------
+        >>> calc_cusp_specific_hue(
+        ...     lut=np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy"),
+        ...     hue=20)
+        [  60.          130.80209944   20.        ]
+        """
+        hue_sample = self.lut.shape[1]
+        hue_idx = int(round(hue / 360 * hue_sample))
+        # print(f"hue_sample={hue_sample}, hue_idx={hue_idx}")
+
+        lch = self.lut[:, hue_idx, :]
+        max_cc_idx = np.argmax(lch[..., 1])
+        cusp_lch = lch[max_cc_idx]
+        # print(f"cusp_lch={cusp_lch}")
+
+        return cusp_lch
+
 
 def make_cielab_gb_lut_fname_method_b(
         color_space_name, lightness_num, hue_num):
