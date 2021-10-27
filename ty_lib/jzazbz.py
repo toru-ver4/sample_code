@@ -357,6 +357,30 @@ def delta_Ez_jzczhz(jzczhz1, jzczhz2):
     return delta_Ez
 
 
+def delta_Ez_jzazbz(jzazbz1, jzazbz2):
+    """
+    Parameters
+    ----------
+    jzazbz1 : ndarray
+        data 1.
+    jzazbz2 : ndarray
+        data 2.
+
+    Examples
+    --------
+    >>> jzazbz1 = np.array([0.1, 0.2, 0.4])
+    >>> jzazbz2 = np.array([0.15, 0.4, -0.1])
+    >>> delta_Ez_jzazbz(jzazbz1, jzazbz2)
+    0.840578910657
+    """
+    jzczhz1 = jzazbz_to_jzczhz(jzazbz1)
+    jzczhz2 = jzazbz_to_jzczhz(jzazbz2)
+
+    delta_Ez = delta_Ez_jzczhz(jzczhz1=jzczhz1, jzczhz2=jzczhz2)
+
+    return delta_Ez
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(st2084_eotf_like(0.4))
@@ -375,3 +399,8 @@ if __name__ == '__main__':
     jzczhz2 = np.array([0.15, 0.4, 220])
     a = delta_Ez_jzczhz(jzczhz1, jzczhz2)
     print(a)
+
+    jzazbz1 = np.array([0.1, 0.2, 0.4])
+    jzazbz2 = np.array([0.15, 0.4, -0.1])
+    b = delta_Ez_jzazbz(jzazbz1, jzazbz2)
+    print(b)
