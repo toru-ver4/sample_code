@@ -73,9 +73,21 @@ def st2084_oetf_like(x):
 
 def st2084_eotf_like(x):
     """
+    Parameters
+    ----------
+    x : ndarray
+        input data. range is 0.0 - 1.0
+
+    Notes
+    -----
+    If x is zero, return -10000.
+    This is to detect out-of-gamut data.
+
     Examples
     --------
-
+    >>> x = np.array([0, 10**(-7), 0.5, 1.0])
+    >>> st2084_eotf_like(x)
+    [ -1.00000000e+04   4.22021344e-07   4.49680585e+02   1.00000000e+04]
     """
     n = 2610/(2**14)
     p = 1.7*2523/(2**5)
@@ -108,8 +120,11 @@ def large_xyz_to_jzazbz(xyz):
     Examples
     --------
     >>> large_xyz = np.array([95.047, 100, 108.883])
-    >>> jab = large_xyz_to_jzazbz(xyz=large_xyz)
+    >>> large_xyz_to_jzazbz(xyz=large_xyz)
     [  1.67173549e-01  -1.34044078e-04  -8.24666380e-05]
+    >>> large_xyz = np.array([95.047, 100, 108.883]) * 100
+    >>> large_xyz_to_jzazbz(xyz=large_xyz)
+    [  9.88607670e-01  -2.25664940e-04  -1.38820558e-04]
     """
     # coefficients
     b = 1.15
@@ -315,13 +330,48 @@ def jzczhz_to_jzazbz(jzczhz):
     return tstack([jz, az, bz])
 
 
+def delta_Ez_jzczhz(jzczhz1, jzczhz2):
+    """
+    Parameters
+    ----------
+    jzczhz1 : ndarray
+        data 1. hue angle range is 0.0 - 360.
+    jzczhz2 : ndarray
+        data 2. hue angle range is 0.0 - 360.
+
+    Examples
+    --------
+    >>> jzczhz1 = np.array([0.1, 0.2, 120])
+    >>> jzczhz2 = np.array([0.15, 0.4, 220])
+    >>> delta_Ez_jzczhz(jzczhz1, jzczhz2)
+    0.594012474049
+    """
+    d_Jz_square = (jzczhz1[0] - jzczhz2[0]) ** 2
+    d_Cz_square = (jzczhz1[1] - jzczhz2[1]) ** 2
+    d_hz = 2 * ((jzczhz1[1] * jzczhz2[1]) ** 0.5)\
+        * np.sin(np.deg2rad(jzczhz1[2] - jzczhz2[2]))
+    d_hz_square = d_hz ** 2
+
+    delta_Ez = (d_Jz_square + d_Cz_square + d_hz_square) ** 0.5
+
+    return delta_Ez
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(st2084_eotf_like(0.4))
     # print(st2084_oetf_like(100))
-    large_xyz = np.array([95.047, 100, 108.883])
+    large_xyz = np.array([95.047, 100, 108.883]) * 100
     jzazbz = large_xyz_to_jzazbz(xyz=large_xyz)
     print(jzazbz)
     large_xyz = jzazbz_to_large_xyz(jzazbz)
     print(large_xyz)
 
+    # x = np.array([0, 10**(-7), 0.5, 1.0])
+    # y = st2084_eotf_like(x)
+    # print(f"y={y}")
+
+    jzczhz1 = np.array([0.1, 0.2, 120])
+    jzczhz2 = np.array([0.15, 0.4, 220])
+    a = delta_Ez_jzczhz(jzczhz1, jzczhz2)
+    print(a)
