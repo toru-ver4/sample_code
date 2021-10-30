@@ -92,14 +92,14 @@ def calc_maximum_delta_Ez(
     return np.max(delta_Ez)
 
 
-def create_cl_pattern():
+def create_cl_pattern_contant_dEz():
     color_space_name = cs.BT709
     width = 1920
     height = 1080
     hue_num = 42
     hue_array = np.linspace(0, 360, hue_num, endpoint=False)
     chroma_num = int(round(height / width * hue_num))
-    luminance = 10000
+    luminance = 100
     normalize_luminance = 10000 if luminance > 100 else 100
     block_width_list = tpg.equal_devision(width, hue_num)
     block_height_list = tpg.equal_devision(height, chroma_num)
@@ -123,7 +123,6 @@ def create_cl_pattern():
         hue_array=hue_array, hue_num=hue_num, lut=lut)
     delta_Ez = delta_Ez_total / (chroma_num - 1)
 
-    h_buf_debug = []
     h_buf = []
     for h_idx in range(hue_num):
         hue = hue_array[h_idx]
@@ -139,17 +138,10 @@ def create_cl_pattern():
             block_img = np.ones((block_height, block_width, 3)) * rgb[c_idx]
             v_buf.append(block_img)
         h_buf.append(np.vstack(v_buf))
-        rgb_reshape = np.reshape(rgb, (rgb.shape[0], 1, rgb.shape[1]))
-        h_buf_debug.append(rgb_reshape)
     img_linear = np.hstack(h_buf)
 
     tf_str = tf.ST2084 if luminance > 100 else tf.GAMMA24
     img = tf.oetf(np.clip(img_linear, 0.0, 1.0), tf_str)
-
-    debug_data = np.hstack(h_buf_debug)
-    debug_data = tf.oetf(np.clip(debug_data, 0.0, 1.0), tf_str)
-    np.save("./debug_data.npy", debug_data)
-    print(f"debug_shape={debug_data.shape}")
 
     tpg.img_wirte_float_as_16bit_int(f"./img/abb_dEz-{luminance}.png", img)
 
@@ -205,5 +197,5 @@ def debug_cl_pattern():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    create_cl_pattern()
+    create_cl_pattern_contant_dEz()
     # debug_cl_pattern()
