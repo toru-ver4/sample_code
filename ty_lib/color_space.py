@@ -26,7 +26,7 @@ from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab,\
     Lab_to_XYZ
 from colour.adaptation import matrix_chromatic_adaptation_VonKries as cat02_mtx
 from scipy import linalg
-from jzazbz import jzazbz_to_large_xyz
+from jzazbz import jzazbz_to_large_xyz, large_xyz_to_jzazbz
 
 # Define
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
