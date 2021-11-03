@@ -179,6 +179,7 @@ venv.bak/
 2021/11_hue_chroma_pattern_using_jzazbz/lut/*.npy
 2021/14_optical_illusion/lut/*.npy
 2021/15_2-pass_gamut_boundary/lut/*.npy
+2021/15_2-pass_gamut_boundary/test_pattern_output/*.png
 temporary/**/**
 
 .gitconfig

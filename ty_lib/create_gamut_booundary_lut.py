@@ -70,9 +70,10 @@ def is_outer_gamut(lab, color_space_name):
     return judge
 
 
-def is_outer_gamut_jzazbz(jzazbz, color_space_name, luminance=10000):
-    min_val = -DELTA
-    max_val = 1 + DELTA
+def is_outer_gamut_jzazbz(
+        jzazbz, color_space_name, luminance=10000, delta=DELTA):
+    min_val = -delta
+    max_val = 1 + delta
     rgb = XYZ_to_RGB(
         jzazbz_to_large_xyz(jzazbz), cs.D65, cs.D65,
         RGB_COLOURSPACES[color_space_name].matrix_XYZ_to_RGB)
@@ -85,9 +86,9 @@ def is_outer_gamut_jzazbz(jzazbz, color_space_name, luminance=10000):
     return judge
 
 
-def is_out_of_gamut_rgb(rgb):
-    min_val = -DELTA
-    max_val = 1 + DELTA
+def is_out_of_gamut_rgb(rgb, delta=DELTA):
+    min_val = -delta
+    max_val = 1 + delta
     r_judge = (rgb[..., 0] < min_val) | (rgb[..., 0] > max_val)
     g_judge = (rgb[..., 1] < min_val) | (rgb[..., 1] > max_val)
     b_judge = (rgb[..., 2] < min_val) | (rgb[..., 2] > max_val)

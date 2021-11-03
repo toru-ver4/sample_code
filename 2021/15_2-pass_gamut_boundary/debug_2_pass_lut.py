@@ -6,6 +6,7 @@
 
 # import standard libraries
 import os
+from itertools import product
 
 # import third-party libraries
 import numpy as np
@@ -21,7 +22,7 @@ from create_gamut_booundary_lut import CIELAB_CHROMA_MAX, TyLchLut,\
     make_jzazbz_gb_lut_fname_methodb_b,\
     create_cielab_gamut_boundary_lut_method_b,\
     make_cielab_gb_lut_fname_method_b, make_cielab_gb_lut_fname_method_c
-from jzazbz import large_xyz_to_jzazbz, jzazbz_to_large_xyz
+from jzazbz import large_xyz_to_jzazbz, jzazbz_to_large_xyz, jzczhz_to_jzazbz
 from jzazbz_azbz_czhz_plot import debug_plot_jzazbz
 from cielab_ab_cl_plot import debug_plot_cielab
 
@@ -298,8 +299,7 @@ def create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.BT709):
         color_space_name=color_space_name)
 
 
-if __name__ == '__main__':
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+def plot_plane_festival():
     create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.BT709)
     create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.P3_D65)
     create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.BT2020)
@@ -322,3 +322,43 @@ if __name__ == '__main__':
         luminance=1000, color_space_name=cs.P3_D65)
     create_jzazbz_2dlut_using_method_c_and_plot(
         luminance=10000, color_space_name=cs.P3_D65)
+
+
+def debug_ng_cusp():
+    bg_lut_name = make_jzazbz_gb_lut_fname_method_c(
+        color_space_name=cs.BT709, luminance=1000)
+    bg_lut = TyLchLut(lut=np.load(bg_lut_name))
+    hue_list = np.linspace(250, 260, 256)
+    for hue in hue_list:
+        cusp = bg_lut.get_cusp_without_intp(hue=hue)
+        rgb = cs.jzazbz_to_rgb(
+            jzazbz=jzczhz_to_jzazbz(cusp), color_space_name=cs.BT709,
+            luminance=1000)
+        print(f"hue={hue:.2f}, cusp={cusp}, rgb={rgb}")
+
+
+def create_luts_all():
+    chroma_sample = 512
+    hue_sample = 4096
+    lightness_sample = 1024
+    color_space_name_list = [cs.BT709, cs.BT2020, cs.P3_D65]
+    luminance_list = [100, 300, 600, 1000, 2000, 4000, 10000]
+
+    for color_space_name in color_space_name_list:
+        create_lab_gamut_boundary_method_c(
+            hue_sample=hue_sample, lightness_sample=lightness_sample,
+            chroma_sample=chroma_sample,
+            color_space_name=color_space_name)
+
+    for color_space_name in color_space_name_list:
+        for luminance in luminance_list:
+            create_jzazbz_gamut_boundary_method_c(
+                hue_sample=hue_sample, lightness_sample=lightness_sample,
+                chroma_sample=chroma_sample, color_space_name=color_space_name,
+                luminance=luminance)
+
+
+if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # plot_plane_festival()
+    # debug_ng_cusp()
