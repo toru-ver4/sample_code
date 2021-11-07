@@ -1201,7 +1201,7 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # plot_focal_lut_all()
     # plot_bt2020_bt709_tp()
-    # plot_p3d65_bt709_tp()
+    plot_p3d65_bt709_tp()
 
     # plot_ab_plane_without_interpolation()
     # plot_cj_plane_without_interpolation()

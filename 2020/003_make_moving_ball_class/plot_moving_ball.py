@@ -68,10 +68,11 @@ def theread_wrapper_draw_main(kwargs):
 
 def draw_main(
         idx, radius, pos_list_total, bg_image_name, color_list,
-        width, height):
-    basename = Path(bg_image_name).name
-    fname = "/work/overuse/2020/003_moving_ball/img_seq_grad/"
-    fname += f"size_{radius:03d}_{basename}_{idx:04d}.png"
+        width, height, vr, fps):
+    basename = Path(bg_image_name).stem
+    fname = "/work/overuse/2020/003_moving_ball/img_seq_vr/"
+    fname += f"size_{radius}_{basename}_vr{int(vr*10)}_"
+    fname += f"{int(fps)}fps_{idx:04d}.png"
     bg_image = cv2.imread(
         bg_image_name, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR) / 0xFFFF
     # pos_list = [
@@ -98,8 +99,8 @@ def draw_main(
 
 def plot_with_bg_image(
         width=1920, height=1080, radius=20,
-        bg_image_name="./img/bg_img_5x3.png"):
-    velocity_rate = 20 * height / 1080
+        bg_image_name="./img/bg_img_5x3.png", vr=1.0, fps=60):
+    velocity_rate = 20 * height / 1080 * vr
     color_list = [
         [192, 192, 192], [192, 0, 0], [0, 192, 0], [0, 0, 192],
         [192, 0, 192], [192, 192, 0], [0, 192, 192]]
@@ -112,7 +113,8 @@ def plot_with_bg_image(
         velocity_init=velocity_list[idx], radius=radius,
         outline_size=(width, height))
         for idx in range(len(velocity_list))]
-    trial_num = 900
+    sec = 15
+    trial_num = sec * fps
 
     # 先に全部座標を計算してしまう
     pos_list_total = []
@@ -124,7 +126,7 @@ def plot_with_bg_image(
             rmo_list[idx].calc_next_pos()
 
     total_process_num = trial_num
-    block_process_num = int(cpu_count() * 0.8)
+    block_process_num = int(cpu_count() * 0.4)
     block_num = int(round(total_process_num / block_process_num + 0.5))
     mtime.start()
     for b_idx in range(block_num):
@@ -137,7 +139,7 @@ def plot_with_bg_image(
             d = dict(
                 idx=h_idx, radius=radius, pos_list_total=pos_list_total.copy(),
                 bg_image_name=bg_image_name, color_list=color_list,
-                width=width, height=height)
+                width=width, height=height, vr=vr, fps=fps)
             args.append(d)
             # draw_main(**d)
             mtime.lap("p loop")
@@ -151,23 +153,44 @@ if __name__ == '__main__':
     # main_func()
     bg_h_name = "./img/h_inc_grad_3840x2160_1000-nits.png"
     bg_v_name = "./img/v_inc_grad_3840x2160_1000_nits.png"
-    plot_with_bg_image(
-        radius=5 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
-    plot_with_bg_image(
-        radius=10 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
-    plot_with_bg_image(
-        radius=20 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
-    plot_with_bg_image(
-        radius=40 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
+    c_6x4_name = "./img/bg_img_6x4.png"
+    # plot_with_bg_image(
+    #     radius=5 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
+    # plot_with_bg_image(
+    #     radius=10 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
+    # plot_with_bg_image(
+    #     radius=20 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
+    # plot_with_bg_image(
+    #     radius=40 * 2, width=3840, height=2160, bg_image_name=bg_h_name)
+
+    # plot_with_bg_image(
+    #     radius=5 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
+    # plot_with_bg_image(
+    #     radius=10 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
+    # plot_with_bg_image(
+    #     radius=20 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
+    # plot_with_bg_image(
+    #     radius=40 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
 
     plot_with_bg_image(
-        radius=5 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
+        radius=20*4, width=3840, height=2160, bg_image_name=c_6x4_name, vr=1.0,
+        fps=60)
     plot_with_bg_image(
-        radius=10 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
+        radius=20*4, width=3840, height=2160, bg_image_name=c_6x4_name, vr=1.5,
+        fps=60)
     plot_with_bg_image(
-        radius=20 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
+        radius=20*4, width=3840, height=2160, bg_image_name=c_6x4_name, vr=2.0,
+        fps=60)
+
     plot_with_bg_image(
-        radius=40 * 2, width=3840, height=2160, bg_image_name=bg_v_name)
+        radius=20*4, width=3840, height=2160, bg_image_name=c_6x4_name, vr=1.0,
+        fps=120)
+    plot_with_bg_image(
+        radius=20*4, width=3840, height=2160, bg_image_name=c_6x4_name, vr=1.5,
+        fps=120)
+    plot_with_bg_image(
+        radius=20*4, width=3840, height=2160, bg_image_name=c_6x4_name, vr=2.0,
+        fps=120)
 
     # debug
     # plot_with_bg_image(

@@ -274,6 +274,17 @@ COUNTDOWN_COORDINATE_PARAM_60P = CountDownImageCoordinateParam(
     font_path=NOTO_SANS_MONO_EX_BOLD
 )
 
+COUNTDOWN_COORDINATE_PARAM_120P = CountDownImageCoordinateParam(
+    radius1=360,
+    radius2=320,
+    radius3=313,
+    radius4=315,
+    fps=120,
+    crosscross_line_width=4,
+    font_size=570,
+    font_path=NOTO_SANS_MONO_EX_BOLD
+)
+
 
 SDR_BG_FILENAME_BASE = "./bg_img/backgraound_{}_{}x{}.tiff"
 SDR_COUNTDOWN_FILENAME_BASE = "./fg_img/countdown_{}_{}x{}_{:06d}.tiff"
@@ -454,22 +465,23 @@ def make_sequence():
     """
     Make the multiple types of sequence files at a time.
     """
-    cd_coordinate_param_list = [
-        COUNTDOWN_COORDINATE_PARAM_24P,
-        COUNTDOWN_COORDINATE_PARAM_30P,
-        COUNTDOWN_COORDINATE_PARAM_50P,
-        COUNTDOWN_COORDINATE_PARAM_60P]
     # cd_coordinate_param_list = [
+    #     COUNTDOWN_COORDINATE_PARAM_24P,
+    #     COUNTDOWN_COORDINATE_PARAM_30P,
+    #     COUNTDOWN_COORDINATE_PARAM_50P,
     #     COUNTDOWN_COORDINATE_PARAM_60P]
+    cd_coordinate_param_list = [
+        COUNTDOWN_COORDINATE_PARAM_120P]
+    # for scale_factor in [1, 2]:
     for scale_factor in [1, 2]:
         for cd_coordinate_param in cd_coordinate_param_list:
-            make_countdown_movie(
-                bg_color_param=SDR_BG_COLOR_PARAM,
-                cd_color_param=SDR_COUNTDOWN_COLOR_PARAM,
-                dynamic_range='SDR',
-                bg_coordinate_param=BG_COODINATE_PARAM,
-                cd_coordinate_param=cd_coordinate_param,
-                scale_factor=scale_factor)
+            # make_countdown_movie(
+            #     bg_color_param=SDR_BG_COLOR_PARAM,
+            #     cd_color_param=SDR_COUNTDOWN_COLOR_PARAM,
+            #     dynamic_range='SDR',
+            #     bg_coordinate_param=BG_COODINATE_PARAM,
+            #     cd_coordinate_param=cd_coordinate_param,
+            #     scale_factor=scale_factor)
             make_countdown_movie(
                 bg_color_param=SDR_BG_COLOR_PARAM,
                 cd_color_param=SDR_COUNTDOWN_COLOR_PARAM,

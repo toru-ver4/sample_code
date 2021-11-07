@@ -26,7 +26,7 @@ from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab,\
     Lab_to_XYZ
 from colour.adaptation import matrix_chromatic_adaptation_VonKries as cat02_mtx
 from scipy import linalg
-from jzazbz import jzazbz_to_large_xyz
+from jzazbz import jzazbz_to_large_xyz, large_xyz_to_jzazbz
 
 # Define
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
@@ -351,12 +351,70 @@ def rgb_to_lab(
 def jzazbz_to_rgb(
         jzazbz, color_space_name, xyz_white=D65, rgb_white=D65,
         luminance=10000):
+    """
+    Examples
+    --------
+    >>> from jzazbz import large_xyz_to_jzazbz
+    >>> large_xyz_100nits = np.array([95.04559271, 100, 108.90577508])
+    >>> large_xyz_10000nits = large_xyz_100nits * 100
+    >>> jzazbz_10000nits = large_xyz_to_jzazbz(large_xyz_10000nits)
+    [  9.88606961e-01  -2.36258059e-04  -1.72125190e-04]
+    >>> jzazbz_100nits = large_xyz_to_jzazbz(large_xyz_100nits)
+    [  1.67173428e-01  -1.40335164e-04  -1.02252823e-04]
+    >>> large_xyz_10000nits = jzazbz_to_rgb(
+    ...     jzazbz=jzazbz_10000nits, color_space_name='ITU-R BT.709',
+    ...     luminance=10000)
+    [ 1.0  1.0  1.0]
+    >>> large_xyz_100nits_on_hdr = jzazbz_to_rgb(
+    ...     jzazbz=jzazbz_100nits, color_space_name='ITU-R BT.709',
+    ...     luminance=10000)
+    [ 0.01  0.01  0.01 ]
+    >>> large_xyz_100nits_on_sdr = jzazbz_to_rgb(
+    ...     jzazbz=jzazbz_100nits, color_space_name='ITU-R BT.709',
+    ...     luminance=100)
+    [ 1.0  1.0  1.0]
+    """
     large_xyz = jzazbz_to_large_xyz(jzazbz=jzazbz) / luminance
     rgb_linear = large_xyz_to_rgb(
         xyz=large_xyz, color_space_name=color_space_name,
         xyz_white=xyz_white, rgb_white=rgb_white)
     # print(rgb_linear[-4:])
     return rgb_linear
+
+
+def rgb_to_jzazbz(
+        rgb, color_space_name, xyz_white=D65, rgb_white=D65,
+        luminance=10000):
+    """
+    Parameters
+    ----------
+    rgb : ndarray
+        rgb value (linear).
+    color_space_name : str
+        color space name
+    xyz_white : ndarray
+        white point of the XYZ
+    rgb_white : ndarray
+        white point of the RGB
+
+    Examples
+    --------
+    >>> rgb_to_jzazbz(
+    ...     rgb=np.array([1, 1, 1]), color_space_name="ITU-R BT.709",
+    ...     xyz_white=D65, rgb_white=D65, luminance=100)
+    [  1.67173428e-01  -1.40335173e-04  -1.02252821e-04]
+
+    >>> rgb_to_jzazbz(
+    ...      rgb=np.array([1, 1, 1]), color_space_name="ITU-R BT.709",
+    ...      xyz_white=D65, rgb_white=D65, luminance=10000)
+    [  9.88606961e-01  -2.36258074e-04  -1.72125186e-04]
+    """
+    large_xyz = rgb_to_large_xyz(
+        rgb=rgb, color_space_name=color_space_name,
+        rgb_white=rgb_white, xyz_white=xyz_white) * luminance
+    jzazbz = large_xyz_to_jzazbz(xyz=large_xyz)
+
+    return jzazbz
 
 
 if __name__ == '__main__':
@@ -398,3 +456,33 @@ if __name__ == '__main__':
     # XYZ = calc_XYZ_from_rgb(
     #     rgb=rgb, color_space_name=BT709, white=D65)
     # print(XYZ_to_xyY(XYZ))
+    from jzazbz import large_xyz_to_jzazbz
+    print(xy_to_XYZ([0.3127, 0.3290]) * 100)
+    large_xyz_100nits = np.array([95.04559271, 100, 108.90577508])
+    large_xyz_10000nits = large_xyz_100nits * 100
+    jzazbz_10000nits = large_xyz_to_jzazbz(large_xyz_10000nits)
+    print(jzazbz_10000nits)
+    jzazbz_100nits = large_xyz_to_jzazbz(large_xyz_100nits)
+    print(jzazbz_100nits)
+    large_xyz_10000nits = jzazbz_to_rgb(
+        jzazbz=jzazbz_10000nits, color_space_name='ITU-R BT.709',
+        luminance=10000)
+    print(large_xyz_10000nits)
+    large_xyz_100nits_on_hdr = jzazbz_to_rgb(
+        jzazbz=jzazbz_100nits, color_space_name='ITU-R BT.709',
+        luminance=10000)
+    print(large_xyz_100nits_on_hdr)
+    large_xyz_100nits_on_sdr = jzazbz_to_rgb(
+        jzazbz=jzazbz_100nits, color_space_name='ITU-R BT.709',
+        luminance=100)
+    print(large_xyz_100nits_on_sdr)
+
+    jab = rgb_to_jzazbz(
+        rgb=np.array([1, 1, 1]), color_space_name="ITU-R BT.709",
+        xyz_white=D65, rgb_white=D65, luminance=100)
+    print(jab)
+
+    jab = rgb_to_jzazbz(
+        rgb=np.array([1, 1, 1]), color_space_name="ITU-R BT.709",
+        xyz_white=D65, rgb_white=D65, luminance=10000)
+    print(jab)

@@ -2317,9 +2317,9 @@ def make_bt2020_dci_p3_hue_chroma_pattern(
     text_h_margin = int(6 * height / 1080)
     font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
     text = '"BT.2020 - DCI-P3 Hue-Chroma Pattern",   '
-    text += "Gamma 2.4,   BT.2020,   D65,   Revision 1,   "
-    text += "Copyright (C) 2021 - Toru Yoshihara,   "
-    text += "https://trev16.hatenablog.com/"
+    text += "Gamma 2.4,   BT.2020,   D65,   Revision 1   "
+    # text += "Copyright (C) 2021 - Toru Yoshihara,   "
+    # text += "https://trev16.hatenablog.com/"
     hue = np.linspace(0, 360, hue_num, endpoint=False)
     text_width, text_height = fc.get_text_width_height(
         text=text, font_path=font_path, font_size=font_size)
@@ -2392,9 +2392,9 @@ def make_bt2020_bt709_hue_chroma_pattern_jzazbz(
     text_h_margin = int(6 * height / 1080)
     font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
     text = '"BT.2020 - DCI-P3 - BT.709 Hue-Chroma Pattern",   '
-    text += f"{oetf},   BT.2020,   D65,   {luminance}nits,   Revision 3,   "
-    text += "Copyright (C) 2021 - Toru Yoshihara,   "
-    text += "https://trev16.hatenablog.com/"
+    text += f"{oetf},   BT.2020,   D65,   {luminance}nits,   Revision 3   "
+    # text += "Copyright (C) 2021 - Toru Yoshihara,   "
+    # text += "https://trev16.hatenablog.com/"
     hue = np.linspace(0, 360, hue_num, endpoint=False)
     text_width, text_height = fc.get_text_width_height(
         text=text, font_path=font_path, font_size=font_size)
@@ -2481,8 +2481,8 @@ def make_p3d65_bt709_hue_chroma_pattern_jzazbz(
     font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
     text = '"DCI-P3 - BT.709 Hue-Chroma Pattern",   '
     text += f"{oetf},   DCI-P3,   D65,   {luminance}nits,   Revision 3,   "
-    text += "Copyright (C) 2021 - Toru Yoshihara,   "
-    text += "https://trev16.hatenablog.com/"
+    # text += "Copyright (C) 2021 - Toru Yoshihara,   "
+    # text += "https://trev16.hatenablog.com/"
     hue = np.linspace(0, 360, hue_num, endpoint=False)
     text_width, text_height = fc.get_text_width_height(
         text=text, font_path=font_path, font_size=font_size)
@@ -2564,8 +2564,8 @@ def make_bt709_hue_chroma_pattern_jzazbz(
     font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
     text = '"BT.709 Hue-Chroma Pattern",   '
     text += "Gamma 2.4,   BT.709,   D65,   Revision 1,   "
-    text += "Copyright (C) 2021 - Toru Yoshihara,   "
-    text += "https://trev16.hatenablog.com/"
+    # text += "Copyright (C) 2021 - Toru Yoshihara,   "
+    # text += "https://trev16.hatenablog.com/"
     hue = np.linspace(0, 360, hue_num, endpoint=False)
     _, text_height = fc.get_text_width_height(
         text=text, font_path=font_path, font_size=font_size)
