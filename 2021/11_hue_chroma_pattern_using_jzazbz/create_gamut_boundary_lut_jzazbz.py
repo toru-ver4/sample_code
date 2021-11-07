@@ -45,10 +45,10 @@ def create_gamut_boundary():
     #     chroma_sample=chroma_sample, color_space_name=cs.BT709,
     #     luminance=luminance)
 
-    # create_jzazbz_gamut_boundary_lut_type2(
-    #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
-    #     chroma_sample=chroma_sample, color_space_name=cs.BT709,
-    #     luminance=luminance)
+    create_jzazbz_gamut_boundary_lut_type2(
+        hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
+        chroma_sample=chroma_sample, color_space_name=cs.BT709,
+        luminance=luminance)
     # create_jzazbz_gamut_boundary_lut(
     #     hue_sample=hue_sample_num, lightness_sample=lightness_sample_num,
     #     color_space_name=cs.BT2020, luminance=luminance)
@@ -122,8 +122,8 @@ def create_focal_lut():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # create_gamut_boundary()
-    create_focal_lut()
+    create_gamut_boundary()
+    # create_focal_lut()
 
     del shm_buf
     shm.close()

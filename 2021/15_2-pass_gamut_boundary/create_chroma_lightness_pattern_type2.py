@@ -31,6 +31,12 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
+if os.name == 'nt':
+    FONT_PATH = "C:/Users/toruv/OneDrive/work/sample_code/font/NotoSansJP-Regular.otf"
+else:
+    FONT_PATH = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
+
+
 def calc_rgb_each_hue_dEz_base(
         hue, cusp, focal_point_l, chroma_num, delta_Ez,
         color_space_name, luminance):
@@ -197,12 +203,14 @@ def create_cl_pattern_contant_Cz(
     text_luminance = 20
     text_value = tf.oetf_from_luminance(text_luminance, tf_str)
     normalize_luminance = 10000 if luminance > 100 else 100
+    revision = 1  # new addition
 
     # information text
-    font_path = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
+    font_path = FONT_PATH
     font_size = int(20 * height / 1080)
     text = f'Constant Hue-Chroma Pattern (Jzazbz color space),   {tf_str},   '
-    text += f"{color_space_name},   D65,   {luminance} nits,   Revision 1"
+    text += f"{color_space_name},   D65,   {luminance} nits,   "
+    text += f"Revision {revision}"
     text_width, text_height = fc.get_text_width_height(
         text=text, font_path=font_path, font_size=font_size)
     text_h_margin = int(6 * height / 1080)
@@ -214,7 +222,6 @@ def create_cl_pattern_contant_Cz(
         font_color=(text_value, text_value, text_value),
         font_size=font_size, font_path=font_path)
     text_drawer.draw()
-    tpg.img_wirte_float_as_16bit_int("./txt.png", text_img)
 
     # recalc coordinate
     height_rest = height - text_img.shape[0]
@@ -278,7 +285,115 @@ def create_cl_pattern_contant_Cz(
     img = np.vstack([img, text_img])
 
     fname = "./test_pattern_output/constant_chroma_pattern_"
-    fname += f"{width}x{height}_{color_space_name}_{luminance}-nits.png"
+    fname += f"{width}x{height}_{color_space_name}_{luminance}-nits"
+    fname += f"_rev{revision}.png"
+    print(fname)
+
+    tpg.img_wirte_float_as_16bit_int(fname, img)
+
+
+def create_cl_pattern_normal(
+        color_space_name=cs.BT709, width=1920, height=1080,
+        hue_num=46, luminance=100):
+    hue_array = np.linspace(0, 360, hue_num, endpoint=False)
+
+    tf_str = tf.ST2084 if luminance > 100 else tf.GAMMA24
+    bg_luminance = 1
+    bg_linear = tf.eotf(
+        tf.oetf_from_luminance(bg_luminance, tf_str), tf_str)
+    mark_luminance = 0
+    mark_linear = tf.eotf(
+        tf.oetf_from_luminance(mark_luminance, tf_str), tf_str)
+    text_bg_luminance = 0.0
+    text_bg_value = tf.oetf_from_luminance(text_bg_luminance, tf_str)
+    text_luminance = 20
+    text_value = tf.oetf_from_luminance(text_luminance, tf_str)
+    normalize_luminance = 10000 if luminance > 100 else 100
+    revision = 4  # new lut, focal point = ll.max/2
+
+    # information text
+    font_path = FONT_PATH
+    font_size = int(20 * height / 1080)
+    text = f'Hue-Chroma Pattern (Jzazbz color space),   {tf_str},   '
+    text += f"{color_space_name},   D65,   {luminance} nits,   "
+    text += f"Revision {revision}"
+    text_width, text_height = fc.get_text_width_height(
+        text=text, font_path=font_path, font_size=font_size)
+    text_h_margin = int(6 * height / 1080)
+    text_v_margin = int(text_height * 0.3)
+    text_img = np.ones((text_height+text_v_margin*2, width, 3)) * text_bg_value
+    text_drawer = fc.TextDrawer(
+        text_img, text=text,
+        pos=(text_h_margin, text_v_margin),
+        font_color=(text_value, text_value, text_value),
+        font_size=font_size, font_path=font_path)
+    text_drawer.draw()
+
+    # recalc coordinate
+    height_rest = height - text_img.shape[0]
+    chroma_num = int(round(height_rest / width * hue_num))
+    block_width_list = tpg.equal_devision(width, hue_num)
+    block_height_list = tpg.equal_devision(height_rest, chroma_num)
+
+    # prepare marker
+    mark_size = max(block_width_list[0] // 10, 5)
+    mark_img_2020 = np.ones((mark_size, mark_size, 3)) * mark_linear
+
+    # load lut
+    lut_name = make_jzazbz_gb_lut_fname_method_c(
+        color_space_name=color_space_name, luminance=luminance)
+    lut = TyLchLut(np.load(lut_name))
+    focal_point_l = lut.ll_max / 2
+
+    # find maximum chroma from the cups of all hue angles
+    cusp = np.zeros((hue_num, 3))
+    for h_idx in range(hue_num):
+        hue = hue_array[h_idx]
+        # cusp[h_idx] = lut.get_cusp(hue=hue)
+        cusp[h_idx] = lut.get_cusp_without_intp(hue=hue)
+
+    h_buf = []
+    for h_idx in range(hue_num):
+        hue = hue_array[h_idx]
+        cusp = lut.get_cusp(hue=hue)
+        chroma_max = cusp[1]
+        jzazbz, ng_idx = calc_jzazbz_each_hue_Cz_base(
+            hue=hue, cusp=cusp, focal_point_l=focal_point_l,
+            chroma_max=chroma_max, chroma_num=chroma_num)
+        is_oog_709 = is_outer_gamut_jzazbz(
+            jzazbz=jzazbz, color_space_name=cs.BT709, luminance=luminance,
+            delta=10**-5)
+        is_oog_p3 = is_outer_gamut_jzazbz(
+            jzazbz=jzazbz, color_space_name=cs.P3_D65, luminance=luminance,
+            delta=10**-5)
+        rgb = cs.jzazbz_to_rgb(
+            jzazbz=jzazbz,
+            color_space_name=color_space_name, luminance=normalize_luminance)
+        rgb[ng_idx] = np.array([bg_linear, bg_linear, bg_linear])
+        # print(f"hue={hue:.1f}, rgb={rgb}")
+
+        v_buf = []
+        block_width = block_width_list[h_idx]
+        for c_idx in range(chroma_num):
+            block_height = block_height_list[c_idx]
+            block_img = np.ones((block_height, block_width, 3)) * rgb[c_idx]
+            if is_oog_709[c_idx] and not ng_idx[c_idx]:
+                img_p3 = mark_img_2020.copy()
+                img_p3[1:-1, 1:-1]\
+                    = np.ones_like(img_p3[1:-1, 1:-1]) * rgb[c_idx]
+                tpg.merge(block_img, img_p3, (0, 0))
+            if is_oog_p3[c_idx] and not ng_idx[c_idx]:
+                tpg.merge(block_img, mark_img_2020, (0, 0))
+            v_buf.append(block_img)
+        h_buf.append(np.vstack(v_buf))
+    img_linear = np.hstack(h_buf)
+
+    img = tf.oetf(np.clip(img_linear, 0.0, 1.0), tf_str)
+    img = np.vstack([img, text_img])
+
+    fname = "./test_pattern_output/hue-chroma_pattern_"
+    fname += f"{width}x{height}_{color_space_name}_{luminance}-nits"
+    fname += f"_rev{revision}.png"
     print(fname)
 
     tpg.img_wirte_float_as_16bit_int(fname, img)
@@ -337,8 +452,7 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_cl_pattern_contant_dEz()
     color_space_name_list = [cs.BT709, cs.BT2020, cs.P3_D65]
-    # luminance_list = [100, 300, 600, 1000, 4000, 10000]
-    luminance_list = [100, 1000, 10000]
+    luminance_list = [100, 300, 600, 1000, 2000, 4000, 10000]
     resolution_list = [[1920, 1080], [3840, 2160]]
 
     for color_space_name, luminance, resolution in product(
@@ -346,6 +460,9 @@ if __name__ == '__main__':
         width = resolution[0]
         height = resolution[1]
         create_cl_pattern_contant_Cz(
+            color_space_name=color_space_name,
+            width=width, height=height, hue_num=46, luminance=luminance)
+        create_cl_pattern_normal(
             color_space_name=color_space_name,
             width=width, height=height, hue_num=46, luminance=luminance)
 

@@ -236,6 +236,7 @@ def plot_cj_plane_with_interpolation_core(
         rgb_st2084, extent=(0, cc_max, 0, jj_max), aspect='auto')
     ax1.plot(chroma, lightness, color='k')
     fname = "/work/overuse/2021/15_2_pass_gamut_boundary/img_seq_czjz/"
+    # fname = "/work/overuse/2021/15_2_pass_gamut_boundary/img_seq_debug/"
     fname += f"CzJz_w_lut_{color_space_name}_{maximum_luminance}-nits_"
     fname += f"{h_idx:04d}.png"
     print(fname)

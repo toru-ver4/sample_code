@@ -23,8 +23,10 @@ from create_gamut_booundary_lut import CIELAB_CHROMA_MAX, TyLchLut,\
     create_cielab_gamut_boundary_lut_method_b,\
     make_cielab_gb_lut_fname_method_b, make_cielab_gb_lut_fname_method_c
 from jzazbz import large_xyz_to_jzazbz, jzazbz_to_large_xyz, jzczhz_to_jzazbz
-from jzazbz_azbz_czhz_plot import debug_plot_jzazbz
+from jzazbz_azbz_czhz_plot import debug_plot_jzazbz,\
+    plot_cj_plane_with_interpolation_core
 from cielab_ab_cl_plot import debug_plot_cielab
+from common import MeasureExecTime
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -207,7 +209,7 @@ def calc_chroma_boundary_specific_ligheness_jzazbz_method_c(
     chroma_init = lch[..., 1]
     hue = np.deg2rad(lch[..., 2])
 
-    trial_num = 20
+    trial_num = 30
 
     r_val = chroma_init
 
@@ -272,10 +274,10 @@ def create_jzazbz_2dlut_using_method_c_and_plot(
     chroma_sample = 512
     h_num_intp = 1200
     j_num_intp = 1200
-    create_jzazbz_gamut_boundary_method_c(
-        hue_sample=hue_num, lightness_sample=lightness_sample,
-        chroma_sample=chroma_sample, color_space_name=color_space_name,
-        luminance=luminance)
+    # create_jzazbz_gamut_boundary_method_c(
+    #     hue_sample=hue_num, lightness_sample=lightness_sample,
+    #     chroma_sample=chroma_sample, color_space_name=color_space_name,
+    #     luminance=luminance)
     debug_plot_jzazbz(
         hue_sample=hue_num, lightness_sample=lightness_sample,
         luminance=luminance, h_num_intp=h_num_intp, j_num_intp=j_num_intp,
@@ -289,10 +291,10 @@ def create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.BT709):
     h_num_intp = 1200
     l_num_intp = 1200
 
-    create_lab_gamut_boundary_method_c(
-        hue_sample=hue_sample, lightness_sample=lightness_sample,
-        chroma_sample=chroma_sample,
-        color_space_name=color_space_name)
+    # create_lab_gamut_boundary_method_c(
+    #     hue_sample=hue_sample, lightness_sample=lightness_sample,
+    #     chroma_sample=chroma_sample,
+    #     color_space_name=color_space_name)
     debug_plot_cielab(
         hue_sample=hue_sample, lightness_sample=lightness_sample,
         h_num_intp=h_num_intp, l_num_intp=l_num_intp,
@@ -300,28 +302,28 @@ def create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.BT709):
 
 
 def plot_plane_festival():
-    create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.BT709)
-    create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.P3_D65)
-    create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.BT2020)
+    # create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.BT709)
+    # create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.P3_D65)
+    # create_cielab_2dlut_using_method_c_and_plot(color_space_name=cs.BT2020)
 
-    create_jzazbz_2dlut_using_method_c_and_plot(
-        luminance=100, color_space_name=cs.BT2020)
-    create_jzazbz_2dlut_using_method_c_and_plot(
-        luminance=1000, color_space_name=cs.BT2020)
-    create_jzazbz_2dlut_using_method_c_and_plot(
-        luminance=10000, color_space_name=cs.BT2020)
-    create_jzazbz_2dlut_using_method_c_and_plot(
-        luminance=100, color_space_name=cs.BT709)
-    create_jzazbz_2dlut_using_method_c_and_plot(
-        luminance=1000, color_space_name=cs.BT709)
-    create_jzazbz_2dlut_using_method_c_and_plot(
-        luminance=10000, color_space_name=cs.BT709)
-    create_jzazbz_2dlut_using_method_c_and_plot(
-        luminance=100, color_space_name=cs.P3_D65)
-    create_jzazbz_2dlut_using_method_c_and_plot(
-        luminance=1000, color_space_name=cs.P3_D65)
-    create_jzazbz_2dlut_using_method_c_and_plot(
-        luminance=10000, color_space_name=cs.P3_D65)
+    # create_jzazbz_2dlut_using_method_c_and_plot(
+    #     luminance=100, color_space_name=cs.BT2020)
+    # create_jzazbz_2dlut_using_method_c_and_plot(
+    #     luminance=1000, color_space_name=cs.BT2020)
+    # create_jzazbz_2dlut_using_method_c_and_plot(
+    #     luminance=10000, color_space_name=cs.BT2020)
+    # create_jzazbz_2dlut_using_method_c_and_plot(
+    #     luminance=100, color_space_name=cs.BT709)
+    # create_jzazbz_2dlut_using_method_c_and_plot(
+    #     luminance=1000, color_space_name=cs.BT709)
+    # create_jzazbz_2dlut_using_method_c_and_plot(
+    #     luminance=10000, color_space_name=cs.BT709)
+    # create_jzazbz_2dlut_using_method_c_and_plot(
+    #     luminance=100, color_space_name=cs.P3_D65)
+    # create_jzazbz_2dlut_using_method_c_and_plot(
+    #     luminance=1000, color_space_name=cs.P3_D65)
+    # create_jzazbz_2dlut_using_method_c_and_plot(
+    #     luminance=10000, color_space_name=cs.P3_D65)
 
 
 def debug_ng_cusp():
@@ -341,24 +343,49 @@ def create_luts_all():
     chroma_sample = 512
     hue_sample = 4096
     lightness_sample = 1024
-    color_space_name_list = [cs.BT709, cs.BT2020, cs.P3_D65]
-    luminance_list = [100, 300, 600, 1000, 2000, 4000, 10000]
+    # color_space_name_list = [cs.BT709, cs.BT2020, cs.P3_D65]
+    # luminance_list = [100, 300, 600, 1000, 2000, 4000, 10000]
+    color_space_name_list = [cs.BT709]
+    luminance_list = [1000]
 
+    met = MeasureExecTime()
+    met.start()
     for color_space_name in color_space_name_list:
         create_lab_gamut_boundary_method_c(
             hue_sample=hue_sample, lightness_sample=lightness_sample,
             chroma_sample=chroma_sample,
             color_space_name=color_space_name)
+    met.end()
 
-    for color_space_name in color_space_name_list:
-        for luminance in luminance_list:
-            create_jzazbz_gamut_boundary_method_c(
-                hue_sample=hue_sample, lightness_sample=lightness_sample,
-                chroma_sample=chroma_sample, color_space_name=color_space_name,
-                luminance=luminance)
+    # for color_space_name in color_space_name_list:
+    #     for luminance in luminance_list:
+    #         create_jzazbz_gamut_boundary_method_c(
+    #             hue_sample=hue_sample, lightness_sample=lightness_sample,
+    #             chroma_sample=chroma_sample, color_space_name=color_space_name,
+    #             luminance=luminance)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # plot_plane_festival()
+    # create_luts_all()
+    plot_plane_festival()
     # debug_ng_cusp()
+
+    # debug plot hue angle 250 to 260
+    # bg_lut_name = make_jzazbz_gb_lut_fname_method_c(
+    #     color_space_name=cs.BT709, luminance=1000)
+    # h_val_list = np.linspace(0, 360, 4096)
+    # h_val_list2_idx = (h_val_list > 252.5) & (h_val_list < 257.5)
+    # for h_idx, h_val in enumerate(h_val_list[h_val_list2_idx]):
+    #     plot_cj_plane_with_interpolation_core(
+    #         bg_lut_name=bg_lut_name, h_idx=h_idx, h_val=h_val,
+    #         color_space_name=cs.BT709, maximum_luminance=1000)
+
+    # bg_lut_name = make_jzazbz_gb_lut_fname_method_c(
+    #     color_space_name=cs.BT709, luminance=1000)
+    # h_val_list = np.linspace(0, 360, 4096)
+    # h_val_list2_idx = (h_val_list > 0) & (h_val_list < 5)
+    # for h_idx, h_val in enumerate(h_val_list[h_val_list2_idx]):
+    #     plot_cj_plane_with_interpolation_core(
+    #         bg_lut_name=bg_lut_name, h_idx=h_idx+1000, h_val=h_val,
+    #         color_space_name=cs.BT709, maximum_luminance=1000)
