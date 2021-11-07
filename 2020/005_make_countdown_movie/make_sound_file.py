@@ -146,13 +146,13 @@ def make_countdown_sound_99s(sampling_rate=48000):
     # left
     left_sound = np.zeros((total_sample), dtype=np.int16)
     for left_st_sec in left_st_sec_list:
-        st_sample = sampling_rate * left_st_sec - offset_sample
+        st_sample = int(sampling_rate * left_st_sec - offset_sample)
         left_sound[st_sample:st_sample+sine_low.shape[0]] = sine_low
 
     # right
     right_sound = np.zeros((total_sample), dtype=np.int16)
     for right_st_sec in right_st_sec_list:
-        st_sample = sampling_rate * right_st_sec - offset_sample
+        st_sample = int(sampling_rate * right_st_sec - offset_sample)
         right_sound[st_sample:st_sample+sine_low.shape[0]] = sine_low
 
     stereo = np.dstack((left_sound, right_sound)).reshape((total_sample, 2))
@@ -161,5 +161,5 @@ def make_countdown_sound_99s(sampling_rate=48000):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    make_countdown_sound()
-    # make_countdown_sound_99s()
+    # make_countdown_sound()
+    make_countdown_sound_99s()
