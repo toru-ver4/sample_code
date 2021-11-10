@@ -1196,16 +1196,17 @@ def make_csf_color_image(width=640, height=640,
     return img
 
 
-def make_tile_pattern(width=480, height=960, h_tile_num=4,
-                      v_tile_num=4, low_level=(940, 940, 940),
-                      high_level=(1023, 1023, 1023)):
+def make_tile_pattern(
+        width=480, height=960, h_tile_num=4,
+        v_tile_num=4, low_level=(0.5, 0.5, 0.5),
+        high_level=(1.0, 1.0, 1.0), dtype=np.uint16):
     """
     タイル状の縞々パターンを作る
     """
     width_array = equal_devision(width, h_tile_num)
     height_array = equal_devision(height, v_tile_num)
-    high_level = np.array(high_level, dtype=np.uint16)
-    low_level = np.array(low_level, dtype=np.uint16)
+    high_level = np.array(high_level, dtype=dtype)
+    low_level = np.array(low_level, dtype=dtype)
 
     v_buf = []
 
@@ -1213,7 +1214,7 @@ def make_tile_pattern(width=480, height=960, h_tile_num=4,
         h_buf = []
         for h_idx, width in enumerate(width_array):
             tile_judge = (h_idx + v_idx) % 2 == 0
-            h_temp = np.zeros((height, width, 3), dtype=np.uint16)
+            h_temp = np.zeros((height, width, 3), dtype=dtype)
             h_temp[:, :] = high_level if tile_judge else low_level
             h_buf.append(h_temp)
 
@@ -2654,7 +2655,7 @@ if __name__ == '__main__':
     # img_wirte_float_as_16bit_int("fg.png", fg_img)
     # img_wirte_float_as_16bit_int("after_merge.png", bg_img)
 
-    line = np.linspace(0, 1, 9)
-    print(line)
-    img = h_mono_line_to_img(line, 6)
-    print(img)
+    # line = np.linspace(0, 1, 9)
+    # print(line)
+    # img = h_mono_line_to_img(line, 6)
+    # print(img)
