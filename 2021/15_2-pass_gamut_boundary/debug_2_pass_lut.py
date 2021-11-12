@@ -27,6 +27,7 @@ from jzazbz_azbz_czhz_plot import debug_plot_jzazbz,\
     plot_cj_plane_with_interpolation_core
 from cielab_ab_cl_plot import debug_plot_cielab
 from common import MeasureExecTime
+import transfer_functions as tf
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -324,6 +325,7 @@ def plot_plane_festival():
     #     luminance=1000, color_space_name=cs.P3_D65)
     # create_jzazbz_2dlut_using_method_c_and_plot(
     #     luminance=10000, color_space_name=cs.P3_D65)
+    pass
 
 
 def debug_ng_cusp():
@@ -345,30 +347,41 @@ def create_luts_all():
     lightness_sample = 1024
     # color_space_name_list = [cs.BT709, cs.BT2020, cs.P3_D65]
     # luminance_list = [100, 300, 600, 1000, 2000, 4000, 10000]
-    color_space_name_list = [cs.BT709]
-    luminance_list = [1000]
+
+    color_space_name_list = [cs.P3_D65]
+    cv_list = [x * 16 for x in range(65)]
+    cv_list[-1] = cv_list[-1] - 1
+    luminance_list = [
+        int(round(tf.eotf_to_luminance(x/1023, tf.ST2084)))
+        for x in cv_list]
+    luminance_list = np.array(luminance_list, dtype=np.uint16)
+    luminance_list = [x for x in luminance_list if (x > 3) and (x < 100)]
+    print(luminance_list)
+
+    # luminance_list = [100 * x + 100 for x in range(33)]
+    # luminance_list = [1000]
+
+    # for color_space_name in color_space_name_list:
+    #     create_lab_gamut_boundary_method_c(
+    #         hue_sample=hue_sample, lightness_sample=lightness_sample,
+    #         chroma_sample=chroma_sample,
+    #         color_space_name=color_space_name)
 
     met = MeasureExecTime()
     met.start()
     for color_space_name in color_space_name_list:
-        create_lab_gamut_boundary_method_c(
-            hue_sample=hue_sample, lightness_sample=lightness_sample,
-            chroma_sample=chroma_sample,
-            color_space_name=color_space_name)
+        for luminance in luminance_list:
+            create_jzazbz_gamut_boundary_method_c(
+                hue_sample=hue_sample, lightness_sample=lightness_sample,
+                chroma_sample=chroma_sample, color_space_name=color_space_name,
+                luminance=luminance)
     met.end()
-
-    # for color_space_name in color_space_name_list:
-    #     for luminance in luminance_list:
-    #         create_jzazbz_gamut_boundary_method_c(
-    #             hue_sample=hue_sample, lightness_sample=lightness_sample,
-    #             chroma_sample=chroma_sample, color_space_name=color_space_name,
-    #             luminance=luminance)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # create_luts_all()
-    plot_plane_festival()
+    create_luts_all()
+    # plot_plane_festival()
     # debug_ng_cusp()
 
     # debug plot hue angle 250 to 260
