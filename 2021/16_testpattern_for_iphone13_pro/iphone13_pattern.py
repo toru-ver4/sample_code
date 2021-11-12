@@ -24,6 +24,7 @@ import plot_utility as pu
 from create_gamut_booundary_lut import make_jzazbz_gb_lut_fname_method_c,\
     TyLchLut
 from jzazbz import jzczhz_to_jzazbz
+from ty_utility import add_suffix_to_filename
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -554,6 +555,59 @@ def cusp_per_nit_pattern(min_lumi=100, max_lumi=2000, width=1920, height=1080):
     tpg.img_wirte_float_as_16bit_int(fname, img_non_linear)
 
 
+def add_hard_clipping_core(src_fname, clip_luminance=1000):
+    dst_fname = add_suffix_to_filename(
+        fname=src_fname, suffix=f"_w_clip_{clip_luminance}-nits")
+    img = tpg.img_read_as_float(src_fname)
+    clip_cv = tf.oetf_from_luminance(clip_luminance, tf.ST2084)
+    img[img > clip_cv] = clip_cv
+
+    text = f"w/ clipping ({clip_luminance} nits)"
+    font_color = (0, 0.6, 0.6)
+    font_size = 60
+    font = fc.NOTO_SANS_MONO_BLACK
+    font_drawer = fc.TextDrawer(
+        img=img, text=text, pos=(0, 0), font_color=font_color,
+        font_size=font_size, bg_transfer_functions=tf.ST2084,
+        fg_transfer_functions=tf.ST2084, font_path=font)
+    font_drawer.draw()
+
+    tpg.img_wirte_float_as_16bit_int(dst_fname, img)
+
+
+def add_without_hard_clipping_core(src_fname):
+    dst_fname = add_suffix_to_filename(fname=src_fname, suffix="_wo_clip")
+    img = tpg.img_read_as_float(src_fname)
+
+    text = "w/o clipping"
+    font_color = (0.0, 0.6, 0.6)
+    font_size = 60
+    font = fc.NOTO_SANS_MONO_BLACK
+    font_drawer = fc.TextDrawer(
+        img=img, text=text, pos=(0, 0), font_color=font_color,
+        font_size=font_size, bg_transfer_functions=tf.ST2084,
+        fg_transfer_functions=tf.ST2084, font_path=font)
+    font_drawer.draw()
+
+    tpg.img_wirte_float_as_16bit_int(dst_fname, img)
+
+
+def add_hard_clipping_to_cusp_pattern():
+    width = 3840
+    height = 2160
+    color_space_name = cs.P3_D65
+    min_lumi = 100
+    max_lumi = 10000
+
+    src_fname = f"./img/jzazbz_cusp_{width}x{height}_"
+    src_fname += f"{color_space_name}_{min_lumi}-{max_lumi}_nits.png"
+
+    add_hard_clipping_core(src_fname=src_fname, clip_luminance=1000)
+    add_hard_clipping_core(src_fname=src_fname, clip_luminance=1600)
+    add_hard_clipping_core(src_fname=src_fname, clip_luminance=2100)
+    add_without_hard_clipping_core(src_fname=src_fname)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_dot_pattern()
@@ -568,6 +622,8 @@ if __name__ == '__main__':
     # plot_bt2020_vs_dci_p3()
     # create_gray_patch(panel_width=2778, panel_height=1284, area_rate=0.4*100)
 
-    cusp_per_nit_pattern(width=3840, height=2160, min_lumi=100, max_lumi=1000)
+    # cusp_per_nit_pattern(width=3840, height=2160, min_lumi=100, max_lumi=1000)
     # cusp_per_nit_pattern(width=3840, height=2160, min_lumi=100, max_lumi=2000)
     # cusp_per_nit_pattern(width=3840, height=2160, min_lumi=100, max_lumi=10000)
+
+    add_hard_clipping_to_cusp_pattern()

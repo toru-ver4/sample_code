@@ -182,6 +182,7 @@ venv.bak/
 2021/15_2-pass_gamut_boundary/test_pattern_output/*.png
 temporary/**/**
 2021/16_testpattern_for_iphone13_pro/img/*.png
+2021/16_testpattern_for_iphone13_pro/lut
 
 .gitconfig
 .bash_history
