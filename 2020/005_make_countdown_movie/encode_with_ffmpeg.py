@@ -22,7 +22,7 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
 
-REVISION = 8
+REVISION = 9
 SRC_DIR = "D:/abuse/2020/005_make_countdown_movie/movie_seq/"
 DST_DIR = "D:/abuse/2020/005_make_countdown_movie/ffmpeg_out/"
 
@@ -144,7 +144,7 @@ def encode_hdr_420(width, height, fps, dr):
 
 def encode_each_data():
     resolution_list = [[1920, 1080], [2048, 1080], [4096, 2160], [3840, 2160]]
-    fps_list = [24, 30, 50, 60]
+    fps_list = [24, 30, 50, 60, 120]
     dynamic_range_list = ['SDR', 'HDR']
     for resolution, fps, dynamic_range in product(
             resolution_list, fps_list, dynamic_range_list):

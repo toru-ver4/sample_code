@@ -822,20 +822,7 @@ class BackgroundImage():
             patch_v_offset=self.patch_v_offset)
 
     def draw_audio_sync_base(self):
-        outer_img\
-            = np.ones((self.audio_sync_height, self.ramp_obj_width, 3))\
-            * self.obj_outline_color
-
-        ramp_width = self.ramp_obj_width - self.ramp_outline_width * 2
         ramp_height = self.audio_sync_height - self.ramp_outline_width * 2
-        inner_img = np.ones((ramp_height, ramp_width, 3)) * self.bg_color
-
-        tpg.merge(outer_img, inner_img,
-                  (self.ramp_outline_width, self.ramp_outline_width))
-        ramp_pos_h\
-            = (self.width // 2) - (ramp_width // 2) - self.ramp_outline_width
-        tpg.merge(
-            self.img, outer_img, pos=(ramp_pos_h, self.audio_sync_st_pos_v))
 
         self.frame_marker_list = create_frame_marker_list(
             width=self.width, height=self.height, fps=self.fps,
@@ -849,6 +836,24 @@ class BackgroundImage():
         self.frame_marker_list[0].fill(self.img, color='center')
         for idx in range(1, self.fps):
             self.frame_marker_list[idx].fill(self.img, color='bg')
+
+        rrr = 3 if self.fps < 120 else 5
+
+        frame_width\
+            = self.frame_marker_list[self.fps//2].st_pos_list[0][0]\
+            - self.frame_marker_list[self.fps//2].st_pos_list[1][0]\
+            + self.frame_marker_list[0].block_width * rrr
+        ramp_width = frame_width - self.ramp_outline_width * 2
+        outer_img\
+            = np.ones((self.audio_sync_height, frame_width, 3))\
+            * self.obj_outline_color
+        inner_img = np.ones((ramp_height, ramp_width, 3)) * self.bg_color
+        tpg.merge(outer_img, inner_img,
+                  (self.ramp_outline_width, self.ramp_outline_width))
+        ramp_pos_h\
+            = (self.width // 2) - (ramp_width // 2) - self.ramp_outline_width
+        tpg.merge(
+            self.img, outer_img, pos=(ramp_pos_h, self.audio_sync_st_pos_v))
 
     def make(self):
         """
