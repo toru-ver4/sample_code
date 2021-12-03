@@ -41,7 +41,8 @@ HELVETICA_DISPLAY_BLACK\
 
 
 def get_text_size(
-        text="0", font_size=10, font_path=NOTO_SANS_MONO_BOLD):
+        text="0", font_size=10, font_path=NOTO_SANS_MONO_BOLD,
+        stroke_width=0, stroke_fill=None):
     """
     指定したテキストの width, height を求める。
 
@@ -50,6 +51,7 @@ def get_text_size(
     >>> width, height = self.get_text_size(
     >>>     text="0120-777-777", font_size=10, font_path=NOTO_SANS_MONO_BOLD)
     """
+    print(f"stroke_width={stroke_width}")
     dummy_img_size = 4095
     dummy_img = np.zeros((dummy_img_size, dummy_img_size, 3))
     text_drawer = TextDrawer(
@@ -57,17 +59,25 @@ def get_text_size(
         font_color=(0xFF, 0xFF, 0xFF),
         font_size=font_size,
         bg_transfer_functions=tf.GAMMA24,
-        font_path=font_path)
+        font_path=font_path,
+        stroke_width=stroke_width,
+        stroke_fill=stroke_fill)
     text_drawer.draw()
+    # temp_size = text_drawer.get_text_size()
+    # out_size = []
+    # out_size.append(temp_size[0] + 2 * stroke_width)
+    # out_size.append(temp_size[1] + 2 * stroke_width)
+    # return out_size
     return text_drawer.get_text_size()
-
 
 class TextDrawer():
     def __init__(
             self, img, text="hoge", pos=(0, 0), font_color=(1.0, 1.0, 0.0),
             font_size=30, bg_transfer_functions=tf.SRGB,
             fg_transfer_functions=tf.SRGB,
-            font_path=NOTO_SANS_MONO_BOLD):
+            font_path=NOTO_SANS_MONO_BOLD,
+            stroke_width=0,
+            stroke_fill=None):
         """
         テキストをプロットするクラスのコンストラクタ
 
@@ -119,6 +129,8 @@ class TextDrawer():
         self.bg_tf = bg_transfer_functions
         self.fg_tf = fg_transfer_functions
         self.font_path = font_path
+        self.stroke_width = stroke_width
+        self.stroke_fill = stroke_fill
 
     def draw(self):
         """
@@ -181,14 +193,20 @@ class TextDrawer():
         dummy_img = Image.new("RGBA", (1, 1), self.bg_color)
         dummy_draw = ImageDraw.Draw(dummy_img)
         font = ImageFont.truetype(self.font_path, self.font_size)
-        text_size = dummy_draw.textsize(self.text, font)
+        text_size = dummy_draw.textsize(
+            self.text, font, stroke_width=self.stroke_width)
         (_, _), (_, offset_y) = font.font.getsize(self.text)
+        # print(f"make: text_size={text_size}")
+        # print(f"offset_y={offset_y}")
 
         text_img = Image.new(
             "RGBA", (text_size[0], text_size[1]), self.bg_color)
         draw = ImageDraw.Draw(text_img)
         font = ImageFont.truetype(self.font_path, self.font_size)
-        draw.text((0, 0), self.text, font=font, fill=self.font_color)
+        draw.text(
+            (self.stroke_width, self.stroke_width),
+            self.text, font=font, fill=self.font_color,
+            stroke_width=self.stroke_width, stroke_fill=self.stroke_fill)
         self.text_img = np.asarray(text_img)[offset_y:text_size[1]] / 0xFF
 
     def composite_text(self):
@@ -305,9 +323,28 @@ def simple_test_dot_drop(dot_factor=1, offset=(0, 0)):
         np.uint8(np.round(img[:, :, ::-1] * 0xFF)))
 
 
+def simple_test_with_stroke(font_path):
+    # example 1 SDR text on SDR background
+    dst_img = np.ones((540, 960, 3)) * np.array([0.3, 0.3, 0.1])
+    text_drawer = TextDrawer(
+        dst_img, text="0123456", pos=(200, 50),
+        font_color=(0.5, 0.5, 0.5), font_size=40,
+        bg_transfer_functions=tf.SRGB,
+        fg_transfer_functions=tf.SRGB,
+        stroke_width=4,
+        stroke_fill='black',
+        font_path=font_path)
+    text_drawer.draw()
+    img = text_drawer.get_img()
+    cv2.imwrite(
+        "sdr_text_on_sdr_image_with_stroke.png",
+        np.uint8(np.round(img[:, :, ::-1] * 0xFF)))
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # simple_test_noraml_draw()
+    simple_test_with_stroke()
     # simple_test_dot_drop(dot_factor=1, offset=(0, 0))
     # simple_test_dot_drop(dot_factor=1, offset=(1, 0))
     # simple_test_dot_drop(dot_factor=1, offset=(0, 1))
