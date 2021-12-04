@@ -25,7 +25,7 @@ import math
 from jzazbz import jzczhz_to_jzazbz
 
 import transfer_functions as tf
-import create_gamut_booundary_lut as cgbl
+# import create_gamut_booundary_lut as cgbl
 import font_control as fc
 import color_space as cs
 from common import is_img_shape
