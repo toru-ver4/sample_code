@@ -212,18 +212,22 @@ class TextDrawer():
     def composite_text(self):
         text_width = self.text_img.shape[1]
         text_height = self.text_img.shape[0]
-        composite_area_img = self.img[self.pos[1]:self.pos[1]+text_height,
-                                      self.pos[0]:self.pos[0]+text_width]
+        composite_area_img = self.img[
+            self.pos[1]:self.pos[1]+text_height,
+            self.pos[0]:self.pos[0]+text_width]
         bg_img_linear = tf.eotf_to_luminance(composite_area_img, self.bg_tf)
         text_img_linear = tf.eotf_to_luminance(self.text_img, self.fg_tf)
 
         alpha = text_img_linear[:, :, 3:] / tf.PEAK_LUMINANCE[self.fg_tf]
 
-        a_idx = (alpha > 0)[..., 0]
+        a_idx = (alpha > 0.1)[..., 0]
 
         bg_img_linear[a_idx] = (1 - alpha[a_idx])\
-            * bg_img_linear[a_idx]\
+            * np.clip(bg_img_linear[a_idx], 0.0, tf.PEAK_LUMINANCE[self.fg_tf])\
             + (text_img_linear[a_idx, :-1] * alpha[a_idx])
+        # bg_img_linear[a_idx] = (1 - alpha[a_idx])\
+        #     * bg_img_linear[a_idx]\
+        #     + (text_img_linear[a_idx, :-1] * alpha[a_idx])
         bg_img_linear = np.clip(
             bg_img_linear, 0.0, tf.PEAK_LUMINANCE[self.bg_tf])
         bg_img_linear = tf.oetf_from_luminance(bg_img_linear, self.bg_tf)

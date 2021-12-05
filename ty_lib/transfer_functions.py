@@ -37,6 +37,7 @@ NLOG = "Nikon N-Log"
 DLOG = "DJI D-Log"
 FLOG = "FUJIFILM F-Log"
 SRGB = "sRGB"
+LINEAR = 'Linear'
 # ACES_CG = 'ACEScg'
 
 slog_max = colour.models.log_decoding_SLog3((1023 / 1023),
@@ -55,32 +56,44 @@ nlog_max = 14.78086344050015
 flog_max = 7.281324880488497
 # dlog_max = d_log_decoding(1.0, out_reflection=True)
 dlog_max = 41.99939267086707
+linear_max = 10**12
 
 REF_WHITE_LUMINANCE = 100
 
-MAX_VALUE = {GAMMA24: 1.0, SRGB: 1.0, ST2084: 10000, HLG: 1000,
-             VLOG_IRE: vlog_ire_max, VLOG: vlog_ref_max,
-             LOGC: logc_max,
-             SLOG3: slog_max, SLOG3_REF: slog_ref_max,
-             REDLOG: red_max,
-             LOG3G10: log3g10_max, LOG3G12: log3g12_max,
-             NLOG: nlog_max, FLOG: flog_max, DLOG: dlog_max}
+MAX_VALUE = {
+    GAMMA24: 1.0,
+    SRGB: 1.0,
+    ST2084: 10000,
+    HLG: 1000,
+    VLOG_IRE: vlog_ire_max,
+    VLOG: vlog_ref_max,
+    LOGC: logc_max,
+    SLOG3: slog_max,
+    SLOG3_REF: slog_ref_max,
+    REDLOG: red_max,
+    LOG3G10: log3g10_max,
+    LOG3G12: log3g12_max,
+    NLOG: nlog_max, FLOG:
+    flog_max, DLOG: dlog_max,
+    LINEAR: linear_max}
 
-PEAK_LUMINANCE = {GAMMA24: REF_WHITE_LUMINANCE,
-                  SRGB: REF_WHITE_LUMINANCE,
-                  ST2084: 10000,
-                  HLG: 1000,
-                  VLOG_IRE: vlog_ire_max * REF_WHITE_LUMINANCE,
-                  VLOG: vlog_ref_max * REF_WHITE_LUMINANCE,
-                  LOGC: logc_max * REF_WHITE_LUMINANCE,
-                  SLOG3: slog_max * REF_WHITE_LUMINANCE,
-                  SLOG3_REF: slog_ref_max * REF_WHITE_LUMINANCE,
-                  REDLOG: red_max * REF_WHITE_LUMINANCE,
-                  LOG3G10: log3g10_max * REF_WHITE_LUMINANCE,
-                  LOG3G12: log3g12_max * REF_WHITE_LUMINANCE,
-                  NLOG: nlog_max * REF_WHITE_LUMINANCE,
-                  FLOG: flog_max * REF_WHITE_LUMINANCE,
-                  DLOG: dlog_max * REF_WHITE_LUMINANCE}
+PEAK_LUMINANCE = {
+    GAMMA24: REF_WHITE_LUMINANCE,
+    SRGB: REF_WHITE_LUMINANCE,
+    ST2084: 10000,
+    HLG: 1000,
+    VLOG_IRE: vlog_ire_max * REF_WHITE_LUMINANCE,
+    VLOG: vlog_ref_max * REF_WHITE_LUMINANCE,
+    LOGC: logc_max * REF_WHITE_LUMINANCE,
+    SLOG3: slog_max * REF_WHITE_LUMINANCE,
+    SLOG3_REF: slog_ref_max * REF_WHITE_LUMINANCE,
+    REDLOG: red_max * REF_WHITE_LUMINANCE,
+    LOG3G10: log3g10_max * REF_WHITE_LUMINANCE,
+    LOG3G12: log3g12_max * REF_WHITE_LUMINANCE,
+    NLOG: nlog_max * REF_WHITE_LUMINANCE,
+    FLOG: flog_max * REF_WHITE_LUMINANCE,
+    DLOG: dlog_max * REF_WHITE_LUMINANCE,
+    LINEAR: linear_max * REF_WHITE_LUMINANCE}
 
 
 def oetf(x, name=GAMMA24):
@@ -144,6 +157,8 @@ def oetf(x, name=GAMMA24):
         y = f_log_encoding(x * MAX_VALUE[name], in_reflection=True)
     elif name == DLOG:
         y = d_log_encoding(x * MAX_VALUE[name], in_reflection=True)
+    elif name == LINEAR:
+        y = x
     else:
         raise ValueError("invalid transfer fucntion name")
 
@@ -175,7 +190,10 @@ def oetf_from_luminance(x, name=GAMMA24):
     >>> oetf_from_luminance(100, ST2084)
     0.5 付近の値
     """
-    return oetf(x / PEAK_LUMINANCE[name], name)
+    if name == LINEAR:
+        return oetf(x / REF_WHITE_LUMINANCE, name)
+    else:
+        return oetf(x / PEAK_LUMINANCE[name], name)
 
 
 def eotf(x, name=GAMMA24):
@@ -239,6 +257,8 @@ def eotf(x, name=GAMMA24):
         y = f_log_decoding(x, out_reflection=True) / MAX_VALUE[name]
     elif name == DLOG:
         y = d_log_decoding(x, out_reflection=True) / MAX_VALUE[name]
+    elif name == LINEAR:
+        y = x
     else:
         raise ValueError("invalid transfer fucntion name")
 
@@ -271,7 +291,10 @@ def eotf_to_luminance(x, name=GAMMA24):
     >>> oetf(0.5, ST2084)
     100 付近の値
     """
-    return eotf(x, name) * PEAK_LUMINANCE[name]
+    if name == LINEAR:
+        return eotf(x, name) * REF_WHITE_LUMINANCE
+    else:
+        return eotf(x, name) * PEAK_LUMINANCE[name]
 
 
 def n_log_encoding(x, in_reflection=False):

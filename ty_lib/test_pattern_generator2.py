@@ -1449,6 +1449,75 @@ def shaper_func_log2_to_linear(
     return y
 
 
+def shaper_func_linear_to_log10(
+        x, mid_gray=1.0, min_exposure=-6, max_exposure=6):
+    """
+    ACESutil.Lin_to_Log2_param.ctl を参考に作成。
+    https://github.com/ampas/aces-dev/blob/master/transforms/ctl/utilities/ACESutil.Lin_to_Log2_param.ctl
+
+    Parameters
+    ----------
+    x : array_like
+        linear data.
+    mid_gray : float
+        100% white value on linear scale.
+    min_exposure : float
+        minimum value on log scale.
+    max_exposure : float
+        maximum value on log scale.
+
+    Returns
+    -------
+    array_like
+        log2 value that is transformed from linear x value.
+
+    Examples
+    --------
+    >>> x = np.array([-1.0, 0.0, 0.5, 1.0])
+    >>> y = shaper_func_log10_to_linear(
+    ...     x, mid_gray=1.0, min_exposure=-6, max_exposure=6)
+    >>> print(y)
+    [1.00000000e-06  1.00000000e-06  1.00000000e+00  1.00000000e+06]
+
+    >>> shaper_func_linear_to_log10(
+    ...     x=y, mid_gray=1.0, min_exposure=-6, max_exposure=6)
+    [0.   0.   0.5  1. ]
+    """
+    # log2空間への変換。mid_gray が 0.0 となるように補正
+    y = np.log10(x / mid_gray)
+
+    # min, max の範囲で正規化。
+    y_normalized = (y - min_exposure) / (max_exposure - min_exposure)
+
+    y_normalized[y_normalized < 0] = 0
+
+    return y_normalized
+
+
+def shaper_func_log10_to_linear(
+        x, mid_gray=1.0, min_exposure=-6, max_exposure=6):
+    """
+    ACESutil.Log2_to_Lin_param.ctl を参考に作成。
+    https://github.com/ampas/aces-dev/blob/master/transforms/ctl/utilities/ACESutil.Log2_to_Lin_param.ctl
+
+    Log2空間の補足は shaper_func_linear_to_log2() の説明を参照
+
+    Examples
+    --------
+    >>> x = np.array([-1.0, 0.0, 0.5, 1.0])
+    >>> shaper_func_log10_to_linear(
+    ...     x, mid_gray=1.0, min_exposure=-6, max_exposure=6)
+    [1.00000000e-06  1.00000000e-06  1.00000000e+00  1.00000000e+06]
+    """
+    x2 = np.clip(x, 0.0, 1.0)
+    x_re_scale = x2 * (max_exposure - min_exposure) + min_exposure
+    y = (10 ** x_re_scale) * mid_gray
+    # plt.plot(x, y)
+    # plt.show()
+
+    return y
+
+
 def draw_straight_line(img, pt1, pt2, color, thickness):
     """
     直線を引く。OpenCV だと 8bit しか対応してないっぽいので自作。
@@ -2659,3 +2728,10 @@ if __name__ == '__main__':
     # print(line)
     # img = h_mono_line_to_img(line, 6)
     # print(img)
+
+    x = np.array([-1.0, 0.0, 0.5, 1.0])
+    y = shaper_func_log10_to_linear(
+        x, mid_gray=1.0, min_exposure=-6, max_exposure=6)
+    x2 = shaper_func_linear_to_log10(
+        x=y, mid_gray=1.0, min_exposure=-6, max_exposure=6)
+    print(x2)

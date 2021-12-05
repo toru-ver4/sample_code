@@ -16,6 +16,8 @@ import test_pattern_generator2 as tpg
 from davinci17_cms_explore import get_media_src_fname_sdr,\
     get_media_src_fname_hdr, get_media_src_fname_exr,\
     EXR_MIN_EXPOSURE, EXR_MAX_EXPOSURE
+import font_control as fc
+import transfer_functions as tf
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -25,6 +27,10 @@ __maintainer__ = 'Toru Yoshihara'
 __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
+
+
+# FONT_PATH = "../../font/NotoSansMono-Bold.ttf"
+FONT_PATH = "../../font/NotoSansMono-Medium.ttf"
 
 
 def create_src_png_img_seq():
@@ -87,17 +93,73 @@ def make_src_video_hdr():
     subprocess.run(args)
 
 
+def draw_scale(img, mid_gray, min_exposure, max_exposure):
+    # set parameters
+    width = img.shape[1]
+    height = img.shape[0]
+    font_color = np.array([0.5, 0.0, 0.5])
+    scale_color = tf.eotf(font_color, tf.SRGB)
+    font_size = 20
+    major_v_len = int(height * 0.015)
+    minor_v_len = major_v_len // 2
+
+    # calc coordinate
+    major_pos = np.int16(np.linspace(0, width, max_exposure-min_exposure+1))
+    minor_length = major_pos[1] - major_pos[0]
+    x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    minor_offset = np.uint16(np.round(np.log10(x) * minor_length))
+
+    # plor major and minor scale
+    for pos_h in major_pos[:-1]:
+        st_pos_v = height - major_v_len
+        ed_pos_v = height
+        st_pos_h = pos_h
+        ed_pos_h = st_pos_h + 2
+        img[st_pos_v:ed_pos_v, st_pos_h:ed_pos_h] = scale_color
+        for offset_h in minor_offset:
+            st_pos_v = height - minor_v_len
+            ed_pos_v = height
+            st_pos_h = pos_h + offset_h
+            ed_pos_h = st_pos_h + 2
+            img[st_pos_v:ed_pos_v, st_pos_h:ed_pos_h] = scale_color
+
+    # draw text
+    for idx, pos_h in enumerate(major_pos):
+        if (idx == 0) or (idx == len(major_pos) - 1):
+            continue
+        exposure = min_exposure + idx
+        text = f"1.0e{exposure}"
+        text_width, text_height = fc.get_text_width_height(
+            text, FONT_PATH, font_size)
+        pos = (
+            pos_h - text_width // 2,
+            height - major_v_len - int(text_height * 1.4))
+        text_drawer = fc.TextDrawer(
+            img, text=text, pos=pos,
+            font_color=font_color, font_size=font_size,
+            font_path=FONT_PATH,
+            bg_transfer_functions=tf.LINEAR,
+            fg_transfer_functions=tf.SRGB)
+        text_drawer.draw()
+
+
 def create_src_exr_img_seq():
     fps = 24
     sec = 1
     width = 1920
     height = 1080
+    mid_gray = 1.0
     min_exposure = EXR_MIN_EXPOSURE
     max_exposure = EXR_MAX_EXPOSURE
     x = np.linspace(0, 1, width)
-    line = tpg.shaper_func_log2_to_linear(
-        x, min_exposure=min_exposure, max_exposure=max_exposure)
+    line = tpg.shaper_func_log10_to_linear(
+        x, mid_gray=mid_gray,
+        min_exposure=min_exposure, max_exposure=max_exposure)
     img = tpg.h_mono_line_to_img(line, height)
+
+    draw_scale(
+        img=img, mid_gray=mid_gray, min_exposure=min_exposure,
+        max_exposure=max_exposure)
 
     frame = fps * sec
 
@@ -110,5 +172,5 @@ def create_src_exr_img_seq():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    create_src_png_img_seq()
+    # create_src_png_img_seq()
     create_src_exr_img_seq()

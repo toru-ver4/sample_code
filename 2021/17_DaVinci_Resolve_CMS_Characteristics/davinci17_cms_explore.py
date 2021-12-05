@@ -28,8 +28,8 @@ MEDIA_SRC_PATH = Path(
     'D:/abuse/2021/17_DaVinci_Resolve_CMS_Characteristics/src')
 MEDIA_DST_PATH = Path(
     'D:/abuse/2021/17_DaVinci_Resolve_CMS_Characteristics/dst')
-EXR_MIN_EXPOSURE = -16
-EXR_MAX_EXPOSURE = 12
+EXR_MIN_EXPOSURE = -6
+EXR_MAX_EXPOSURE = 3
 
 
 """
