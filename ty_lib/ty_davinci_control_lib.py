@@ -135,7 +135,7 @@ def set_project_settings_from_dict(project, params):
     print("project settings has done")
 
 
-def add_clips_to_media_pool(resolve, project, media_path):
+def add_clips_to_media_pool(resolve, media_path):
     """
     add clips to the media pool.
 
@@ -143,8 +143,6 @@ def add_clips_to_media_pool(resolve, project, media_path):
     ----------
     resolve : Resolve
         a Resolve instance
-    project : Project
-        a Project instance
     media_path : Path
         a Pathlib instance
 
@@ -158,7 +156,6 @@ def add_clips_to_media_pool(resolve, project, media_path):
     """
     resolve.OpenPage("media")
     media_storage = resolve.GetMediaStorage()
-    media_pool = project.GetMediaPool()
     media_storage.AddItemListToMediaPool(str(media_path))
 
 
@@ -198,6 +195,49 @@ def get_media_pool_clip_list_and_clip_name_list(project):
         clip_return_list.append(clip)
 
     return clip_return_list, clip_name_list
+
+
+def get_clip_obj_from_clip_name(
+        clip_obj_list, clip_name_list, clip_name):
+    """
+    Parameters
+    ----------
+    clip_obj_list : list
+        list of the clip object
+    clip_name_list : list (str)
+        list of the name of the clip object
+    clip_name : str
+        clip_name. ex) 'src_exr_[0000-0023].exr'
+    """
+    for clip_obj, clip_name_ref in zip(clip_obj_list, clip_name_list):
+        if clip_name == clip_name_ref:
+            print(f"{clip_name} is found!")
+            return clip_obj
+
+    print(f"Waning: {clip_name} is not found.")
+    return None
+
+
+def get_clip_obj_list_from_clip_name_list(
+        clip_obj_list, clip_name_list, clip_add_name_list):
+    """
+    Parameters
+    ----------
+    clip_obj_list : list
+        list of the clip object
+    clip_name_list : list (str)
+        list of the name of the clip object
+    clip_add_name_list : list (str)
+        clip name list.
+        ex) ['src_sdr_[0000-0023].png', 'src_exr_[0000-0023].exr']
+    """
+    clip_add_obj_list = []
+    for clip_add_name in clip_add_name_list:
+        clip_add_obj = get_clip_obj_from_clip_name(
+            clip_obj_list, clip_name_list, clip_add_name)
+        clip_add_obj_list.append(clip_add_obj)
+
+    return clip_add_obj_list
 
 
 def create_timeline_from_clip(

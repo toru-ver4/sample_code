@@ -143,6 +143,46 @@ def draw_scale(img, mid_gray, min_exposure, max_exposure):
         text_drawer.draw()
 
 
+def draw_scale_for_18_gray(img, mid_gray, min_exposure, max_exposure):
+    # set parameters
+    width = img.shape[1]
+    height = img.shape[0]
+    font_color = np.array([0.5, 0.0, 0.5])
+    scale_color = tf.eotf(font_color, tf.SRGB)
+    font_size = 16
+    major_v_len = int(height * 0.015)
+
+    # calc coordinate
+    major_pos = np.int16(np.linspace(0, width, max_exposure-min_exposure+1))
+
+    # plor major and minor scale
+    for pos_h in major_pos[:-1]:
+        st_pos_v = height - major_v_len
+        ed_pos_v = height
+        st_pos_h = pos_h
+        ed_pos_h = st_pos_h + 2
+        img[st_pos_v:ed_pos_v, st_pos_h:ed_pos_h] = scale_color
+
+    # draw text
+    for idx, pos_h in enumerate(major_pos):
+        if (idx == 0) or (idx == len(major_pos) - 1):
+            continue
+        exposure = min_exposure + idx
+        text = f"0.18*\n2^{exposure}"
+        text_width, text_height = fc.get_text_width_height(
+            text, FONT_PATH, font_size)
+        pos = (
+            pos_h - text_width // 2,
+            height - major_v_len - int(text_height * 1.4))
+        text_drawer = fc.TextDrawer(
+            img, text=text, pos=pos,
+            font_color=font_color, font_size=font_size,
+            font_path=FONT_PATH,
+            bg_transfer_functions=tf.LINEAR,
+            fg_transfer_functions=tf.SRGB)
+        text_drawer.draw()
+
+
 def create_src_exr_img_seq():
     fps = 24
     sec = 1
@@ -170,7 +210,30 @@ def create_src_exr_img_seq():
             image=img, path=fname, bit_depth='float32', method="OpenImageIO")
 
 
+def create_exr_img_tp_18_gray_base():
+    width = 1920
+    height = 1080
+    mid_gray = 0.18
+    min_exposure = -16
+    max_exposure = 12
+    x = np.linspace(0, 1, width)
+    line = tpg.shaper_func_log2_to_linear(
+        x, mid_gray=mid_gray,
+        min_exposure=min_exposure, max_exposure=max_exposure)
+    img = tpg.h_mono_line_to_img(line, height)
+
+    draw_scale_for_18_gray(
+        img=img, mid_gray=mid_gray, min_exposure=min_exposure,
+        max_exposure=max_exposure)
+
+    fname = f"./img/exr_tp_18_gray_{min_exposure}_to_{max_exposure}.exr"
+    print(fname)
+    write_image(
+        image=img, path=fname, bit_depth='float32', method="OpenImageIO")
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_src_png_img_seq()
-    create_src_exr_img_seq()
+    # create_src_exr_img_seq()
+    create_exr_img_tp_18_gray_base()
