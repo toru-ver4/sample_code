@@ -33,7 +33,7 @@ __all__ = []
 FONT_PATH = "../../font/NotoSansMono-Medium.ttf"
 
 
-def create_src_png_img_seq():
+def create_src_png_img_seq_sdr():
     fps = 24
     sec = 1
     width = 1920
@@ -45,6 +45,22 @@ def create_src_png_img_seq():
 
     for idx in range(frame):
         fname = get_media_src_fname_sdr(idx=idx)
+        print(fname)
+        tpg.img_wirte_float_as_16bit_int(fname, img)
+
+
+def create_src_png_img_seq_hdr():
+    fps = 24
+    sec = 1
+    width = 1920
+    height = 1080
+    line = np.linspace(0, 1, width)
+    img = tpg.h_mono_line_to_img(line, height)
+
+    frame = fps * sec
+
+    for idx in range(frame):
+        fname = get_media_src_fname_hdr(idx=idx)
         print(fname)
         tpg.img_wirte_float_as_16bit_int(fname, img)
 
@@ -234,6 +250,7 @@ def create_exr_img_tp_18_gray_base():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # create_src_png_img_seq()
+    create_src_png_img_seq_sdr()
+    create_src_png_img_seq_hdr()
     # create_src_exr_img_seq()
-    create_exr_img_tp_18_gray_base()
+    # create_exr_img_tp_18_gray_base()

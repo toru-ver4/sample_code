@@ -47,13 +47,26 @@ dv_lib._debug_print_and_save_project_settings(project)
 """
 
 
+RCM_PRESET_SDR_709 = "SDR Rec.709"
+RCM_PRESET_SDR_2020 = "SDR Rec.2020"
+RCM_PRESET_SDR_2020_P3_LIMITED = "SDR Rec.2020 (P3-D65 limited)"
+RCM_PRESET_SDR_P3_D60 = "SDR P3-D60 Cinema"
+RCM_PRESET_HDR_DAVINCI_INTERMEDIATE = "HDR DaVinci Wide Gamut Intermediate"
+RCM_PRESET_HDR_2020_INTERMEDIATE = "HDR Rec.2020 Intermediate"
+RCM_PRESET_HDR_2020_HLG = "HDR Rec.2020 HLG"
+RCM_PRESET_HDR_2020_HLG_P3_LIMITED = "HDR Rec.2020 HLG (P3-D65 limited)"
+RCM_PRESET_HDR_2020_PQ = "HDR Rec.2020 PQ"
+RCM_PRESET_HDR_2020_PQ_P3_LIMITED = "HDR Rec.2020 PQ (P3-D65 limited)"
+RCM_PRESET_CUSTOM = "Custom"
+
+
 def wait_for_rendering_completion(project):
     while project.IsRenderingInProgress():
         time.sleep(1)
     return
 
 
-def init_davinci17(close_current_project=True):
+def init_davinci17(close_current_project=True, project_name=None):
     """
     Initialize davinci17 python environment.
 
@@ -73,6 +86,11 @@ def init_davinci17(close_current_project=True):
     project_manager = resolve.GetProjectManager()
 
     if close_current_project:
+        if project_name is not None:
+            dummy_name = str(time.time())
+            dummy_project = prepare_project(project_manager, dummy_name)
+            project_manager.DeleteProject(project_name)
+
         current_project = project_manager.GetCurrentProject()
         project_manager.CloseProject(current_project)
 
@@ -256,9 +274,7 @@ def create_timeline_from_clip(
     """
     resolve.OpenPage("edit")
     media_pool = project.GetMediaPool()
-    timeline = media_pool.CreateTimelineFromClips(timeline_name, clip_list)
-
-    return timeline
+    media_pool.CreateTimelineFromClips(timeline_name, clip_list)
 
 
 def add_clips_to_the_current_timeline(resolve, project, clip_list):
@@ -414,8 +430,7 @@ def _debug_print_and_save_encode_settings(project):
 
 def _debug_print_and_save_project_settings(project):
     project_settings = project.GetSetting()
-    pprint.pprint(project_settings)
-    current_directory = os.getcwd()
+    # pprint.pprint(project_settings)
     _debug_save_dict_as_txt("./project_settings_list.txt", project_settings)
 
 
