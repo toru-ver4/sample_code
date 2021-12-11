@@ -8,6 +8,7 @@ import os
 import imp
 from pathlib import Path
 import re
+from itertools import product
 
 # import third-party libraries
 
@@ -45,16 +46,13 @@ sys.path.append("C:/Users/toruv/OneDrive/work/sample_code/2021/17_DaVinci_Resolv
 import davinci17_cms_explore as dce
 import imp
 imp.reload(dce)
-dce.explore_davinci_resolve_main()
+# dce.explore_davinci_resolve_main()
+dce.explore_davinci_resolve_main_ctrl()
 """
+
 
 def get_media_src_fname_sdr(idx=0):
     fname = MEDIA_SRC_PATH / f"src_sdr_{idx:04d}.png"
-    return str(fname)
-
-
-def get_media_src_fname_hdr(idx=0):
-    fname = MEDIA_SRC_PATH / f"src_hdr_{idx:04d}.png"
     return str(fname)
 
 
@@ -79,21 +77,21 @@ def make_output_path(
     return out_dir / base_name
 
 
-def explore_davinci_resolve_main():
+def explore_davinci_resolve_main(
+        clip_name=SDR_CLIP_NAME,
+        clip_color_space=dcl.RCM_COLOR_SPACE_709_GM24,
+        color_process_mode=dcl.RCM_PRESET_HDR_DAVINCI_INTERMEDIATE,
+        output_color_space=dcl.RCM_COLOR_SPACE_2020_ST2084):
     media_video_path = Path(
         'D:/abuse/2021/17_DaVinci_Resolve_CMS_Characteristics/src')
     out_dir = Path(
         'D:/abuse/2021/17_DaVinci_Resolve_CMS_Characteristics/dst')
     project_name = "Explore_DaVinci_CMS"
-    clip_name = SDR_CLIP_NAME
     format_str = dcl.OUT_FORMAT_TIF
     codec = dcl.CODEC_TIF_RGB16
-    color_process_mode = dcl.RCM_PRESET_HDR_DAVINCI_INTERMEDIATE
-    output_color_space = dcl.RCM_COLOR_SPACE_2020_ST2084
-    # # preset_name = H265_CQP0_PRESET_NAME
 
-    # # main process
-    # print("script start")
+    # main process
+    print("script start")
     resolve, project_manager = dcl.init_davinci17(
         close_current_project=True, delete_project_name=project_name)
     project = dcl.prepare_project(
@@ -101,8 +99,6 @@ def explore_davinci_resolve_main():
         project_name=project_name)
 
     # project settings and preset
-    # dcl._debug_print_and_save_project_settings(project)  # debug
-    # dcl._debug_print_and_save_pretes(project)  # debug
     project_settings_init = {
         dcl.PRJ_SET_KEY_COLOR_SCIENCE_MODE: dcl.RCM_YRGB_COLOR_MANAGED_V2,
         dcl.PRJ_SET_KEY_COLOR_PROCESS_MODE:
@@ -116,7 +112,7 @@ def explore_davinci_resolve_main():
         dcl.PRJ_SET_KEY_TIMELINE_RESOLUTION_V: "1080",
         dcl.PRJ_SET_KEY_TIMELINE_RESOLUTION_H: "1920",
         dcl.PRJ_SET_KEY_VIDEO_MONITOR_FORMAT: "HD 1080p 24",
-        dcl.PRJ_SET_KEY_TIMELINE_PLAY_FRAME_RATE: "24",
+        # dcl.PRJ_SET_KEY_TIMELINE_PLAY_FRAME_RATE: "24",
         dcl.PRJ_SET_KEY_COLOR_PROCESS_MODE: color_process_mode,
         dcl.PRJ_SET_KEY_OUT_COLOR_SPACE: output_color_space
     }
@@ -138,18 +134,49 @@ def explore_davinci_resolve_main():
 
     # set input color space for each clip
     dcl.set_clip_color_space(
-        clip_obj_list, clip_name_list,
-        clip_name, dcl.RCM_COLOR_SPACE_709_GM24)
+        clip_obj_list, clip_name_list, clip_name, clip_color_space)
 
-    timeline = project.GetCurrentTimeline()
-    timeline_settings = timeline.GetSetting()
-    dcl._debug_save_dict_as_txt(
-        "./timeline_settings.txt", timeline_settings)
+    # timeline = project.GetCurrentTimeline()
+    # timeline_settings = timeline.GetSetting()
+    # dcl._debug_save_dict_as_txt(
+    #     "./timeline_settings.txt", timeline_settings)
 
-    # # output settings
-    # out_path = make_output_path(
-    #     clip_name, out_dir, color_process_mode, output_color_space)
-    # dcl.encode(resolve, project, out_path, format_str, codec)
+    # output settings
+    out_path = make_output_path(
+        clip_name, out_dir, color_process_mode, output_color_space)
+    dcl.encode(resolve, project, out_path, format_str, codec)
+
+
+def explore_davinci_resolve_main_ctrl():
+    clip_name_list = [SDR_CLIP_NAME, HDR_CLIP_NAME, EXR_CLIP_NAME]
+    clip_color_space_list = [
+        dcl.RCM_COLOR_SPACE_709_GM24, dcl.RCM_COLOR_SPACE_2020_ST2084,
+        dcl.RCM_COLOR_SPACE_LINER]
+    color_process_mode_list = [
+        dcl.RCM_PRESET_SDR_709,
+        dcl.RCM_PRESET_SDR_2020,
+        dcl.RCM_PRESET_SDR_2020_P3_LIMITED,
+        dcl.RCM_PRESET_SDR_P3_D60,
+        dcl.RCM_PRESET_HDR_DAVINCI_INTERMEDIATE,
+        dcl.RCM_PRESET_HDR_2020_INTERMEDIATE,
+        dcl.RCM_PRESET_HDR_2020_HLG,
+        dcl.RCM_PRESET_HDR_2020_HLG_P3_LIMITED,
+        dcl.RCM_PRESET_HDR_2020_PQ,
+        dcl.RCM_PRESET_HDR_2020_PQ_P3_LIMITED
+    ]
+    out_color_space_list = [
+        dcl.RCM_COLOR_SPACE_709_GM24,
+        dcl.RCM_COLOR_SPACE_2020_ST2084]
+
+    for color_process_mode in color_process_mode_list:
+        for out_color_space in out_color_space_list:
+            for clip_name, clip_color_space\
+                    in zip(clip_name_list, clip_color_space_list):
+                explore_davinci_resolve_main(
+                    clip_name=clip_name,
+                    clip_color_space=clip_color_space,
+                    color_process_mode=color_process_mode,
+                    output_color_space=out_color_space)
 
 
 if __name__ == '__main__':
