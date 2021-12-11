@@ -46,7 +46,17 @@ project = dv_lib.test_func()
 dv_lib._debug_print_and_save_project_settings(project)
 """
 
+# project settings key
+PRESET_KEY_RCM_PRESET_MODE = "rcmPresetMode"
+PRESET_KEY_COLOR_SCIENCE_MODE = "colorScienceMode"
+PRESET_KEY_SEPARATE_CS_GM = "separateColorSpaceAndGamma"
 
+# project settings value
+RCM_YRGB_COLOR_MANAGED_V2 = "davinciYRGBColorManagedv2"
+RCM_SEPARATE_CS_GM_DISABLE = "0"
+RCM_SEPARATE_CS_GM_ENABLE = "1"
+
+# preset name
 RCM_PRESET_SDR_709 = "SDR Rec.709"
 RCM_PRESET_SDR_2020 = "SDR Rec.2020"
 RCM_PRESET_SDR_2020_P3_LIMITED = "SDR Rec.2020 (P3-D65 limited)"
@@ -59,6 +69,13 @@ RCM_PRESET_HDR_2020_PQ = "HDR Rec.2020 PQ"
 RCM_PRESET_HDR_2020_PQ_P3_LIMITED = "HDR Rec.2020 PQ (P3-D65 limited)"
 RCM_PRESET_CUSTOM = "Custom"
 
+# color space name
+RCM_COLOR_SPACE_709_GM24 = 'Rec.709 Gamma 2.4'
+RCM_COLOR_SPACE_2020_GM24 = 'Rec.2020 Gamma 2.4'
+RCM_COLOR_SPACE_2020_ST2084 = 'Rec.2100 ST2084'
+RCM_COLOR_SPACE_LINER = 'Linear'
+# RCM_COLOR_SPACE_
+
 
 def wait_for_rendering_completion(project):
     while project.IsRenderingInProgress():
@@ -66,7 +83,7 @@ def wait_for_rendering_completion(project):
     return
 
 
-def init_davinci17(close_current_project=True, project_name=None):
+def init_davinci17(close_current_project=True, delete_project_name=None):
     """
     Initialize davinci17 python environment.
 
@@ -86,10 +103,10 @@ def init_davinci17(close_current_project=True, project_name=None):
     project_manager = resolve.GetProjectManager()
 
     if close_current_project:
-        if project_name is not None:
+        if delete_project_name is not None:
             dummy_name = str(time.time())
-            dummy_project = prepare_project(project_manager, dummy_name)
-            project_manager.DeleteProject(project_name)
+            prepare_project(project_manager, dummy_name)
+            project_manager.DeleteProject(delete_project_name)
 
         current_project = project_manager.GetCurrentProject()
         project_manager.CloseProject(current_project)
@@ -256,6 +273,34 @@ def get_clip_obj_list_from_clip_name_list(
         clip_add_obj_list.append(clip_add_obj)
 
     return clip_add_obj_list
+
+
+def set_clip_color_space(
+        clip_obj_list, clip_name_list, clip_name, clip_color_space):
+    """
+    Parameters
+    ----------
+    clip_obj_list : list
+        list of the clip object
+    clip_name_list : list (str)
+        list of the name of the clip object
+    clip_name : str
+        clip name.
+        ex) 'src_sdr_[0000-0023].png'
+    clip_color_space : str
+        color space name.
+        ex) 'Rec.709 Gamma 2.4'
+    """
+    for clip_obj, clip_name_ref in zip(clip_obj_list, clip_name_list):
+        if clip_name == clip_name_ref:
+            result = clip_obj.SetClipProperty(
+                'Input Color Space', clip_color_space)
+            if result:
+                print(f'"{clip_name}" --> "{clip_color_space}".')
+            else:
+                print(f'Error! "{clip_color_space}" was not set ')
+                print(f'to "{clip_name}"')
+            break
 
 
 def create_timeline_from_clip(
