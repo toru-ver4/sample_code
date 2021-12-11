@@ -7,6 +7,7 @@
 import os
 import imp
 from pathlib import Path
+import re
 
 # import third-party libraries
 
@@ -33,9 +34,9 @@ MEDIA_DST_PATH = Path(
 EXR_MIN_EXPOSURE = -6
 EXR_MAX_EXPOSURE = 3
 
-SDR_CLIP_NAME = 'src_sdr_[0000-0023].png'
-HDR_CLIP_NAME = 'src_hdr_[0000-0023].png'
-EXR_CLIP_NAME = 'src_exr_[0000-0023].exr'
+SDR_CLIP_NAME = 'src_sdr_[0000-0001].png'
+HDR_CLIP_NAME = 'src_hdr_[0000-0001].png'
+EXR_CLIP_NAME = 'src_exr_[0000-0001].exr'
 
 
 """
@@ -67,14 +68,28 @@ def get_media_src_fname_exr(idx=0):
     return str(fname)
 
 
+def make_output_path(
+        src_name, out_dir, processing_mode, output_color_space):
+    temp = src_name.replace("src", "dst")
+    temp = re.sub(r"_\[.*\]\..+$", "", temp)
+    base_name = temp + '_' + processing_mode + '_' + output_color_space
+    base_name = base_name.replace(' ', "_")
+    print(f"base_name={base_name}")
+
+    return out_dir / base_name
+
+
 def explore_davinci_resolve_main():
     media_video_path = Path(
         'D:/abuse/2021/17_DaVinci_Resolve_CMS_Characteristics/src')
-    # out_path = Path(
-    #     'D:/Resolve/render_out/resolve_17_4')
+    out_dir = Path(
+        'D:/abuse/2021/17_DaVinci_Resolve_CMS_Characteristics/dst')
     project_name = "Explore_DaVinci_CMS"
-    # format_str = None
-    # codec = None
+    clip_name = SDR_CLIP_NAME
+    format_str = dcl.OUT_FORMAT_TIF
+    codec = dcl.CODEC_TIF_RGB16
+    color_process_mode = dcl.RCM_PRESET_HDR_DAVINCI_INTERMEDIATE
+    output_color_space = dcl.RCM_COLOR_SPACE_2020_ST2084
     # # preset_name = H265_CQP0_PRESET_NAME
 
     # # main process
@@ -88,12 +103,24 @@ def explore_davinci_resolve_main():
     # project settings and preset
     # dcl._debug_print_and_save_project_settings(project)  # debug
     # dcl._debug_print_and_save_pretes(project)  # debug
-    project_settings = {
-        dcl.PRESET_KEY_COLOR_SCIENCE_MODE: dcl.RCM_YRGB_COLOR_MANAGED_V2,
-        dcl.PRESET_KEY_RCM_PRESET_MODE: dcl.RCM_PRESET_SDR_709,
-        dcl.PRESET_KEY_SEPARATE_CS_GM: dcl.RCM_SEPARATE_CS_GM_DISABLE
+    project_settings_init = {
+        dcl.PRJ_SET_KEY_COLOR_SCIENCE_MODE: dcl.RCM_YRGB_COLOR_MANAGED_V2,
+        dcl.PRJ_SET_KEY_COLOR_PROCESS_MODE:
+            dcl.RCM_PRESET_HDR_DAVINCI_INTERMEDIATE,
+        dcl.PRJ_SET_KEY_SEPARATE_CS_GM: dcl.RCM_SEPARATE_CS_GM_DISABLE
     }
-    dcl.set_project_settings_from_dict(project, project_settings)
+    dcl.set_project_settings_from_dict(project, project_settings_init)
+
+    project_sttings = {
+        dcl.PRJ_SET_KEY_TIMELINE_FRAME_RATE: "24.0",
+        dcl.PRJ_SET_KEY_TIMELINE_RESOLUTION_V: "1080",
+        dcl.PRJ_SET_KEY_TIMELINE_RESOLUTION_H: "1920",
+        dcl.PRJ_SET_KEY_VIDEO_MONITOR_FORMAT: "HD 1080p 24",
+        dcl.PRJ_SET_KEY_TIMELINE_PLAY_FRAME_RATE: "24",
+        dcl.PRJ_SET_KEY_COLOR_PROCESS_MODE: color_process_mode,
+        dcl.PRJ_SET_KEY_OUT_COLOR_SPACE: output_color_space
+    }
+    dcl.set_project_settings_from_dict(project, project_sttings)
 
     # add items to media pool
     print("add media to pool")
@@ -103,8 +130,7 @@ def explore_davinci_resolve_main():
     print(f"clip_name_list = {clip_name_list}")
 
     # add video to the timeline
-    clip_add_name_list = [
-        SDR_CLIP_NAME, HDR_CLIP_NAME, EXR_CLIP_NAME]
+    clip_add_name_list = [clip_name]
     clip_add_obj_list = dcl.get_clip_obj_list_from_clip_name_list(
         clip_obj_list, clip_name_list, clip_add_name_list)
     dcl.create_timeline_from_clip(
@@ -113,13 +139,17 @@ def explore_davinci_resolve_main():
     # set input color space for each clip
     dcl.set_clip_color_space(
         clip_obj_list, clip_name_list,
-        SDR_CLIP_NAME, dcl.RCM_COLOR_SPACE_709_GM24)
-    dcl.set_clip_color_space(
-        clip_obj_list, clip_name_list,
-        HDR_CLIP_NAME, dcl.RCM_COLOR_SPACE_2020_ST2084)
-    dcl.set_clip_color_space(
-        clip_obj_list, clip_name_list,
-        EXR_CLIP_NAME, dcl.RCM_COLOR_SPACE_LINER)
+        clip_name, dcl.RCM_COLOR_SPACE_709_GM24)
+
+    timeline = project.GetCurrentTimeline()
+    timeline_settings = timeline.GetSetting()
+    dcl._debug_save_dict_as_txt(
+        "./timeline_settings.txt", timeline_settings)
+
+    # # output settings
+    # out_path = make_output_path(
+    #     clip_name, out_dir, color_process_mode, output_color_space)
+    # dcl.encode(resolve, project, out_path, format_str, codec)
 
 
 if __name__ == '__main__':

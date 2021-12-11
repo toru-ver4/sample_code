@@ -35,13 +35,13 @@ FONT_PATH = "../../font/NotoSansMono-Medium.ttf"
 
 def create_src_png_img_seq_sdr():
     fps = 24
-    sec = 1
+    sec = 2/24
     width = 1920
     height = 1080
     line = np.linspace(0, 1, width)
     img = tpg.h_mono_line_to_img(line, height)
 
-    frame = fps * sec
+    frame = int(fps * sec)
 
     for idx in range(frame):
         fname = get_media_src_fname_sdr(idx=idx)
@@ -51,13 +51,13 @@ def create_src_png_img_seq_sdr():
 
 def create_src_png_img_seq_hdr():
     fps = 24
-    sec = 1
+    sec = 2/24
     width = 1920
     height = 1080
     line = np.linspace(0, 1, width)
     img = tpg.h_mono_line_to_img(line, height)
 
-    frame = fps * sec
+    frame = int(fps * sec)
 
     for idx in range(frame):
         fname = get_media_src_fname_hdr(idx=idx)
@@ -201,7 +201,7 @@ def draw_scale_for_18_gray(img, mid_gray, min_exposure, max_exposure):
 
 def create_src_exr_img_seq():
     fps = 24
-    sec = 1
+    sec = 2/24
     width = 1920
     height = 1080
     mid_gray = 1.0
@@ -217,7 +217,7 @@ def create_src_exr_img_seq():
         img=img, mid_gray=mid_gray, min_exposure=min_exposure,
         max_exposure=max_exposure)
 
-    frame = fps * sec
+    frame = int(fps * sec)
 
     for idx in range(frame):
         fname = get_media_src_fname_exr(idx=idx)
@@ -252,5 +252,5 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     create_src_png_img_seq_sdr()
     create_src_png_img_seq_hdr()
-    # create_src_exr_img_seq()
+    create_src_exr_img_seq()
     # create_exr_img_tp_18_gray_base()

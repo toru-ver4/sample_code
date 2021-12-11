@@ -1,0 +1,61 @@
+Alpha mode: None
+Angle: 
+Audio Bit Depth: 
+Audio Ch: 0
+Audio Codec: 
+Audio Offset: 
+Bit Depth: 16
+Camera #: 
+Clip Color: 
+Clip Name: src_sdr_[0000-0023].png
+Comments: 
+Data Level: Auto
+Date Added: Sat Dec 11 2021 16:30:59
+Date Created: Sat Dec 4 2021 21:39:02
+Date Modified: Thu Dec  9 21:39:27 2021
+Description: 
+Drop frame: 0
+Duration: 00:00:01:00
+Enable Deinterlacing: 0
+End: 23
+End TC: 00:00:01:00
+FPS: 24.0
+Field Dominance: Auto
+File Name: src_sdr_[0000-0023].png
+File Path: D:\abuse\2021\17_DaVinci_Resolve_CMS_Characteristics\src\src_sdr_[0000-0023].png
+Flags: 
+Format: PNG
+Frames: 24
+Good Take: 
+H-FLIP: Off
+IDT: 
+In: 
+Input Color Space: Rec.709 Gamma 2.4
+Input LUT: 
+Input Sizing Preset: None
+Keyword: 
+Noise Reduction: 
+Offline Reference: 
+Out: 
+PAR: Square
+Proxy: None
+Proxy Media Path: 
+Reel Name: 
+Resolution: 1920x1080
+Roll/Card: 
+S3D Sync: 
+Sample Rate: 
+Scene: 
+Sharpness: 
+Shot: 
+Slate TC: 00:00:00:00
+Start: 0
+Start KeyKode: 
+Start TC: 00:00:00:00
+Synced Audio: 
+Take: 
+Type: Video
+Usage: 1
+V-FLIP: Off
+Video Codec: PNG
+Super Scale: 1

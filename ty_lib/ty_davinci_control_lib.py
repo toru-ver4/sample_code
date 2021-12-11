@@ -47,9 +47,17 @@ dv_lib._debug_print_and_save_project_settings(project)
 """
 
 # project settings key
-PRESET_KEY_RCM_PRESET_MODE = "rcmPresetMode"
-PRESET_KEY_COLOR_SCIENCE_MODE = "colorScienceMode"
-PRESET_KEY_SEPARATE_CS_GM = "separateColorSpaceAndGamma"
+PRJ_SET_KEY_COLOR_SCIENCE_MODE = "colorScienceMode"
+PRJ_SET_KEY_COLOR_PROCESS_MODE = "rcmPresetMode"
+PRJ_SET_KEY_OUT_COLOR_SPACE = "colorSpaceOutput"
+PRJ_SET_KEY_SEPARATE_CS_GM = "separateColorSpaceAndGamma"
+
+PRJ_SET_KEY_TIMELINE_FRAME_RATE = "timelineFrameRate"
+PRJ_SET_KEY_TIMELINE_PLAY_FRAME_RATE = "timelinePlaybackFrameRate"
+PRJ_SET_KEY_TIMELINE_RESOLUTION_V = "timelineResolutionHeight"
+PRJ_SET_KEY_TIMELINE_RESOLUTION_H = "timelineResolutionWidth"
+
+PRJ_SET_KEY_VIDEO_MONITOR_FORMAT = "videoMonitorFormat"
 
 # project settings value
 RCM_YRGB_COLOR_MANAGED_V2 = "davinciYRGBColorManagedv2"
@@ -75,6 +83,16 @@ RCM_COLOR_SPACE_2020_GM24 = 'Rec.2020 Gamma 2.4'
 RCM_COLOR_SPACE_2020_ST2084 = 'Rec.2100 ST2084'
 RCM_COLOR_SPACE_LINER = 'Linear'
 # RCM_COLOR_SPACE_
+
+# output format
+OUT_FORMAT_MP4 = "MP4"
+OUT_FORMAT_MOV = "MOV"
+OUT_FORMAT_TIF = 'TIFF'
+
+# codecs
+CODEC_TIF_RGB16 = "RGB16LZW"
+CODEC_H264 = "H264"
+CODEC_H265_NVIDIA = "H265_NVIDIA"
 
 
 def wait_for_rendering_completion(project):
@@ -168,6 +186,43 @@ def set_project_settings_from_dict(project, params):
             else:
                 print(f'    "{name}" = "{value}" is NGGGGGG in RenderSettings')
     print("project settings has done")
+
+
+def set_clip_propety_from_dict(
+        clip_obj_list, clip_name_list, clip_name, params):
+    """
+    set project settings from the dictionary type parameters.
+
+    Parameters
+    ----------
+    clip_obj_list : list
+        list of the clip object
+    clip_name_list : list (str)
+        list of the name of the clip object
+    clip_name : str
+        clip_name. ex) 'src_exr_[0000-0023].exr'
+    params : dict
+        clip properties.
+    """
+
+    clip = None
+    for clip_obj, clip_name_ref in zip(clip_obj_list, clip_name_list):
+        if clip_name == clip_name_ref:
+            clip = clip_obj
+            break
+
+    if clip is None:
+        print(f"{clip_name} is not found.")
+        return
+
+    print("Now this script is setting the clip properties...")
+    for name, value in params.items():
+        result = clip.SetClipProperty(name, value)
+        if result:
+            print(f'    "{name}" = "{value}" is OK.')
+        else:
+            print(f'    "{name}" = "{value}" is NGGGGGGGGGGGGGGGGGG.')
+    print("clip property settings has done")
 
 
 def add_clips_to_media_pool(resolve, media_path):
@@ -461,11 +516,11 @@ def _debug_print_and_save_encode_settings(project):
     buf = ""
     for render_format_name, ext in format_list.items():
         codecs = project.GetRenderCodecs(ext)
-        buf += f"=== {ext} ===\n"
+        buf += f"=== {render_format_name} ===\n"
         for key, value in codecs.items():
             buf += f"{key}: {value}\n"
         buf += "\n"
-        print(f"=== {ext} ===")
+        print(f"=== {render_format_name} ===")
         print(codecs)
         print('')
     with open("./dv17_codecs.txt", 'wt') as f:
