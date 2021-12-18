@@ -101,12 +101,15 @@ def wait_for_rendering_completion(project):
     return
 
 
-def init_davinci17(close_current_project=True, delete_project_name=None):
+def init_davinci17(
+        close_current_project=True, delete_project_name=None,
+        project_dir_name=None):
     """
     Initialize davinci17 python environment.
 
     * create Resolve instance
     * create ProjectManager instance
+    * cerate sub directory and move if it is needed.
     * close current project for initialize if needed.
 
     Returns
@@ -119,6 +122,11 @@ def init_davinci17(close_current_project=True, delete_project_name=None):
     resolve = dvr_script.scriptapp("Resolve")
     # fusion = resolve.Fusion()
     project_manager = resolve.GetProjectManager()
+    project_manager.GotoRootFolder()
+
+    if project_dir_name is not None:
+        project_manager.CreateFolder(project_dir_name)
+        project_manager.OpenFolder(project_dir_name)
 
     if close_current_project:
         if delete_project_name is not None:

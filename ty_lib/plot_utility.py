@@ -17,6 +17,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.proj3d import proj_transform
 import matplotlib.patches as patches
 from matplotlib.ticker import AutoMinorLocator
+from matplotlib.ticker import NullFormatter
 from matplotlib.patches import FancyArrowPatch
 import colorsys
 import matplotlib.font_manager as fm
@@ -483,6 +484,31 @@ def _check_hsv_space():
             )
         )
     plt.show()
+
+
+def log_scale_settings_exr(ax1, grid_alpha=0.5, bg_color="#E0E0E0"):
+    """
+    https://stackoverflow.com/questions/44078409/matplotlib-semi-log-plot-minor-tick-marks-are-gone-when-range-is-large
+    """
+    # Log Scale
+    ax1.set_xscale('log', base=10)
+    ax1.set_yscale('log', base=10)
+    major_locator = ticker.LogLocator(base=10, numticks=16)
+    minor_locator = ticker.LogLocator(
+        base=10, subs=[x * 0.1 for x in range(10)], numticks=16)
+    ax1.get_xaxis().set_major_locator(major_locator)
+    ax1.get_xaxis().set_minor_locator(minor_locator)
+    ax1.get_xaxis().set_minor_formatter(NullFormatter())
+    ax1.get_yaxis().set_major_locator(major_locator)
+    ax1.get_yaxis().set_minor_locator(minor_locator)
+    ax1.get_yaxis().set_minor_formatter(NullFormatter())
+    ax1.tick_params(
+        which='major', direction='in', bottom=True, top=True,
+        left=True, right=True, length=8)
+    ax1.tick_params(
+        which='minor', direction='in', bottom=True, top=True,
+        left=True, right=True, length=4)
+    ax1.grid(True, which='both', linestyle='-', alpha=grid_alpha)
 
 
 def log_scale_settings(ax1, grid_alpha=0.5, bg_color="#E0E0E0"):

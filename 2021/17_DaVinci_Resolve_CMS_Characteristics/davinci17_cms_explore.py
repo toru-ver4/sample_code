@@ -66,13 +66,36 @@ def get_media_src_fname_exr(idx=0):
     return str(fname)
 
 
+def get_src_clip_name_prefix(src_name):
+    return re.sub(r"_\[.*\]\..+$", "", src_name)
+
+
 def make_output_path(
         src_name, out_dir, processing_mode, output_color_space):
+    """
+    Parameters
+    ----------
+    src_name : str
+        src name
+    out_dir : pathlib.Path
+        output directory path
+    processing_mode : str
+        processing mode of DaVinci RCM.
+    output_color_space : str
+        output color space of DaVinci RCM.
+
+    Examles
+    -------
+    >>> src_name = 'src_sdr_[0000-0001].png'
+    >>> out_dir = Path('D:/abuse/dst')
+    >>> processing_moede = 'HDR Rec.2020 Intermediate'
+    >>> output_color_space = 'Rec.709 Gamma 2.4'
+    """
     temp = src_name.replace("src", "dst")
     temp = re.sub(r"_\[.*\]\..+$", "", temp)
-    base_name = temp + '_' + processing_mode + '_' + output_color_space
+    base_name = temp + '--' + processing_mode + '--' + output_color_space
     base_name = base_name.replace(' ', "_")
-    print(f"base_name={base_name}")
+    # print(f"base_name={base_name}")
 
     return out_dir / base_name
 
@@ -82,18 +105,23 @@ def explore_davinci_resolve_main(
         clip_color_space=dcl.RCM_COLOR_SPACE_709_GM24,
         color_process_mode=dcl.RCM_PRESET_HDR_DAVINCI_INTERMEDIATE,
         output_color_space=dcl.RCM_COLOR_SPACE_2020_ST2084):
-    media_video_path = Path(
-        'D:/abuse/2021/17_DaVinci_Resolve_CMS_Characteristics/src')
-    out_dir = Path(
-        'D:/abuse/2021/17_DaVinci_Resolve_CMS_Characteristics/dst')
-    project_name = "Explore_DaVinci_CMS"
+    media_video_path = MEDIA_SRC_PATH
+    out_dir = MEDIA_DST_PATH
+    export_dir = Path(
+        'D:/abuse/2021/17_DaVinci_Resolve_CMS_Characteristics/export')
+    project_name_prefix = get_src_clip_name_prefix(clip_name)
+    project_name = project_name_prefix + '--' + color_process_mode\
+        + '--' + output_color_space
+    project_name = project_name.replace(" ", "_")
     format_str = dcl.OUT_FORMAT_TIF
     codec = dcl.CODEC_TIF_RGB16
+    project_dir_name = "DaVinci_RCM_Research"
 
     # main process
     print("script start")
     resolve, project_manager = dcl.init_davinci17(
-        close_current_project=True, delete_project_name=project_name)
+        close_current_project=True, delete_project_name=project_name,
+        project_dir_name=project_dir_name)
     project = dcl.prepare_project(
         project_manager=project_manager,
         project_name=project_name)
@@ -146,6 +174,17 @@ def explore_davinci_resolve_main(
         clip_name, out_dir, color_process_mode, output_color_space)
     dcl.encode(resolve, project, out_path, format_str, codec)
 
+    # save project
+    result = project_manager.SaveProject()
+    print(f"save result={result}")
+    # export_file_path = str(export_dir/project_name)
+    # print(f"export path = {export_file_path}")
+    # result = project_manager.ExportProject(
+    #     projectName=project_name,
+    #     filePath=export_file_path,
+    #     withStillsAndLUTs=False)
+    # print(f"exporet result={result}")
+
 
 def explore_davinci_resolve_main_ctrl():
     clip_name_list = [SDR_CLIP_NAME, HDR_CLIP_NAME, EXR_CLIP_NAME]
@@ -177,6 +216,9 @@ def explore_davinci_resolve_main_ctrl():
                     clip_color_space=clip_color_space,
                     color_process_mode=color_process_mode,
                     output_color_space=out_color_space)
+        #         break
+        #     break
+        # break
 
 
 if __name__ == '__main__':
