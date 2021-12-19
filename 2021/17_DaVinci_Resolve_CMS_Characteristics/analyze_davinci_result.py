@@ -5,6 +5,7 @@
 
 # import standard libraries
 import os
+from pathlib import Path
 from itertools import product
 
 # import third-party libraries
@@ -16,10 +17,11 @@ import test_pattern_generator2 as tpg
 import ty_davinci_control_lib as dcl
 from davinci17_cms_explore import SDR_CLIP_NAME, HDR_CLIP_NAME, EXR_CLIP_NAME,\
     make_output_path, MEDIA_DST_PATH, EXR_MIN_EXPOSURE, EXR_MAX_EXPOSURE,\
-    get_media_src_fname_exr
+    get_media_src_fname_exr, get_media_src_fname_sdr, get_media_src_fname_hdr
 import plot_utility as pu
 import transfer_functions as tf
 import color_space as cs
+import test_pattern_generator2 as tpg
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -71,14 +73,74 @@ def get_gamut_from_rcm_color_space(
     return gamut
 
 
-def calc_result_sdr(file_path, in_color_space, out_color_space):
-    # print(f"SDR: {file_path}")
-    pass
-
-
-def calc_result_hdr(file_path, in_color_space, out_color_space):
+def calc_result_sdr_hdr(
+        file_path, in_color_space, working_color_space, out_color_space):
     # print(f"HDR: {file_path}")
-    pass
+    hdr_in_out_characteristics(
+        file_path=file_path,
+        in_color_space=in_color_space,
+        working_color_space=working_color_space,
+        out_color_space=out_color_space)
+
+
+def hdr_in_out_characteristics(
+        file_path, in_color_space, working_color_space, out_color_space):
+    """
+    Parameters
+    ----------
+    file_path : str
+        file path of the DaVinci Resolve output
+    """
+
+    # gray scale
+    out_img = read_image(path=file_path)
+    out_line_g = out_img[0, :, 1]  # get 1st line
+    out_tf_str = RCM_COLOR_SPACE_TO_GAMMA[out_color_space]
+    out_gray_spec = tf.eotf_to_luminance(out_line_g, out_tf_str)
+    out_spec = out_gray_spec
+
+    in_img_name = get_media_src_fname_hdr(idx=0)
+    in_img = tpg.img_read_as_float(filename=in_img_name)
+    in_tf_str = RCM_COLOR_SPACE_TO_GAMMA[in_color_space]
+    in_spec = tf.eotf_to_luminance(in_img[0, :, 1], in_tf_str)
+
+    graph_title = f"{in_color_space} --> {working_color_space}"
+    graph_title += f" --> {out_color_space}"
+    if 'dst_sdr' in file_path:
+        xlim = [5.270e-07, 247.8]
+        ylim = [5.270e-07, 247.8]
+    elif 'dst_hdr' in file_path:
+        xlim = [4.94e-06, 27741]
+        ylim = [4.94e-06, 27741]
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=18,
+        figsize=(12, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=graph_title,
+        graph_title_size=16,
+        xlabel="Luminance [cd/m2]",
+        ylabel="Luminance [cd/m2]",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=xlim,
+        ylim=ylim,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    pu.log_scale_settings_exr(ax1)
+    ax1.plot(in_spec, out_spec, label="HDR In-Out")
+    # print(f"x_lim = {ax1.get_xlim()}")
+    # print(f"y_lim = {ax1.get_ylim()}")
+
+    basename = Path(file_path).stem
+    fname = f"./img_chara/{basename}.png"
+    # fname = "./img_chara_chara/sample.png"
+    print(f"save {fname}")
+    pu.show_and_save(fig=fig, legend_loc=None, save_fname=fname)
 
 
 def calc_result_exr(
@@ -141,8 +203,11 @@ def exr_in_out_characteristics(
     ax1.plot(in_spec, out_spec, label="EXR In-Out")
     # print(f"x_lim = {ax1.get_xlim()}")
     # print(f"y_lim = {ax1.get_ylim()}")
-    pu.show_and_save(
-        fig=fig, legend_loc=None, save_fname="./img/sample.png")
+
+    basename = Path(file_path).stem
+    fname = f"./img_chara/{basename}.png"
+    print(f"save {fname}")
+    pu.show_and_save(fig=fig, legend_loc=None, save_fname=fname)
 
 
 def make_file_path(clip_name, color_process_mode, out_color_space):
@@ -186,21 +251,23 @@ def analyze_main():
             out_color_space=out_color_space)
 
         if 'dst_sdr' in file_path:
-            calc_result_sdr(
-                file_path=file_path, in_color_space=clip_color_space,
-                out_color_space=out_color_space)
-            # break
-        elif 'dst_hdr' in file_path:
-            calc_result_hdr(
-                file_path=file_path, in_color_space=clip_color_space,
-                out_color_space=out_color_space)
-            # break
-        elif 'dst_exr' in file_path:
-            calc_result_exr(
+            calc_result_sdr_hdr(
                 file_path=file_path, in_color_space=clip_color_space,
                 working_color_space=color_process_mode,
                 out_color_space=out_color_space)
             # break
+        elif 'dst_hdr' in file_path:
+            # continue
+            calc_result_sdr_hdr(
+                file_path=file_path, in_color_space=clip_color_space,
+                working_color_space=color_process_mode,
+                out_color_space=out_color_space)
+        elif 'dst_exr' in file_path:
+            # continue
+            calc_result_exr(
+                file_path=file_path, in_color_space=clip_color_space,
+                working_color_space=color_process_mode,
+                out_color_space=out_color_space)
 
 
 if __name__ == '__main__':
