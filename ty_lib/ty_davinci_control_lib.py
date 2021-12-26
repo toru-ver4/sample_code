@@ -44,12 +44,25 @@ imp.reload(dv_lib)
 project = dv_lib.test_func()
 ...
 dv_lib._debug_print_and_save_project_settings(project)
+
+Debug
+-----
+import imp
+import ty_davinci_control_lib as dv_lib
+imp.reload(dv_lib)
+import DaVinciResolveScript as dvr_script
+resolve = dvr_script.scriptapp("Resolve")
+project_manager = resolve.GetProjectManager()
+project = project_manager.GetCurrentProject()
+dv_lib._debug_print_and_save_project_settings(project)
 """
 
 # project settings key
 PRJ_SET_KEY_COLOR_SCIENCE_MODE = "colorScienceMode"
 PRJ_SET_KEY_COLOR_PROCESS_MODE = "rcmPresetMode"
 PRJ_SET_KEY_OUT_COLOR_SPACE = "colorSpaceOutput"
+PRJ_SET_KEY_OUTPUT_GAMMA = "colorSpaceOutputGamma"
+PRJ_SET_KEY_TIMELINE_COLOR_SPACE = "colorSpaceTimeline"
 PRJ_SET_KEY_SEPARATE_CS_GM = "separateColorSpaceAndGamma"
 
 PRJ_SET_KEY_TIMELINE_FRAME_RATE = "timelineFrameRate"
@@ -57,12 +70,43 @@ PRJ_SET_KEY_TIMELINE_PLAY_FRAME_RATE = "timelinePlaybackFrameRate"
 PRJ_SET_KEY_TIMELINE_RESOLUTION_V = "timelineResolutionHeight"
 PRJ_SET_KEY_TIMELINE_RESOLUTION_H = "timelineResolutionWidth"
 
+PRJ_SET_KEY_TIMELINE_WORKING_LUMINANCE = "timelineWorkingLuminance"
+PRJ_SET_KEY_TIMELINE_WORKING_LUMINANCE_MODE = "timelineWorkingLuminanceMode"
+PRJ_SET_KEY_GRAPHICS_WHITE_LEVEL = "graphicsWhiteLevel"
+PRJ_SET_KEY_IMAGE_RESIZE_GAMMA = "imageResizingGamma"
+
+PRJ_SET_KEY_INPUT_DRT = "inputDRT"
+PRJ_SET_KEY_OUTPUT_DRT = "outputDRT"
+
+PRJ_SET_KEY_USE_WHITE_POINT_ADAPTATION = "useCATransform"
+PRJ_SET_KEY_USE_CS_AWARE_GRADING_TOOLS = "useColorSpaceAwareGradingTools"
+PRJ_SET_KEY_USE_INVERSE_DRT_FOR_SDR_TO_HDR = "useInverseDRT"
+
 PRJ_SET_KEY_VIDEO_MONITOR_FORMAT = "videoMonitorFormat"
 
 # project settings value
 RCM_YRGB_COLOR_MANAGED_V2 = "davinciYRGBColorManagedv2"
 RCM_SEPARATE_CS_GM_DISABLE = "0"
 RCM_SEPARATE_CS_GM_ENABLE = "1"
+
+# timeline working luminance
+TL_WORKING_LUMINANCE_100 = "100"
+TL_WORKING_LUMINANCE_1000 = "1000"
+TL_WORKING_LUMINANCE_4000 = "4000"
+TL_WORKING_LUMINANCE_SDR_100 = "SDR 100"
+TL_WORKING_LUMINANCE_HDR_1000 = "HDR 1000"
+TL_WORKING_LUMINANCE_HDR_4000 = "HDR 4000"
+
+GRAPHICS_WHITE_LEVEL_100 = "100"
+GRAPHICS_WHITE_LEVEL_200 = "200"
+IMAGE_RESIZE_GAMMA_LOG = "Log"
+IMAGE_RESIZE_GAMMA_GAMMA = "Gamma"
+
+# drt
+INPUT_DRT_MODE_DAVINCI = "DaVinci"
+OUTPUT_DRT_MODE_DAVINCI = "DaVinci"
+PRJ_VALUE_ENABLE = "1"
+PRJ_VALUE_DISABLE = "0"
 
 # preset name
 RCM_PRESET_SDR_709 = "SDR Rec.709"
@@ -78,11 +122,22 @@ RCM_PRESET_HDR_2020_PQ_P3_LIMITED = "HDR Rec.2020 PQ (P3-D65 limited)"
 RCM_PRESET_CUSTOM = "Custom"
 
 # color space name
+RCM_COLOR_SPACE_709_SCENE = 'Rec.709'
 RCM_COLOR_SPACE_709_GM24 = 'Rec.709 Gamma 2.4'
 RCM_COLOR_SPACE_2020_GM24 = 'Rec.2020 Gamma 2.4'
+RCM_COLOR_SPACE_2020_HLG_SCENE = "Rec.2100 HLG (Scene)"
+RCM_COLOR_SPACE_2020_HLG = "Rec.2100 HLG"
 RCM_COLOR_SPACE_2020_ST2084 = 'Rec.2100 ST2084'
+RCM_COLOR_SPACE_P3_D65 = "P3-D65"
+RCM_COLOR_SPACE_P3_D60 = "P3-D60"
 RCM_COLOR_SPACE_LINER = 'Linear'
-# RCM_COLOR_SPACE_
+RCM_COLOR_SPACE_DAVINCI_WG_INTERMEDIATE = "DaVinci WG"
+RCM_COLOR_SPACE_2020_INTERMEDIATE = "Rec.2020 Intermediate"
+
+# RCM_GAMMA
+RCM_GAMMA_GM24 = "Gamma 2.4"
+RCM_GAMMA_PQ = "Rec.2100 ST2084"
+RCM_GAMMA_HLG = "Rec.2100 HLG"
 
 # output format
 OUT_FORMAT_MP4 = "MP4"
@@ -93,6 +148,27 @@ OUT_FORMAT_TIF = 'TIFF'
 CODEC_TIF_RGB16 = "RGB16LZW"
 CODEC_H264 = "H264"
 CODEC_H265_NVIDIA = "H265_NVIDIA"
+
+
+RCM_PRESEST_TO_TIMELINE_COLOR_SPACE = {
+    RCM_PRESET_SDR_709: RCM_COLOR_SPACE_709_GM24,
+    RCM_PRESET_SDR_2020: RCM_COLOR_SPACE_2020_GM24,
+    RCM_PRESET_SDR_2020_P3_LIMITED: RCM_COLOR_SPACE_P3_D65,
+    RCM_PRESET_SDR_P3_D60: RCM_COLOR_SPACE_P3_D60,
+    RCM_PRESET_HDR_DAVINCI_INTERMEDIATE:
+        RCM_COLOR_SPACE_DAVINCI_WG_INTERMEDIATE,
+    RCM_PRESET_HDR_2020_INTERMEDIATE: RCM_COLOR_SPACE_2020_INTERMEDIATE,
+    RCM_PRESET_HDR_2020_HLG: RCM_COLOR_SPACE_2020_HLG_SCENE,
+    RCM_PRESET_HDR_2020_HLG_P3_LIMITED: RCM_COLOR_SPACE_2020_HLG_SCENE,
+    RCM_PRESET_HDR_2020_PQ: RCM_COLOR_SPACE_2020_ST2084,
+    RCM_PRESET_HDR_2020_PQ_P3_LIMITED: RCM_COLOR_SPACE_2020_ST2084,
+    RCM_PRESET_CUSTOM: None
+}
+
+OUTPUT_COLOR_SPACE_TO_GAMMA = {
+    RCM_COLOR_SPACE_709_GM24: RCM_GAMMA_GM24,
+    RCM_COLOR_SPACE_2020_ST2084: RCM_GAMMA_PQ
+}
 
 
 def wait_for_rendering_completion(project):
@@ -129,9 +205,9 @@ def init_davinci17(
         project_manager.OpenFolder(project_dir_name)
 
     if close_current_project:
+        dummy_name = str(time.time())
+        prepare_project(project_manager, dummy_name)
         if delete_project_name is not None:
-            dummy_name = str(time.time())
-            prepare_project(project_manager, dummy_name)
             project_manager.DeleteProject(delete_project_name)
 
         current_project = project_manager.GetCurrentProject()
@@ -159,7 +235,7 @@ def prepare_project(project_manager, project_name="working_project"):
     """
     project = project_manager.LoadProject(project_name)
     if not project:
-        print("Unable to loat a project '" + project_name + "'")
+        print("Unable to load a project '" + project_name + "'")
         print("Then creating a project '" + project_name + "'")
         project = project_manager.CreateProject(project_name)
         print(f'"{project_name}" is created')
@@ -187,12 +263,14 @@ def set_project_settings_from_dict(project, params):
             print(f'    "{name}" = "{value}" is OK.')
         else:
             print(f'    "{name}" = "{value}" is NGGGGGGGGGGGGGGGGGG.')
+            raise Exception("project setting error")
         if name == "timelineFrameRate":
             result = project.SetRenderSettings({'FrameRate': float(value)})
             if result:
                 print(f'    "{name}" = "{value}" is OK in RenderSettings.')
             else:
                 print(f'    "{name}" = "{value}" is NGGGGGG in RenderSettings')
+                raise Exception("project setting error")
     print("project settings has done")
 
 
@@ -230,6 +308,7 @@ def set_clip_propety_from_dict(
             print(f'    "{name}" = "{value}" is OK.')
         else:
             print(f'    "{name}" = "{value}" is NGGGGGGGGGGGGGGGGGG.')
+            raise Exception("clip propety setting error")
     print("clip property settings has done")
 
 
@@ -363,6 +442,7 @@ def set_clip_color_space(
             else:
                 print(f'Error! "{clip_color_space}" was not set ')
                 print(f'to "{clip_name}"')
+                raise Exception("clip color space error")
             break
 
 
@@ -435,6 +515,7 @@ def load_encode_preset(project, preset_name):
         print(f'preset "{preset_name}" is loaded.')
     else:
         print(f'INVALID PRESET "{preset_name}" NGGGGGGGGGGGGGGGGGGGGGGG.')
+        raise Exception("encode preset setting error")
 
 
 def set_render_format_codec_settings(
@@ -450,6 +531,7 @@ def set_render_format_codec_settings(
         print(f"format={format_str}, codec={codec} is OK")
     else:
         print(f"format={format_str}, codec={codec} is NGGGGGGGGGGGGGG")
+        raise Exception("render format setting error")
 
 
 def set_render_settings(project, out_path):
@@ -536,10 +618,11 @@ def _debug_print_and_save_encode_settings(project):
     os.chdir(current_directory)
 
 
-def _debug_print_and_save_project_settings(project):
+def _debug_print_and_save_project_settings(
+        project, log_file="./project_settings_list.txt"):
     project_settings = project.GetSetting()
     # pprint.pprint(project_settings)
-    _debug_save_dict_as_txt("./project_settings_list.txt", project_settings)
+    _debug_save_dict_as_txt(log_file, project_settings)
 
 
 def test_func(close_current_project=True):

@@ -106,12 +106,14 @@ def hdr_in_out_characteristics(
 
     graph_title = f"{in_color_space} --> {working_color_space}"
     graph_title += f" --> {out_color_space}"
-    if 'dst_sdr' in file_path:
-        xlim = [5.270e-07, 247.8]
-        ylim = [5.270e-07, 247.8]
-    elif 'dst_hdr' in file_path:
-        xlim = [4.94e-06, 27741]
-        ylim = [4.94e-06, 27741]
+    # if 'dst_sdr' in file_path:
+    #     xlim = [5.270e-07, 247.8]
+    #     ylim = [5.270e-07, 247.8]
+    # elif 'dst_hdr' in file_path:
+    #     xlim = [4.94e-06, 27741]
+    #     ylim = [4.94e-06, 27741]
+    xlim = [4.94e-06, 27741]
+    ylim = [4.94e-06, 27741]
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=18,
@@ -146,6 +148,8 @@ def hdr_in_out_characteristics(
 def calc_result_exr(
         file_path, in_color_space, working_color_space, out_color_space):
     print(f"EXR: {file_path}")
+    if "HLG" not in working_color_space:
+        return
     exr_in_out_characteristics(
         file_path=file_path, in_color_space=in_color_space,
         working_color_space=working_color_space,
@@ -181,6 +185,14 @@ def exr_in_out_characteristics(
 
     graph_title = f"Linear --> {working_color_space} --> {out_color_space}"
 
+    if "HLG" in working_color_space:
+        xlim = [3.5481338829296651e-07, 2818.38293162024]
+        ylim = [7.2859599757331225e-13, 35.21508527428125]
+    else:
+        xlim = [3.5481338829296651e-07, 2818.38293162024]
+        ylim = [3.9642404597707485e-07, 251.23932593436777]
+    print(f"xlim={xlim}")
+    print(f"ylim={ylim}")
     fig, ax1 = pu.plot_1_graph(
         fontsize=18,
         figsize=(12, 8),
@@ -191,8 +203,8 @@ def exr_in_out_characteristics(
         ylabel="Linear (1.0 = 100 nits)",
         axis_label_size=None,
         legend_size=17,
-        xlim=[3.5481338829296651e-07, 2818.38293162024],
-        ylim=[3.9642404597707485e-07, 251.23932593436777],
+        xlim=xlim,
+        ylim=ylim,
         xtick=None,
         ytick=None,
         xtick_size=None, ytick_size=None,
@@ -228,14 +240,14 @@ def analyze_main():
     color_process_mode_list = [
         dcl.RCM_PRESET_SDR_709,
         dcl.RCM_PRESET_SDR_2020,
-        dcl.RCM_PRESET_SDR_2020_P3_LIMITED,
+        # dcl.RCM_PRESET_SDR_2020_P3_LIMITED,
         dcl.RCM_PRESET_SDR_P3_D60,
-        dcl.RCM_PRESET_HDR_DAVINCI_INTERMEDIATE,
-        dcl.RCM_PRESET_HDR_2020_INTERMEDIATE,
+        # dcl.RCM_PRESET_HDR_DAVINCI_INTERMEDIATE,
+        # dcl.RCM_PRESET_HDR_2020_INTERMEDIATE,
         dcl.RCM_PRESET_HDR_2020_HLG,
-        dcl.RCM_PRESET_HDR_2020_HLG_P3_LIMITED,
+        # dcl.RCM_PRESET_HDR_2020_HLG_P3_LIMITED,
         dcl.RCM_PRESET_HDR_2020_PQ,
-        dcl.RCM_PRESET_HDR_2020_PQ_P3_LIMITED
+        # dcl.RCM_PRESET_HDR_2020_PQ_P3_LIMITED
     ]
     out_color_space_list = [
         dcl.RCM_COLOR_SPACE_709_GM24,
@@ -251,13 +263,13 @@ def analyze_main():
             out_color_space=out_color_space)
 
         if 'dst_sdr' in file_path:
+            continue
             calc_result_sdr_hdr(
                 file_path=file_path, in_color_space=clip_color_space,
                 working_color_space=color_process_mode,
                 out_color_space=out_color_space)
-            # break
         elif 'dst_hdr' in file_path:
-            # continue
+            continue
             calc_result_sdr_hdr(
                 file_path=file_path, in_color_space=clip_color_space,
                 working_color_space=color_process_mode,
