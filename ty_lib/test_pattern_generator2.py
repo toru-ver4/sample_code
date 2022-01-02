@@ -1957,13 +1957,30 @@ def generate_color_checker_rgb_value(
     return rgb
 
 
-def make_color_checker_image(rgb, width=1920, padding_rate=0.01):
+def make_color_checker_image(
+        color_space_name=RGB_COLOURSPACE_BT709, target_white=D65_WHITE,
+        width=1920, padding_rate=0.01):
     """
-    6x4 の カラーチェッカーの画像を作る。
-    Height は Width から自動計算される。padding_rate で少し値が変わる。
+    Create 6x4 color checker image.
+    `height` is calculated automatically from `width`.
+
+    Parameters
+    ----------
+    color_space_name : str
+        color space name of colour-science for python.
+    target_white : ndarray
+        white point
+    width : int
+        a width
+    paddig_rate : float
+        padding rate (Padding is like a black matrix).
     """
     h_patch_num = 6
     v_patch_num = 4
+
+    rgb = generate_color_checker_rgb_value(
+        color_space=RGB_COLOURSPACES[color_space_name],
+        target_white=target_white)
 
     # 各種パラメータ計算
     each_padding = int(width * padding_rate + 0.5)
