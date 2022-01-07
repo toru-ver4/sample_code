@@ -183,6 +183,7 @@ venv.bak/
 temporary/**/**
 2021/16_testpattern_for_iphone13_pro/img/*.png
 2021/16_testpattern_for_iphone13_pro/lut
+2021/17_DaVinci_Resolve_CMS_Characteristics/img_chara/*.png
 
 .gitconfig
 .bash_history
