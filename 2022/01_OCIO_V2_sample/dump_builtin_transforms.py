@@ -25,5 +25,8 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     builtin_transform_registry = ocio.BuiltinTransformRegistry()
     builtin_transforms = builtin_transform_registry.getBuiltins()
+    print(type(builtin_transforms))
     for builtin_transform in builtin_transforms:
-        print(builtin_transform)
+        name = builtin_transform[0]
+        description = builtin_transform[1]
+        print(f'name: "{name}", description: "{description}"')
