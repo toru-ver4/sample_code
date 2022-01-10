@@ -9,7 +9,7 @@ description: A sample config file for studying.
 name: OCIOv2-ty_sample_rev00
 
 # There are no external files.
-search_path: 
+search_path: ./luts
 
 # Improves performance? I don't know.
 environment: {}
@@ -21,6 +21,17 @@ family_separator: /
 roles:
   default: BT1886
   scene_linear: ACEScg
+  data: Raw
+  reference: Raw
+  compositing_log: Raw
+  color_timing: Raw
+  color_picking: Raw
+  texture_paint: Raw
+  matte_paint: Raw
+  rendering: Raw
+  aces_interchange: Raw
+  cie_xyz_d65_interchange: Raw
+  hdr10: BT2100-PQ_FOR_3DLUT
 
 # file_fules ... blank is OK?
 file_rules:
@@ -35,6 +46,33 @@ displays:
       name: Simple BT.1886 Display
       view_transform: Un-tone-mapped
       display_colorspace: BT1886
+
+    - !<View>
+      name: Luminance_Map_1000nits
+      view_transform: Luminance_map_1000nits
+      display_colorspace: BT1886
+
+    - !<View>
+      name: Luminance_Map_4000nits
+      view_transform: Luminance_map_4000nits
+      display_colorspace: BT1886
+
+  BT2100-PQ:
+    - !<View>
+      name: Simple BT2100-PQ Display
+      view_transform: Un-tone-mapped
+      display_colorspace: BT2100-PQ
+
+    - !<View>
+      name: Luminance_Map_1000nits
+      view_transform: Luminance_map_1000nits
+      display_colorspace: BT2100-PQ
+
+    - !<View>
+      name: Luminance_Map_4000nits
+      view_transform: Luminance_map_4000nits
+      display_colorspace: BT2100-PQ
+
 
 # virtual_display ... blank is OK?
 virtual_display:
@@ -51,6 +89,28 @@ view_transforms:
       Convert the scene colorimetry directly to display-referred with no tone-mapping.
     from_scene_reference: !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
 
+  - !<ViewTransform>
+    name: Luminance_Map_4000nits
+    description: |
+      Luminance mapping up to 4000 nits
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
+        - !<FileTransform> {src: LuminanceMap_for_ST2084_BT2020_D65_MapRange_100-4000nits_65x65x65_on_ST2084.cube, interpolation: tetrahedral}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ", direction: inverse}
+
+  - !<ViewTransform>
+    name: Luminance_Map_1000nits
+    description: |
+      Luminance mapping up to 1000 nits
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
+        - !<FileTransform> {src: LuminanceMap_for_ST2084_BT2020_D65_MapRange_100-1000nits_65x65x65_on_ST2084.cube, interpolation: tetrahedral}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ", direction: inverse}
+
 # display colorspaces
 display_colorspaces:
   - !<ColorSpace>
@@ -62,6 +122,16 @@ display_colorspaces:
     categories: [ file-io ]
     encoding: sdr-video
     from_display_reference: !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.1886-REC.709"}
+
+  - !<ColorSpace>
+    name: BT2100-PQ
+    family: Displays/HDR
+    description: |
+      Gamut: BT.2020, EOTF: SMPTE ST2084
+    isdata: false
+    categories: [ file-io ]
+    encoding: hdr-video
+    from_display_reference: !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
 
 # colorspaces
 colorspaces:
@@ -95,7 +165,7 @@ colorspaces:
     encoding: data
 
   - !<ColorSpace>
-    name: Sony SLog3 / SGamut3
+    name: Sony SLog3-SGamut3
     family: Cameras/Sony
     description: |
       Sony SLog3 / SGamut3
@@ -103,3 +173,28 @@ colorspaces:
     categories: [ file-io ]
     encoding: log
     to_scene_reference: !<BuiltinTransform> {style: "SONY_SLOG3-SGAMUT3_to_ACES2065-1"}
+
+  - !<ColorSpace>
+    name: BT2100-PQ_FOR_3DLUT
+    family: ACES/for_3DLUT
+    description: |
+      BT2100-PQ for 3D LUT
+    isdata: false
+    categories: [ file-io ]
+    encoding: log
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
+
+# Looks
+looks:
+  - !<Look>
+    name: greenish
+    process_space: BT2100-PQ_FOR_3DLUT
+    transform: !<FileTransform> {src: greenish_gamma1.2_rev8.cube, interpolation: tetrahedral}
+
+  - !<Look>
+    name: grayscale
+    process_space: ACEScg
+    transform: !<MatrixTransform> {matrix: [ 0.21, 0.72, 0.07, 0, 0.21, 0.72, 0.07, 0, 0.21, 0.72, 0.07, 0, 0, 0, 0, 1 ]}

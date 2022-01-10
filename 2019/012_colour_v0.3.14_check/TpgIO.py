@@ -39,7 +39,7 @@ class TpgIO:
         writer.write(out_img_type_desc=oiio.FLOAT)
 
     def save_tiff_image(self, fname):
-        attr = {'Compression': 'none'}
+        attr = {'png:compressionLevel': 7}
         writer2 = TyWriter(self.img / self.img_max, fname, attr)
         writer2.write(out_img_type_desc=oiio.UINT16)
 
@@ -49,7 +49,7 @@ class TpgIO:
             self.save_dpx_image(fname)
 
             # TIFFファイルも合わせて吐き出しておく
-            self.save_tiff_image(root + '.tiff')
+            self.save_tiff_image(root + '.png')
         elif ext == '.exr':
             self.save_exr_image(fname)
 
