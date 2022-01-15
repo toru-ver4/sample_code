@@ -1,0 +1,235 @@
+ocio_profile_version: 2
+
+# Note: this is a sample file for studying.
+
+# History
+#   Rev.00: New addition
+
+description: A sample config file for studying.
+name: OCIOv2-ty_sample_rev00
+
+# There are no external files.
+search_path: ./luts
+
+# Improves performance? I don't know.
+environment: {}
+
+# Is this like a delimiter?
+family_separator: /
+
+# Roles
+roles:
+  default: BT1886-BT709
+  scene_linear: ACEScg
+  data: Raw
+  reference: Raw
+  compositing_log: Raw
+  color_timing: Raw
+  color_picking: Raw
+  texture_paint: Raw
+  matte_paint: Raw
+  rendering: Raw
+  aces_interchange: Raw
+  cie_xyz_d65_interchange: Raw
+  hdr10: BT2100-PQ_ColorSpace
+  sdr_709: BT1886-BT709_ColorSpace
+
+# file_fules ... Is it okay to leave blank?
+file_rules:
+
+# viewing_rules ... Is it okay to leave blank?
+viewing_rules:
+
+# Displays
+displays:
+  BT1886-BT709:
+    - !<View>
+      name: Simple BT1886-BT709
+      view_transform: Un-tone-mapped
+      display_colorspace: BT1886-BT709
+
+    - !<View>
+      name: ACES_OT_BT1886-BT709
+      view_transform: SDR-VIDEO_BT709_1.1
+      display_colorspace: BT1886-BT709
+
+    - !<View>
+      name: Luminance_Map_1000nit BT1886-BT709
+      view_transform: Luminance_map_1000nit
+      display_colorspace: BT1886-BT709
+
+    - !<View>
+      name: Luminance_Map_4000nit BT1886-BT709
+      view_transform: Luminance_map_4000nit
+      display_colorspace: BT1886-BT709
+
+  BT2100-PQ:
+    - !<View>
+      name: Simple BT2100-PQ
+      view_transform: Un-tone-mapped
+      display_colorspace: BT2100-PQ
+
+    - !<View>
+      name: ACES_OT_HDR_1000nit_BT2100-PQ
+      view_transform: HDR-VIDEO-1000nit_BT2020
+      display_colorspace: BT2100-PQ
+
+    - !<View>
+      name: Luminance_Map_1000nit BT2100-PQ
+      view_transform: Luminance_map_1000nit
+      display_colorspace: BT2100-PQ
+
+    - !<View>
+      name: Luminance_Map_4000nit BT2100-PQ
+      view_transform: Luminance_map_4000nit
+      display_colorspace: BT2100-PQ
+
+
+# virtual_display ... Is it okay to leave blank?
+virtual_display:
+
+# default_view_transform
+default_view_transform: Un-tone-mapped
+
+# view transforms:
+view_transforms:
+  - !<ViewTransform>
+    name: Un-tone-mapped
+    description: |
+      Convert the scene colorimetry directly to display-referred with no tone-mapping.
+    from_scene_reference: !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
+
+  - !<ViewTransform>
+    name: SDR-VIDEO_BT709_1.1
+    description: |
+      Convert the scene colorimetry directly to display-referred with no tone-mapping.
+    from_scene_reference: !<BuiltinTransform> {style: "ACES-OUTPUT - ACES2065-1_to_CIE-XYZ-D65 - SDR-VIDEO-REC709lim_1.1"}
+
+  - !<ViewTransform>
+    name: HDR-VIDEO-1000nit_BT2020
+    description: |
+      Convert the scene colorimetry directly to display-referred with no tone-mapping.
+    from_scene_reference: !<BuiltinTransform> {style: "ACES-OUTPUT - ACES2065-1_to_CIE-XYZ-D65 - HDR-VIDEO-1000nit-15nit-REC2020lim_1.1"}
+
+  - !<ViewTransform>
+    name: Luminance_Map_1000nit
+    description: |
+      Luminance mapping up to 1000 nit
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
+        - !<FileTransform> {src: LuminanceMap_for_ST2084_BT2020_D65_MapRange_100-1000nits_65x65x65_on_ST2084.cube, interpolation: tetrahedral}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ", direction: inverse}
+
+  - !<ViewTransform>
+    name: Luminance_Map_4000nit
+    description: |
+      Luminance mapping up to 4000 nit
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
+        - !<FileTransform> {src: LuminanceMap_for_ST2084_BT2020_D65_MapRange_100-4000nits_65x65x65_on_ST2084.cube, interpolation: tetrahedral}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ", direction: inverse}
+
+# display colorspaces
+display_colorspaces:
+  - !<ColorSpace>
+    name: BT1886-BT709
+    family: Displays/SDR
+    description: |
+      Gamut: BT.709, EOTF: Gamma 2.4
+    isdata: false
+    categories: [ file-io ]
+    encoding: sdr-video
+    from_display_reference: !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.1886-REC.709"}
+
+  - !<ColorSpace>
+    name: BT2100-PQ
+    family: Displays/HDR
+    description: |
+      Gamut: BT.2020, EOTF: SMPTE ST2084
+    isdata: false
+    categories: [ file-io ]
+    encoding: hdr-video
+    from_display_reference: !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
+
+# colorspaces
+colorspaces:
+  - !<ColorSpace>
+    name: ACEScg
+    family: ACES
+    description: |
+      ACEScg working space
+    isdata: false
+    categories: [ file-io, working-space ]
+    encoding: scene-linear
+    to_scene_reference: !<MatrixTransform> {matrix: [ 0.695452241357, 0.140678696470, 0.163869062172, 0, 0.044794563372, 0.859671118456, 0.095534318172, 0, -0.005525882558, 0.004025210306, 1.001500672252, 0, 0, 0, 0, 1 ]}
+
+  - !<ColorSpace>
+    name: ACES2065-1
+    aliases: [ aces ]
+    family: ACES
+    description: |
+      The Academy Color Encoding System reference color space
+    isdata: false
+    categories: [ file-io ]
+    encoding: scene-linear
+
+  - !<ColorSpace>
+    name: Raw
+    family: Data
+    description: |
+      Raw (no color processing)
+    isdata: true
+    categories: [ file-io ]
+    encoding: data
+
+  - !<ColorSpace>
+    name: Sony SLog3-SGamut3
+    family: Cameras/Sony
+    description: |
+      Sony SLog3 / SGamut3
+    isdata: false
+    categories: [ file-io ]
+    encoding: log
+    to_scene_reference: !<BuiltinTransform> {style: "SONY_SLOG3-SGAMUT3_to_ACES2065-1"}
+
+  - !<ColorSpace>
+    name: BT2100-PQ_ColorSpace
+    family: Input
+    description: |
+      BT2100-PQ for Input Data (no RRT)
+    isdata: false
+    categories: [ file-io ]
+    encoding: log
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
+
+  - !<ColorSpace>
+    name: BT1886-BT709_ColorSpace
+    family: Input
+    description: |
+      BT1886-BT709 for Input Data (no RRT)
+    isdata: false
+    categories: [ file-io ]
+    encoding: log
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.1886-REC.709"}
+
+# Looks
+looks:
+  - !<Look>
+    name: greenish
+    process_space: BT2100-PQ_ColorSpace
+    transform: !<FileTransform> {src: greenish_gamma1.2_rev8.cube, interpolation: tetrahedral}
+
+  - !<Look>
+    name: grayscale
+    process_space: ACEScg
+    transform: !<MatrixTransform> {matrix: [ 0.21, 0.72, 0.07, 0, 0.21, 0.72, 0.07, 0, 0.21, 0.72, 0.07, 0, 0, 0, 0, 1 ]}

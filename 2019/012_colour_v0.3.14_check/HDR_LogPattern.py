@@ -14,7 +14,8 @@ import colour
 from multiprocessing import Pool, cpu_count
 
 # REVISION = 3  # 右上に色々と小物を追加
-REVISION = 4  # colour version 0.3.14
+# REVISION = 4  # colour version 0.3.14
+REVISION = 5  # colour version 0.3.16
 BIT_DEPTH = 10
 
 
@@ -46,6 +47,7 @@ PARAM_LIST = [{'tf': tf.GAMMA24, 'cs': BT709_CS, 'wp': 'D65'},
               {'tf': tf.ST2084, 'cs': BT2020_CS, 'wp': 'D65'},
               {'tf': tf.ST2084, 'cs': DCI_P3_CS, 'wp': 'D65'},
               {'tf': tf.SLOG3, 'cs': S_GAMUT3_CS, 'wp': 'D65'},
+              {'tf': tf.SLOG3_REF, 'cs': S_GAMUT3_CS, 'wp': 'D65'},
               {'tf': tf.VLOG, 'cs': V_LOG_CS, 'wp': 'D65'},
               {'tf': tf.LOGC, 'cs': ALEXA_WIDE_GAMUT_CS, 'wp': 'D65'},
               {'tf': tf.LOGC, 'cs': BT2020_CS, 'wp': 'D65'},
@@ -55,7 +57,7 @@ PARAM_LIST = [{'tf': tf.GAMMA24, 'cs': BT709_CS, 'wp': 'D65'},
               {'tf': tf.LOG3G12, 'cs': BT2020_CS, 'wp': 'D65'},
               {'tf': tf.ST2084, 'cs': ACES_AP1_CS, 'wp': 'D60'},
               {'tf': tf.ST2084, 'cs': ACES_AP0_CS, 'wp': 'D60'}]
-# PARAM_LIST = [{'tf': tf.HLG, 'cs': BT2020_CS, 'wp': 'D65'}]
+# PARAM_LIST = [{'tf': tf.SLOG3_REF, 'cs': S_GAMUT3_CS, 'wp': 'D65'}]
 
 
 class TpgControl:
@@ -136,15 +138,15 @@ def make_test_pattern(
                                   white_point, resolution, revision, "exr")
     tpg_ctrl.save_image(fname, transfer_function)
 
-    # type2
-    fname_str_base = "./img/{}_{}_{}_{}_rev{:02d}_type2.{}"
-    tpg_ctrl.draw_image_type2(preview=False)
-    fname = fname_str_base.format(transfer_function, color_space.name,
-                                  white_point, resolution, revision, "dpx")
-    tpg_ctrl.save_image(fname, transfer_function)
-    fname = fname_str_base.format(transfer_function, color_space.name,
-                                  white_point, resolution, revision, "exr")
-    tpg_ctrl.save_image(fname, transfer_function)
+    # # type2
+    # fname_str_base = "./img/{}_{}_{}_{}_rev{:02d}_type2.{}"
+    # tpg_ctrl.draw_image_type2(preview=False)
+    # fname = fname_str_base.format(transfer_function, color_space.name,
+    #                               white_point, resolution, revision, "dpx")
+    # tpg_ctrl.save_image(fname, transfer_function)
+    # fname = fname_str_base.format(transfer_function, color_space.name,
+    #                               white_point, resolution, revision, "exr")
+    # tpg_ctrl.save_image(fname, transfer_function)
 
 
 def thread_wrapper(args):
