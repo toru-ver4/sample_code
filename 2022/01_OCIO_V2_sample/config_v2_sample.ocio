@@ -1,6 +1,6 @@
 ocio_profile_version: 2
 
-# Note: this is a sample for studying.
+# Note: this is a sample file for studying.
 
 # History
 #   Rev.00: New addition
@@ -17,9 +17,9 @@ environment: {}
 # Is this like a delimiter?
 family_separator: /
 
-# Roles, I'll add only default
+# Roles
 roles:
-  default: BT1886
+  default: BT1886-BT709
   scene_linear: ACEScg
   data: Raw
   reference: Raw
@@ -31,55 +31,65 @@ roles:
   rendering: Raw
   aces_interchange: Raw
   cie_xyz_d65_interchange: Raw
-  hdr10: BT2100-PQ_FOR_3DLUT
+  hdr10: BT2100-PQ_ColorSpace
+  sdr_709: BT1886-BT709_ColorSpace
 
-# file_fules ... blank is OK?
+# file_fules ... Is it okay to leave blank?
 file_rules:
 
-# viewing_rules ... blank is OK?
+# viewing_rules ... Is it okay to leave blank?
 viewing_rules:
 
 # Displays
 displays:
-  BT1886:
+  BT1886-BT709:
     - !<View>
-      name: Simple BT.1886 Display
+      name: Simple BT1886-BT709
       view_transform: Un-tone-mapped
-      display_colorspace: BT1886
+      display_colorspace: BT1886-BT709
 
     - !<View>
-      name: Luminance_Map_1000nits
-      view_transform: Luminance_map_1000nits
-      display_colorspace: BT1886
+      name: ACES_OT_BT1886-BT709
+      view_transform: SDR-VIDEO_BT709_1.1
+      display_colorspace: BT1886-BT709
 
     - !<View>
-      name: Luminance_Map_4000nits
-      view_transform: Luminance_map_4000nits
-      display_colorspace: BT1886
+      name: Luminance_Map_1000nit BT1886-BT709
+      view_transform: Luminance_map_1000nit
+      display_colorspace: BT1886-BT709
+
+    - !<View>
+      name: Luminance_Map_4000nit BT1886-BT709
+      view_transform: Luminance_map_4000nit
+      display_colorspace: BT1886-BT709
 
   BT2100-PQ:
     - !<View>
-      name: Simple BT2100-PQ Display
+      name: Simple BT2100-PQ
       view_transform: Un-tone-mapped
       display_colorspace: BT2100-PQ
 
     - !<View>
-      name: Luminance_Map_1000nits
-      view_transform: Luminance_map_1000nits
+      name: ACES_OT_HDR_1000nit_BT2100-PQ
+      view_transform: HDR-VIDEO-1000nit_BT2020
       display_colorspace: BT2100-PQ
 
     - !<View>
-      name: Luminance_Map_4000nits
-      view_transform: Luminance_map_4000nits
+      name: Luminance_Map_1000nit BT2100-PQ
+      view_transform: Luminance_map_1000nit
+      display_colorspace: BT2100-PQ
+
+    - !<View>
+      name: Luminance_Map_4000nit BT2100-PQ
+      view_transform: Luminance_map_4000nit
       display_colorspace: BT2100-PQ
 
 
-# virtual_display ... blank is OK?
+# virtual_display ... Is it okay to leave blank?
 virtual_display:
 
 # default_view_transform
 default_view_transform: Un-tone-mapped
-
 
 # view transforms:
 view_transforms:
@@ -90,20 +100,21 @@ view_transforms:
     from_scene_reference: !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
 
   - !<ViewTransform>
-    name: Luminance_Map_4000nits
+    name: SDR-VIDEO_BT709_1.1
     description: |
-      Luminance mapping up to 4000 nits
-    from_scene_reference: !<GroupTransform>
-      children:
-        - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
-        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
-        - !<FileTransform> {src: LuminanceMap_for_ST2084_BT2020_D65_MapRange_100-4000nits_65x65x65_on_ST2084.cube, interpolation: tetrahedral}
-        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ", direction: inverse}
+      Convert the scene colorimetry directly to display-referred with no tone-mapping.
+    from_scene_reference: !<BuiltinTransform> {style: "ACES-OUTPUT - ACES2065-1_to_CIE-XYZ-D65 - SDR-VIDEO-REC709lim_1.1"}
 
   - !<ViewTransform>
-    name: Luminance_Map_1000nits
+    name: HDR-VIDEO-1000nit_BT2020
     description: |
-      Luminance mapping up to 1000 nits
+      Convert the scene colorimetry directly to display-referred with no tone-mapping.
+    from_scene_reference: !<BuiltinTransform> {style: "ACES-OUTPUT - ACES2065-1_to_CIE-XYZ-D65 - HDR-VIDEO-1000nit-15nit-REC2020lim_1.1"}
+
+  - !<ViewTransform>
+    name: Luminance_Map_1000nit
+    description: |
+      Luminance mapping up to 1000 nit
     from_scene_reference: !<GroupTransform>
       children:
         - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
@@ -111,10 +122,21 @@ view_transforms:
         - !<FileTransform> {src: LuminanceMap_for_ST2084_BT2020_D65_MapRange_100-1000nits_65x65x65_on_ST2084.cube, interpolation: tetrahedral}
         - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ", direction: inverse}
 
+  - !<ViewTransform>
+    name: Luminance_Map_4000nit
+    description: |
+      Luminance mapping up to 4000 nit
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
+        - !<FileTransform> {src: LuminanceMap_for_ST2084_BT2020_D65_MapRange_100-4000nits_65x65x65_on_ST2084.cube, interpolation: tetrahedral}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ", direction: inverse}
+
 # display colorspaces
 display_colorspaces:
   - !<ColorSpace>
-    name: BT1886
+    name: BT1886-BT709
     family: Displays/SDR
     description: |
       Gamut: BT.709, EOTF: Gamma 2.4
@@ -175,10 +197,10 @@ colorspaces:
     to_scene_reference: !<BuiltinTransform> {style: "SONY_SLOG3-SGAMUT3_to_ACES2065-1"}
 
   - !<ColorSpace>
-    name: BT2100-PQ_FOR_3DLUT
-    family: ACES/for_3DLUT
+    name: BT2100-PQ_ColorSpace
+    family: Input
     description: |
-      BT2100-PQ for 3D LUT
+      BT2100-PQ for Input Data (no RRT)
     isdata: false
     categories: [ file-io ]
     encoding: log
@@ -187,11 +209,24 @@ colorspaces:
         - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
         - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
 
+  - !<ColorSpace>
+    name: BT1886-BT709_ColorSpace
+    family: Input
+    description: |
+      BT1886-BT709 for Input Data (no RRT)
+    isdata: false
+    categories: [ file-io ]
+    encoding: log
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.1886-REC.709"}
+
 # Looks
 looks:
   - !<Look>
     name: greenish
-    process_space: BT2100-PQ_FOR_3DLUT
+    process_space: BT2100-PQ_ColorSpace
     transform: !<FileTransform> {src: greenish_gamma1.2_rev8.cube, interpolation: tetrahedral}
 
   - !<Look>

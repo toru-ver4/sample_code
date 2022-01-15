@@ -185,6 +185,7 @@ temporary/**/**
 2021/16_testpattern_for_iphone13_pro/lut
 2021/17_DaVinci_Resolve_CMS_Characteristics/img_chara/*.png
 2022/01_OCIO_V2_sample/luts/*.cube
+2022/01_OCIO_V2_sample/tp_src/*.mov
 
 .gitconfig
 .bash_history
