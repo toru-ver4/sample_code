@@ -32,8 +32,8 @@ FFMPEG_NORMALIZE_COEF = 65340
 
 class MovingSquareConcentricallyTP():
     def __init__(self, width=1920, height=1080):
-        self.width = 1920
-        self.height = 1080
+        self.width = width
+        self.height = height
         self.scale_coef = int(height / 1080 + 0.5)
         self.info_font_size = int(30 * self.scale_coef + 0.5)
         self.annotate_font_size = int(20 * self.scale_coef + 0.5)
@@ -42,15 +42,13 @@ class MovingSquareConcentricallyTP():
         self.font = fc2.NOTO_SANS_MONO_BOLD
         self.base_period = 3
         self.num_of_period = 2
-        self.accel_rate_list = [2, 1.5, 1]
         self.square_color_list = np.array(
             [[0.8, 0.8, 0.8], [0.8, 0.8, 0.8], [0.8, 0.8, 0.8]])
-        self.square_pos_radius_rate_list = [0.3, 0.6, 0.9]
+        self.blink_fps_list = [1, 3, 5, 10]
         self.fps = 60
 
         self.text_margin_rate = 0.2
         self.bg_color = np.array([0.0, 0.0, 0.0])
-        self.square_num = len(self.square_color_list)
         self.info_text = " Thie is sample. Rev.01"
         self.create_bg_img()
         self.active_height = self.height - self.text_area_height
@@ -77,11 +75,11 @@ class MovingSquareConcentricallyTP():
                     break
                 d = dict(frame_idx=l_idx)
                 args.append(d)
-                # self.draw_square_core(**d)
-                # break
-            with Pool(block_process_num) as pool:
-                pool.map(self.thread_wrapper_draw_square_core, args)
-            # break
+                self.draw_square_core(**d)
+                break
+            # with Pool(block_process_num) as pool:
+            #     pool.map(self.thread_wrapper_draw_square_core, args)
+            break
 
     def thread_wrapper_draw_square_core(self, args):
         self.draw_square_core(**args)
@@ -114,7 +112,7 @@ class MovingSquareConcentricallyTP():
             bg_color=0.1, width=1920, height=1080, frame_idx=0):
         ext = ".png"
         base_dir = "/work/overuse/2022/concentrically_square/"
-        desc = "concentrically"
+        desc = "flicker"
         size_s = f"size-{size:04d}"
         fg_c = f"fg-{fg_color[0]:.2f}-{fg_color[1]:.2f}-{fg_color[2]:.2f}"
         bg_c = f"bg-{bg_color[0]:.2f}-{bg_color[1]:.2f}-{bg_color[2]:.2f}"
@@ -126,32 +124,23 @@ class MovingSquareConcentricallyTP():
         return fname
 
     def create_square_obj_list(self):
-        self.calc_square_margin_v()
-        st_pos_h = self.width // 2
-        st_pos_v = self.active_height // 2
+        offset_h = self.width / (len(self.blink_fps_list) + 1)
+        offset_v = self.active_height / (2 + 1)  # "2" is row count
 
-        self.square_obj_list: List[SquareConcentrically] = []
-        for idx in range(self.square_num):
-            accel_rate = self.accel_rate_list[idx]
-            radius_h =\
-                self.width / 2 * self.square_pos_radius_rate_list[idx]\
-                - (self.square_size // 2)
-            radius_v =\
-                self.active_height / 2 * self.square_pos_radius_rate_list[idx]\
-                - (self.square_size // 2)
-            square_obj = SquareConcentrically(
-                size=self.square_size, color=self.square_color_list[idx],
-                base_period=self.base_period, num_of_period=self.num_of_period,
-                global_st_pos=[st_pos_h, st_pos_v],
-                radius_h=radius_h, radius_v=radius_v,
-                accel_rate=accel_rate, fps=self.fps)
-            self.square_obj_list.append(square_obj)
-
-    def calc_square_margin_v(self):
-        square_margine = (
-            self.active_height - self.square_size * self.square_num)\
-            / (self.square_num + 1)
-        self.square_margine = int(square_margine + 0.5)
+        self.square_obj_list: List[FlickerSquare] = [[], []]
+        for idx_v in range(2):
+            st_pos_v = offset_v * (idx_v + 1)
+            for idx_h in range(len(self.blink_fps_list)):
+                st_pos_h = offset_h * (idx_h + 1)
+                blink_fps = self.blink_fps_list[idx_h]
+                square_obj = FlickerSquare(
+                    size=self.square_size, color=self.square_color_list[idx_h],
+                    blink_fps=blink_fps,
+                    base_period=self.base_period,
+                    num_of_period=self.num_of_period,
+                    global_st_pos=[st_pos_h, st_pos_v],
+                    fps=self.fps)
+                self.square_obj_list.append(square_obj)
 
     def create_bg_img(self):
         self.img = np.ones((self.height, self.width, 3)) * self.bg_color
@@ -171,35 +160,30 @@ class MovingSquareConcentricallyTP():
             self.img, text_area_img, (0, self.height-self.text_area_height))
 
 
-class SquareConcentrically():
+class FlickerSquare():
     def __init__(
-            self, size=200, color=[0.1, 0.1, 0.0],
+            self, size=200, color=[0.1, 0.1, 0.0], blink_fps=1,
             base_period=2, num_of_period=4, global_st_pos=[0, 0],
-            radius_h=200, radius_v=100,
-            accel_rate=1.0, fps=60):
+            fps=60):
         self.size = size
         self.global_st_pos = global_st_pos
-        self.color = np.array(color)
+        self.base_color = np.array(color)
+        self.blink_fps = blink_fps
         self.base_period = base_period
         self.num_of_period = num_of_period
-        self.accel_rate = accel_rate
+        self.fps = fps
         self.num_of_frame = fps * self.base_period
-        self.radius_h = radius_h
-        self.radius_v = radius_v
 
     def calc_pos(self, idx):
-        y_h = np.cos(
-            2*np.pi/(self.num_of_frame)*idx*self.accel_rate + np.pi)\
-            * self.radius_h
-        y_v = np.sin(
-            2*np.pi/(self.num_of_frame)*idx*self.accel_rate + np.pi)\
-            * self.radius_v
-        pos_h = int(round(y_h)) - (self.size // 2)
-        pos_v = int(round(y_v)) - (self.size // 2)
+        y = np.sin(
+            2*np.pi/(self.fps)*idx*self.blink_fps - np.pi/2) * 0.5 + 0.5
+        pos_h = self.size // 2
+        pos_v = self.size // 2
         self.st_pos = [
-            self.global_st_pos[0] + pos_h,
-            self.global_st_pos[1] + pos_v]
-        self.ed_pos = [self.st_pos[0] + self.size, self.st_pos[1] + self.size]
+            self.global_st_pos[0] + pos_h, self.global_st_pos[1] + pos_v]
+        self.ed_pos = [
+            self.st_pos[0] + self.size, self.st_pos[1] + self.size]
+        self.color = self.base_color * y
 
     def get_st_pos_ed_pos(self):
         # print(f"st, ed = {self.st_pos, self.ed_pos}")
@@ -210,7 +194,7 @@ class SquareConcentrically():
 
 
 def main_func():
-    moving_square_tp = MovingSquareConcentricallyTP()
+    moving_square_tp = MovingSquareConcentricallyTP(width=1920, height=1080)
     moving_square_tp.draw_square_seq()
 
 

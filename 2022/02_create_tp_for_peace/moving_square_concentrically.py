@@ -32,8 +32,8 @@ FFMPEG_NORMALIZE_COEF = 65340
 
 class MovingSquareConcentricallyTP():
     def __init__(self, width=1920, height=1080):
-        self.width = 1920
-        self.height = 1080
+        self.width = width
+        self.height = height
         self.scale_coef = int(height / 1080 + 0.5)
         self.info_font_size = int(30 * self.scale_coef + 0.5)
         self.annotate_font_size = int(20 * self.scale_coef + 0.5)
