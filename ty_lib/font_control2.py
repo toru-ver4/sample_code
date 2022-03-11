@@ -140,7 +140,7 @@ class TextDrawControl():
         else:
             self.stroke_fill = None
 
-        self.debug_dump_parameters()
+        # self.debug_dump_parameters()
 
     def debug_dump_parameters(self):
         print(f"font_color={self.font_color}")
@@ -543,8 +543,9 @@ def simple_test_hdr_draw():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    pass
     # simple_test_noraml_draw()
-    simple_test_hdr_draw()
+    # simple_test_hdr_draw()
 
     # width = 1280
     # height = 720
