@@ -5,18 +5,22 @@
 
 # import standard libraries
 import os
-from turtle import heading
-from colour import sRGB_to_XYZ, write_image
 import subprocess
+from pathlib import Path
+from turtle import color
 
 # import third-party libraries
 import numpy as np
+from colour.models import BT709_COLOURSPACE, RGB_COLOURSPACES
+from colour import XYZ_to_xyY
+import cv2
 
 # import my libraries
 import plot_utility as pu
 import test_pattern_generator2 as tpg
 import transfer_functions as tf
 import font_control as fc1
+import color_space as cs
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -30,6 +34,15 @@ __all__ = []
 
 FFMPEG_NORMALIZE_COEF = 65340
 const_lab_delta = 6.0/29.0
+BIT_DEPTH = 8
+CODE_VALUE_NUM = (2 ** BIT_DEPTH)
+MAX_CODE_VALUE = CODE_VALUE_NUM - 1
+COLOR_CHECKER_H_HUM = 6
+RGBMYC_COLOR_LIST = np.array(
+    [[1, 0, 0], [0, 1, 0], [0, 0, 1],
+     [1, 0, 1], [1, 1, 0], [0, 1, 1]], dtype=np.uint8)
+COLOR_CHECKER_LINEAR = tpg.generate_color_checker_rgb_value(
+    color_space=BT709_COLOURSPACE)
 
 
 def _func_t_inverse(t):
@@ -190,12 +203,330 @@ def create_alpha_black(alpha=128):
     tpg.img_write(fname, img)
 
 
+def calc_block_num_h(width=1920, block_size=64):
+    return width // block_size
+
+
+def calc_gradation_pattern_block_st_pos(
+        code_value=MAX_CODE_VALUE, width=1920, height=1080, block_size=64):
+    block_num_h = calc_block_num_h(width=width, block_size=block_size)
+    st_pos_h = (code_value % block_num_h) * block_size
+    st_pos_v = (code_value // block_num_h) * block_size
+    st_pos = (st_pos_h, st_pos_v)
+
+    return st_pos
+
+
+def calc_rgbmyc_pattern_block_st_pos(
+        color_idx=1, width=1920, height=1080, block_size=64):
+    block_num_h = calc_block_num_h(width=width, block_size=block_size)
+    st_pos_v = ((MAX_CODE_VALUE // block_num_h) + 2) * block_size
+    st_pos_h = (color_idx % block_num_h) * block_size
+    st_pos = (st_pos_h, st_pos_v)
+
+    return st_pos
+
+
+def calc_color_checker_pattern_block_st_pos(
+        color_idx=1, width=1920, height=1080, block_size=64):
+    block_num_h = calc_block_num_h(width=width, block_size=block_size)
+    st_pos_v_offset = ((MAX_CODE_VALUE // block_num_h) + 4) * block_size
+    st_pos_v = (color_idx // COLOR_CHECKER_H_HUM) * block_size\
+        + st_pos_v_offset
+    st_pos_h = (color_idx % COLOR_CHECKER_H_HUM) * block_size
+    st_pos = (st_pos_h, st_pos_v)
+
+    return st_pos
+
+
+def get_specific_pos_value(img, pos):
+    """
+    Parameters
+    ----------
+    img : ndarray
+        image data.
+    pos : list
+        pos[0] is horizontal coordinate, pos[1] is verical coordinate.
+    """
+    return img[pos[1], pos[0]]
+
+
+def read_code_value_from_gradation_pattern(
+        fname, gamut_name=cs.BT709, gamma_name=tf.GAMMA24):
+    """
+    Example
+    -------
+    >>> read_code_value_from_gradation_pattern(
+    ...     fname="./data.png, width=1920, height=1080, block_size=64)
+    {'ramp': array(
+          [[[  0,   0,   0],
+            [  1,   1,   1],
+            [  2,   2,   2],
+            [  3,   3,   3],
+            ...
+            [252, 252, 252],
+            [253, 253, 253],
+            [254, 254, 254],
+            [255, 255, 255]]], dtype=uint8),
+     'rgbmyc': array(
+           [[255,   0,   0],
+            [  0, 255,   0],
+            [  0,   0, 255],
+            [255,   0, 255],
+            [255, 255,   0],
+            [  0, 255, 255]], dtype=uint8),
+     'colorchecker': array(
+           [[123,  90,  77],
+            [201, 153, 136],
+            [ 99, 129, 161],
+            [ 98, 115,  75],
+            ...
+            [166, 168, 168],
+            [128, 128, 129],
+            [ 91,  93,  95],
+            [ 59,  60,  61]], dtype=uint8)}
+    """
+    # define
+    width = 1920
+    height = 1080
+    block_size = 64
+
+    # Gradation
+    print(f"reading {fname}")
+    img = tpg.img_read(fname)
+    img = cv2.resize(img, (width, height), 0, 0, cv2.INTER_NEAREST)
+
+    block_offset = block_size // 2
+    ramp_value = np.zeros((1, CODE_VALUE_NUM, 3), dtype=np.uint8)
+    for code_value in range(CODE_VALUE_NUM):
+        st_pos = calc_gradation_pattern_block_st_pos(
+            code_value=code_value, width=width, height=height,
+            block_size=block_size)
+        center_pos = (st_pos[0] + block_offset, st_pos[1] + block_offset)
+        ramp_value[0, code_value] = get_specific_pos_value(img, center_pos)
+
+    # RGBMYC
+    rgbmyc_value = np.zeros_like(RGBMYC_COLOR_LIST)
+    for color_idx in range(len(RGBMYC_COLOR_LIST)):
+        st_pos = calc_rgbmyc_pattern_block_st_pos(
+            color_idx=color_idx, width=width, height=height,
+            block_size=block_size)
+        center_pos = (st_pos[0] + block_offset, st_pos[1] + block_offset)
+        rgbmyc_value[color_idx] = get_specific_pos_value(img, center_pos)
+    rgbmyc_value = rgbmyc_value.reshape(
+        1, rgbmyc_value.shape[0], rgbmyc_value.shape[1])
+
+    # ColorChecker
+    color_checker_value = np.zeros_like(COLOR_CHECKER_LINEAR, dtype=np.uint8)
+    for color_idx in range(len(COLOR_CHECKER_LINEAR)):
+        st_pos = calc_color_checker_pattern_block_st_pos(
+            color_idx=color_idx, width=width, height=height,
+            block_size=block_size)
+        center_pos = (st_pos[0] + block_offset, st_pos[1] + block_offset)
+        color_checker_value[color_idx] = get_specific_pos_value(
+            img, center_pos)
+    color_checker_value = color_checker_value.reshape(
+        1, color_checker_value.shape[0], color_checker_value.shape[1])
+
+    return dict(
+        ramp=ramp_value, rgbmyc=rgbmyc_value,
+        colorchecker=color_checker_value)
+
+
+def create_result_graph_name(in_name, suffix='_gamma', output_dir="./graph"):
+    """
+    Example
+    -------
+    >>> create_result_graph_name(
+    ...     "./img/src_bt709_gm24.png", suffix='_tf', output_dir="./graph")
+    graph/src_bt709_gm24_tf.png
+    """
+    p_file = Path(in_name)
+    ext = p_file.suffix
+    basename = p_file.stem
+
+    p_out_name = Path(output_dir) / (basename + suffix + ext)
+
+    return str(p_out_name)
+
+
+def plot_transfer_characteristics_cms_result(data, graph_name):
+    x = np.arange(len(data[0]))
+    r = data[..., 0].flatten()
+    g = data[..., 1].flatten()
+    b = data[..., 2].flatten()
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(9, 9),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Input-Output Characteristics (Ramp)",
+        graph_title_size=None,
+        xlabel="Input Code Value (8 bit)",
+        ylabel="Output Code Value (8 bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=[x * 32 for x in range(256//32 + 1)],
+        ytick=[x * 32 for x in range(256//32 + 1)],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, r, '-o', color=pu.RED, label='Red')
+    ax1.plot(x, g, '-o', color=pu.GREEN, label='Green')
+    ax1.plot(x, b, '-o', color=pu.BLUE, label='Blue')
+    pu.show_and_save(fig=fig, legend_loc='upper left', save_fname=graph_name)
+
+
+def plot_gamut_cms_result(data_dict, gamut_name, gamma_name, graph_name):
+    rgbmyc_num = 6
+    color_checker_num = 19
+    rate = 1.1
+
+    data = np.hstack(
+        [data_dict['rgbmyc'],
+         data_dict['colorchecker'][:, :color_checker_num]])
+    linear_rgb = tf.eotf(data / 255, gamma_name)
+    large_xyz = cs.calc_XYZ_from_rgb(
+        rgb=linear_rgb, color_space_name=gamut_name)
+    xyY = XYZ_to_xyY(large_xyz)
+
+    rgbmyc_ref_rgb = np.array(
+        [[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1], [1, 1, 0], [0, 1, 1]])
+    color_checker_ref_rgb = tpg.generate_color_checker_rgb_value(
+        color_space=RGB_COLOURSPACES[gamut_name], target_white=cs.D65)
+    ref_rgb = np.hstack(
+        [rgbmyc_ref_rgb.reshape(1, rgbmyc_num, 3),
+         color_checker_ref_rgb[:color_checker_num].reshape(
+             1, color_checker_num, 3)])
+    ref_xyz = cs.calc_XYZ_from_rgb(
+        rgb=ref_rgb, color_space_name=gamut_name)
+    ref_xyY = XYZ_to_xyY(ref_xyz)
+
+    # diagram
+    xmin = 0.0
+    xmax = 0.8
+    ymin = 0.0
+    ymax = 0.9
+    cmf_xy = tpg._get_cmfs_xy()
+    xlim = (min(0, xmin), max(0.8, xmax))
+    ylim = (min(0, ymin), max(0.9, ymax))
+    figsize_h = 8 * rate
+    figsize_v = 9 * rate
+    # gamut の用意
+    outer_gamut, _ = tpg.get_primaries(gamut_name)
+    fig, ax1 = pu.plot_1_graph(
+        bg_color=(0.8, 0.8, 0.8),
+        fontsize=20 * rate,
+        figsize=(figsize_h, figsize_v),
+        graph_title="CIE1931 Chromaticity Diagram",
+        xlabel=None, ylabel=None,
+        legend_size=18 * rate,
+        xlim=xlim, ylim=ylim,
+        xtick=[x * 0.1 + xmin for x in
+               range(int((xlim[1] - xlim[0])/0.1) + 1)],
+        ytick=[x * 0.1 + ymin for x in
+               range(int((ylim[1] - ylim[0])/0.1) + 1)],
+        xtick_size=17 * rate,
+        ytick_size=17 * rate,
+        linewidth=4 * rate,
+        minor_xtick_num=2, minor_ytick_num=2,
+        return_figure=True)
+    ax1.plot(
+        cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
+    ax1.plot(
+        (cmf_xy[-1, 0], cmf_xy[0, 0]), (cmf_xy[-1, 1], cmf_xy[0, 1]),
+        '-k', lw=2*rate, label=None)
+    ax1.plot(
+        outer_gamut[:, 0], outer_gamut[:, 1], '--k',
+        label=gamut_name, lw=1.0*rate)
+    ax1.scatter(
+        ref_xyY[..., 0], ref_xyY[..., 1], marker='o', s=150*rate, c='none',
+        edgecolor=data.reshape(rgbmyc_num + color_checker_num, 3)/255,
+        lw=3*rate)
+    ax1.scatter(
+        xyY[..., 0], xyY[..., 1], marker='x', s=100*rate, lw=2*rate,
+        c='black')
+
+    # dummy plot (for legend)
+    ax1.scatter(
+        [1], [1], marker='o', s=150*rate, label="Reference value",
+        edgecolor='k', c='none')
+    ax1.scatter(
+        [1], [1], marker='x', s=100*rate, label="Measured value", lw=2*rate,
+        c='black')
+
+    pu.show_and_save(fig=fig, legend_loc='upper right', save_fname=graph_name)
+
+
+def concat_result_one_file(
+        tf_graph_name, gamut_graph_name, concat_name,
+        gamut_name, gamma_name, env):
+    width = 1920
+    height = 1080
+    font = fc1.NOTO_SANS_CJKJP_BLACK
+    font_size = 34
+    font_edge_size = 6
+    font_edge_color = 'black'
+    text = f' {gamma_name}, {gamut_name}, ({env})'
+
+    img = np.zeros((height, width, 3))
+    _, text_height = fc1.get_text_size(
+        text=text, font_size=font_size, font_path=font,
+        stroke_width=font_edge_size, stroke_fill=font_edge_color)
+    text_pos = [0, 0 + int(text_height * 0.1)]
+    text_drawer = fc1.TextDrawer(
+        img=img, text=text, pos=text_pos,
+        font_color=(168/255, 168/255, 168/255), font_size=font_size,
+        font_path=font,
+        stroke_width=font_edge_size, stroke_fill=font_edge_color)
+    text_drawer.draw()
+    # img = np.uint8(np.round(img * 255))
+
+    # merge tf_graph
+    tf_img = tpg.img_read(tf_graph_name) / 255
+    tf_height, tf_width, _ = tf_img.shape
+    tpg.merge(
+        img, tf_img, [width//4 - tf_width//2, height//2 - tf_height//2])
+
+    # merge gamut_graph
+    gamut_img = tpg.img_read(gamut_graph_name) / 255
+    gamut_height, gamut_width, _ = gamut_img.shape
+    tpg.merge(
+        img, gamut_img,
+        [width//2 + width//4 - gamut_width//2, height//2 - gamut_height//2])
+
+    img = np.uint8(np.round(img * 255))
+
+    tpg.img_write(concat_name, img)
+
+
+def analyze_browser_cms_result(
+        fname, gamut_name=cs.BT709, gamma_name=tf.GAMMA24, env="Win 11"):
+    tf_graph_name = create_result_graph_name(fname, suffix='_tf')
+    gamut_graph_name = create_result_graph_name(fname, suffix='_gamut')
+    concat_name = create_result_graph_name(
+        fname, suffix='_gamut', output_dir="./concat_result")
+
+    data_dict = read_code_value_from_gradation_pattern(
+        fname, gamut_name=gamut_name, gamma_name=gamma_name)
+    plot_transfer_characteristics_cms_result(
+        data=data_dict['ramp'], graph_name=tf_graph_name)
+    plot_gamut_cms_result(
+        data_dict=data_dict,
+        gamut_name=gamut_name, gamma_name=gamma_name,
+        graph_name=gamut_graph_name)
+    concat_result_one_file(
+        tf_graph_name=tf_graph_name, gamut_graph_name=gamut_graph_name,
+        concat_name=concat_name, gamut_name=gamut_name,
+        gamma_name=gamma_name, env=env)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # main_func()
     # debug_func()
-    create_alpha_black(64)
-    create_alpha_black(96)
-    create_alpha_black(128)
-    create_alpha_black(168)
-    create_alpha_black(192)
+    analyze_browser_cms_result(
+        fname="./img/src_bt709_gm24.png", gamut_name=cs.BT709,
+        gamma_name=tf.GAMMA24, env="Chrome/Win 11")
