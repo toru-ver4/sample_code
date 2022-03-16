@@ -51,12 +51,104 @@ def _func_t_inverse(t):
     return upper + lower
 
 
+def create_debug_img_with_icc_profile():
+    fname = "./img/src_bt709_gm24.png"
+    fname_with_profile = "./img/src_bt709_gm24_with_profile.png"
+    icc_profile = "./icc_profile/Gamma2.4_BT.709_D65.icc"
+    cmd = [
+        'convert', fname, '-define', "png:color-type=2",
+        '-profile', icc_profile, fname_with_profile]
+    subprocess.run(cmd)
+
+
 def main_func():
-    create_youtube_srgb_gm24_pattern()
+    # create_youtube_srgb_gm24_pattern()
+    create_debug_img_with_icc_profile()
+
+    # analyze_browser_cms_result(
+    #     fname="./src_img/photoshop_gm24_win11.png",
+    #     env="Photoshop, Win 11",
+    #     gamut_name=cs.BT709, gamma_name=tf.GAMMA24)
+
+    # analyze_browser_cms_result(
+    #     fname="./src_img/chrome_gm24_win11.png",
+    #     env="Chrome, Win 11",
+    #     gamut_name=cs.BT709, gamma_name=tf.GAMMA24)
+
+    # analyze_browser_cms_result(
+    #     fname="./src_img/firefox_gm24_win11.png",
+    #     env="Firefox, Win 11",
+    #     gamut_name=cs.BT709, gamma_name=tf.GAMMA24)
+
+    # analyze_browser_cms_result(
+    #     fname="./src_img/chrome_gm24_iOS.png",
+    #     env="Chrome, iOS 15.4",
+    #     gamut_name=cs.BT709, gamma_name=tf.GAMMA24)
+    # analyze_browser_cms_result(
+    #     fname="./src_img/Firefox_gm24_iOS.png",
+    #     env="Firefox, iOS 15.4",
+    #     gamut_name=cs.BT709, gamma_name=tf.GAMMA24)
+    # analyze_browser_cms_result(
+    #     fname="./src_img/chrome_gm24_Android.png",
+    #     env="Chrome, Android 12",
+    #     gamut_name=cs.BT709, gamma_name=tf.GAMMA24)
+    # analyze_browser_cms_result(
+    #     fname="./src_img/Firefox_gm24_Android.png",
+    #     env="Firefox, Android 12",
+    #     gamut_name=cs.BT709, gamma_name=tf.GAMMA24)
+    # analyze_browser_cms_result(
+    #     fname="./src_img/Safari_gm24_iOS.png",
+    #     env="Safari, iOS 15.4",
+    #     gamut_name=cs.BT709, gamma_name=tf.GAMMA24)
+
+    # analyze_browser_cms_result(
+    #     fname="./src_img/Chrome_GM24_Win10.png",
+    #     env="Chrome, Win 10",
+    #     gamut_name=cs.BT709, gamma_name=tf.GAMMA24)
+    # analyze_browser_cms_result(
+    #     fname="./src_img/Firefox_GM24_Win10.png",
+    #     env="Firefox, Win 10",
+    #     gamut_name=cs.BT709, gamma_name=tf.GAMMA24)
 
 
 def debug_func():
-    plot_srgb_gm24_oetf()
+    # plot_srgb_gm24_oetf()
+    plot_srgb_to_gm24()
+
+
+def plot_srgb_to_gm24():
+    x = np.linspace(0, 1, 256)
+    y = tf.eotf_to_luminance(x, tf.GAMMA24)
+    x2 = tf.oetf_from_luminance(y, tf.SRGB)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(9, 9),
+        bg_color=(0.7, 0.7, 0.7),
+        graph_title="Gamma 2.4 to sRGB",
+        graph_title_size=None,
+        xlabel="Input Code Value (8bit)",
+        ylabel="Output Code Value (8bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=[x * 32 for x in range(256//32 + 1)],
+        ytick=[x * 32 for x in range(256//32 + 1)],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.xaxis.grid(which='major', color=(0.4, 0.4, 0.4))
+    ax1.yaxis.grid(which='major', color=(0.4, 0.4, 0.4))
+    ax1.plot(
+        x * 255, x * 255, '--', color=pu.YELLOW,
+        label="Reference Value", lw=2, zorder=10)
+    ax1.plot(
+        x * 255, x2 * 255, '-o', color=pu.BLUE,
+        label="Gamma 2.4 to sRGB", lw=2)
+    pu.show_and_save(
+        fig=fig, legend_loc=None, save_fname="./graph/GM24_to_sRGB.png")
 
 
 def plot_srgb_gm24_oetf():
@@ -294,7 +386,8 @@ def read_code_value_from_gradation_pattern(
     # Gradation
     print(f"reading {fname}")
     img = tpg.img_read(fname)
-    img = cv2.resize(img, (width, height), 0, 0, cv2.INTER_NEAREST)
+    img = cv2.resize(
+        img, (width, height), interpolation=cv2.INTER_NEAREST)
 
     block_offset = block_size // 2
     ramp_value = np.zeros((1, CODE_VALUE_NUM, 3), dtype=np.uint8)
@@ -352,13 +445,14 @@ def create_result_graph_name(in_name, suffix='_gamma', output_dir="./graph"):
 
 def plot_transfer_characteristics_cms_result(data, graph_name):
     x = np.arange(len(data[0]))
+    y = x.copy()
     r = data[..., 0].flatten()
     g = data[..., 1].flatten()
     b = data[..., 2].flatten()
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(9, 9),
-        bg_color=(0.96, 0.96, 0.96),
+        bg_color=(0.7, 0.7, 0.7),
         graph_title="Input-Output Characteristics (Ramp)",
         graph_title_size=None,
         xlabel="Input Code Value (8 bit)",
@@ -373,9 +467,12 @@ def plot_transfer_characteristics_cms_result(data, graph_name):
         linewidth=3,
         minor_xtick_num=None,
         minor_ytick_num=None)
-    ax1.plot(x, r, '-o', color=pu.RED, label='Red')
-    ax1.plot(x, g, '-o', color=pu.GREEN, label='Green')
-    ax1.plot(x, b, '-o', color=pu.BLUE, label='Blue')
+    ax1.xaxis.grid(which='major', color=(0.4, 0.4, 0.4))
+    ax1.yaxis.grid(which='major', color=(0.4, 0.4, 0.4))
+    ax1.plot(x, y, '--', color=pu.YELLOW, lw=2, label="Reference", zorder=10)
+    ax1.plot(x, r, '-o', color=pu.RED, label='Measured - Red')
+    ax1.plot(x, g, '-o', color=pu.GREEN, label='Measured - Green')
+    ax1.plot(x, b, '-o', color=pu.BLUE, label='Measured - Blue')
     pu.show_and_save(fig=fig, legend_loc='upper left', save_fname=graph_name)
 
 
@@ -466,10 +563,10 @@ def concat_result_one_file(
     width = 1920
     height = 1080
     font = fc1.NOTO_SANS_CJKJP_BLACK
-    font_size = 34
+    font_size = 40
     font_edge_size = 6
-    font_edge_color = 'black'
-    text = f' {gamma_name}, {gamut_name}, ({env})'
+    font_edge_color = (192, 192, 192)
+    text = f' {env}, {gamma_name}, {gamut_name}'
 
     img = np.zeros((height, width, 3))
     _, text_height = fc1.get_text_size(
@@ -478,7 +575,7 @@ def concat_result_one_file(
     text_pos = [0, 0 + int(text_height * 0.1)]
     text_drawer = fc1.TextDrawer(
         img=img, text=text, pos=text_pos,
-        font_color=(168/255, 168/255, 168/255), font_size=font_size,
+        font_color=(16/255, 16/255, 16/255), font_size=font_size,
         font_path=font,
         stroke_width=font_edge_size, stroke_fill=font_edge_color)
     text_drawer.draw()
@@ -526,7 +623,4 @@ def analyze_browser_cms_result(
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # main_func()
-    # debug_func()
-    analyze_browser_cms_result(
-        fname="./img/src_bt709_gm24.png", gamut_name=cs.BT709,
-        gamma_name=tf.GAMMA24, env="Chrome/Win 11")
+    debug_func()
