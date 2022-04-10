@@ -5,7 +5,7 @@
     <ProfileDeviceClass>mntr</ProfileDeviceClass>
     <DataColourSpace>RGB </DataColourSpace>
     <PCS>XYZ </PCS>
-    <CreationDateTime>2021-05-23T09:01:46</CreationDateTime>
+    <CreationDateTime>2022-03-19T08:46:29</CreationDateTime>
     <PrimaryPlatform>MSFT</PrimaryPlatform>
     <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
     <DeviceManufacturer></DeviceManufacturer>
@@ -21,11 +21,11 @@
   <Tags>
     <multiLocalizedUnicodeType>
       <TagSignature>desc</TagSignature>
-      <LocalizedText LanguageCountry="enUS">Gamma3.5_ACES-AP0_D65</LocalizedText>
+      <LocalizedText LanguageCountry="enUS">sRGB-ACES AP0</LocalizedText>
     </multiLocalizedUnicodeType>
     <multiLocalizedUnicodeType>
       <TagSignature>cprt</TagSignature>
-      <LocalizedText LanguageCountry="enUS">Copyright 2020 Toru Yoshihara.</LocalizedText>
+      <LocalizedText LanguageCountry="enUS">Copyright 2022 Toru Yoshihara.</LocalizedText>
     </multiLocalizedUnicodeType>
     <XYZType>
       <TagSignature>wtpt</TagSignature>
@@ -47,8 +47,8 @@
       <TagSignature>rTRC</TagSignature>
       <TagSignature>gTRC</TagSignature>
       <TagSignature>bTRC</TagSignature>
-      <ParametricCurve FunctionType="0">
-        3.50000000
+      <ParametricCurve FunctionType="3">
+        2.40000000 0.94786730 0.05213270 0.07739938 0.04045000
       </ParametricCurve>
     </parametricCurveType>
     <XYZType>

@@ -608,6 +608,59 @@ def create_simple_power_gamma_profile(
     tree.write(output_name, short_empty_elements=False)
 
 
+def create_simple_sRGB_like_profile(
+        gamma_param=[2.4, 1/1.055, 0.055/1.055, 1/12.92, 0.04045],
+        src_white=np.array([0.3127, 0.3290]),
+        src_primaries=np.array([[0.680, 0.320], [0.265, 0.690], [0.15, 0.06]]),
+        desc_str="Gamam=2.4_DCI-P3_D65",
+        cprt_str="Copyright 2020 HOGEHOGE Corp.",
+        output_name="Gamam=2.4_DCI-P3_D65.xml"):
+    """
+    create simple profile.
+    gamma function must be "y = x ** gamma" format.
+    """
+    tree = ET.parse("./icc_profile_sample/base_profile_v4.xml")
+    root = tree.getroot()
+
+    # Profile header
+    create_profle_header(root)
+
+    # Tagged element data
+    desc_element = get_desc_element(root)
+    desc_element.text = desc_str
+
+    cprt_element = get_cprt_element(root)
+    cprt_element.text = cprt_str
+
+    chad_mtx = ipcp.calc_chromatic_adaptation_matrix(
+        src_white=src_white, dst_white=ipcp.PCS_D50)
+    chad_mtx_element = get_chad_mtx_element(root)
+    set_chad_matrix_to_chad_mtx_element(
+        mtx=chad_mtx, chad_mtx_element=chad_mtx_element)
+
+    lumi_element = get_lumi_element(root)
+    set_lumi_params_to_element(
+        luminance=100.0, lumi_element=lumi_element)
+
+    wtpt_element = get_wtpt_element(root)
+    set_wtpt_params_to_element(
+        wtpt=ipcp.PCS_D50_XYZ, wtpt_element=wtpt_element)
+
+    rgbXYZ_element_list = get_rgbXYZ_element_list(root)
+    src2pcs_mtx = ipcp.calc_rgb_to_xyz_mtx_included_chad_mtx(
+        rgb_primaries=src_primaries,
+        src_white=src_white, dst_white=ipcp.PCS_D50)
+    set_rgbXYZ_params_to_element(
+        src2pcs_mtx=src2pcs_mtx, rgb_XYZ_element_list=rgbXYZ_element_list)
+
+    parametric_curve_element = get_parametric_curve_element(root)
+    set_parametric_curve_params_to_element(
+        function_type_str='3', params=gamma_param,
+        parameteric_curve_element=parametric_curve_element)
+
+    tree.write(output_name, short_empty_elements=False)
+
+
 def create_sample_profile():
     tree = ET.parse("./icc_profile_sample/base_profile_v4.xml")
     root = tree.getroot()

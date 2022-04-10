@@ -36,6 +36,12 @@ NOTO_SANS_MONO_EX_BOLD\
     = "./font/NotoSansMono-ExtraBold.ttf"
 NOTO_SANS_MONO_BLACK\
     = "./font/NotoSansMono-Black.ttf"
+NOTO_SANS_CJKJP_MEDIUM\
+    = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Medium.otf"
+NOTO_SANS_CJKJP_REGULAR\
+    = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
+NOTO_SANS_CJKJP_BLACK\
+    = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Black.otf"
 HELVETICA_DISPLAY_BLACK\
     = "./font/HelveticaNowDisplayXBlk.otf"
 

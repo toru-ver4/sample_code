@@ -5,7 +5,7 @@
     <ProfileDeviceClass>mntr</ProfileDeviceClass>
     <DataColourSpace>RGB </DataColourSpace>
     <PCS>XYZ </PCS>
-    <CreationDateTime>2021-05-23T09:01:46</CreationDateTime>
+    <CreationDateTime>2022-03-19T08:46:29</CreationDateTime>
     <PrimaryPlatform>MSFT</PrimaryPlatform>
     <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
     <DeviceManufacturer></DeviceManufacturer>
@@ -21,7 +21,7 @@
   <Tags>
     <multiLocalizedUnicodeType>
       <TagSignature>desc</TagSignature>
-      <LocalizedText LanguageCountry="enUS">Gamma2.4_BT.2020_D65</LocalizedText>
+      <LocalizedText LanguageCountry="enUS">Gamma2.4_BT.709_D65</LocalizedText>
     </multiLocalizedUnicodeType>
     <multiLocalizedUnicodeType>
       <TagSignature>cprt</TagSignature>
@@ -53,15 +53,15 @@
     </parametricCurveType>
     <XYZType>
       <TagSignature>rXYZ</TagSignature>
-      <XYZNumber X="0.67348019" Y="0.27904258" Z="-0.00193348"></XYZNumber>
+      <XYZNumber X="0.43604125" Y="0.22248454" Z="0.01392019"></XYZNumber>
     </XYZType>
     <XYZType>
       <TagSignature>gXYZ</TagSignature>
-      <XYZNumber X="0.16567121" Y="0.67534450" Z="0.02998285"></XYZNumber>
+      <XYZNumber X="0.38511291" Y="0.71690508" Z="0.09706724"></XYZNumber>
     </XYZType>
     <XYZType>
       <TagSignature>bXYZ</TagSignature>
-      <XYZNumber X="0.12504861" Y="0.04561292" Z="0.79685063"></XYZNumber>
+      <XYZNumber X="0.14304584" Y="0.06061038" Z="0.71391257"></XYZNumber>
     </XYZType>
   </Tags>
 </IccProfile>

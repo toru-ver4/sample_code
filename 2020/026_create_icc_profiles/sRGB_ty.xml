@@ -1,0 +1,67 @@
+<IccProfile>
+  <Header>
+    <PreferredCMMType>ADBE</PreferredCMMType>
+    <ProfileVersion>4.30</ProfileVersion>
+    <ProfileDeviceClass>mntr</ProfileDeviceClass>
+    <DataColourSpace>RGB </DataColourSpace>
+    <PCS>XYZ </PCS>
+    <CreationDateTime>2022-03-19T08:46:29</CreationDateTime>
+    <PrimaryPlatform>MSFT</PrimaryPlatform>
+    <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
+    <DeviceManufacturer></DeviceManufacturer>
+    <DeviceModel></DeviceModel>
+    <DeviceAttributes ReflectiveOrTransparency="reflective" GlossyOrMatte="glossy" MediaPolarity="positive" MediaColour="colour"></DeviceAttributes>
+    <RenderingIntent>Perceptual</RenderingIntent>
+    <PCSIlluminant>
+      <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"></XYZNumber>
+    </PCSIlluminant>
+    <ProfileCreator></ProfileCreator>
+    <ProfileID></ProfileID>
+  </Header>
+  <Tags>
+    <multiLocalizedUnicodeType>
+      <TagSignature>desc</TagSignature>
+      <LocalizedText LanguageCountry="enUS">sRGB</LocalizedText>
+    </multiLocalizedUnicodeType>
+    <multiLocalizedUnicodeType>
+      <TagSignature>cprt</TagSignature>
+      <LocalizedText LanguageCountry="enUS">Copyright 2022 Toru Yoshihara.</LocalizedText>
+    </multiLocalizedUnicodeType>
+    <XYZType>
+      <TagSignature>wtpt</TagSignature>
+      <XYZNumber X="0.96420000" Y="1.00000000" Z="0.82490000"></XYZNumber>
+    </XYZType>
+    <s15Fixed16ArrayType>
+      <TagSignature>chad</TagSignature>
+      <Array>
+            1.04788600 0.02291877 -0.05021610
+            0.02958178 0.99048352 -0.01707871
+            -0.00925188 0.01507261 0.75167813
+      </Array>
+    </s15Fixed16ArrayType>
+    <XYZType>
+      <TagSignature>lumi</TagSignature>
+      <XYZNumber X="0.00000000" Y="100.00000000" Z="0.00000000"></XYZNumber>
+    </XYZType>
+    <parametricCurveType>
+      <TagSignature>rTRC</TagSignature>
+      <TagSignature>gTRC</TagSignature>
+      <TagSignature>bTRC</TagSignature>
+      <ParametricCurve FunctionType="3">
+        2.40000000 0.94786730 0.05213270 0.07739938 0.04045000
+      </ParametricCurve>
+    </parametricCurveType>
+    <XYZType>
+      <TagSignature>rXYZ</TagSignature>
+      <XYZNumber X="0.43604125" Y="0.22248454" Z="0.01392019"></XYZNumber>
+    </XYZType>
+    <XYZType>
+      <TagSignature>gXYZ</TagSignature>
+      <XYZNumber X="0.38511291" Y="0.71690508" Z="0.09706724"></XYZNumber>
+    </XYZType>
+    <XYZType>
+      <TagSignature>bXYZ</TagSignature>
+      <XYZNumber X="0.14304584" Y="0.06061038" Z="0.71391257"></XYZNumber>
+    </XYZType>
+  </Tags>
+</IccProfile>

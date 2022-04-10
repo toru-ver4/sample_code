@@ -252,6 +252,7 @@ def create_gradation_pattern_sequence_with_cms(
             src_png_dir=SRC_PNG_DIR, width=width, height=height,
             block_size=block_size, frame_idx=frame_idx,
             cs=color_space_name, trc=eotf_name)
+        print(fname)
         # fname = f"{SRC_PNG_DIR}/src_grad_tp_{width}x{height}"
         # fname += f"_b-size_{block_size}_{frame_idx:04d}.png"
         cv2.imwrite(fname, img[..., ::-1])
@@ -691,12 +692,19 @@ def create_test_src():
     # encode_8bit_tp_src_with_ffmpeg_with_options_with_cms_src(
     #     width=width, height=height, block_size=block_size,
     #     color_primaries='bt2020', color_trc='bt709', colorspace='bt2020nc')
-    encode_8bit_tp_src_with_ffmpeg_with_options_with_cms_src(
+    # encode_8bit_tp_src_with_ffmpeg_with_options_with_cms_src(
+    #     width=width, height=height, block_size=block_size,
+    #     color_primaries='bt2020', color_trc='smpte2084', colorspace='bt2020nc')
+    # encode_8bit_tp_src_with_ffmpeg_with_options_with_cms_src(
+    #     width=width, height=height, block_size=block_size,
+    #     color_primaries='smpte432', color_trc='smpte2084', colorspace='bt709')
+
+    # create_gradation_pattern_sequence_with_cms(
+    #     width=width, height=height, block_size=block_size,
+    #     color_space_name=cs.ACES_AP0, eotf_name=tf.GAMMA35)
+    create_gradation_pattern_sequence_with_cms(
         width=width, height=height, block_size=block_size,
-        color_primaries='bt2020', color_trc='smpte2084', colorspace='bt2020nc')
-    encode_8bit_tp_src_with_ffmpeg_with_options_with_cms_src(
-        width=width, height=height, block_size=block_size,
-        color_primaries='smpte432', color_trc='smpte2084', colorspace='bt709')
+        color_space_name=cs.BT709, eotf_name=tf.SRGB)
 
 
 def make_cms_result_srgb_monitor_filename(color_trc='bt709'):
