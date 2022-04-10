@@ -10,7 +10,7 @@ from multiprocessing import Pool, cpu_count
 
 # import third-party libraries
 import numpy as np
-from colour.io import write_image
+from colour.io import write_image, read_image
 
 # import my libraries
 import font_control2 as fc2
@@ -28,10 +28,52 @@ __all__ = []
 
 
 FFMPEG_NORMALIZE_COEF = 65340
+FFMPEG_NORMALIZE_COEF_INV = 65535/65340
+
+SQUARE_COLOR = [0.95, 0.95, 0.95]
+BG_COLOR = [0.002, 0.002, 0.002]
+
+
+def create_file_name(
+        size=100, fps=60, fg_color=[0.01, 0.01, 0.01],
+        bg_color=0.1, width=1920, height=1080, frame_idx=0,
+        description="concentrically"):
+    ext = ".png"
+    base_dir = "/work/overuse/2022/concentrically_square/"
+    desc = description
+    size_s = f"size-{size:04d}"
+    fps_s = f"{fps}p"
+    fg_c = f"fg-{fg_color[0]:.2f}-{fg_color[1]:.2f}-{fg_color[2]:.2f}"
+    bg_c = f"bg-{bg_color[0]:.2f}-{bg_color[1]:.2f}-{bg_color[2]:.2f}"
+    resolution = f"{width}x{height}"
+    index = f"{frame_idx:04d}"
+    base_name = "_".join([desc, size_s, fps_s, fg_c, bg_c, resolution, index])
+    fname = base_dir + base_name + ext
+    return fname
+
+
+def create_file_name_with_blur(
+        size=100, fps=60, ss=48, fg_color=[0.01, 0.01, 0.01],
+        bg_color=0.1, width=1920, height=1080, frame_idx=0,
+        description="with_blur_concentrically"):
+    ext = ".png"
+    base_dir = "/work/overuse/2022/concentrically_square/"
+    desc = description
+    size_s = f"size-{size:04d}"
+    fps_s = f"{fps}p"
+    ss_s = f"{ss}f"  # shutter speed
+    fg_c = f"fg-{fg_color[0]:.2f}-{fg_color[1]:.2f}-{fg_color[2]:.2f}"
+    bg_c = f"bg-{bg_color[0]:.2f}-{bg_color[1]:.2f}-{bg_color[2]:.2f}"
+    resolution = f"{width}x{height}"
+    index = f"{frame_idx:04d}"
+    base_name = "_".join(
+        [desc, size_s, fps_s, ss_s, fg_c, bg_c, resolution, index])
+    fname = base_dir + base_name + ext
+    return fname
 
 
 class MovingSquareConcentricallyTP():
-    def __init__(self, width=1920, height=1080):
+    def __init__(self, width=1920, height=1080, fps=60):
         self.width = width
         self.height = height
         self.scale_coef = int(height / 1080 + 0.5)
@@ -44,12 +86,12 @@ class MovingSquareConcentricallyTP():
         self.num_of_period = 2
         self.accel_rate_list = [2, 1.5, 1]
         self.square_color_list = np.array(
-            [[0.8, 0.8, 0.8], [0.8, 0.8, 0.8], [0.8, 0.8, 0.8]])
+            [SQUARE_COLOR, SQUARE_COLOR, SQUARE_COLOR])
         self.square_pos_radius_rate_list = [0.3, 0.6, 0.9]
-        self.fps = 60
+        self.fps = fps
 
         self.text_margin_rate = 0.2
-        self.bg_color = np.array([0.0, 0.0, 0.0])
+        self.bg_color = np.array(BG_COLOR)
         self.square_num = len(self.square_color_list)
         self.info_text = " Thie is sample. Rev.01"
         self.create_bg_img()
@@ -62,8 +104,10 @@ class MovingSquareConcentricallyTP():
     def debug_print(self):
         print(f"self.active_height//2={self.active_height//2}")
 
-    def draw_square_seq(self):
+    def draw_square_seq(self, for_blur=False):
         num_of_frame = self.base_period * self.num_of_period * self.fps
+        if for_blur:
+            num_of_frame = int(num_of_frame * 1.1)  # for motion blur simu
 
         total_process_num = num_of_frame
         block_process_num = int(cpu_count() * 2)
@@ -95,35 +139,16 @@ class MovingSquareConcentricallyTP():
             st_pos, ed_pos = square_obj.get_st_pos_ed_pos()
             size = square_obj.get_size()
             img[st_pos[1]:ed_pos[1], st_pos[0]:ed_pos[0]] = fg_color
-            fname = self.create_file_name(
-                size=size, fg_color=fg_color, bg_color=bg_color,
+            fname = create_file_name(
+                size=size, fps=self.fps, fg_color=fg_color, bg_color=bg_color,
                 width=self.width, height=self.height, frame_idx=frame_idx)
         print(fname)
         self.write_frame(fname=fname, img=img)
 
     def write_frame(self, fname, img):
-        img_normalized = np.uint16(
-            np.round(
-                tf.oetf_from_luminance(
-                    img*100, tf.ST2084) * FFMPEG_NORMALIZE_COEF))/0xFFFF
+        img_normalized = tf.oetf(img, tf.GAMMA24)
         # tpg.img_write(fname, img_int)
         write_image(image=img_normalized, path=fname, bit_depth='uint16')
-
-    def create_file_name(
-            self, size=100, fg_color=[0.01, 0.01, 0.01],
-            bg_color=0.1, width=1920, height=1080, frame_idx=0):
-        ext = ".png"
-        base_dir = "/work/overuse/2022/concentrically_square/"
-        desc = "concentrically"
-        size_s = f"size-{size:04d}"
-        fg_c = f"fg-{fg_color[0]:.2f}-{fg_color[1]:.2f}-{fg_color[2]:.2f}"
-        bg_c = f"bg-{bg_color[0]:.2f}-{bg_color[1]:.2f}-{bg_color[2]:.2f}"
-        resolution = f"{width}x{height}"
-        index = f"{frame_idx:04d}"
-        base_name = "_".join([desc, size_s, fg_c, bg_c, resolution, index])
-        fname = base_dir + base_name + ext
-
-        return fname
 
     def create_square_obj_list(self):
         self.calc_square_margin_v()
@@ -209,9 +234,95 @@ class SquareConcentrically():
         return self.size
 
 
+def create_frame_with_blur(
+        width, height, size, out_frame_idx, open_frame_num,
+        in_fps=480, out_fps=24, ss=48):
+    img_buf = np.zeros((height, width, 3))
+    in_frame_idx = out_frame_idx_to_in_frame_idx(
+        out_idx=out_frame_idx, in_fps=in_fps, out_fps=out_fps)
+    start_idx = in_frame_idx
+    # out_fps_unit = in_fps // out_fps
+    # out_frame_idx = start_idx // out_fps_unit
+    out_fname = create_file_name_with_blur(
+        size=size, fps=out_fps, ss=ss,
+        fg_color=SQUARE_COLOR, bg_color=BG_COLOR,
+        width=1920, height=1080, frame_idx=out_frame_idx,
+        description="with_blur_concentrically")
+    print(out_fname)
+    for idx in range(open_frame_num):
+        in_frame_idx = start_idx + idx
+        in_fname = create_file_name(
+            size=size, fps=in_fps, fg_color=SQUARE_COLOR, bg_color=BG_COLOR,
+            width=1920, height=1080, frame_idx=in_frame_idx)
+        # print(in_fname)
+        img = read_image(in_fname)
+        linear = tf.eotf(img, tf.GAMMA24)
+        img_buf = img_buf + linear
+    img_buf = img_buf / open_frame_num
+    out_img = tf.oetf(img_buf, tf.GAMMA24)
+
+    write_image(out_img, out_fname, 'uint16')
+
+
+def out_frame_idx_to_in_frame_idx(out_idx, in_fps, out_fps):
+    sec = out_idx / out_fps
+    in_idx = sec * in_fps
+
+    return int(in_idx + 0.5)
+
+
+def thread_wrapper_create_frame_with_blur(args):
+    create_frame_with_blur(**args)
+
+
+def exec_motion_blur(in_fps=480, out_fps=24, ss=48):
+    width = 1920
+    height = 1080
+    size = 114
+    open_frame_num = in_fps // ss
+    total_sec = 6
+    out_total_frame = total_sec * out_fps
+
+    total_process_num = out_total_frame
+    block_process_num = int(cpu_count() // 2)
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            l_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
+            if l_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                width=width, height=height, size=size,
+                out_frame_idx=l_idx, open_frame_num=open_frame_num,
+                in_fps=in_fps, out_fps=out_fps, ss=ss)
+            args.append(d)
+            # create_frame_with_blur(**d)
+            # break
+        with Pool(block_process_num) as pool:
+            pool.map(thread_wrapper_create_frame_with_blur, args)
+        # break
+
+
 def main_func():
-    moving_square_tp = MovingSquareConcentricallyTP()
-    moving_square_tp.draw_square_seq()
+    # moving_square_tp = MovingSquareConcentricallyTP(fps=60)
+    # moving_square_tp.draw_square_seq(for_blur=False)
+    # moving_square_tp = MovingSquareConcentricallyTP(fps=30)
+    # moving_square_tp.draw_square_seq(for_blur=False)
+    # moving_square_tp = MovingSquareConcentricallyTP(fps=24)
+    # moving_square_tp.draw_square_seq(for_blur=False)
+    # moving_square_tp = MovingSquareConcentricallyTP(fps=960)
+    # moving_square_tp.draw_square_seq(for_blur=True)
+
+    # exec_motion_blur(in_fps=960, out_fps=24, ss=48)
+    exec_motion_blur(in_fps=480, out_fps=30, ss=30)
+    exec_motion_blur(in_fps=480, out_fps=30, ss=60)
+    exec_motion_blur(in_fps=480, out_fps=30, ss=120)
+    exec_motion_blur(in_fps=480, out_fps=60, ss=60)
+    exec_motion_blur(in_fps=480, out_fps=60, ss=120)
+    exec_motion_blur(in_fps=480, out_fps=60, ss=240)
+    # exec_motion_blur(in_fps=480, out_fps=60, ss=120)
 
 
 if __name__ == '__main__':

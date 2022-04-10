@@ -23,6 +23,7 @@ import colour
 
 # NAME
 GAMMA24 = 'Gamma 2.4'
+GAMMA35 = 'Gamma 3.5'
 ST2084 = 'SMPTE ST2084'
 HLG = 'BT.2100 HLG'
 LOGC = 'ARRI LOG_C'
@@ -58,7 +59,8 @@ dlog_max = 41.99939267086707
 
 REF_WHITE_LUMINANCE = 100
 
-MAX_VALUE = {GAMMA24: 1.0, SRGB: 1.0, ST2084: 10000, HLG: 1000,
+MAX_VALUE = {GAMMA24: 1.0, GAMMA35: 1.0, SRGB: 1.0,
+             ST2084: 10000, HLG: 1000,
              VLOG_IRE: vlog_ire_max, VLOG: vlog_ref_max,
              LOGC: logc_max,
              SLOG3: slog_max, SLOG3_REF: slog_ref_max,
@@ -67,6 +69,7 @@ MAX_VALUE = {GAMMA24: 1.0, SRGB: 1.0, ST2084: 10000, HLG: 1000,
              NLOG: nlog_max, FLOG: flog_max, DLOG: dlog_max}
 
 PEAK_LUMINANCE = {GAMMA24: REF_WHITE_LUMINANCE,
+                  GAMMA35: REF_WHITE_LUMINANCE,
                   SRGB: REF_WHITE_LUMINANCE,
                   ST2084: 10000,
                   HLG: 1000,
@@ -111,6 +114,8 @@ def oetf(x, name=GAMMA24):
 
     if name == GAMMA24:
         y = (x * MAX_VALUE[name]) ** (1/2.4)
+    elif name == GAMMA35:
+        y = (x * MAX_VALUE[name]) ** (1/3.5)
     elif name == SRGB:
         y = colour.models.eotf_inverse_sRGB(x * MAX_VALUE[name])
     elif name == HLG:
@@ -206,6 +211,8 @@ def eotf(x, name=GAMMA24):
     """
     if name == GAMMA24:
         y = x ** 2.4
+    elif name == GAMMA35:
+        y = x ** 3.5
     elif name == SRGB:
         y = colour.models.eotf_sRGB(x)
     elif name == ST2084:
@@ -511,6 +518,23 @@ def d_log_decoding(x, out_reflection=False):
 
     if not out_reflection:
         y = y / 0.9
+
+    return y
+
+
+def bt1886_eotf(x, lw=100, lb=0.1):
+    """
+    Implementation of the Recommendation ITU-R BT.1886.
+    """
+    gm = 2.4
+    lw_gm_inv = lw ** (1/gm)
+    lb_gm_inv = lb ** (1/gm)
+    a = (lw_gm_inv - lb_gm_inv) ** gm
+    print(f"a={a}")
+    b = lb_gm_inv / (lw_gm_inv - lb_gm_inv)
+    print(f"b={b}")
+
+    y = a * ((np.maximum(x + b, 0)) ** gm)
 
     return y
 

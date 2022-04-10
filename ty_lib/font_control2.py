@@ -37,6 +37,14 @@ NOTO_SANS_CJKJP_REGULAR\
     = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
 NOTO_SANS_CJKJP_BLACK\
     = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Black.otf"
+BIZUDGOTIC_BOLD\
+    = "/usr/share/fonts/opentype/bizudp/BIZUDGothic-Bold.ttf"
+BIZUDGOTIC_REGULAR\
+    = "/usr/share/fonts/opentype/bizudp/BIZUDGothic-Regular.ttf"
+BIZUD_P_GOTHIC_BOLD\
+    = "/usr/share/fonts/opentype/bizudp/BIZUDPGothic-Bold.ttf"
+BIZUD_P_GOTHIC_REGULAR\
+    = "/usr/share/fonts/opentype/bizudp/BIZUDPGothic-Regular.ttf"
 
 
 def get_text_width_height(
@@ -541,8 +549,40 @@ def simple_test_hdr_draw():
 #         np.uint8(np.round(img[:, :, ::-1] * 0xFF)))
 
 
+def draw_udp_gothic():
+    from test_pattern_generator2 import img_wirte_float_as_16bit_int
+    # prepare parameters
+    width = 1280
+    height = 720
+    fname = "/work/src/bizudp_03.png"
+    bg_color_sRGB = np.array([255, 255, 255]) / 255
+    bg_color = tf.eotf(bg_color_sRGB, tf.SRGB)
+    fg_color_sRGB = np.array([0, 0, 0]) / 255
+    fg_color = tf.eotf(fg_color_sRGB, tf.SRGB)
+    dst_img = np.ones((height, width, 3)) * bg_color
+
+    # create instance
+    text_draw_ctrl = TextDrawControl(
+        text="BIZUD GOTHIC を描いてみた",
+        font_color=fg_color,
+        font_size=80, font_path=BIZUDGOTIC_BOLD,
+        stroke_width=0, stroke_fill=None)
+
+    # calc position
+    text_width, text_height = text_draw_ctrl.get_text_width_height()
+    pos_h = (width // 2) - (text_width // 2)
+    pos_v = (height // 2) - (text_height // 2)
+    pos = (pos_h, pos_v)
+
+    text_draw_ctrl.draw(img=dst_img, pos=pos)
+
+    dst_img_gm24 = tf.oetf(np.clip(dst_img, 0.0, 1.0), tf.SRGB)
+    img_wirte_float_as_16bit_int(fname, dst_img_gm24)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    draw_udp_gothic()
     pass
     # simple_test_noraml_draw()
     # simple_test_hdr_draw()

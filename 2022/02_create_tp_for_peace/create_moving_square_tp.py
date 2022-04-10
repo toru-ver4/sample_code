@@ -32,6 +32,23 @@ __all__ = []
 FFMPEG_NORMALIZE_COEF = 65340
 
 
+def create_file_name(
+        size=100, fps=60, fg_color=[0.01, 0.01, 0.01],
+        bg_color=0.1, width=1920, height=1080, frame_idx=0):
+    ext = ".png"
+    base_dir = "/work/overuse/2022/ld_tp_final/"
+    desc = "ms"
+    size_s = f"size-{size:04d}"
+    fps_s = f"{fps}p"
+    fg_c = f"fg-{fg_color[0]:.2f}-{fg_color[1]:.2f}-{fg_color[2]:.2f}"
+    bg_c = f"bg-{bg_color[0]:.2f}-{bg_color[1]:.2f}-{bg_color[2]:.2f}"
+    resolution = f"{width}x{height}"
+    index = f"{frame_idx:04d}"
+    base_name = "_".join([desc, size_s, fps_s, fg_c, bg_c, resolution, index])
+    fname = base_dir + base_name + ext
+    return fname
+
+
 class HorizontalMovingSquareTP():
     def __init__(self, width=1920, height=1080):
         self.width = width
@@ -95,8 +112,8 @@ class HorizontalMovingSquareTP():
             st_pos, ed_pos = square_obj.get_st_pos_ed_pos()
             size = square_obj.get_size()
             img[st_pos[1]:ed_pos[1], st_pos[0]:ed_pos[0]] = fg_color
-            fname = self.create_file_name(
-                size=size, fg_color=fg_color, bg_color=bg_color,
+            fname = create_file_name(
+                size=size, fps=self.fps, fg_color=fg_color, bg_color=bg_color,
                 width=self.width, height=self.height, frame_idx=frame_idx)
         print(fname)
         self.write_frame(fname=fname, img=img)
@@ -108,22 +125,6 @@ class HorizontalMovingSquareTP():
                     img*100, tf.ST2084) * FFMPEG_NORMALIZE_COEF))/0xFFFF
         # tpg.img_write(fname, img_int)
         write_image(image=img_normalized, path=fname, bit_depth='uint16')
-
-    def create_file_name(
-            self, size=100, fg_color=[0.01, 0.01, 0.01],
-            bg_color=0.1, width=1920, height=1080, frame_idx=0):
-        ext = ".png"
-        base_dir = "/work/overuse/2022/ld_tp_final/"
-        desc = "ms"
-        size_s = f"size-{size:04d}"
-        fg_c = f"fg-{fg_color[0]:.2f}-{fg_color[1]:.2f}-{fg_color[2]:.2f}"
-        bg_c = f"bg-{bg_color[0]:.2f}-{bg_color[1]:.2f}-{bg_color[2]:.2f}"
-        resolution = f"{width}x{height}"
-        index = f"{frame_idx:04d}"
-        base_name = "_".join([desc, size_s, fg_c, bg_c, resolution, index])
-        fname = base_dir + base_name + ext
-
-        return fname
 
     def create_square_obj_list(self):
         self.calc_square_margin_v()

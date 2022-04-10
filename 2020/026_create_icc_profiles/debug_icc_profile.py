@@ -279,7 +279,7 @@ def main_func():
         src_primaries=cs.get_primaries(cs.ACES_AP0),
         desc_str="Gamma3.5_ACES-AP0_D65",
         cprt_str="Copyright 2020 Toru Yoshihara.",
-        output_name="Gamma3.5_ACES-AP0_D65.xml")
+        output_name="Gamma3.5_ACES-AP0_D65_ty.xml")
 
     # create "Gamma2.4_BT.709_D65"
     ipxc.create_simple_power_gamma_profile(
@@ -287,7 +287,7 @@ def main_func():
         src_primaries=cs.get_primaries(cs.BT709),
         desc_str="Gamma2.4_BT.709_D65",
         cprt_str="Copyright 2020 Toru Yoshihara.",
-        output_name="Gamma2.4_BT.709_D65.xml")
+        output_name="Gamma2.4_BT.709_D65_ty.xml")
 
     # create "Gamma2.4_BT.2020_D65"
     ipxc.create_simple_power_gamma_profile(
@@ -295,7 +295,7 @@ def main_func():
         src_primaries=cs.get_primaries(cs.BT2020),
         desc_str="Gamma2.4_BT.2020_D65",
         cprt_str="Copyright 2020 Toru Yoshihara.",
-        output_name="Gamma2.4_BT.2020_D65.xml")
+        output_name="Gamma2.4_BT.2020_D65_ty.xml")
 
     # create "Gamma2.4_BT.2020_D65"
     ipxc.create_simple_power_gamma_profile(
@@ -303,7 +303,34 @@ def main_func():
         src_primaries=cs.get_primaries(cs.P3_D65),
         desc_str="Gamma2.4_P3_D65",
         cprt_str="Copyright 2020 Toru Yoshihara.",
-        output_name="Gamma2.4_DCI-P3_D65.xml")
+        output_name="Gamma2.4_DCI-P3_D65_ty.xml")
+
+    # create "sRGB"
+    ipxc.create_simple_sRGB_like_profile(
+        gamma_param=[2.4, 1/1.055, 0.055/1.055, 1/12.92, 0.04045],
+        src_white=cs.D65,
+        src_primaries=cs.get_primaries(cs.BT709),
+        desc_str="sRGB",
+        cprt_str="Copyright 2022 Toru Yoshihara.",
+        output_name="sRGB_ty.xml")
+
+    # create "Display P3"
+    ipxc.create_simple_sRGB_like_profile(
+        gamma_param=[2.4, 1/1.055, 0.055/1.055, 1/12.92, 0.04045],
+        src_white=cs.D65,
+        src_primaries=cs.get_primaries(cs.P3_D65),
+        desc_str="Display P3",
+        cprt_str="Copyright 2022 Toru Yoshihara.",
+        output_name="Display_P3_ty.xml")
+
+    # create "ACES AP0 and sRGB"
+    ipxc.create_simple_sRGB_like_profile(
+        gamma_param=[2.4, 1/1.055, 0.055/1.055, 1/12.92, 0.04045],
+        src_white=cs.D65,
+        src_primaries=cs.get_primaries(cs.ACES_AP0),
+        desc_str="sRGB-ACES AP0",
+        cprt_str="Copyright 2022 Toru Yoshihara.",
+        output_name="sRGB_ACES_AP0.xml")
 
 
 if __name__ == '__main__':
