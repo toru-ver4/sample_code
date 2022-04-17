@@ -255,6 +255,19 @@ class TextDrawControl():
         text_width = self.text_img_linear.shape[1]
         text_height = self.text_img_linear.shape[0]
 
+        img_width = self.img.shape[1]
+        img_height = self.img.shape[0]
+        if self.pos[0]+text_width > img_width:
+            msg = "\n===================================\n"
+            msg += "font_control2.py: Text width is too big.\n"
+            msg += "==================================="
+            raise ValueError(msg)
+        if self.pos[1]+text_height > img_height:
+            msg = "\n===================================\n"
+            msg += "font_control2.py: Text height is too big.\n"
+            msg += "==================================="
+            raise ValueError(msg)
+
         composite_area_img = self.img[self.pos[1]:self.pos[1]+text_height,
                                       self.pos[0]:self.pos[0]+text_width]
         bg_img_linear = composite_area_img
@@ -296,7 +309,7 @@ def simple_test_noraml_draw():
     # create instance
     text_draw_ctrl = TextDrawControl(
         text="天上天下唯我独尊", font_color=fg_color,
-        font_size=70, font_path=NOTO_SANS_CJKJP_MEDIUM,
+        font_size=140, font_path=NOTO_SANS_CJKJP_MEDIUM,
         stroke_width=0, stroke_fill=None)
 
     # calc position
@@ -582,10 +595,10 @@ def draw_udp_gothic():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    draw_udp_gothic()
-    pass
-    # simple_test_noraml_draw()
-    # simple_test_hdr_draw()
+    # draw_udp_gothic()
+    # pass
+    simple_test_noraml_draw()
+    simple_test_hdr_draw()
 
     # width = 1280
     # height = 720
