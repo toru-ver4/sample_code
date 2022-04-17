@@ -4,8 +4,11 @@
 """
 
 # import standard libraries
-from multiprocessing.sharedctypes import Value
+from email.mime import base
 import os
+from pathlib import Path
+from colour import read_image
+from multiprocessing import Pool, cpu_count
 
 # import third-party libraries
 import numpy as np
@@ -29,6 +32,8 @@ __all__ = []
 FFMPEG_NORMALIZE_COEF = 65340
 FFMPEG_NORMALIZE_COEF_INV = 65535/65340
 
+REVISION = 1
+
 IDMS_LINE_CV_LIST = [
     0, 128, 192, 0, 96, 144, 0, 64, 96]
 IDMS_LINE_COLOR_LIST\
@@ -36,6 +41,12 @@ IDMS_LINE_COLOR_LIST\
 
 IDMS_BG_CV_LIST = [255, 192, 128]
 IDMS_BG_COLOR_LIST = np.repeat(IDMS_BG_CV_LIST, 3*3).reshape(-1, 3)
+
+COLOR_MASK_LIST = [
+    [1, 1, 1],
+    [1, 0, 0], [0, 1, 0], [0, 0, 1],
+    [1, 0, 1], [1, 1, 0], [0, 1, 1]
+]
 
 
 def conv_Nbit_to_linear(x, bit_depth=8, tf_str=tf.GAMMA24):
@@ -346,6 +357,199 @@ def debug_unit_desc_text():
     write_image(out_img/0xFF, "./hoge_text.png", 'uint8')
 
 
+def draw_text_info(
+        img, width, height, text_area_height, font_size, text="hoge"):
+    font_color = conv_8bit_to_linear([128, 128, 128])
+    bg_color = conv_8bit_to_linear([0, 0, 0])
+    text_img = np.ones((text_area_height, width, 3)) * bg_color
+    text_draw_ctrl = fc2.TextDrawControl(
+        text=text, font_color=font_color,
+        font_size=font_size, font_path=fc2.NOTO_SANS_CJKJP_MEDIUM,
+        stroke_width=0, stroke_fill=None)
+    _, text_height = text_draw_ctrl.get_text_width_height()
+    pos_h = 0
+    pos_v = (text_area_height // 2) - (text_height // 2)
+    pos = (pos_h, pos_v)
+    text_draw_ctrl.draw(img=text_img, pos=pos)
+
+    # composite
+    tpg.merge(img, text_img, pos=[0, height-text_area_height])
+
+
+def create_vertical_block(
+        width, height, line_width, num_of_lines,
+        line_color1_list, line_color2_list, bg_color_list,
+        unit_desc_height, font_size, font_color, font_bg_color):
+
+    img_v_buf = []
+    udt = UnitDescText(
+        width=width, height=unit_desc_height, line_width=line_width,
+        font_color=font_color, bg_color=font_bg_color, font_size=font_size)
+    img_v_buf.append(udt.img)
+
+    lub = LineUnitBlock(
+            width=width, height=height, line_width=line_width,
+            num_of_lines=num_of_lines,
+            line_color1_list=line_color1_list,
+            line_color2_list=line_color2_list,
+            bg_color_list=bg_color_list)
+    img_v_buf.append(lub.img)
+
+    v_block_img = np.vstack(img_v_buf)
+
+    return v_block_img
+
+
+def create_file_name(width, height, color_mask, c_idx, revision):
+    fname = f"./img/motion_resolution_pattern_{width}x{height}_"
+    fname += f"c-{c_idx}-{color_mask[0]}-{color_mask[1]}-{color_mask[2]}_"
+    fname += f"rev{revision}.png"
+
+    return fname
+
+
+def mask_color(src_color, mask):
+    dst_color = src_color.copy()
+    for idx in range(3):
+        dst_color[..., idx] = src_color[..., idx] * mask[idx]
+
+    return dst_color
+
+
+def create_image(width=1920, height=1080):
+    for color_mask_idx in range(len(COLOR_MASK_LIST)):
+        create_image_each_color(
+            width=width, height=height, color_mask_idx=color_mask_idx)
+
+
+def create_image_each_color(
+        width=1920, height=1080, color_mask_idx=0):
+    color_mask = COLOR_MASK_LIST[color_mask_idx]
+    size_ratio = height / 1080
+    line_width_list = [1, 2, 3, 4, 6, 8, 10, 12, 14]
+    num_of_line_width = len(line_width_list)
+    num_of_lines = int(5 * size_ratio + 0.5)
+    line_color1_list = conv_8bit_to_linear(IDMS_LINE_COLOR_LIST)
+    line_color1_list = mask_color(line_color1_list, color_mask)
+    bg_color_list = conv_8bit_to_linear(IDMS_BG_COLOR_LIST)
+    bg_color_list = mask_color(bg_color_list, color_mask)
+    line_color2_list = bg_color_list
+    info_text_height_rate = 0.045
+    unit_desc_text_height_rate = 0.10
+    info_area_height = int(height * info_text_height_rate)
+    unit_desc_height = int(height * unit_desc_text_height_rate)
+    block_height = height - info_area_height - unit_desc_height
+    block_width_list = tpg.equal_devision(width, num_of_line_width)
+    font_color = conv_8bit_to_linear([16, 16, 16])
+    font_bg_color = conv_8bit_to_linear([255, 255, 255])
+    font_bg_color = mask_color(font_bg_color, color_mask)
+
+    info_font_size = int(28 * size_ratio + 0.5)
+    unit_desc_font_size = int(26 * size_ratio + 0.5)
+
+    img = np.zeros((height, width, 3))
+    info_text = f" Moving Picture Resolution Pattern, {width}x{height}, "
+    info_text += f"Gamma 2.4, BT.709, D65, Rev.{REVISION}"
+    draw_text_info(
+        img=img, width=width, height=height, text_area_height=info_area_height,
+        font_size=info_font_size, text=info_text)
+
+    block_img_buf = []
+    for idx in range(num_of_line_width):
+        block_img = create_vertical_block(
+            width=block_width_list[idx], height=block_height,
+            line_width=line_width_list[idx], num_of_lines=num_of_lines,
+            line_color1_list=line_color1_list,
+            line_color2_list=line_color2_list,
+            bg_color_list=bg_color_list,
+            unit_desc_height=unit_desc_height,
+            font_size=unit_desc_font_size,
+            font_color=font_color, font_bg_color=font_bg_color)
+        block_img_buf.append(block_img)
+    block_img_all = np.hstack(block_img_buf)
+
+    tpg.merge(img, block_img_all, [0, 0])
+
+    img_8bit = conv_linear_to_8bit(img)
+    fname = create_file_name(
+        width=width, height=height,
+        color_mask=color_mask, c_idx=color_mask_idx, revision=REVISION)
+    print(fname)
+    write_image(img_8bit/0xFF, fname, 'uint8')
+
+
+def thread_wrapper_scroll_image_each_color_core(args):
+    scroll_image_each_color_core(**args)
+
+
+def scroll_image_each_color_core(
+        width, src_fname, fname_base, scroll_px=4, f_idx=0):
+    src_img = read_image(src_fname)
+    temp_img = np.hstack([src_img, src_img, src_img])
+    st_pos_h = scroll_px * f_idx
+    ed_pos_h = st_pos_h + width
+    crop_img = temp_img[:, st_pos_h:ed_pos_h]
+    fname = fname_base.format(idx=f_idx)
+    print(fname)
+    write_image(crop_img, fname, 'uint8')
+
+
+def scroll_image(width, height, scroll_px=4):
+    for color_maxk_idx in range(len(COLOR_MASK_LIST)):
+        scroll_image_each_color(
+            width=width, height=height, color_mask_idx=color_maxk_idx,
+            scroll_px=scroll_px)
+
+
+def scroll_image_each_color(
+        width, height, color_mask_idx, scroll_px=4):
+    color_mask = COLOR_MASK_LIST[color_mask_idx]
+    dst_dir = "/work/overuse/2022/03_motion_resolution_pattern/"
+    src_fname = create_file_name(
+        width=width, height=height,
+        color_mask=color_mask, c_idx=color_mask_idx, revision=REVISION)
+    pp = Path(src_fname)
+    base_name = pp.stem
+    ext = pp.suffix
+    fname_base = f"{dst_dir}{base_name}_{scroll_px:02}px_{{idx:04}}{ext}"
+    repeat_num = width * 2 // scroll_px
+
+    total_process_num = repeat_num
+    block_process_num = int(cpu_count() * 1.5)
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            l_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
+            if l_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                width=width, src_fname=src_fname,
+                fname_base=fname_base, scroll_px=scroll_px, f_idx=l_idx)
+            args.append(d)
+            # scroll_image_each_color_core(**d)
+            # break
+        with Pool(block_process_num) as pool:
+            pool.map(thread_wrapper_scroll_image_each_color_core, args)
+        # break
+
+
+def main_func():
+    # create_image(width=1920, height=1080)
+    # create_image(width=3840, height=2160)
+    # create_image(width=3840*2, height=2160*2)
+    # scroll_px_list = [2, 4, 8]
+    # scroll_px_list = [4]
+    # scale_factor_list = [1, 2]
+    # for scroll_px in scroll_px_list:
+    #     for scale_factor in scale_factor_list:
+    #         scroll_image(
+    #             width=1920*scale_factor, height=1080*scale_factor,
+    #             scroll_px=scroll_px)
+    pass
+
+
 def debug_func():
     # debug_line_unit()
     # debug_line_unit_block()
@@ -354,4 +558,5 @@ def debug_func():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    debug_func()
+    # debug_func()
+    main_func()

@@ -156,7 +156,8 @@ class TextDrawControl():
         print(f"hdr_gain={self.hdr_gain}")
 
     def get_text_width_height(self):
-        dummy_img_size = 4095
+        # dummy_img_size = 4095
+        dummy_img_size = 4095*2
         dummy_img = np.zeros((dummy_img_size, dummy_img_size, 3))
         self.draw(img=dummy_img, pos=(0, 0))
         width, height = self.get_text_size()
