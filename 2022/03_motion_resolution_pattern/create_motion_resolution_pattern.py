@@ -254,6 +254,51 @@ class LineUnitBlock():
         self.img = np.vstack(img_v_buf)
 
 
+class UnitDescText():
+    def __init__(
+            self, width, height, line_width, font_color, bg_color, font_size):
+        """
+        Parameters
+        ----------
+        width : int
+            width
+        height : int
+            height
+        line_width int
+            line width
+        font_color : ndarray
+            font color value. It must be linear.
+            (ex. np.array([0.5, 1.0, 0.9]))
+        bg_color : ndarray
+            bg color value. It must be linear.
+            (ex. np.array([0.5, 1.0, 0.9]))
+        font_size : int
+            font size
+        """
+        self.width = width
+        self.height = height
+        self.line_width = line_width
+        self.font_color = font_color
+        self.bg_color = bg_color
+        self.font_size = font_size
+        self.draw()
+
+    def draw(self):
+        text = f"Width: {self.line_width}px"
+        img = np.ones((self.height, self.width, 3)) * self.bg_color
+        text_draw_ctrl = fc2.TextDrawControl(
+            text=text, font_color=self.font_color,
+            font_size=self.font_size, font_path=fc2.NOTO_SANS_CJKJP_MEDIUM,
+            stroke_width=0, stroke_fill=None)
+        text_width, text_height = text_draw_ctrl.get_text_width_height()
+        pos_h = (self.width // 2) - (text_width // 2)
+        pos_v = (self.height // 2) - (text_height // 2)
+        pos = (pos_h, pos_v)
+
+        text_draw_ctrl.draw(img=img, pos=pos)
+        self.img = img
+
+
 def debug_line_unit():
     width = 640
     height = 360
@@ -291,9 +336,20 @@ def debug_line_unit_block():
     write_image(out_img/0xFF, "./hoge.png", 'uint8')
 
 
+def debug_unit_desc_text():
+    font_color = conv_8bit_to_linear([128, 128, 128])
+    bg_color = conv_8bit_to_linear([255, 255, 255])
+    udt = UnitDescText(
+        width=640, height=240, line_width=6,
+        font_color=font_color, bg_color=bg_color, font_size=80)
+    out_img = conv_linear_to_8bit(udt.img)
+    write_image(out_img/0xFF, "./hoge_text.png", 'uint8')
+
+
 def debug_func():
     # debug_line_unit()
-    debug_line_unit_block()
+    # debug_line_unit_block()
+    debug_unit_desc_text()
 
 
 if __name__ == '__main__':
