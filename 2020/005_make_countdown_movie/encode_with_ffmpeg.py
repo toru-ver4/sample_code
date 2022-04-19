@@ -143,21 +143,24 @@ def encode_hdr_420(width, height, fps, dr):
 
 
 def encode_each_data():
-    resolution_list = [[1920, 1080], [2048, 1080], [4096, 2160], [3840, 2160]]
-    fps_list = [24, 30, 50, 60, 120]
-    dynamic_range_list = ['SDR', 'HDR']
+    # resolution_list = [[1920, 1080], [2048, 1080], [4096, 2160], [3840, 2160]]
+    # fps_list = [24, 30, 50, 60, 120]
+    resolution_list = [[1920*4, 1080*4]]
+    fps_list = [60]
+    # dynamic_range_list = ['SDR', 'HDR']
+    dynamic_range_list = ['SDR']
     for resolution, fps, dynamic_range in product(
             resolution_list, fps_list, dynamic_range_list):
         width = resolution[0]
         height = resolution[1]
         encode_sdr_444(
             width=width, height=height, fps=fps, dr=dynamic_range)
-        encode_hdr_444(
-            width=width, height=height, fps=fps, dr=dynamic_range)
+        # encode_hdr_444(
+        #     width=width, height=height, fps=fps, dr=dynamic_range)
         encode_sdr_420(
             width=width, height=height, fps=fps, dr=dynamic_range)
-        encode_hdr_420(
-            width=width, height=height, fps=fps, dr=dynamic_range)
+        # encode_hdr_420(
+        #     width=width, height=height, fps=fps, dr=dynamic_range)
 
 
 if __name__ == '__main__':

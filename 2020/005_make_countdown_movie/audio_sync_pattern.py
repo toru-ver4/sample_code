@@ -155,6 +155,8 @@ def create_frame_marker_list(
         m_width = 1920
     elif (width == 4096) or (width == 3840):
         m_width = 3840
+    elif width == (1920 * 4):
+        m_width = 1920 * 4
 
     block_width = int(((m_width - padding * 2) / fps)) // 2
     margin = block_width
