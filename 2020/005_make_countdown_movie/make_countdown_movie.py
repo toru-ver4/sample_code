@@ -414,7 +414,7 @@ def make_countdown_movie(
             # composite_sequence(**d)
             counter += 1
             # break
-        with Pool(cpu_count() // 2) as pool:
+        with Pool(cpu_count() // 4) as pool:
             pool.map(thread_wrapper_composite_sequence, args)
         # break
 
@@ -466,16 +466,16 @@ def make_sequence():
     """
     Make the multiple types of sequence files at a time.
     """
-    cd_coordinate_param_list = [
-        COUNTDOWN_COORDINATE_PARAM_24P,
-        COUNTDOWN_COORDINATE_PARAM_30P,
-        COUNTDOWN_COORDINATE_PARAM_50P,
-        COUNTDOWN_COORDINATE_PARAM_60P,
-        COUNTDOWN_COORDINATE_PARAM_120P]
     # cd_coordinate_param_list = [
+    #     COUNTDOWN_COORDINATE_PARAM_24P,
+    #     COUNTDOWN_COORDINATE_PARAM_30P,
+    #     COUNTDOWN_COORDINATE_PARAM_50P,
+    #     COUNTDOWN_COORDINATE_PARAM_60P,
     #     COUNTDOWN_COORDINATE_PARAM_120P]
+    cd_coordinate_param_list = [
+        COUNTDOWN_COORDINATE_PARAM_60P]
     # for scale_factor in [1, 2]:
-    for scale_factor in [2]:
+    for scale_factor in [4]:
         for cd_coordinate_param in cd_coordinate_param_list:
             make_countdown_movie(
                 bg_color_param=SDR_BG_COLOR_PARAM,
@@ -484,27 +484,27 @@ def make_sequence():
                 bg_coordinate_param=BG_COODINATE_PARAM,
                 cd_coordinate_param=cd_coordinate_param,
                 scale_factor=scale_factor)
-            make_countdown_movie(
-                bg_color_param=SDR_BG_COLOR_PARAM,
-                cd_color_param=SDR_COUNTDOWN_COLOR_PARAM,
-                dynamic_range='SDR',
-                bg_coordinate_param=BG_COODINATE_PARAM_DCI,
-                cd_coordinate_param=cd_coordinate_param,
-                scale_factor=scale_factor)
-            make_countdown_movie(
-                bg_color_param=HDR_BG_COLOR_PARAM,
-                cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
-                dynamic_range='HDR',
-                bg_coordinate_param=BG_COODINATE_PARAM,
-                cd_coordinate_param=cd_coordinate_param,
-                scale_factor=scale_factor)
-            make_countdown_movie(
-                bg_color_param=HDR_BG_COLOR_PARAM,
-                cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
-                dynamic_range='HDR',
-                bg_coordinate_param=BG_COODINATE_PARAM_DCI,
-                cd_coordinate_param=cd_coordinate_param,
-                scale_factor=scale_factor)
+            # make_countdown_movie(
+            #     bg_color_param=SDR_BG_COLOR_PARAM,
+            #     cd_color_param=SDR_COUNTDOWN_COLOR_PARAM,
+            #     dynamic_range='SDR',
+            #     bg_coordinate_param=BG_COODINATE_PARAM_DCI,
+            #     cd_coordinate_param=cd_coordinate_param,
+            #     scale_factor=scale_factor)
+            # make_countdown_movie(
+            #     bg_color_param=HDR_BG_COLOR_PARAM,
+            #     cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
+            #     dynamic_range='HDR',
+            #     bg_coordinate_param=BG_COODINATE_PARAM,
+            #     cd_coordinate_param=cd_coordinate_param,
+            #     scale_factor=scale_factor)
+            # make_countdown_movie(
+            #     bg_color_param=HDR_BG_COLOR_PARAM,
+            #     cd_color_param=HDR_COUNTDOWN_COLOR_PARAM,
+            #     dynamic_range='HDR',
+            #     bg_coordinate_param=BG_COODINATE_PARAM_DCI,
+            #     cd_coordinate_param=cd_coordinate_param,
+            #     scale_factor=scale_factor)
         # make_countdown_sound()
 
 
