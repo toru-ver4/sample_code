@@ -7,6 +7,7 @@
 import os
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
+from turtle import st
 
 # import third-party libraries
 import numpy as np
@@ -134,8 +135,67 @@ def debug_dot_pattern():
     write_image(img, fname)
 
 
+def line_cross_pattern(nn, num_of_min_line, fg_color, bg_color):
+    """
+    nn : int
+        factor N
+    num_of_min_line : int
+        minimum line number
+    fg_color : ndarray
+        color value. It must be linear.
+    bg_color : ndarray
+        color value. It must be linear.
+    """
+    max_thickness = 2 ** (nn - 1)
+    block_len = max_thickness * num_of_min_line * 2
+    size = block_len * nn
+    print(f"block_len={block_len}, size={size}")
+    img = np.ones((size, size, 3)) * bg_color
+
+    for n_idx in range(nn):
+        thickness = max_thickness // (2 ** n_idx)
+        g_st_pos = [0, block_len * n_idx]
+        num_of_line = num_of_min_line * (2 ** n_idx)
+        for l_idx in range(num_of_line):
+            st_pos = [0, g_st_pos[1] + thickness * 2 * l_idx]
+            # print(f"l_idx={l_idx}, st_pos={st_pos}, thick={thickness}")
+            draw_line(
+                img=img, st_pos=st_pos, width=size, thickness=thickness,
+                color=fg_color, direction='h')
+            draw_line(
+                img=img, st_pos=st_pos, width=size, thickness=thickness,
+                color=fg_color, direction='v')
+
+    img = tf.oetf(img, tf.GAMMA24)
+    fname = f"./img/line_cross_nn-{nn}_nol-{num_of_min_line}.png"
+    write_image(img, fname)
+
+
+def draw_line(img, st_pos, width, thickness, color, direction='h'):
+    if direction == 'h':
+        st_pos2 = st_pos
+        ed_pos = [st_pos[0] + width, st_pos[1] + thickness]
+        # print(f"{st_pos2}, {ed_pos}")
+    elif direction == 'v':
+        st_pos2 = [st_pos[1], st_pos[0]]
+        ed_pos = [st_pos2[0] + thickness, st_pos2[1] + width]
+        # print(f"{st_pos2}, {ed_pos}")
+    else:
+        raise ValueError("invalid direction")
+
+    draw_rectangle(img, st_pos2, ed_pos, color)
+
+
+def draw_rectangle(img, st_pos, ed_pos, color):
+    img[st_pos[1]:ed_pos[1], st_pos[0]:ed_pos[0]] = color
+
+
 def debug_func():
-    debug_dot_pattern()
+    # debug_dot_pattern()
+    fg_color = np.array([1, 1, 1])
+    bg_color = np.array([0, 0, 0])
+    line_cross_pattern(
+        nn=6, num_of_min_line=1, fg_color=fg_color, bg_color=bg_color)
 
 
 if __name__ == '__main__':
