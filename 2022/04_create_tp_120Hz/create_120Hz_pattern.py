@@ -64,7 +64,7 @@ def complex_dot_pattern2(
     else:
         size = 2 ** nn
         div4 = size // 4
-        div8 = size // 8
+        # div8 = size // 8
         pt1 = (div4 * 0, div4 * 0)
         pt2 = (div4 * 3, div4 * 0)
         pt3 = (div4 * 2, div4 * 1)
@@ -77,16 +77,16 @@ def complex_dot_pattern2(
         pt10 = (div4 * 1, div4 * 4)
         pt11 = (div4 * 4, div4 * 4)
 
-        pt12 = (div8 * 4, div8 * 0)
-        pt13 = (div8 * 5, div8 * 1)
-        pt14 = (div8 * 6, div8 * 2)
-        pt15 = (div8 * 7, div8 * 3)
-        pt16 = (div8 * 0, div8 * 4)
-        pt17 = (div8 * 8, div8 * 4)
-        pt18 = (div8 * 1, div8 * 5)
-        pt19 = (div8 * 2, div8 * 6)
-        pt20 = (div8 * 3, div8 * 7)
-        pt21 = (div8 * 4, div8 * 8)
+        # pt12 = (div8 * 4, div8 * 0)
+        # pt13 = (div8 * 5, div8 * 1)
+        # pt14 = (div8 * 6, div8 * 2)
+        # pt15 = (div8 * 7, div8 * 3)
+        # pt16 = (div8 * 0, div8 * 4)
+        # pt17 = (div8 * 8, div8 * 4)
+        # pt18 = (div8 * 1, div8 * 5)
+        # pt19 = (div8 * 2, div8 * 6)
+        # pt20 = (div8 * 3, div8 * 7)
+        # pt21 = (div8 * 4, div8 * 8)
 
         img = np.ones((size, size, 3)) * bg_color
         img_n1 = complex_dot_pattern2(
@@ -95,9 +95,9 @@ def complex_dot_pattern2(
         img_n2 = complex_dot_pattern2(
             nn=nn-2, fg_color=fg_color, bg_color=bg_color,
             bg_color_alpha=bg_color_alpha)
-        img_n3 = complex_dot_pattern2(
-            nn=nn-3, fg_color=fg_color, bg_color=bg_color,
-            bg_color_alpha=bg_color_alpha)
+        # img_n3 = complex_dot_pattern2(
+        #     nn=nn-3, fg_color=fg_color, bg_color=bg_color,
+        #     bg_color_alpha=bg_color_alpha)
 
         img[pt1[1]:pt6[1], pt1[0]:pt6[0]] = fg_color
         img[pt2[1]:pt4[1], pt2[0]:pt4[0]] = img_n2[:, ::-1, :]
@@ -106,15 +106,15 @@ def complex_dot_pattern2(
         img[pt5[1]:pt9[1], pt5[0]:pt9[0]] = img_n2[::-1, :, :]
         img[pt6[1]:pt11[1], pt6[0]:pt11[0]] = img_n1
 
-        img[pt12[1]:pt13[1], pt12[0]:pt13[0]] = img_n3
-        img[pt13[1]:pt14[1], pt13[0]:pt14[0]] = img_n3
-        img[pt14[1]:pt15[1], pt14[0]:pt15[0]] = img_n3
-        img[pt15[1]:pt17[1], pt15[0]:pt17[0]] = img_n3
+        # img[pt12[1]:pt13[1], pt12[0]:pt13[0]] = img_n3
+        # img[pt13[1]:pt14[1], pt13[0]:pt14[0]] = img_n3
+        # img[pt14[1]:pt15[1], pt14[0]:pt15[0]] = img_n3
+        # img[pt15[1]:pt17[1], pt15[0]:pt17[0]] = img_n3
 
-        img[pt16[1]:pt18[1], pt16[0]:pt18[0]] = img_n3
-        img[pt18[1]:pt19[1], pt18[0]:pt19[0]] = img_n3
-        img[pt19[1]:pt20[1], pt19[0]:pt20[0]] = img_n3
-        img[pt20[1]:pt21[1], pt20[0]:pt21[0]] = img_n3
+        # img[pt16[1]:pt18[1], pt16[0]:pt18[0]] = img_n3
+        # img[pt18[1]:pt19[1], pt18[0]:pt19[0]] = img_n3
+        # img[pt19[1]:pt20[1], pt19[0]:pt20[0]] = img_n3
+        # img[pt20[1]:pt21[1], pt20[0]:pt21[0]] = img_n3
 
     return img
 
