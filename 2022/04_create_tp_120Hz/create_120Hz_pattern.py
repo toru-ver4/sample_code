@@ -18,6 +18,7 @@ from sympy import div
 import font_control2 as fc2
 import test_pattern_generator2 as tpg
 import transfer_functions as tf
+import cv2
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -135,7 +136,7 @@ def debug_dot_pattern():
     write_image(img, fname)
 
 
-def line_cross_pattern(nn, num_of_min_line, fg_color, bg_color):
+def line_cross_pattern(nn, num_of_min_line, fg_color, bg_color, mag_rate=1):
     """
     nn : int
         factor N
@@ -145,6 +146,8 @@ def line_cross_pattern(nn, num_of_min_line, fg_color, bg_color):
         color value. It must be linear.
     bg_color : ndarray
         color value. It must be linear.
+    mag_rate : int
+        magnitude rate
     """
     max_thickness = 2 ** (nn - 1)
     block_len = max_thickness * num_of_min_line * 2
@@ -167,8 +170,11 @@ def line_cross_pattern(nn, num_of_min_line, fg_color, bg_color):
                 color=fg_color, direction='v')
 
     img = tf.oetf(img, tf.GAMMA24)
+    out_img = cv2.resize(
+            img, None, fx=mag_rate, fy=mag_rate,
+            interpolation=cv2.INTER_NEAREST)
     fname = f"./img/line_cross_nn-{nn}_nol-{num_of_min_line}.png"
-    write_image(img, fname)
+    write_image(out_img, fname)
 
 
 def draw_line(img, st_pos, width, thickness, color, direction='h'):
@@ -195,7 +201,8 @@ def debug_func():
     fg_color = np.array([1, 1, 1])
     bg_color = np.array([0, 0, 0])
     line_cross_pattern(
-        nn=6, num_of_min_line=1, fg_color=fg_color, bg_color=bg_color)
+        nn=3, num_of_min_line=1, fg_color=fg_color, bg_color=bg_color,
+        mag_rate=32)
 
 
 if __name__ == '__main__':
