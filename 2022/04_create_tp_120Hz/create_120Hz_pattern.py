@@ -4,6 +4,7 @@
 """
 
 # import standard libraries
+from multiprocessing.sharedctypes import Value
 import os
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
@@ -210,19 +211,88 @@ def draw_border_line(img, st_pos, length, thickness, color):
     draw_rectangle(img=img, st_pos=pt4, ed_pos=pt6, color=color)
 
 
+def calc_thickness_for_block(block_idx, num_of_block):
+    bb = block_idx
+    thickness = 2 ** (num_of_block - 1 - bb)
+
+    return thickness
+
+
+def calc_l_for_block(block_idx, num_of_block, num_of_line):
+    bb = block_idx
+    thickness = calc_thickness_for_block(block_idx, num_of_block)
+
+    if bb >= (num_of_block - 1):
+        ll = thickness * num_of_line * 2 * 2 - 1
+    else:
+        ll = thickness * num_of_line * 2 * 2\
+            + calc_l_for_block(
+                block_idx=bb+1, num_of_block=num_of_block,
+                num_of_line=num_of_line)
+
+    return ll
+
+
+def create_multi_border_tp(
+        num_of_line, num_of_block, fg_color, bg_color, mag_rate=1):
+    """
+    num_of_line : int
+        number of the line
+    num_of_block : int
+        number of the block
+    fg_color : ndarray
+        color value. It must be linear.
+    bg_color : ndarray
+        color value. It must be linear.
+    mag_rate : int
+        magnitude rate
+    """
+    g_st_pos = [0, 0]
+    tp_size = calc_l_for_block(
+        block_idx=0, num_of_block=num_of_block, num_of_line=num_of_line)
+    img = np.ones((tp_size, tp_size, 3)) * bg_color
+    for b_idx in range(num_of_block):
+        thickness = calc_thickness_for_block(b_idx, num_of_block)
+        lb = calc_l_for_block(
+            block_idx=b_idx, num_of_block=num_of_block,
+            num_of_line=num_of_line)
+        for l_idx in range(num_of_line):
+            length = lb - thickness * 2 * 2 * l_idx
+            st_pos_h = g_st_pos[0] + thickness * 2 * l_idx
+            st_pos_v = st_pos_h
+            st_pos = [st_pos_h, st_pos_v]
+            draw_border_line(
+                img=img, st_pos=st_pos, length=length,
+                thickness=thickness, color=fg_color)
+        g_st_pos[0] = g_st_pos[0] + thickness * 2 * num_of_line
+        g_st_pos[1] = g_st_pos[0]
+
+    out_img = cv2.resize(
+            img, None, fx=mag_rate, fy=mag_rate,
+            interpolation=cv2.INTER_NEAREST)
+    write_image(out_img, "./img/multi_border_tp_test.png")
+
+
 def debug_func():
     # debug_dot_pattern()
     fg_color = np.array([1, 1, 1])
-    bg_color = np.array([0, 0, 0])
+    bg_color = np.array([0.1, 0.1, 0.1])
     # line_cross_pattern(
     #     nn=3, num_of_min_line=1, fg_color=fg_color, bg_color=bg_color,
     #     mag_rate=32)
 
-    length = 12
-    thickness = 2
-    img = np.zeros((length, length, 3))
-    draw_border_line(img, (0, 0), length, thickness, fg_color)
-    write_image(img, "./img/border_test.png", 'uint8')
+    # length = 12
+    # thickness = 2
+    # img = np.zeros((length, length, 3))
+    # draw_border_line(img, (0, 0), length, thickness, fg_color)
+    # write_image(img, "./img/border_test.png", 'uint8')
+
+    # ll = calc_l_for_block(
+    #     block_idx=2, num_of_block=3, num_of_line=3)
+    # print(ll)
+    create_multi_border_tp(
+        num_of_line=2, num_of_block=5,
+        fg_color=fg_color, bg_color=bg_color, mag_rate=6)
 
 
 if __name__ == '__main__':
