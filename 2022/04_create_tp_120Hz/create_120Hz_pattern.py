@@ -7,7 +7,6 @@
 import os
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
-from turtle import st
 
 # import third-party libraries
 import numpy as np
@@ -196,13 +195,34 @@ def draw_rectangle(img, st_pos, ed_pos, color):
     img[st_pos[1]:ed_pos[1], st_pos[0]:ed_pos[0]] = color
 
 
+def draw_border_line(img, st_pos, length, thickness, color):
+    st = st_pos
+    pt1 = [st[0], st[1]]
+    pt2 = [st[0]+length-thickness, st[1]]
+    pt3 = [st[0]+length, st[1]+thickness]
+    pt4 = [st[0], st[1]+length-thickness]
+    pt5 = [st[0]+thickness, st[1]+length]
+    pt6 = [st[0]+length, st[1]+length]
+
+    draw_rectangle(img=img, st_pos=pt1, ed_pos=pt3, color=color)
+    draw_rectangle(img=img, st_pos=pt1, ed_pos=pt5, color=color)
+    draw_rectangle(img=img, st_pos=pt2, ed_pos=pt6, color=color)
+    draw_rectangle(img=img, st_pos=pt4, ed_pos=pt6, color=color)
+
+
 def debug_func():
     # debug_dot_pattern()
     fg_color = np.array([1, 1, 1])
     bg_color = np.array([0, 0, 0])
-    line_cross_pattern(
-        nn=3, num_of_min_line=1, fg_color=fg_color, bg_color=bg_color,
-        mag_rate=32)
+    # line_cross_pattern(
+    #     nn=3, num_of_min_line=1, fg_color=fg_color, bg_color=bg_color,
+    #     mag_rate=32)
+
+    length = 12
+    thickness = 2
+    img = np.zeros((length, length, 3))
+    draw_border_line(img, (0, 0), length, thickness, fg_color)
+    write_image(img, "./img/border_test.png", 'uint8')
 
 
 if __name__ == '__main__':
