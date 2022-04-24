@@ -37,65 +37,49 @@ def main_func():
     pass
 
 
-def complex_dot_pattern2(
-        nn=3,
-        fg_color=np.array([1.0, 0.5, 0.3]),
-        bg_color=np.array([0.1, 0.1, 0.1]),
-        bg_color_alpha=0.0):
-    """
-    Parameters
-    ----------
-    nn : int
-        factor N !!!!
-    fg_color : ndarray
-        color value. It must be linear.
-    bg_color : ndarray
-        color value. It must be linear.
-    bg_color_alpha : ndarray
+class Square():
+    def __init__(
+            self, size=200, color=[0.1, 0.1, 0.0],
+            base_period=2, num_of_period=4, global_st_pos=[0, 0], h_len=512,
+            accel_rate=1.0, fps=60):
+        self.size = size
+        self.global_st_pos = global_st_pos
+        self.color = np.array(color)
+        self.base_period = base_period
+        self.num_of_period = num_of_period
+        self.accel_rate = accel_rate
+        self.num_of_frame = fps * self.base_period
+        self.h_len = h_len
+        self.debug_y = []
 
-    Returns
-    -------
-    ndarray :
-        linear image data.
-    """
-    if nn < 1:
-        img = np.ones((1, 1, 3)) * fg_color
-    elif nn == 1:
-        img = np.ones((2, 2, 3)) * fg_color
-        img[0, 0] = bg_color
-        img[1, 1] = bg_color
-    else:
-        size = 2 ** nn
-        div4 = size // 4
+    def calc_pos_h(self, idx):
+        y = np.sin(
+                2*np.pi/(self.num_of_frame)*idx*self.accel_rate - np.pi/2)\
+            * 0.5 + 0.5
+        self.pos_h = int(y * self.h_len + 0.5)
+        self.st_pos = [
+            self.global_st_pos[0] + self.pos_h - (self.size//2),
+            self.global_st_pos[1] - (self.size//2)]
+        self.ed_pos = [self.st_pos[0] + self.size, self.st_pos[1] + self.size]
 
-        pt1 = (div4 * 0, div4 * 0)
-        pt2 = (div4 * 3, div4 * 0)
-        pt3 = (div4 * 2, div4 * 1)
-        pt4 = (div4 * 4, div4 * 1)
-        pt5 = (div4 * 1, div4 * 2)
-        pt6 = (div4 * 2, div4 * 2)
-        pt7 = (div4 * 3, div4 * 2)
-        pt8 = (div4 * 0, div4 * 3)
-        pt9 = (div4 * 2, div4 * 3)
-        pt10 = (div4 * 1, div4 * 4)
-        pt11 = (div4 * 4, div4 * 4)
+        self.debug_y.append(y)
 
-        img = np.ones((size, size, 3)) * bg_color
-        img_n1 = complex_dot_pattern2(
-            nn=nn-1, fg_color=fg_color, bg_color=bg_color,
-            bg_color_alpha=bg_color_alpha)
-        img_n2 = complex_dot_pattern2(
-            nn=nn-2, fg_color=fg_color, bg_color=bg_color,
-            bg_color_alpha=bg_color_alpha)
+    def get_st_pos_ed_pos(self):
+        return self.st_pos, self.ed_pos
 
-        img[pt1[1]:pt6[1], pt1[0]:pt6[0]] = fg_color
-        img[pt2[1]:pt4[1], pt2[0]:pt4[0]] = img_n2[:, ::-1, :]
-        img[pt8[1]:pt10[1], pt8[0]:pt10[0]] = img_n2[::-1, :, :]
-        img[pt3[1]:pt7[1], pt3[0]:pt7[0]] = img_n2[:, ::-1, :]
-        img[pt5[1]:pt9[1], pt5[0]:pt9[0]] = img_n2[::-1, :, :]
-        img[pt6[1]:pt11[1], pt6[0]:pt11[0]] = img_n1
+    def get_size(self):
+        return self.size
 
-    return img
+    def debug_plot(self):
+        # import plot_utility as pu
+        # x = np.arange(len(self.debug_y))
+        # y = self.debug_y
+
+        # fig, ax1 = pu.plot_1_graph()
+        # ax1.plot(x, y)
+        # pu.show_and_save(
+        #     fig, legend_loc=None, save_fname="fuga.png", show=False)
+        pass
 
 
 def debug_dot_pattern():
@@ -108,17 +92,19 @@ def debug_dot_pattern():
     fg_color = np.array([1, 1, 1])
     bg_color = np.array([0, 0, 0])
     fname = f"./img/coplex_dot_n-{nn}.png"
-    img = complex_dot_pattern2(
+    img = tpg.complex_dot_pattern2(
         nn=nn, fg_color=fg_color, bg_color=bg_color)
     write_image(img, fname)
 
 
 def debug_line_cross_pattern():
-    fg_color = np.array([1, 1, 1])
-    bg_color = np.array([0.1, 0.1, 0.1])
-    tpg.line_cross_pattern(
+    fg_color = np.array([0, 0, 0])
+    bg_color = np.array([1, 1, 1])
+    img = tpg.line_cross_pattern(
         nn=3, num_of_min_line=1, fg_color=fg_color, bg_color=bg_color,
         mag_rate=32)
+
+    write_image(img, "./img/line_cross.png")
 
 
 def debug_multi_border_pattern():
@@ -139,7 +125,7 @@ def debug_multi_border_pattern():
 
 def debug_func():
     # debug_dot_pattern()
-    # debug_line_cross_pattern()
+    debug_line_cross_pattern()
     # debug_multi_border_pattern()
     pass
 

@@ -2609,6 +2609,67 @@ def make_bt709_hue_chroma_pattern_jzazbz(
     return img
 
 
+def complex_dot_pattern2(
+        nn=3,
+        fg_color=np.array([1.0, 0.5, 0.3]),
+        bg_color=np.array([0.1, 0.1, 0.1]),
+        bg_color_alpha=0.0):
+    """
+    Parameters
+    ----------
+    nn : int
+        factor N !!!!
+    fg_color : ndarray
+        color value. It must be linear.
+    bg_color : ndarray
+        color value. It must be linear.
+    bg_color_alpha : ndarray
+
+    Returns
+    -------
+    ndarray :
+        linear image data.
+    """
+    if nn < 1:
+        img = np.ones((1, 1, 3)) * fg_color
+    elif nn == 1:
+        img = np.ones((2, 2, 3)) * fg_color
+        img[0, 0] = bg_color
+        img[1, 1] = bg_color
+    else:
+        size = 2 ** nn
+        div4 = size // 4
+
+        pt1 = (div4 * 0, div4 * 0)
+        pt2 = (div4 * 3, div4 * 0)
+        pt3 = (div4 * 2, div4 * 1)
+        pt4 = (div4 * 4, div4 * 1)
+        pt5 = (div4 * 1, div4 * 2)
+        pt6 = (div4 * 2, div4 * 2)
+        pt7 = (div4 * 3, div4 * 2)
+        pt8 = (div4 * 0, div4 * 3)
+        pt9 = (div4 * 2, div4 * 3)
+        pt10 = (div4 * 1, div4 * 4)
+        pt11 = (div4 * 4, div4 * 4)
+
+        img = np.ones((size, size, 3)) * bg_color
+        img_n1 = complex_dot_pattern2(
+            nn=nn-1, fg_color=fg_color, bg_color=bg_color,
+            bg_color_alpha=bg_color_alpha)
+        img_n2 = complex_dot_pattern2(
+            nn=nn-2, fg_color=fg_color, bg_color=bg_color,
+            bg_color_alpha=bg_color_alpha)
+
+        img[pt1[1]:pt6[1], pt1[0]:pt6[0]] = fg_color
+        img[pt2[1]:pt4[1], pt2[0]:pt4[0]] = img_n2[:, ::-1, :]
+        img[pt8[1]:pt10[1], pt8[0]:pt10[0]] = img_n2[::-1, :, :]
+        img[pt3[1]:pt7[1], pt3[0]:pt7[0]] = img_n2[:, ::-1, :]
+        img[pt5[1]:pt9[1], pt5[0]:pt9[0]] = img_n2[::-1, :, :]
+        img[pt6[1]:pt11[1], pt6[0]:pt11[0]] = img_n1
+
+    return img
+
+
 def line_cross_pattern(nn, num_of_min_line, fg_color, bg_color, mag_rate=1):
     """
     Parameters
