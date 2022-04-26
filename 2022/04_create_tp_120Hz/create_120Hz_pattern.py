@@ -295,8 +295,8 @@ def debug_multi_border_pattern():
     #     block_idx=2, num_of_block=3, num_of_line=3)
     # print(ll)
     img = tpg.create_multi_border_tp(
-        num_of_line=1, num_of_block=4,
-        fg_color=fg_color, bg_color=bg_color, mag_rate=6)
+        num_of_line=1, num_of_block=5,
+        fg_color=fg_color, bg_color=bg_color, mag_rate=3)
     write_image(img, "./img/multi_border_tp_test.png", 'uint16')
 
 
@@ -310,22 +310,141 @@ def debug_MovingSquareImageMultiFrameRate():
     base_pediod = 2
     num_of_period = 2
     base_fps = 60
-    render_fps = 60
+    render_fps1 = 30
+    render_fps2 = 60
     accel_rate = 1
-    msimfr = MovingSquareImageMultiFrameRate(
+    common_params = dict(
         square_img=square_img, square_name_prefix=square_name_prefix,
         width=width, height=height, bg_color=bg_color,
         locus_len_rate=locus_len_rate, base_pediod=base_pediod,
-        num_of_period=num_of_period, base_fps=base_fps, render_fps=render_fps,
-        accel_rate=accel_rate)
-    msimfr.draw_sequence()
+        num_of_period=num_of_period, base_fps=base_fps, accel_rate=accel_rate)
+    msimfr1 = MovingSquareImageMultiFrameRate(
+        render_fps=render_fps1, **common_params)
+    msimfr2 = MovingSquareImageMultiFrameRate(
+        render_fps=render_fps2, **common_params)
+    img1 = msimfr1.draw_each_frame(idx=1)
+    img2 = msimfr2.draw_each_frame(idx=1)
+    img = np.vstack([img1, img2])
+
+    write_image(img, "./img/concat.png")
+
+
+def create_and_composite_info_text_image(
+        img, width, height, text, font_size, bg_color, fg_color):
+    """
+    Parameters
+    ----------
+    width : int
+        width of the text area image
+    height : int
+        height of the text area image
+    """
+    text_img = np.ones((height, width, 3)) * bg_color
+    text_draw_ctrl = fc2.TextDrawControl(
+        text=text, font_color=fg_color,
+        font_size=font_size, font_path=fc2.NOTO_SANS_CJKJP_MEDIUM,
+        stroke_width=0, stroke_fill=None)
+
+    # calc position
+    _, text_height = text_draw_ctrl.get_text_width_height()
+    pos_h = 0
+    pos_v = (height // 2) - (text_height // 2)
+    pos = (pos_h, pos_v)
+
+    text_draw_ctrl.draw(img=text_img, pos=pos)
+
+    tpg.merge(img, text_img, pos=[0, img.shape[0] - height])
+
+
+def thread_wrapper_render_and_save(args):
+    render_and_save(**args)
+
+
+def render_and_save(
+        idx, img, msimfr1, msimfr2,
+        name_prefix, base_fps, render_fps1, render_fps2):
+    img1 = msimfr1.draw_each_frame(idx=idx)
+    img2 = msimfr2.draw_each_frame(idx=idx)
+    square_img = np.vstack([img1, img2])
+    tpg.merge(img, square_img, (0, 0))
+    dst_dir = "/work/overuse/2022/04_120Hz_tp/1st_sample/"
+    fname = f"{dst_dir}{name_prefix}_"
+    fname += f"{render_fps1}P-{render_fps2}P-on-{base_fps}fps_{idx:04d}.png"
+    print(fname)
+    write_image(img, fname)
+
+
+def create_moving_square_final_image():
+    width = 1920
+    height = 1080
+    # fg_color = np.array([1, 1, 1])
+    text_info_fg_color = np.array([0.3, 0.3, 0.3])
+    text_info_bg_color = np.array([0, 0, 0])
+    bg_color = np.array([0.05, 0.05, 0.05])
+    info_text_rate = 0.05
+    font_size = 28
+    base_fps = 120
+    render_fps1 = 60
+    render_fps2 = 120
+
+    # pattern parameters
+    text = f"  Comparison of {render_fps1}P and {render_fps2}P"
+    square_img = read_image("./img/multi_border_tp_test.png")
+    name_prefix = "multi_border"
+    locus_len_rate = 0.9
+    square_name_prefix = 'multi_border_tp'
+
+    # time parameters
+    base_pediod = 2
+    num_of_period = 1
+    accel_rate = 1
+    total_frame = base_fps * base_pediod * num_of_period
+
+    info_text_height = int(height * info_text_rate)
+    active_height = height - info_text_height
+    height_list = tpg.equal_devision(active_height, 2)
+    img = np.ones((height, width, 3)) * bg_color
+    create_and_composite_info_text_image(
+        img=img, width=width, height=info_text_height,
+        text=text, font_size=font_size,
+        bg_color=text_info_bg_color, fg_color=text_info_fg_color)
+
+    common_params = dict(
+        square_img=square_img, square_name_prefix=square_name_prefix,
+        width=width, bg_color=bg_color,
+        locus_len_rate=locus_len_rate, base_pediod=base_pediod,
+        num_of_period=num_of_period, base_fps=base_fps, accel_rate=accel_rate)
+    msimfr1 = MovingSquareImageMultiFrameRate(
+        render_fps=render_fps1, height=height_list[0], **common_params)
+    msimfr2 = MovingSquareImageMultiFrameRate(
+        render_fps=render_fps2, height=height_list[1], **common_params)
+
+    total_process_num = total_frame
+    block_process_num = int(cpu_count() * 0.8)
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            l_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
+            if l_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                idx=l_idx, img=img, msimfr1=msimfr1, msimfr2=msimfr2,
+                name_prefix=name_prefix, base_fps=base_fps,
+                render_fps1=render_fps1, render_fps2=render_fps2)
+            args.append(d)
+            # render_and_save(**d)
+        with Pool(block_process_num) as pool:
+            pool.map(thread_wrapper_render_and_save, args)
 
 
 def debug_func():
     # debug_dot_pattern()
     # debug_line_cross_pattern()
     # debug_multi_border_pattern()
-    debug_MovingSquareImageMultiFrameRate()
+    # debug_MovingSquareImageMultiFrameRate()
+    create_moving_square_final_image()
     pass
 
 
