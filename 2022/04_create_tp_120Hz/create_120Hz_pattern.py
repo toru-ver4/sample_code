@@ -258,18 +258,12 @@ class MovingSquareImageMultiFrameRate():
         write_image(img, fname)
 
 
-def debug_dot_pattern():
-    fname = "./img/org_dot.png"
-    img = tpg.complex_dot_pattern(
-        kind_num=4, whole_repeat=1)
-    write_image(img, fname)
-
-    nn = 8
+def debug_dot_pattern(nn=4, mag_rate=8):
     fg_color = np.array([1, 1, 1])
     bg_color = np.array([0, 0, 0])
-    fname = f"./img/coplex_dot_n-{nn}.png"
+    fname = f"./img/coplex_dot.png"
     img = tpg.complex_dot_pattern2(
-        nn=nn, fg_color=fg_color, bg_color=bg_color)
+        nn=nn, fg_color=fg_color, bg_color=bg_color, mag_rate=mag_rate)
     write_image(img, fname)
 
 
@@ -440,11 +434,11 @@ def create_moving_square_final_image():
 
 
 def debug_func():
-    # debug_dot_pattern()
+    debug_dot_pattern(nn=5, mag_rate=8)
     # debug_line_cross_pattern()
     # debug_multi_border_pattern()
     # debug_MovingSquareImageMultiFrameRate()
-    create_moving_square_final_image()
+    # create_moving_square_final_image()
     pass
 
 
