@@ -171,7 +171,8 @@ class MovingSquareImageMultiFrameRate():
             self, square_img, square_name_prefix,
             width, height, bg_color,
             locus_len_rate=0.9, base_pediod=2, num_of_period=2,
-            base_fps=120, render_fps=60, accel_rate=1):
+            base_fps=120, render_fps=60, accel_rate=1,
+            font_size=40, font_color=[0.3, 0.3, 0.3]):
         """
         Parameters
         ----------
@@ -198,6 +199,10 @@ class MovingSquareImageMultiFrameRate():
             frame rate of the moving picture
         render_fps : int
             actual frame rate of the moving square.
+        font_size : int
+            font size of the fps-info.
+        font_color : list
+            font color. It must be linear.
         """
         self.square_img = square_img
         self.square_size = square_img.shape[0]
@@ -206,6 +211,8 @@ class MovingSquareImageMultiFrameRate():
         self.render_fps = render_fps
         self.total_frame = base_pediod * num_of_period * base_fps
         self.img_base = np.ones((height, width, 3)) * bg_color
+        self.draw_fps_info(
+            img=self.img_base, font_size=font_size, font_color=font_color)
         locus_len = int((width - self.square_size) * locus_len_rate)
         g_st_pos = [(width - locus_len)//2, height//2]
         self.square_pos_obj = SquareCoordinateMovingHorisontally(
@@ -213,6 +220,16 @@ class MovingSquareImageMultiFrameRate():
             locus_len=locus_len, base_period=base_pediod,
             num_of_period=num_of_period, base_fps=base_fps,
             render_fps=render_fps, accel_rate=accel_rate)
+
+    def draw_fps_info(self, img, font_size, font_color):
+        text = f"  {self.render_fps}fps"
+        text_draw_ctrl = fc2.TextDrawControl(
+            text=text, font_color=font_color,
+            font_size=font_size, font_path=fc2.NOTO_SANS_CJKJP_BLACK,
+            stroke_width=int(font_size*0.2), stroke_fill=(0, 0, 0))
+        _, text_height = text_draw_ctrl.get_text_width_height()
+
+        text_draw_ctrl.draw(img=img, pos=[0, int(text_height/4)])
 
     def draw_sequence_core(self, idx):
         img = self.draw_each_frame(idx=idx)
@@ -306,12 +323,15 @@ def debug_MovingSquareImageMultiFrameRate():
     base_fps = 60
     render_fps1 = 30
     render_fps2 = 60
+    fps_info_font_size = 40
+    fps_info_color = np.array([0.3, 0.3, 0.3])
     accel_rate = 1
     common_params = dict(
         square_img=square_img, square_name_prefix=square_name_prefix,
         width=width, height=height, bg_color=bg_color,
         locus_len_rate=locus_len_rate, base_pediod=base_pediod,
-        num_of_period=num_of_period, base_fps=base_fps, accel_rate=accel_rate)
+        num_of_period=num_of_period, base_fps=base_fps, accel_rate=accel_rate,
+        font_size=fps_info_font_size, font_color=fps_info_color)
     msimfr1 = MovingSquareImageMultiFrameRate(
         render_fps=render_fps1, **common_params)
     msimfr2 = MovingSquareImageMultiFrameRate(
@@ -332,21 +352,32 @@ def create_and_composite_info_text_image(
         width of the text area image
     height : int
         height of the text area image
+    text : str
+        text (written at bottom)
+    font_size : int
+        font size
+    bg_color : ndarray
+        bg color. It must be linear.
+    fg_color : ndarray
+        fg color. It must be linear.
+    moving_square_height_list : int
+        height list of moving squares
+    fps_list : int
+        fps list.
     """
+    # draw info text
     text_img = np.ones((height, width, 3)) * bg_color
     text_draw_ctrl = fc2.TextDrawControl(
         text=text, font_color=fg_color,
         font_size=font_size, font_path=fc2.NOTO_SANS_CJKJP_MEDIUM,
         stroke_width=0, stroke_fill=None)
 
-    # calc position
     _, text_height = text_draw_ctrl.get_text_width_height()
     pos_h = 0
     pos_v = (height // 2) - (text_height // 2)
     pos = (pos_h, pos_v)
 
     text_draw_ctrl.draw(img=text_img, pos=pos)
-
     tpg.merge(img, text_img, pos=[0, img.shape[0] - height])
 
 
@@ -361,14 +392,17 @@ def render_and_save(
     img2 = msimfr2.draw_each_frame(idx=idx)
     square_img = np.vstack([img1, img2])
     tpg.merge(img, square_img, (0, 0))
-    dst_dir = "/work/overuse/2022/04_120Hz_tp/1st_sample/"
+    dst_dir = "/work/overuse/2022/04_120Hz_tp/2nd_sample/"
     fname = f"{dst_dir}{name_prefix}_"
     fname += f"{render_fps1}P-{render_fps2}P-on-{base_fps}fps_{idx:04d}.png"
     print(fname)
     write_image(img, fname)
 
 
-def create_moving_square_final_image():
+def create_moving_square_final_image(
+        square_fname="./img/multi_border_tp_test.png",
+        name_prefix="multi_border",
+        base_fps=120, render_fps1=60, render_fps2=120):
     width = 1920
     height = 1080
     # fg_color = np.array([1, 1, 1])
@@ -377,14 +411,10 @@ def create_moving_square_final_image():
     bg_color = np.array([0.05, 0.05, 0.05])
     info_text_rate = 0.05
     font_size = 28
-    base_fps = 120
-    render_fps1 = 60
-    render_fps2 = 120
 
     # pattern parameters
     text = f"  Comparison of {render_fps1}P and {render_fps2}P"
-    square_img = read_image("./img/multi_border_tp_test.png")
-    name_prefix = "multi_border"
+    square_img = read_image(square_fname)
     locus_len_rate = 0.9
     square_name_prefix = 'multi_border_tp'
 
@@ -428,17 +458,23 @@ def create_moving_square_final_image():
                 name_prefix=name_prefix, base_fps=base_fps,
                 render_fps1=render_fps1, render_fps2=render_fps2)
             args.append(d)
-            # render_and_save(**d)
+        #     render_and_save(**d)
+        #     break
+        # break
         with Pool(block_process_num) as pool:
             pool.map(thread_wrapper_render_and_save, args)
 
 
 def debug_func():
-    debug_dot_pattern(nn=5, mag_rate=8)
+    # debug_dot_pattern(nn=5, mag_rate=8)
     # debug_line_cross_pattern()
     # debug_multi_border_pattern()
     # debug_MovingSquareImageMultiFrameRate()
-    # create_moving_square_final_image()
+    square_fname = "./img/coplex_dot.png"
+    name_prefix = "complex_dot"
+    create_moving_square_final_image(
+        square_fname=square_fname, name_prefix=name_prefix,
+        base_fps=120, render_fps1=60, render_fps2=120)
     pass
 
 
