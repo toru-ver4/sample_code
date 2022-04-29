@@ -539,14 +539,14 @@ def main_func():
     # create_image(width=1920, height=1080)
     # create_image(width=3840, height=2160)
     # create_image(width=3840*2, height=2160*2)
-    # scroll_px_list = [2, 4, 8]
-    # scroll_px_list = [4]
+    scroll_px_list = [2, 4, 8, 12, 16]
     # scale_factor_list = [1, 2]
-    # for scroll_px in scroll_px_list:
-    #     for scale_factor in scale_factor_list:
-    #         scroll_image(
-    #             width=1920*scale_factor, height=1080*scale_factor,
-    #             scroll_px=scroll_px)
+    scale_factor_list = [1]
+    for scroll_px in scroll_px_list:
+        for scale_factor in scale_factor_list:
+            scroll_image(
+                width=1920*scale_factor, height=1080*scale_factor,
+                scroll_px=scroll_px)
     pass
 
 
