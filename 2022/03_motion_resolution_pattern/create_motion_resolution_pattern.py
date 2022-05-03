@@ -516,7 +516,7 @@ def scroll_image_each_color(
     repeat_num = width * 2 // scroll_px
 
     total_process_num = repeat_num
-    block_process_num = int(cpu_count() * 1.5)
+    block_process_num = int(cpu_count() * 0.5)
     block_num = int(round(total_process_num / block_process_num + 0.5))
     for b_idx in range(block_num):
         args = []
@@ -540,15 +540,16 @@ def main_func():
     # create_image(width=1920, height=1080)
     # create_image(width=3840, height=2160)
     # create_image(width=3840*2, height=2160*2)
+
     scroll_px_list = [2, 4, 8, 12, 16]
     # scale_factor_list = [1, 2]
     scale_factor_list = [1]
+
     for scroll_px in scroll_px_list:
         for scale_factor in scale_factor_list:
             scroll_image(
                 width=1920*scale_factor, height=1080*scale_factor,
                 scroll_px=scroll_px)
-    pass
 
 
 def debug_func():
