@@ -32,7 +32,7 @@ FFMPEG_NORMALIZE_COEF_INV = 65535/65340
 
 REVISION = 1
 
-# Black Frame Insersion Options
+# Black Frame Insertion Options
 BFI_ON = 'bfi_on'  # insert black frame at odd frame.
 BFI_OFF = 'bfi_off'  # don't insert black frame, and keep CV.
 BFI_RG = 'bfi_reduce_gain'  # reduce gain (x0.5)
@@ -41,6 +41,7 @@ BFI_RG = 'bfi_reduce_gain'  # reduce gain (x0.5)
 def draw_seq_frame_dual_fps(fg_color, bg_color):
     square_fname = "./img/multi_border_tp_test.png"
     name_prefix = "multi_border"
+    text_info_fg_color = conv_8bit_to_linear([128, 128, 128])
     base_fps = 120
     fps1 = 60
     fps2 = 120
@@ -50,23 +51,42 @@ def draw_seq_frame_dual_fps(fg_color, bg_color):
         square_fname=square_fname,
         base_fps=base_fps, render_fps1=fps1, render_fps2=fps2,
         bfi_en=bfi_en, fname_suffix=fname_suffix,
-        text_info_fg_color=fg_color, bg_color=bg_color)
+        text_info_fg_color=text_info_fg_color, bg_color=bg_color)
 
 
 def draw_seq_frame_triple_fps(fg_color, bg_color):
-    square_fname = "./img/multi_border_tp_test.png"
-    name_prefix = "multi_border"
+    text_info_fg_color = conv_8bit_to_linear([128, 128, 128])
     base_fps = 120
     fps1 = 60
     fps2 = 60
     fps3 = 120
-    bfi_en = True
-    fname_suffix = f"{name_prefix}_{fps1}-{fps2}-on_{base_fps}fps"
+
+    square_fname = "./img/multi_border_tp_test.png"
+    name_prefix = "multi_border"
+    fname_suffix = f"{name_prefix}_{fps1}-on_{base_fps}fps_with_bsi"
     create_moving_square_image_triple_fps(
         square_fname=square_fname,
         base_fps=base_fps, render_fps1=fps1, render_fps2=fps2,
-        bfi_en=bfi_en, fname_suffix=fname_suffix,
-        text_info_fg_color=fg_color, bg_color=bg_color)
+        render_fps3=fps3, fname_suffix=fname_suffix,
+        text_info_fg_color=text_info_fg_color, bg_color=bg_color)
+
+    square_fname = "./img/line_cross.png"
+    name_prefix = "line_cross"
+    fname_suffix = f"{name_prefix}_{fps1}-on_{base_fps}fps_with_bsi"
+    create_moving_square_image_triple_fps(
+        square_fname=square_fname,
+        base_fps=base_fps, render_fps1=fps1, render_fps2=fps2,
+        render_fps3=fps3, fname_suffix=fname_suffix,
+        text_info_fg_color=text_info_fg_color, bg_color=bg_color)
+
+    square_fname = "./img/coplex_dot.png"
+    name_prefix = "coplex_dot"
+    fname_suffix = f"{name_prefix}_{fps1}-on_{base_fps}fps_with_bsi"
+    create_moving_square_image_triple_fps(
+        square_fname=square_fname,
+        base_fps=base_fps, render_fps1=fps1, render_fps2=fps2,
+        render_fps3=fps3, fname_suffix=fname_suffix,
+        text_info_fg_color=text_info_fg_color, bg_color=bg_color)
 
 
 def main_func():
@@ -82,7 +102,8 @@ def main_func():
     #     num_of_line=2, num_of_block=3, mag_rate=5,
     #     fg_color=fg_color, bg_color=bg_color)
 
-    draw_seq_frame_dual_fps(fg_color=fg_color, bg_color=bg_color)
+    # draw_seq_frame_dual_fps(fg_color=fg_color, bg_color=bg_color)
+    draw_seq_frame_triple_fps(fg_color=fg_color, bg_color=bg_color)
 
 
 def calc_1dim_sine_curve(x, num_of_frame_one_cycle, accel_rate=1):
@@ -264,6 +285,7 @@ class MovingSquareImageMultiFrameRate():
         self.render_fps = render_fps
         self.total_frame = base_pediod * num_of_period * base_fps
         self.img_base = np.ones((height, width, 3)) * bg_color
+        self.bfi_sel = bfi_sel
         self.draw_fps_info(
             img=self.img_base, font_size=font_size, font_color=font_color)
         locus_len = int((width - self.square_size) * locus_len_rate)
@@ -273,10 +295,12 @@ class MovingSquareImageMultiFrameRate():
             locus_len=locus_len, base_period=base_pediod,
             num_of_period=num_of_period, base_fps=base_fps,
             render_fps=render_fps, accel_rate=accel_rate)
-        self.bfi_sel = bfi_sel
 
     def draw_fps_info(self, img, font_size, font_color):
-        text = f"  {self.render_fps}fps"
+        if self.bfi_sel == BFI_ON:
+            text = f"  {self.render_fps} fps w/ BFI"
+        else:
+            text = f"  {self.render_fps} fps"
         text_draw_ctrl = fc2.TextDrawControl(
             text=text, font_color=font_color,
             font_size=font_size, font_path=fc2.NOTO_SANS_CJKJP_BLACK,
@@ -291,27 +315,6 @@ class MovingSquareImageMultiFrameRate():
 
     def thread_wrapper_draw_sequence_core(self, args):
         self.draw_sequence_core(**args)
-
-    def draw_sequence(self):
-        """
-
-        """
-        # for idx in range(self.total_frame):
-        total_process_num = self.total_frame
-        block_process_num = int(cpu_count() * 0.8)
-        block_num = int(round(total_process_num / block_process_num + 0.5))
-        for b_idx in range(block_num):
-            args = []
-            for p_idx in range(block_process_num):
-                l_idx = b_idx * block_process_num + p_idx              # User
-                print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
-                if l_idx >= total_process_num:                         # User
-                    break
-                d = dict(idx=l_idx)
-                args.append(d)
-                # self.draw_sequence_core(**d)
-            with Pool(block_process_num) as pool:
-                pool.map(self.thread_wrapper_draw_sequence_core, args)
 
     def draw_each_frame(self, idx):
         img = self.img_base.copy()
@@ -332,13 +335,6 @@ class MovingSquareImageMultiFrameRate():
         img[st_pos[1]:ed_pos[1], st_pos[0]:ed_pos[0]] = insert_img
 
         return img
-
-    def save_frame(self, idx, img):
-        dst_dir = "/work/overuse/2022/04_120Hz_tp/"
-        fname = f"{dst_dir}{self.square_name_prefix}_"
-        fname += f"{self.render_fps}-on-{self.base_fps}fps_{idx:04d}.png"
-        print(fname)
-        write_image(img, fname)
 
 
 def create_complex_dot_pattern(
@@ -446,10 +442,12 @@ def thread_wrapper_render_and_save(args):
 
 
 def render_and_save(
-        idx, img, msimfr1, msimfr2, fname_suffix):
-    img1 = msimfr1.draw_each_frame(idx=idx)
-    img2 = msimfr2.draw_each_frame(idx=idx)
-    square_img = np.vstack([img1, img2])
+        idx, img, msimfr_list, fname_suffix):
+    img_buf = []
+    for msimfr in msimfr_list:
+        temp_img = msimfr.draw_each_frame(idx=idx)
+        img_buf.append(temp_img)
+    square_img = np.vstack(img_buf)
     tpg.merge(img, square_img, (0, 0))
     dst_dir = "/work/overuse/2022/04_120Hz_tp/3rd_sample/"
     fname = f"{dst_dir}{fname_suffix}_{idx:04d}.png"
@@ -494,7 +492,7 @@ def create_moving_square_image_dual_fps(
 
     common_params = dict(
         square_img=square_img, square_name_prefix=square_name_prefix,
-        width=width, bg_color=bg_color,
+        width=width, bg_color=bg_color, font_color=text_info_fg_color,
         locus_len_rate=locus_len_rate, base_pediod=base_pediod,
         num_of_period=num_of_period, base_fps=base_fps, accel_rate=accel_rate)
     if bfi_en:
@@ -523,7 +521,7 @@ def create_moving_square_image_dual_fps(
             if l_idx >= total_process_num:                         # User
                 break
             d = dict(
-                idx=l_idx, img=img, msimfr1=msimfr1, msimfr2=msimfr2,
+                idx=l_idx, img=img, msimfr_list=[msimfr1, msimfr2],
                 fname_suffix=fname_suffix)
             args.append(d)
         #     render_and_save(**d)
@@ -535,8 +533,8 @@ def create_moving_square_image_dual_fps(
 
 def create_moving_square_image_triple_fps(
         square_fname="./img/multi_border_tp_test.png",
-        base_fps=120, render_fps1=60, render_fps2=120,
-        bfi_en=False, fname_suffix="hogehoge",
+        base_fps=120, render_fps1=60, render_fps2=60, render_fps3=120,
+        fname_suffix="hogehoge",
         text_info_fg_color=np.array([0.2, 0.2, 0.2]),
         bg_color=np.array([0.002, 0.002, 0.002])):
     width = 1920
@@ -547,7 +545,7 @@ def create_moving_square_image_triple_fps(
     font_size = 28
 
     # pattern parameters
-    text = f"  Comparison of {render_fps1}P and {render_fps2}P"
+    text = "  Gamma 2.4, BT.709, D65, 120 fps"
     square_img = read_image(square_fname)
     locus_len_rate = 0.9
     square_name_prefix = 'multi_border_tp'
@@ -560,7 +558,7 @@ def create_moving_square_image_triple_fps(
 
     info_text_height = int(height * info_text_rate)
     active_height = height - info_text_height
-    height_list = tpg.equal_devision(active_height, 2)
+    height_list = tpg.equal_devision(active_height, 3)
     img = np.ones((height, width, 3)) * bg_color
     create_and_composite_info_text_image(
         img=img, width=width, height=info_text_height,
@@ -569,23 +567,18 @@ def create_moving_square_image_triple_fps(
 
     common_params = dict(
         square_img=square_img, square_name_prefix=square_name_prefix,
-        width=width, bg_color=bg_color,
+        width=width, bg_color=bg_color, font_color=text_info_fg_color,
         locus_len_rate=locus_len_rate, base_pediod=base_pediod,
         num_of_period=num_of_period, base_fps=base_fps, accel_rate=accel_rate)
-    if bfi_en:
-        msimfr1 = MovingSquareImageMultiFrameRate(
-            render_fps=render_fps1, height=height_list[0], bfi_sel=BFI_ON,
-            **common_params)
-        msimfr2 = MovingSquareImageMultiFrameRate(
-            render_fps=render_fps2, height=height_list[1], bfi_sel=BFI_RG,
-            **common_params)
-    else:
-        msimfr1 = MovingSquareImageMultiFrameRate(
-            render_fps=render_fps1, height=height_list[0], bfi_sel=BFI_OFF,
-            **common_params)
-        msimfr2 = MovingSquareImageMultiFrameRate(
-            render_fps=render_fps2, height=height_list[1], bfi_sel=BFI_OFF,
-            **common_params)
+    msimfr1 = MovingSquareImageMultiFrameRate(
+        render_fps=render_fps1, height=height_list[0], bfi_sel=BFI_RG,
+        **common_params)
+    msimfr2 = MovingSquareImageMultiFrameRate(
+        render_fps=render_fps2, height=height_list[1], bfi_sel=BFI_ON,
+        **common_params)
+    msimfr3 = MovingSquareImageMultiFrameRate(
+        render_fps=render_fps3, height=height_list[2], bfi_sel=BFI_RG,
+        **common_params)
 
     total_process_num = total_frame
     block_process_num = int(cpu_count() * 0.8)
@@ -598,7 +591,7 @@ def create_moving_square_image_triple_fps(
             if l_idx >= total_process_num:                         # User
                 break
             d = dict(
-                idx=l_idx, img=img, msimfr1=msimfr1, msimfr2=msimfr2,
+                idx=l_idx, img=img, msimfr_list=[msimfr1, msimfr2, msimfr3],
                 fname_suffix=fname_suffix)
             args.append(d)
         #     render_and_save(**d)
@@ -606,7 +599,6 @@ def create_moving_square_image_triple_fps(
         # break
         with Pool(block_process_num) as pool:
             pool.map(thread_wrapper_render_and_save, args)
-
 
 
 def debug_func():

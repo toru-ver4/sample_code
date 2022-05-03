@@ -499,6 +499,7 @@ def scroll_image(width, height, scroll_px=4):
         scroll_image_each_color(
             width=width, height=height, color_mask_idx=color_maxk_idx,
             scroll_px=scroll_px)
+        break
 
 
 def scroll_image_each_color(
