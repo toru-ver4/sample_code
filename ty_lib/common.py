@@ -145,12 +145,13 @@ class MeasureExecTime():
         current = time.time()
         if show_str:
             print(
-                f"{msg}, lap time = {(current - self.lap_st)*rate:.5f} [sec]")  
+                f"{msg}, lap time = {(current - self.lap_st)*rate:.5f} [sec]")
         self.lap_st = current
 
-    def end(self):
+    def end(self, show_str=True):
         current = time.time()
-        print(f"total time = {current - self.st_time:.5f} [sec]")
+        if show_str:
+            print(f"total time = {current - self.st_time:.5f} [sec]")
         self.clear_buf()
 
 
