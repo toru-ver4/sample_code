@@ -6,6 +6,7 @@
 # import standard libraries
 import os
 from multiprocessing import Pool, cpu_count
+import time
 
 # import third-party libraries
 import numpy as np
@@ -109,10 +110,53 @@ def tiff_write_using_multiprocessing_open_once():
     met.end()
 
 
+def tr_tiff_write_using_multiprocessing_open_once_every(args):
+    tiff_write_using_multiprocessing_open_every_core(**args)
+
+
+def tiff_write_using_multiprocessing_open_every_core(idx):
+    met = MeasureExecTime()
+    met.start()
+    fname = f"./img_tmp/idx_{idx:04d}.tif"
+    met.lap(show_str=False)
+    img = read_image("./img/src_4k.png")
+    img = np.dstack([img, img, img])
+    met.lap(msg=f"read idx={idx:04d}")
+    write_image(img, fname, 'uint16')
+    met.lap(msg=f"write idx={idx:04d}")
+    met.end(show_str=False)
+
+
+def tiff_write_using_multiprocessing_open_every():
+    total_frame = 32
+    total_process_num = total_frame
+    block_process_num = int(cpu_count() * 1)
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    met = MeasureExecTime()
+    met.start()
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            l_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
+            if l_idx >= total_process_num:                         # User
+                break
+            d = dict(idx=l_idx)
+            args.append(d)
+        #     render_and_save(**d)
+        #     break
+        # break
+        with Pool(block_process_num) as pool:
+            pool.map(tr_tiff_write_using_multiprocessing_open_once_every, args)
+    met.end()
+
+
 def debug_func():
     # check_png_write_read_speed()
     # check_tiff_write_read_speed()
-    tiff_write_using_multiprocessing_open_once()
+    # tiff_write_using_multiprocessing_open_once()
+    tiff_write_using_multiprocessing_open_every()
 
 
 if __name__ == '__main__':
