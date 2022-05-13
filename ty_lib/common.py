@@ -11,6 +11,8 @@ import numpy as np
 import math
 import time
 
+MODULE_IMPORT_TIME = time.time()
+
 
 def is_numpy_module(data):
     return type(data).__module__ == np.__name__
@@ -141,14 +143,20 @@ class MeasureExecTime():
         self.st_time = time.time()
         self.lap_st = self.st_time
 
-    def lap(self, msg="", rate=1.0):
+    def lap(self, msg="", rate=1.0, show_str=True):
         current = time.time()
-        print(f"{msg}, lap time = {(current - self.lap_st)*rate:.5f} [sec]")
+        if show_str:
+            out_str = f"{msg}, lap {(current - self.lap_st)*rate:.4f} [s],"
+            out_str += f" elapsed {(current - MODULE_IMPORT_TIME):.4f} [s]"
+            print(out_str)
         self.lap_st = current
 
-    def end(self):
+    def end(self, show_str=True):
         current = time.time()
-        print(f"total time = {current - self.st_time:.5f} [sec]")
+        if show_str:
+            out_str = f"total {current - self.st_time:.4f} [s], "
+            out_str += f" elapsed {(current - MODULE_IMPORT_TIME):.4f} [s]"
+            print(out_str)
         self.clear_buf()
 
 

@@ -195,3 +195,5 @@ temporary/**/**
 2020/005_make_countdown_movie/ffmpeg.exe
 2022/02_create_tp_for_peace/graph/*.png
 2022/02_create_tp_for_peace/src_img/*.png
+2022/05_write_read_speed/img_tmp/*.png
+2022/05_write_read_speed/img_tmp/*.tif
