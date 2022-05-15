@@ -197,3 +197,5 @@ temporary/**/**
 2022/02_create_tp_for_peace/src_img/*.png
 2022/05_write_read_speed/img_tmp/*.png
 2022/05_write_read_speed/img_tmp/*.tif
+2022/06_interlaced_display/videos/*.mp4
+2022/06_interlaced_display/videos/*.mov
