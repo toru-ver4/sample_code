@@ -40,9 +40,7 @@ def get_dst_fname(idx):
     return dst_fname
 
 
-def create_interlace_mask(output_idx):
-    width = 1440
-    height = 1080
+def create_interlace_mask(output_idx, width=1440, height=1080):
 
     zero_2px_line = np.zeros((width * 2))
     one_2px_line = np.ones((width * 2))
