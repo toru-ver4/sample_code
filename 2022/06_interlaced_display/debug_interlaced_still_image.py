@@ -15,6 +15,7 @@ import cv2
 # import my libraries
 import test_pattern_generator2 as tpg
 import font_control2 as fc2
+from ty_utility import add_suffix_to_filename
 
 NOTO_FONT_PATH = "C:/Users/toruv/OneDrive/work/sample_code/font/NotoSansMono-Medium.ttf"
 
@@ -78,12 +79,40 @@ def interlaced_still_for_debug_420(
     write_image(img, fname, 'uint8')
 
 
+def interlaced_still_for_debug_420_2nd(
+        width=1920, height=1080, black_line_height=2):
+    plane_img = np.ones((height, width, 3))
+    mask_img = create_interlace_mask_img(
+        width=width, height=height, black_line_height=black_line_height,
+        parity='even')
+    inv_mask = 1 - mask_img
+    m_img = plane_img * mask_img * np.array([1, 0, 1])
+    k_img = plane_img * inv_mask * np.array([0, 0, 0])
+    img = m_img + k_img
+    fname = f"./img/debug_420_2nd_{width}x{height}_"
+    fname += f"l-{black_line_height}px.png"
+    print(fname)
+    write_image(img, fname, 'uint8')
+
+
 def analyze_ycbcr420_encode():
     pass
 
 
 def create_analyze_420_still_fname(offset=[0, 0]):
     fname = f"./img/ana_420_offset_{offset[0]}-{offset[1]}.png"
+    return fname
+
+
+def create_analyze_420_raw_yuv_name(pix_fmt='yuv420p', offset=[0, 0]):
+    fname = f"./videos/ana_420_offset_fmt-{pix_fmt}_"
+    fname += f"{offset[0]}-{offset[1]}.yuv"
+    return fname
+
+
+def create_analyze_420_x265_out_name(pix_fmt='yuv420p', offset=[0, 0]):
+    fname = f"./videos/ana_420_offset_fmt-{pix_fmt}_"
+    fname += f"{offset[0]}-{offset[1]}.h265"
     return fname
 
 
@@ -111,7 +140,8 @@ def create_concat_analyze_src_dst_name(pix_fmt='yuv420p', offset=[0, 0]):
     return fname
 
 
-def encode_with_ffmpeg(pix_fmt='yuv420p', offset=[0, 0]):
+def encode_with_ffmpeg(
+        pix_fmt='yuv420p', offset=[0, 0]):
     in_fname_ffmpeg = create_analyze_420_still_fname(offset=offset)
     out_fname_ffmpeg = create_analyze_420_ffmpe_out_name(
         pix_fmt=pix_fmt, offset=offset)
@@ -121,9 +151,10 @@ def encode_with_ffmpeg(pix_fmt='yuv420p', offset=[0, 0]):
         '-color_primaries', 'bt709', '-color_trc', 'bt709',
         '-colorspace', 'bt709',
         '-r', str(fps), '-loop', '1', '-i', in_fname_ffmpeg, '-t', '5',
-        '-c:v', 'hevc', '-bsf:v', 'hevc_metadata=chroma_sample_loc_type=1',
+        '-c:v', 'hevc',
+        # '-chroma_sample_location', 'left',
         '-movflags', 'write_colr',
-        '-pix_fmt', pix_fmt, '-qp', '0',
+        '-pix_fmt', pix_fmt, '-x265-params', 'lossless=1',
         '-color_primaries', 'bt709', '-color_trc', 'bt709',
         '-colorspace', 'bt709',
         str(out_fname_ffmpeg), '-y'
@@ -245,14 +276,228 @@ def analyze_ycbcr420_encode_each_offset(pix_fmt='yuv420p', offset=[0, 0]):
     # encode with FFmpeg
     encode_with_ffmpeg(pix_fmt=pix_fmt, offset=offset)
 
-    # decode with FFmpeg
+    # # decode with FFmpeg
     decode_with_ffmpeg(pix_fmt=pix_fmt, offset=offset)
 
-    # crop and scaling (Nearest Neighbor)
+    # # crop and scaling (Nearest Neighbor)
     crop_and_scaling_decoded_image(pix_fmt=pix_fmt, offset=offset)
 
-    # concat src and dst
+    # # concat src and dst
     concat_src_and_dst_ana_img(pix_fmt=pix_fmt, offset=offset)
+
+
+def debug_encode_to_yuv(pix_fmt='yuv420p', png_name="a", yuv_name='b'):
+    fps = 24
+    cmd = "ffmpeg"
+    ops = [
+        '-color_primaries', 'bt709', '-color_trc', 'bt709',
+        '-colorspace', 'bt709',
+        '-r', str(fps), '-loop', '1', '-i', png_name, '-t', '1',
+        '-c:v', 'rawvideo', '-pix_fmt', pix_fmt,
+        '-chroma_sample_location', 'center',
+        yuv_name, '-y']
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
+def debug_encode_with_x265(
+        profile='main444-8', yuv_name='b', h265_name='c'):
+    cmd = "x265"
+    ops = [
+        '--input', yuv_name,
+        '--input-depth', '8', '--frames', '24',
+        '--input-res', '64x64', '--input-csp', '3', '--fps', '24',
+        '--profile', profile, '--output', h265_name]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
+def debug_x265():
+    # create dot pattern
+    offset = [0, 0]
+    img = tpg.create_dot_mesh_image(
+        width=16, height=12, dot_size=[2, 2], st_offset=offset)
+    img = img * np.array([1, 0, 1])
+    img[:, 0] = np.array([1, 1, 1])
+    still_fname = create_analyze_420_still_fname(offset=offset)
+    write_image(img, still_fname, 'uint8')
+
+    png_name = create_analyze_420_still_fname(offset=offset)
+    yuv_name_420 = create_analyze_420_raw_yuv_name(
+        pix_fmt='yuv420p', offset=offset)
+    yuv_name_444 = create_analyze_420_raw_yuv_name(
+        pix_fmt='yuv444p', offset=offset)
+    h265_name_420 = create_analyze_420_x265_out_name(
+        pix_fmt='yuv420p', offset=offset)
+    h265_name_444 = create_analyze_420_x265_out_name(
+        pix_fmt='yuv444p', offset=offset)
+
+    debug_encode_to_yuv(
+        pix_fmt='yuv420p', png_name=png_name, yuv_name=yuv_name_420)
+    debug_encode_to_yuv(
+        pix_fmt='yuv444p', png_name=png_name, yuv_name=yuv_name_444)
+
+    # debug_encode_with_x265(
+    #     profile='main', yuv_name=yuv_name_444, h265_name=h265_name_420)
+    # debug_encode_with_x265(
+    #     profile='main444-8', yuv_name=yuv_name_444, h265_name=h265_name_444)
+
+
+def debug_sample_interlaced_image():
+    filename_list = [
+        "./img/movie_SDR_1920x1080_30fps_0000.png",
+        "./img/movie_SDR_1920x1080_30fps_0001.png",
+        "./img/movie_SDR_1920x1080_30fps_0002.png",
+        "./img/movie_SDR_1920x1080_30fps_0003.png"]
+
+    for idx, filename in enumerate(filename_list):
+        width1 = 320
+        height1 = int(width1 / 16 * 9 + 0.5)
+        width2 = width1 * 6
+        height2 = int(width2 / 16 * 9 + 0.5)
+        img = read_image(filename)
+        img = cv2.resize(img, (width1, height1))
+        bli_idx = np.arange(height1) % 2 == (idx % 2)
+        img[bli_idx] = 0
+        img = cv2.resize(
+            img, (width2, height2), interpolation=cv2.INTER_NEAREST)
+        out_fname = add_suffix_to_filename(fname=filename, suffix='with_bli')
+        print(out_fname)
+        write_image(img, out_fname, 'uint16')
+
+
+def encode_with_ffmpeg_for_comp_420_444(
+        pix_fmt, in_fname_ffmpeg, out_fname_ffmpeg):
+    fps = 24
+    cmd = "ffmpeg"
+    ops = [
+        '-color_primaries', 'bt709', '-color_trc', 'bt709',
+        '-colorspace', 'bt709',
+        '-r', str(fps), '-loop', '1', '-i', in_fname_ffmpeg, '-t', '5',
+        '-c:v', 'hevc',
+        # '-chroma_sample_location', 'left',
+        '-movflags', 'write_colr',
+        '-pix_fmt', pix_fmt, '-x265-params', 'lossless=1',
+        '-color_primaries', 'bt709', '-color_trc', 'bt709',
+        '-colorspace', 'bt709',
+        str(out_fname_ffmpeg), '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
+def decode_with_ffmpeg_for_comp_420_444(
+        in_fname_ffmpeg, out_fname_still):
+    cmd = "ffmpeg"
+    ops = [
+        '-i', in_fname_ffmpeg, '-vframes', '1', out_fname_still, '-y']
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
+def comparison_420_444():
+    src_png = "./img/movie_SDR_1920x1080_30fps_0000with_bli.png"
+    out_420_mov = "./videos/comparison_420_444_420.mov"
+    out_444_mov = "./videos/comparison_420_444_444.mov"
+    out_420_png = "./img/comparison_420_444_420.png"
+    out_444_png = "./img/comparison_420_444_444.png"
+
+    # encode with FFmpeg
+
+    encode_with_ffmpeg_for_comp_420_444(
+        pix_fmt='yuv420p', in_fname_ffmpeg=src_png,
+        out_fname_ffmpeg=out_420_mov)
+    encode_with_ffmpeg_for_comp_420_444(
+        pix_fmt='yuv444p', in_fname_ffmpeg=src_png,
+        out_fname_ffmpeg=out_444_mov)
+    # decode with FFmpeg
+    decode_with_ffmpeg_for_comp_420_444(
+        in_fname_ffmpeg=out_420_mov,
+        out_fname_still=out_420_png)
+    decode_with_ffmpeg_for_comp_420_444(
+        in_fname_ffmpeg=out_444_mov,
+        out_fname_still=out_444_png)
+
+
+def debug_420_davinci_decorate(
+        in_fname, out_fname, text, pos='left'):
+    mag_rate = 2
+    img = read_image(in_fname)
+    height, width = img.shape[:2]
+    img = img[:height//mag_rate, :width//mag_rate]
+    img = cv2.resize(
+        img, None, fx=mag_rate, fy=mag_rate,
+        interpolation=cv2.INTER_NEAREST)
+    img = img ** 2.4
+
+    font_path = "../../font/NotoSansJP-Medium.otf"
+
+    text_draw_ctrl = fc2.TextDrawControl(
+        text=text, font_color=[0.5, 0.5, 0.5],
+        font_size=32, font_path=font_path,
+        stroke_width=3, stroke_fill=[0, 0, 0])
+
+    # calc position
+    text_width, text_height = text_draw_ctrl.get_text_width_height()
+    w_1char = int(text_width / len(text) + 0.5)
+    if pos == 'left':
+        pos_h = w_1char
+    else:
+        pos_h = width - text_width - w_1char
+
+    pos_v = text_height // 2
+    pos = (pos_h, pos_v)
+
+    text_draw_ctrl.draw(img=img, pos=pos)
+
+    img = img ** (1 / 2.4)
+
+    write_image(img, out_fname, 'uint8')
+
+
+def encode_mgif_two_images(fname):
+    cmd = "ffmpeg"
+    ops = [
+        '-r', '1', '-i', fname, '-filter_complex',
+        "split[a][b];[a]palettegen[pal];[b][pal]paletteuse",
+        '-loop', '0', '-r', '2',
+        "./img/debug_420_with_davinci.gif", '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
+def debug_with_davinci_420():
+    # interlaced_still_for_debug_420_2nd(
+    #     width=640, height=360, black_line_height=2)
+    in_fname_420 = "./img/debug_davinci_420.tif"
+    out_fname_420 = add_suffix_to_filename(in_fname_420, "_with_text")
+    in_fname_444 = "./img/debug_davinci_444.tif"
+    out_fname_444 = add_suffix_to_filename(in_fname_444, "_with_text")
+    mgif_seq_0 = "./img/debug_davinci_420_00.tif"
+    mgif_seq_1 = "./img/debug_davinci_420_01.tif"
+    mgif_seq = "./img/debug_davinci_420_%02d.tif"
+    print(mgif_seq)
+
+    debug_420_davinci_decorate(
+        in_fname=in_fname_420, out_fname=out_fname_420, text=" Main 4:2:0",
+        pos='left')
+    debug_420_davinci_decorate(
+        in_fname=in_fname_444, out_fname=out_fname_444, text=" Main 4:4:4",
+        pos='right')
+
+    os.remove(mgif_seq_0)
+    os.remove(mgif_seq_1)
+
+    os.rename(out_fname_420, mgif_seq_0)
+    os.rename(out_fname_444, mgif_seq_1)
+
+    encode_mgif_two_images(mgif_seq)
 
 
 def debug_func():
@@ -287,12 +532,27 @@ def debug_func():
     #     print(fname)
     #     write_image(img, fname, 'uint8')
 
-    offset_list = [[0, 0], [0, 1], [1, 0], [1, 1]]
-    for offset in offset_list:
-        analyze_ycbcr420_encode_each_offset(pix_fmt='yuv420p', offset=offset)
-        break
+    # offset_list = [[0, 0], [0, 1], [1, 0], [1, 1]]
+    # for offset in offset_list:
+    #     analyze_ycbcr420_encode_each_offset(pix_fmt='yuv420p', offset=offset)
+    #     analyze_ycbcr420_encode_each_offset(pix_fmt='yuv444p', offset=offset)
+
+    # debug_x265()
+    # debug_sample_interlaced_image()
+    # comparison_420_444()
+    debug_with_davinci_420()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     debug_func()
+    # from colour import RGB_to_YCbCr, WEIGHTS_YCBCR
+    # K_601 = WEIGHTS_YCBCR['ITU-R BT.601']
+    # K_709 = WEIGHTS_YCBCR['ITU-R BT.709']
+    # rgb = np.array([1, 0, 1])
+    # # rgb = np.array([227, 9, 228])/255
+    # ycbcr = RGB_to_YCbCr(
+    #     rgb, K=K_709, in_int=False, out_int=True,
+    #     in_legal=False, out_legal=True, out_bits=8)
+    # print(ycbcr)
+    # print(f"0x{ycbcr[0]:04X}, 0x{ycbcr[1]:04X}, 0x{ycbcr[2]:04X}")

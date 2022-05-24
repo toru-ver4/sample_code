@@ -15,7 +15,7 @@ from colour.utilities import tstack
 from colour import LCHab_to_Lab, Lab_to_XYZ, XYZ_to_RGB, xy_to_XYZ
 from colour import RGB_COLOURSPACES
 from multiprocessing import Pool, cpu_count
-from multiprocessing import shared_memory
+# from multiprocessing import shared_memory
 from multiprocessing import Array
 from scipy import signal, interpolate
 
@@ -48,10 +48,10 @@ shared_array = Array(
     typecode_or_type=shared_array_type,
     size_or_initializer=L_SAMPLE_NUM_MAX*H_SAMPLE_NUM_MAX*COLOR_NUM)
 
-shm = shared_memory.SharedMemory(
-    create=True, size=H_SAMPLE_NUM_MAX*COLOR_NUM*FLOAT_SIZE)
-shm_buf = np.ndarray(
-    (1, H_SAMPLE_NUM_MAX, 3), dtype=np.float32, buffer=shm.buf)
+# shm = shared_memory.SharedMemory(
+#     create=True, size=H_SAMPLE_NUM_MAX*COLOR_NUM*FLOAT_SIZE)
+# shm_buf = np.ndarray(
+#     (1, H_SAMPLE_NUM_MAX, 3), dtype=np.float32, buffer=shm.buf)
 
 DELTA = 10 ** -8
 
