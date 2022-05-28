@@ -32,27 +32,27 @@ def get_src_fname(idx):
     return src_fname
 
 
-def get_dst_fname(idx):
+def get_dst_fname(idx, line_height=2):
     dst_dir = "/work/overuse/2022/Rayearth/dst/"
-    fname_base = f"Interlaced_Rayearth_{idx:08d}.tif"
+    fname_base = f"Interlaced_Rayearth_lh-{line_height}_{idx:08d}.tif"
     dst_fname = dst_dir + fname_base
 
     return dst_fname
 
 
-def create_interlace_mask(output_idx, width=1440, height=1080):
-
-    zero_2px_line = np.zeros((width * 2))
-    one_2px_line = np.ones((width * 2))
+def create_interlace_mask(
+        output_idx, width=1440, height=1080, line_height=6):
+    zero_line = np.zeros((width * line_height))
+    one_line = np.ones((width * line_height))
     if (output_idx % 4) == 0:
-        unit = np.vstack([zero_2px_line, one_2px_line]).reshape(1, -1)
+        unit = np.vstack([zero_line, one_line]).reshape(1, -1)
         mono_mask = np.repeat(
-            unit, height//4, axis=0).reshape(height, width, 1)
+            unit, height//(line_height*2), axis=0).reshape(height, width, 1)
         mask_img = np.dstack([mono_mask, mono_mask, mono_mask])
     elif (output_idx % 4) == 2:
-        unit = np.vstack([one_2px_line, zero_2px_line]).reshape(1, -1)
+        unit = np.vstack([one_line, zero_line]).reshape(1, -1)
         mono_mask = np.repeat(
-            unit, height//4, axis=0).reshape(height, width, 1)
+            unit, height//(line_height*2), axis=0).reshape(height, width, 1)
         mask_img = np.dstack([mono_mask, mono_mask, mono_mask])
     else:
         mask_img = np.zeros((height, width, 3))
@@ -60,14 +60,14 @@ def create_interlace_mask(output_idx, width=1440, height=1080):
     return mask_img
 
 
-def add_interlace(idx=0):
+def add_interlace(idx=0, line_height=6):
     output_idx_list = [idx*2, idx*2 + 1]
     src_img = read_image(get_src_fname(idx))
 
     for output_idx in output_idx_list:
-        mask_img = create_interlace_mask(output_idx)
+        mask_img = create_interlace_mask(output_idx, line_height=line_height)
         dst_img = src_img * mask_img
-        dst_fname = get_dst_fname(output_idx)
+        dst_fname = get_dst_fname(output_idx, line_height=line_height)
         print(dst_fname)
         write_image(dst_img, dst_fname, 'uint8')
 
@@ -80,9 +80,10 @@ def debug_func():
     total_frame = 5515
 
     for idx in range(total_frame):
-        add_interlace(idx)
+        add_interlace(idx, line_height=4)
+        add_interlace(idx, line_height=6)
         # if idx > 4:
-        #     break
+            # break
 
 
 if __name__ == '__main__':
