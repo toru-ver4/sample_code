@@ -352,18 +352,25 @@ def debug_sample_interlaced_image():
         "./img/movie_SDR_1920x1080_30fps_0002.png",
         "./img/movie_SDR_1920x1080_30fps_0003.png"]
 
+    width1 = 320
+    height1 = int(width1 / 16 * 9 + 0.5)
+    width2 = width1 * 6
+    height2 = int(width2 / 16 * 9 + 0.5)
     for idx, filename in enumerate(filename_list):
-        width1 = 320
-        height1 = int(width1 / 16 * 9 + 0.5)
-        width2 = width1 * 6
-        height2 = int(width2 / 16 * 9 + 0.5)
         img = read_image(filename)
         img = cv2.resize(img, (width1, height1))
         bli_idx = np.arange(height1) % 2 == (idx % 2)
         img[bli_idx] = 0
         img = cv2.resize(
             img, (width2, height2), interpolation=cv2.INTER_NEAREST)
-        out_fname = add_suffix_to_filename(fname=filename, suffix='with_bli')
+        out_fname = add_suffix_to_filename(
+            fname=filename, suffix=f'with_bli_bfi_{idx*2:04d}')
+        print(out_fname)
+        write_image(img, out_fname, 'uint16')
+
+        img = np.zeros((height2, width2, 3))
+        out_fname = add_suffix_to_filename(
+            fname=filename, suffix=f'with_bli_bfi_{idx*2+1:04d}')
         print(out_fname)
         write_image(img, out_fname, 'uint16')
 
@@ -537,31 +544,31 @@ def debug_func():
     #     analyze_ycbcr420_encode_each_offset(pix_fmt='yuv420p', offset=offset)
     #     analyze_ycbcr420_encode_each_offset(pix_fmt='yuv444p', offset=offset)
 
-    debug_x265()
-    # debug_sample_interlaced_image()
+    # debug_x265()
+    debug_sample_interlaced_image()
     # comparison_420_444()
     # debug_with_davinci_420()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # debug_func()
-    from colour import RGB_to_YCbCr, WEIGHTS_YCBCR
-    K_709 = WEIGHTS_YCBCR['ITU-R BT.709']
-    rgb = np.array([1, 0, 1])
-    ycbcr = RGB_to_YCbCr(
-        rgb, K=K_709, in_int=False, out_int=True,
-        in_legal=False, out_legal=True, out_bits=8)
-    print(f"0x{ycbcr[0]:02X}, 0x{ycbcr[1]:02X}, 0x{ycbcr[2]:02X}")
+    debug_func()
+    # from colour import RGB_to_YCbCr, WEIGHTS_YCBCR
+    # K_709 = WEIGHTS_YCBCR['ITU-R BT.709']
+    # rgb = np.array([1, 0, 1])
+    # ycbcr = RGB_to_YCbCr(
+    #     rgb, K=K_709, in_int=False, out_int=True,
+    #     in_legal=False, out_legal=True, out_bits=8)
+    # print(f"0x{ycbcr[0]:02X}, 0x{ycbcr[1]:02X}, 0x{ycbcr[2]:02X}")
 
-    rgb = np.array([0, 0, 0])
-    ycbcr = RGB_to_YCbCr(
-        rgb, K=K_709, in_int=False, out_int=True,
-        in_legal=False, out_legal=True, out_bits=8)
-    print(f"0x{ycbcr[0]:02X}, 0x{ycbcr[1]:02X}, 0x{ycbcr[2]:02X}")
+    # rgb = np.array([0, 0, 0])
+    # ycbcr = RGB_to_YCbCr(
+    #     rgb, K=K_709, in_int=False, out_int=True,
+    #     in_legal=False, out_legal=True, out_bits=8)
+    # print(f"0x{ycbcr[0]:02X}, 0x{ycbcr[1]:02X}, 0x{ycbcr[2]:02X}")
 
-    rgb = np.array([1, 1, 1])
-    ycbcr = RGB_to_YCbCr(
-        rgb, K=K_709, in_int=False, out_int=True,
-        in_legal=False, out_legal=True, out_bits=8)
-    print(f"0x{ycbcr[0]:02X}, 0x{ycbcr[1]:02X}, 0x{ycbcr[2]:02X}")
+    # rgb = np.array([1, 1, 1])
+    # ycbcr = RGB_to_YCbCr(
+    #     rgb, K=K_709, in_int=False, out_int=True,
+    #     in_legal=False, out_legal=True, out_bits=8)
+    # print(f"0x{ycbcr[0]:02X}, 0x{ycbcr[1]:02X}, 0x{ycbcr[2]:02X}")

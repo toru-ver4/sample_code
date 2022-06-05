@@ -25,16 +25,16 @@ __all__ = []
 
 
 def get_src_fname(idx):
-    src_dir = "/work/overuse/2022/Rayearth/src/"
-    fname_base = f"Rayearth_1440x1080_{idx:08d}.tif"
+    src_dir = "/work/overuse/2022/06_interlaced_display/src/"
+    fname_base = f"kenrokuen{idx:08d}.tif"
     src_fname = src_dir + fname_base
 
     return src_fname
 
 
 def get_dst_fname(idx, line_height=2):
-    dst_dir = "/work/overuse/2022/Rayearth/dst/"
-    fname_base = f"Interlaced_Rayearth_lh-{line_height}_{idx:08d}.tif"
+    dst_dir = "/work/overuse/2022/06_interlaced_display/dst/"
+    fname_base = f"kenrokuen_lh-{line_height}_{idx:08d}.tif"
     dst_fname = dst_dir + fname_base
 
     return dst_fname
@@ -63,9 +63,13 @@ def create_interlace_mask(
 def add_interlace(idx=0, line_height=6):
     output_idx_list = [idx*2, idx*2 + 1]
     src_img = read_image(get_src_fname(idx))
+    width = src_img.shape[1]
+    height = src_img.shape[0]
 
     for output_idx in output_idx_list:
-        mask_img = create_interlace_mask(output_idx, line_height=line_height)
+        mask_img = create_interlace_mask(
+            output_idx=output_idx, width=width, height=height,
+            line_height=line_height)
         dst_img = src_img * mask_img
         dst_fname = get_dst_fname(output_idx, line_height=line_height)
         print(dst_fname)
@@ -77,16 +81,15 @@ def debug_func():
     # write_image(even_img, './even.tif', 'uint8')
     # odd_img = create_interlace_mask(output_idx=2)
     # write_image(odd_img, './odd.tif', 'uint8')
-    total_frame = 5515
+    total_frame = 1200
 
     for idx in range(total_frame):
-        add_interlace(idx, line_height=4)
-        add_interlace(idx, line_height=6)
+        add_interlace(idx, line_height=2)
+        # add_interlace(idx, line_height=6)
         # if idx > 4:
-            # break
+        #     break
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     debug_func()
-    # main_func()
