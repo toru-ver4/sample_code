@@ -2841,6 +2841,60 @@ def create_multi_border_tp(
     return out_img
 
 
+def create_dot_mesh_image(
+        width=640, height=480, dot_size=[4, 2], st_offset=[2, 1]):
+    """
+    Parameters
+    ----------
+    width : int
+        width
+    height : int
+        height
+    dot_size : list(int)
+        dot size. [x_size, y_size]
+    st_offset : list(int)
+        offset. [x_offset, y_offset]
+
+    Examples
+    --------
+    >>> img = create_dot_mesh_image(
+    ...     width=12, height=8, dot_size=[4, 2], st_offset=[2, 1])
+    >>> print(img[..., 0].reshape(8, 12))
+    [[ 1.  1.  0.  0.  0.  0.  1.  1.  1.  1.  0.  0.]
+     [ 0.  0.  1.  1.  1.  1.  0.  0.  0.  0.  1.  1.]
+     [ 0.  0.  1.  1.  1.  1.  0.  0.  0.  0.  1.  1.]
+     [ 1.  1.  0.  0.  0.  0.  1.  1.  1.  1.  0.  0.]
+     [ 1.  1.  0.  0.  0.  0.  1.  1.  1.  1.  0.  0.]
+     [ 0.  0.  1.  1.  1.  1.  0.  0.  0.  0.  1.  1.]
+     [ 0.  0.  1.  1.  1.  1.  0.  0.  0.  0.  1.  1.]
+     [ 1.  1.  0.  0.  0.  0.  1.  1.  1.  1.  0.  0.]]
+    """
+    dot_size_h = dot_size[0]
+    dot_size_v = dot_size[1]
+    offset_h = st_offset[0]
+    offset_v = st_offset[1]
+    h_ok_idx = (np.arange(width) - offset_h) % (dot_size_h * 2) < dot_size_h
+    v_ok_idx = (np.arange(height) - offset_v) % (dot_size_v * 2) < dot_size_v
+    h_ng_idx = (np.arange(width) - offset_h) % (dot_size_h * 2) >= dot_size_h
+    v_ng_idx = (np.arange(height) - offset_v) % (dot_size_v * 2) >= dot_size_v
+    base_img = np.zeros((height, width))
+    base_img_ok_v = base_img.copy()
+    base_img_ok_v[v_ok_idx] = 1
+    base_img_ok_h = base_img.copy()
+    base_img_ok_h[:, h_ok_idx] = 1
+    base_img_ng_v = base_img.copy()
+    base_img_ng_v[v_ng_idx] = 1
+    base_img_ng_h = base_img.copy()
+    base_img_ng_h[:, h_ng_idx] = 1
+    img_ok = base_img_ok_v * base_img_ok_h
+    img_ng = base_img_ng_v * base_img_ng_h
+    img_mono = img_ok + img_ng
+
+    img = np.dstack([img_mono, img_mono, img_mono])
+
+    return img
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
