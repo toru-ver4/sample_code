@@ -7,6 +7,7 @@ Compositeする
 
 # import standard libraries
 import os
+import platform
 
 # import third-party libraries
 from PIL import Image
@@ -45,6 +46,11 @@ BIZUD_P_GOTHIC_BOLD\
     = "/usr/share/fonts/opentype/bizudp/BIZUDPGothic-Bold.ttf"
 BIZUD_P_GOTHIC_REGULAR\
     = "/usr/share/fonts/opentype/bizudp/BIZUDPGothic-Regular.ttf"
+
+if platform.system() == "Windows":
+    NOTO_SANS_CJKJP_MEDIUM\
+        = "C:/Users/toruv/AppData/Local/Microsoft/Windows"\
+        + "/Fonts/NotoSansJP-Medium.otf"
 
 
 def get_text_width_height(

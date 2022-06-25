@@ -199,3 +199,4 @@ temporary/**/**
 2022/05_write_read_speed/img_tmp/*.tif
 2022/06_interlaced_display/videos/*.mp4
 2022/06_interlaced_display/videos/*.mov
+2022/07_observer_metamerism/img_measure_patch/*.png
