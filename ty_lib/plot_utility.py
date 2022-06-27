@@ -429,14 +429,14 @@ def plot_1_graph(fontsize=20, **kwargs):
     if _exist_key('minor_xtick_num', **kwargs):
         minor_locator = AutoMinorLocator(kwargs['minor_xtick_num'])
         ax1.xaxis.set_minor_locator(minor_locator)
-        ax1.xaxis.grid(which='minor', color="#808080")
+        ax1.xaxis.grid(which='minor', color="#C0C0C0")
         ax1.tick_params(
             axis='x', which='minor', length=0.0, grid_linestyle='--')
 
     if _exist_key('minor_ytick_num', **kwargs):
         minor_locator = AutoMinorLocator(kwargs['minor_ytick_num'])
         ax1.yaxis.set_minor_locator(minor_locator)
-        ax1.yaxis.grid(which='minor', color="#808080")
+        ax1.yaxis.grid(which='minor', color="#C0C0C0")
         ax1.tick_params(
             axis='y', which='minor', length=0.0, grid_linestyle='--')
 

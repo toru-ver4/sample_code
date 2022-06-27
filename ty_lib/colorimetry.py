@@ -7,11 +7,10 @@ Colorimetry
 
 import os
 import numpy as np
-from colour.colorimetry import STANDARD_OBSERVERS_CMFS
-from colour.colorimetry import ILLUMINANTS
+from colour.colorimetry import CCS_ILLUMINANTS
 from colour.colorimetry.spectrum import SpectralShape
 from colour.algebra import SpragueInterpolator, LinearInterpolator
-from colour.colorimetry import MultiSpectralDistribution, SpectralDistribution
+from colour.colorimetry import SpectralDistribution
 from colour.utilities import tstack
 from colour.temperature import CCT_to_xy_CIE_D
 from colour import sd_CIE_illuminant_D_series
@@ -20,8 +19,8 @@ import color_space as cs
 
 CIE1931 = 'CIE 1931 2 Degree Standard Observer'
 CIE2015_2 = 'CIE 2012 2 Degree Standard Observer'
-D65_WHITE = ILLUMINANTS[CIE1931]['D65']
-D50_WHITE = ILLUMINANTS[CIE1931]['D50']
+D65_WHITE = CCS_ILLUMINANTS[CIE1931]['D65']
+D50_WHITE = CCS_ILLUMINANTS[CIE1931]['D50']
 
 
 def _make_multispectral_format_data(wavelengths, values):

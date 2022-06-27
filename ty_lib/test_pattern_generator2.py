@@ -15,9 +15,9 @@ import numpy as np
 from colour.colorimetry import MSDS_CMFS, CCS_ILLUMINANTS
 from colour.models import XYZ_to_xy, xy_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
 from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ, LCHab_to_Lab
-from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020
+from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020,\
+    RGB_COLOURSPACE_ACES2065_1, RGB_COLOURSPACE_ACESCG
 from colour.utilities import normalise_maximum
-from colour import models
 from colour import RGB_COLOURSPACES, CCS_COLOURCHECKERS
 from scipy.spatial import Delaunay
 from scipy.ndimage.filters import convolve
@@ -581,7 +581,7 @@ def get_chromaticity_image(samples=1024, antialiasing=True, bg_color=0.9,
     """
     # color_space = models.RGB_COLOURSPACE_BT2020
     # color_space = models.S_GAMUT3_COLOURSPACE
-    color_space = models.ACES_CG_COLOURSPACE
+    color_space = RGB_COLOURSPACE_ACESCG
 
     # 馬蹄形のxy値を算出
     # --------------------------
