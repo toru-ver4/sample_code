@@ -59,7 +59,6 @@ def sample_calc_sd_to_XYZ(spectral_shape=DEFAULT_SPECTRAL_SHAPE):
     illuminant = SDS_ILLUMINANTS['D65']
     illuminant = illuminant.interpolate(spectral_shape)
     # print(illuminant)
-    print(color_checker_sds.values.shape, cmfs.values.shape, illuminant.values.shape)
     XYZ = sd_to_XYZ(sd=color_checker_sds, cmfs=cmfs, illuminant=illuminant)
     # xyY = XYZ_to_xyY(XYZ)
 
@@ -72,7 +71,7 @@ def load_color_checker_sr():
         spectral_shape=SpectralShape(380, 730, 1))
     rgb = cs.large_xyz_to_rgb(
         xyz=large_xyz, color_space_name=cs.BT709,
-        xyz_white=cs.D50, rgb_white=cs.D65)
+        xyz_white=cs.D65, rgb_white=cs.D65)
     rgb = np.clip(rgb/100, 0.0, 1.0) ** (1/2.4)
     img = tpg.plot_color_checker_image(rgb=rgb)
     tpg.img_wirte_float_as_16bit_int("./figure/color_checker.png", img)
