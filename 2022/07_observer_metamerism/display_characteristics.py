@@ -4,6 +4,7 @@
 
 # import standard libraries
 import os
+from random import sample
 
 # import third-party libraries
 import numpy as np
@@ -12,6 +13,7 @@ from colour import MultiSpectralDistributions, SpectralShape, MSDS_CMFS,\
     SDS_ILLUMINANTS, sd_to_XYZ, XYZ_to_xyY, XYZ_to_xy
 from colour.io import write_image
 from colour.utilities import tstack
+from colour.algebra import vector_dot
 from scipy import linalg
 
 # import my libraries
@@ -233,26 +235,6 @@ def trim_and_interpolate_in_advance(
     return spd2, cmfs2, illuminant2
 
 
-def calc_display_white_point(
-        display_spd_data_fname="./ref_data/ref_display_spd.csv",
-        spectral_shape=SpectralShape(380, 780, 1),
-        cmfs=CIE1931_CMFS, illuminant=ILLUMINANT_E):
-    spd = prepare_display_spd(fname=display_spd_data_fname)
-    spd, cmfs, illuminant = trim_and_interpolate_in_advance(
-        spd=spd, cmfs=cmfs, illuminant=illuminant,
-        spectral_shape=spectral_shape)
-    rgbw_large_xyz = sd_to_XYZ(
-        sd=spd, cmfs=cmfs, illuminant=illuminant)
-    rgbw_xyY = XYZ_to_xyY(rgbw_large_xyz)
-    # print(rgbw_large_xyz)
-    primaries = rgbw_xyY[:3]
-    primaries = np.append(primaries, [primaries[0, :]], axis=0)
-    white = rgbw_xyY[3]
-    print(primaries)
-    print(white)
-    plot_chromaticity_diagram(primaries, white)
-
-
 def calc_rgb_to_xyz_matrix_from_spectral_distribution(spd):
     """
     Calculate RGB to XYZ matrix from spectral distribution of the display.
@@ -303,6 +285,59 @@ def calc_xyz_to_rgb_matrix_from_spectral_distribution(spd):
     """
     rgb_to_xyz_mtx = calc_rgb_to_xyz_matrix_from_spectral_distribution(spd)
     return linalg.inv(rgb_to_xyz_mtx)
+
+
+def calc_display_white_point(
+        display_spd_data_fname="./ref_data/ref_display_spd.csv",
+        spectral_shape=SpectralShape(380, 780, 1),
+        cmfs=CIE1931_CMFS, illuminant=ILLUMINANT_E):
+    spd = prepare_display_spd(fname=display_spd_data_fname)
+    spd, cmfs, illuminant = trim_and_interpolate_in_advance(
+        spd=spd, cmfs=cmfs, illuminant=illuminant,
+        spectral_shape=spectral_shape)
+    rgbw_large_xyz = sd_to_XYZ(sd=spd, cmfs=cmfs, illuminant=illuminant)
+    rgbw_xyY = XYZ_to_xyY(rgbw_large_xyz)
+    # print(rgbw_large_xyz)
+    primaries = rgbw_xyY[:3]
+    primaries = np.append(primaries, [primaries[0, :]], axis=0)
+    white = rgbw_xyY[3]
+    print(primaries)
+    print(white)
+    plot_chromaticity_diagram(primaries, white)
+
+
+def calc_horseshoe_chromaticity():
+    st_wl = 380
+    ed_wl = 780
+    wl_step = 1
+    spectral_shape = SpectralShape(st_wl, ed_wl, wl_step)
+    wl_num = ed_wl - st_wl + wl_step
+    wl = np.arange(st_wl, ed_wl + 1, wl_step)
+    values = np.zeros((wl_num, wl_num))
+    for idx in range(wl_num):
+        values[idx, idx] = 1.0
+    signals = MultiSignals(data=values, domain=wl)
+    sd = MultiSpectralDistributions(data=signals)
+    illuminant = ILLUMINANT_E.interpolate(shape=spectral_shape)
+    cmfs = CIE1931_CMFS.trim(shape=spectral_shape)
+
+    large_xyz = sd_to_XYZ(sd=sd, cmfs=cmfs, illuminant=illuminant)
+    xy = XYZ_to_xy(large_xyz)
+    add_xy = np.array([xy[0, 0], xy[0, 1]]).reshape(1, 2)
+    xy = np.append(xy, add_xy, axis=0)
+
+    """
+    y=ax+b のパラメータも一緒に保存したい
+    """
+
+    fig, ax1 = pu.plot_1_graph()
+    ax1.plot(xy[..., 0], xy[..., 1])
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', save_fname="./figure/xy.png")
+
+
+def plot_chromaticity_diagram_init():
+    pass
 
 
 def plot_chromaticity_diagram(
@@ -366,6 +401,89 @@ def plot_chromaticity_diagram(
         save_fname="./figure/display_xy.png")
 
 
+def get_rotate_mtx(angle_degree=90):
+    angle_rad = np.deg2rad(angle_degree)
+    mtx = np.array(
+        [[np.cos(angle_rad), -np.sin(angle_rad)],
+         [np.sin(angle_rad), np.cos(angle_rad)]])
+
+    return mtx
+
+
+def calc_normal_pos(
+        xy=np.array([[1, 3], [2, 1], [0, 0]]), normal_len=1.0):
+    """
+    Parameters
+    ----------
+    xy : ndarray
+        coordinate list (please see the examples.)
+        shape must be (N, 2).
+    """
+    rotate_mtx = get_rotate_mtx(angle_degree=-90)
+    xy_centerd = xy[1:] - xy[:-1]
+    xy_rotate = vector_dot(rotate_mtx, xy_centerd)
+    aa = xy_rotate[..., 1] / xy_rotate[..., 0]
+    bb = xy[:-1, 1] - xy[:-1, 0] * aa
+
+    angle = np.arctan2(xy_rotate[..., 1], xy_rotate[..., 0])
+    x4_diff = normal_len * np.cos(angle)
+    x4 = xy[:-1, 0] + x4_diff
+    y4 = aa * x4 + bb
+    normal_pos = tstack([x4, y4])
+
+    return normal_pos
+
+
+def calc_normal_param_each_point(p1=[1, 3], p2=[2, 1]):
+    x3 = 2.0
+    mtx = get_rotate_mtx(angle_degree=90)
+    xy1 = np.array([(p2[0] - p1[0]), (p2[1] - p1[1])])
+    xy2 = mtx.dot(xy1)
+    print(xy1, xy2)
+    aa = xy2[1]/xy2[0]
+    bb = p1[1] - p1[0] * aa
+    y3 = aa * x3 + bb
+    xy3 = np.array([x3, y3])
+    print(xy3)
+
+
+def debug_normal_plot():
+    sample_num = 65
+    radius = 4
+    normal_len = 1
+    rad = np.deg2rad(np.linspace(0, 360, sample_num))
+    x = radius * np.cos(rad)
+    y = radius * np.sin(rad)
+    xy = tstack([x, y])
+    xy_normal = calc_normal_pos(xy=xy, normal_len=normal_len)
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Title",
+        graph_title_size=None,
+        xlabel="X Axis Label", ylabel="Y Axis Label",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(xy[..., 0], xy[..., 1], '-o', label='circle')
+    for idx in range(len(xy) - 1):
+        ax1.plot(
+            [xy[idx, 0], xy_normal[idx, 0]],
+            [xy[idx, 1], xy_normal[idx, 1]],
+            'k-')
+
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', save_fname="./figure/circle.png")
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_measure_patch()
@@ -376,7 +494,13 @@ if __name__ == '__main__':
     #     display_spd_data_fname="./ref_data/ref_display_spd.csv",
     #     spectral_shape=SpectralShape(380, 780, 1),
     #     cmfs=CIE1931_CMFS)
-    display_spd_data_fname = "./ref_data/ref_display_spd.csv"
-    spd = prepare_display_spd(fname=display_spd_data_fname)
-    calc_rgb_to_xyz_matrix_from_spectral_distribution(spd)
+
+    # display_spd_data_fname = "./ref_data/ref_display_spd.csv"
+    # spd = prepare_display_spd(fname=display_spd_data_fname)
+    # calc_rgb_to_xyz_matrix_from_spectral_distribution(spd)
+
+    # calc_horseshoe_chromaticity()
+    # calc_normal_param_each_point()
+    # calc_normal_pos()
+    debug_normal_plot()
     pass
