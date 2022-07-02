@@ -16,19 +16,12 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.proj3d import proj_transform
 import matplotlib.patches as patches
-from matplotlib.ticker import AutoMinorLocator
+from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 from matplotlib.patches import FancyArrowPatch
 import colorsys
 import matplotlib.font_manager as fm
 import color_space as cs
 import transfer_functions as tf
-
-try:
-    from pyqtgraph.Qt import QtGui
-    import pyqtgraph.opengl as gl
-    from pyqtgraph import Vector
-except ImportError:
-    print("RARNING: PyQtGraph is not found")
 
 
 # define
@@ -43,31 +36,25 @@ ORANGE = np.array([246, 170, 0]) / 255
 MAJENTA = np.array([153, 0, 153]) / 255
 BROWN = np.array([128, 64, 0]) / 255
 
-cycle_num = 6
-v_offset = 0.2
-s = np.arange(cycle_num) / (cycle_num - 1) * (1 - v_offset) + v_offset
-s = s[::-1]
-
-r_cycle = []
-g_cycle = []
-b_cycle = []
-
-for s_val in s:
-    r, g, b = colorsys.hsv_to_rgb(0.0, s_val, 0.9)
-    color = "#{:02X}{:02X}{:02X}".format(np.uint8(np.round(r * 0xFF)),
-                                         np.uint8(np.round(g * 0xFF)),
-                                         np.uint8(np.round(b * 0xFF)))
-    r_cycle.append(color)
-    r, g, b = colorsys.hsv_to_rgb(0.3, s_val, 0.9)
-    color = "#{:02X}{:02X}{:02X}".format(np.uint8(np.round(r * 0xFF)),
-                                         np.uint8(np.round(g * 0xFF)),
-                                         np.uint8(np.round(b * 0xFF)))
-    g_cycle.append(color)
-    r, g, b = colorsys.hsv_to_rgb(0.6, s_val, 0.9)
-    color = "#{:02X}{:02X}{:02X}".format(np.uint8(np.round(r * 0xFF)),
-                                         np.uint8(np.round(g * 0xFF)),
-                                         np.uint8(np.round(b * 0xFF)))
-    b_cycle.append(color)
+PLOT_FONT_NAME = "Noto Sans CJK JP"
+# PLOT_FONT_NAME = "Noto Sans Mono CJK JP"
+# PLOT_FONT_NAME = "DejaVu Serif"
+# PLOT_FONT_NAME = "DejaVu Sans"
+# PLOT_FONT_NAME = "BIZ UDPGothic"
+# PLOT_FONT_NAME = "Noto Sans CJK JP"
+# PLOT_FONT_NAME = "DejaVu Serif"
+# PLOT_FONT_NAME = "Noto Sans CJK JP"
+# PLOT_FONT_NAME = "BIZ UDGothic"
+# PLOT_FONT_NAME = "Noto Sans CJK JP"
+# PLOT_FONT_NAME = "Noto Sans CJK JP"
+# PLOT_FONT_NAME = "BIZ UDPGothic"
+# PLOT_FONT_NAME = "Noto Sans CJK JP"
+# PLOT_FONT_NAME = "DejaVu Sans"
+# PLOT_FONT_NAME = "Noto Sans Mono CJK JP"
+# PLOT_FONT_NAME = "DejaVu Sans Mono"
+# PLOT_FONT_NAME = "DejaVu Sans Mono"
+# PLOT_FONT_NAME = "Noto Sans CJK JP"
+# PLOT_FONT_NAME = "BIZ UDGothic"
 
 
 def reshape_to_Nx3(data):
@@ -269,34 +256,6 @@ def plot_xyY_with_scatter3D(
     ax.scatter3D(x, y, z, s=ms, c=color2, alpha=alpha, edgecolors=edgecolors)
 
 
-def plot_xyY_with_gl_GLScatterPlotItem(
-        w, xyY, color_space_name=cs.BT709, size=0.001, color='rgb'):
-    """
-    plot xyY data with ax.scatter3D.
-
-    Parameters
-    ----------
-    w : GLGridItem
-        GLGridItem instance.
-    xyY : ndarray
-        xyY data
-    color_space_name : str
-        the name of the target color space.
-    size : float
-        marker size.
-    """
-    xyY_plot = reshape_to_Nx3(xyY)
-    rgb = calc_rgb_from_xyY_for_mpl(
-        xyY_plot, color_space_name=color_space_name)
-    rgba = add_alpha_channel_to_rgb(rgb)
-    if color != "rgb":
-        rgba = np.ones_like(rgba) * np.array(color).reshape((1, 4))
-    size_val = np.ones(xyY_plot.shape[0]) * size
-    sp = gl.GLScatterPlotItem(
-        pos=xyY_plot, size=size_val, color=rgba, pxMode=False)
-    w.addItem(sp)
-
-
 class Arrow3D(FancyArrowPatch):
     # def __init__(self, x, y, z, dx, dy, dz, *args, **kwargs):
     def __init__(self, x1, y1, z1, x2, y2, z2, *args, **kwargs):
@@ -332,10 +291,11 @@ def _exist_key(key, **kwargs):
 def _set_common_parameters(fontsize, **kwargs):
     # japanese font
     # ---------------------------------------
+    target_font_name = PLOT_FONT_NAME
     fonts = fm.findSystemFonts()
     for font in fonts:
         font_name = fm.FontProperties(fname=font).get_name()
-        if font_name == 'Noto Sans CJK JP':
+        if font_name == target_font_name:
             plt.rcParams['font.family'] = font_name
             plt.rcParams["font.weight"] = 'regular'
             plt.rcParams["axes.labelweight"] = "regular"
@@ -427,14 +387,16 @@ def plot_1_graph(fontsize=20, **kwargs):
         ax1.set_yticks(kwargs['ytick'])
 
     if _exist_key('minor_xtick_num', **kwargs):
-        minor_locator = AutoMinorLocator(kwargs['minor_xtick_num'])
+        # minor_locator = AutoMinorLocator(kwargs['minor_xtick_num'])
+        minor_locator = MultipleLocator(kwargs['minor_xtick_num'])
         ax1.xaxis.set_minor_locator(minor_locator)
         ax1.xaxis.grid(which='minor', color="#C0C0C0")
         ax1.tick_params(
             axis='x', which='minor', length=0.0, grid_linestyle='--')
 
     if _exist_key('minor_ytick_num', **kwargs):
-        minor_locator = AutoMinorLocator(kwargs['minor_ytick_num'])
+        # minor_locator = AutoMinorLocator(kwargs['minor_ytick_num'])
+        minor_locator = MultipleLocator(kwargs['minor_ytick_num'])
         ax1.yaxis.set_minor_locator(minor_locator)
         ax1.yaxis.grid(which='minor', color="#C0C0C0")
         ax1.tick_params(
@@ -506,28 +468,55 @@ def log_scale_settings(ax1, grid_alpha=0.5, bg_color="#E0E0E0"):
     ax1.patch.set_facecolor(bg_color)
 
 
-def pyqtgraph_plot_3d_init(
-        title="Title",
-        distance=1.7,
-        center=(0.0, 0.0, 1.0),
-        elevation=30,
-        angle=-120):
-    app = QtGui.QApplication([])
-    w = gl.GLViewWidget()
-    w.opts['distance'] = distance
-    w.opts['center'] = Vector(
-        center[0], center[1], center[2])
-    w.opts['elevation'] = elevation
-    w.opts['azimuth'] = angle
-    # w.setBackgroundColor('g')
-    w.setBackgroundColor([0.5, 0.5, 0.5, 1.0])
-
-    w.show()
-    w.setWindowTitle(title)
-    g = gl.GLGridItem()
-    w.addItem(g)
-
-    return app, w
+def log_sacle_settings_x_linear_y_log(
+        ax, alpha_major=0.8, alpha_minor=0.2,
+        major_color=0.0, major_line_width=0.85,
+        minor_color=0.0, minor_line_width=0.85):
+    """
+    Examples
+    --------
+    >>> x = np.linspace(0, 1, 1024)
+    >>> y = tf.eotf_to_luminance(x, tf.ST2084)
+    >>> fig, ax1 = pu.plot_1_graph(
+    ...     fontsize=20,
+    ...     figsize=(8, 8),
+    ...     bg_color=None,
+    ...     graph_title="Title",
+    ...     graph_title_size=None,
+    ...     xlabel="X Axis Label", ylabel="Y Axis Label",
+    ...     axis_label_size=None,
+    ...     legend_size=17,
+    ...     xlim=None,
+    ...     ylim=None,
+    ...     xtick=[x * 128 for x in range(8)] + [1023],
+    ...     ytick=None,
+    ...     xtick_size=None, ytick_size=None,
+    ...     linewidth=3,
+    ...     minor_xtick_num=32,
+    ...     minor_ytick_num=None)
+    >>> pu.log_sacle_settings_x_linear_y_log(
+    ...     ax=ax1, alpha_major=0.6, alpha_minor=0.1)
+    >>> ax1.plot(x*1023, y, label=tf.ST2084)
+    >>> fname = "./figure/st2084_log.png"
+    >>> pu.show_and_save(
+        ... fig=fig, legend_loc='upper left', save_fname=fname)
+    """
+    ax.set_yscale("log")
+    ax.tick_params(
+        which='major', direction='in', top=True, right=True, length=8)
+    ax.tick_params(
+        which='minor', direction='in', top=True, right=True, length=4)
+    major_locator = ticker.LogLocator(base=10, numticks=16)
+    minor_locator = ticker.LogLocator(
+        base=10, subs=[x * 0.1 for x in range(10)], numticks=16)
+    ax.get_yaxis().set_major_locator(major_locator)
+    ax.get_yaxis().set_minor_locator(minor_locator)
+    ax.grid(
+        True, "major", color=str(major_color), linestyle='-',
+        linewidth=major_line_width, alpha=alpha_major, zorder=-10)
+    ax.grid(
+        True, "minor", color=str(minor_color), linestyle='-',
+        linewidth=minor_line_width, alpha=alpha_minor, zorder=-10)
 
 
 def plot_3d_init(
@@ -587,7 +576,8 @@ def plot_3d_init(
     return fig, ax
 
 
-def show_and_save(fig, legend_loc='upper right', save_fname=None, show=False):
+def show_and_save(
+        fig, legend_loc=None, save_fname=None, show=False, dpi=100):
     if legend_loc is not None:
         plt.legend(loc=legend_loc)
 
@@ -595,7 +585,7 @@ def show_and_save(fig, legend_loc='upper right', save_fname=None, show=False):
     fig.tight_layout()
 
     if save_fname is not None:
-        plt.savefig(save_fname, bbox_inches='tight', pad_inches=0.1)
+        plt.savefig(save_fname, dpi=dpi)
 
     if show:
         plt.show()
@@ -618,7 +608,8 @@ if __name__ == '__main__':
         bg_color=(0.96, 0.96, 0.96),
         graph_title="Title",
         graph_title_size=None,
-        xlabel="X Axis Label", ylabel="Y Axis Label",
+        xlabel="X Axis Label",
+        ylabel="Y Axis Label",
         axis_label_size=None,
         legend_size=17,
         xlim=None,
