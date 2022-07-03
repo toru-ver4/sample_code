@@ -16,13 +16,30 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.proj3d import proj_transform
 import matplotlib.patches as patches
-from matplotlib.ticker import AutoMinorLocator, MultipleLocator
+from matplotlib.ticker import MultipleLocator
 from matplotlib.patches import FancyArrowPatch
 import colorsys
 import matplotlib.font_manager as fm
+
+from colour.continuous import MultiSignals
+from colour import MultiSpectralDistributions, SpectralShape, MSDS_CMFS,\
+    SDS_ILLUMINANTS, sd_to_XYZ, XYZ_to_xy, RGB_COLOURSPACES, XYZ_to_RGB,\
+    xy_to_XYZ
+from colour.models import RGB_COLOURSPACE_BT709
+from colour.utilities import tstack
+from colour.algebra import vector_dot, normalise_maximum
+
+from scipy.spatial import Delaunay
+from scipy.ndimage import convolve
+
+from color_space import D65 as D65_WHITE
 import color_space as cs
 import transfer_functions as tf
 
+CIE1931_NAME = "cie_2_1931"
+CIE1931_CMFS = MultiSpectralDistributions(MSDS_CMFS[CIE1931_NAME])
+
+ILLUMINANT_E = SDS_ILLUMINANTS['E']
 
 # define
 # from https://jfly.uni-koeln.de/colorset/
@@ -387,7 +404,6 @@ def plot_1_graph(fontsize=20, **kwargs):
         ax1.set_yticks(kwargs['ytick'])
 
     if _exist_key('minor_xtick_num', **kwargs):
-        # minor_locator = AutoMinorLocator(kwargs['minor_xtick_num'])
         minor_locator = MultipleLocator(kwargs['minor_xtick_num'])
         ax1.xaxis.set_minor_locator(minor_locator)
         ax1.xaxis.grid(which='minor', color="#C0C0C0")
@@ -395,7 +411,6 @@ def plot_1_graph(fontsize=20, **kwargs):
             axis='x', which='minor', length=0.0, grid_linestyle='--')
 
     if _exist_key('minor_ytick_num', **kwargs):
-        # minor_locator = AutoMinorLocator(kwargs['minor_ytick_num'])
         minor_locator = MultipleLocator(kwargs['minor_ytick_num'])
         ax1.yaxis.set_minor_locator(minor_locator)
         ax1.yaxis.grid(which='minor', color="#C0C0C0")
@@ -593,6 +608,258 @@ def show_and_save(
     plt.close(fig)
 
 
+def draw_wl_annotation(
+        ax1, wl, st_pos=[0, 0], ed_pos=[1, 1], rate=1.0):
+    """
+    Draw annotation of the wavelength.
+    """
+    arrowstyle = '-'
+    linestyle = '-'
+    ax1.plot(ed_pos[0], ed_pos[1], 'ko', ms=4*rate, zorder=45)
+    arrowprops = dict(
+        facecolor=[0, 0, 0],
+        edgecolor=[0, 0, 0],
+        arrowstyle=arrowstyle, linestyle=linestyle)
+    ax1.annotate(
+        text=f"{wl}", xy=ed_pos, xytext=st_pos, xycoords='data',
+        textcoords='data', ha='center', va='center',
+        arrowprops=arrowprops, fontsize=12*rate, zorder=50)
+
+
+def get_primaries(name='ITU-R BT.2020'):
+    """
+    Get primaries of the specific color space
+
+    Parameters
+    ----------
+    name : str
+        a name of the color space.
+
+    Returns
+    -------
+    array_like
+        prmaries. [[rx, ry], [gx, gy], [bx, by], [rx, ry]]
+
+    """
+    primaries = RGB_COLOURSPACES[name].primaries
+    primaries = np.append(primaries, [primaries[0, :]], axis=0)
+
+    return primaries
+
+
+def get_chromaticity_image(
+        samples=1024, antialiasing=True, cmf_xy=None, bg_color=0.9,
+        xmin=0.0, xmax=1.0, ymin=0.0, ymax=1.0):
+    """
+    xy色度図の馬蹄形の画像を生成する
+
+    Returns
+    -------
+    ndarray
+        rgb image.
+    """
+
+    """
+    馬蹄の内外の判別をするために三角形で領域分割する(ドロネー図を作成)。
+    ドロネー図を作れば後は外積計算で領域の内外を判別できる（たぶん）。
+
+    なお、作成したドロネー図は以下のコードでプロット可能。
+    1点補足しておくと、```plt.triplot``` の第三引数は、
+    第一、第二引数から三角形を作成するための **インデックス** のリスト
+    になっている。[[0, 1, 2], [2, 4, 3], ...]的な。
+
+    ```python
+    plt.figure()
+    plt.triplot(xy[:, 0], xy[:, 1], triangulation.simplices.copy(), '-o')
+    plt.title('triplot of Delaunay triangulation')
+    plt.show()
+    ```
+    """
+    triangulation = Delaunay(cmf_xy)
+
+    """
+    ```triangulation.find_simplex()``` で xy がどのインデックスの領域か
+    調べることができる。戻り値が ```-1``` の場合は領域に含まれないため、
+    0以下のリストで領域判定の mask を作ることができる。
+    """
+    xx, yy\
+        = np.meshgrid(np.linspace(xmin, xmax, samples),
+                      np.linspace(ymax, ymin, samples))
+    xy = np.dstack((xx, yy))
+    mask = (triangulation.find_simplex(xy) < 0).astype(np.float64)
+
+    # アンチエイリアシングしてアルファチャンネルを滑らかに
+    # ------------------------------------------------
+    if antialiasing:
+        kernel = np.array([
+            [0, 1, 0],
+            [1, 2, 1],
+            [0, 1, 0],
+        ]).astype(np.float64)
+        kernel /= np.sum(kernel)
+        mask = convolve(mask, kernel)
+
+    # ネガポジ反転
+    # --------------------------------
+    mask = 1 - mask[:, :, np.newaxis]
+
+    # xy のメッシュから色を復元
+    # ------------------------
+    xy[xy == 0.0] = 1.0  # ゼロ割対策
+    large_xyz = xy_to_XYZ(xy)
+
+    rgb = cs.large_xyz_to_rgb(
+        xyz=large_xyz, color_space_name=cs.BT709)
+
+    """
+    そのままだとビデオレベルが低かったりするので、
+    各ドット毎にRGB値を正規化＆最大化する。
+    """
+    rgb[rgb == 0] = 1.0  # ゼロ割対策
+    rgb = normalise_maximum(rgb, axis=-1)
+
+    # mask 適用
+    # -------------------------------------
+    mask_rgb = np.dstack((mask, mask, mask))
+    rgb *= mask_rgb
+
+    # 背景色をグレーに変更
+    # -------------------------------------
+    bg_rgb = np.ones_like(rgb)
+    bg_rgb *= (1 - mask_rgb) * bg_color
+
+    rgb += bg_rgb
+
+    rgb = rgb ** (1/2.2)
+
+    return rgb
+
+
+def calc_horseshoe_chromaticity(st_wl=380, ed_wl=780, wl_step=1):
+    spectral_shape = SpectralShape(st_wl, ed_wl, wl_step)
+    wl_num = ed_wl - st_wl + wl_step
+    wl = np.arange(st_wl, ed_wl + 1, wl_step)
+    values = np.zeros((wl_num, wl_num))
+    for idx in range(wl_num):
+        values[idx, idx] = 1.0
+    signals = MultiSignals(data=values, domain=wl)
+    sd = MultiSpectralDistributions(data=signals)
+    illuminant = ILLUMINANT_E.interpolate(shape=spectral_shape)
+    cmfs = CIE1931_CMFS.trim(shape=spectral_shape)
+
+    large_xyz = sd_to_XYZ(sd=sd, cmfs=cmfs, illuminant=illuminant)
+    xy = XYZ_to_xy(large_xyz)
+    add_xy = np.array([xy[0, 0], xy[0, 1]]).reshape(1, 2)
+    xy = np.append(xy, add_xy, axis=0)
+
+    return xy
+
+
+def get_rotate_mtx(angle_degree=90):
+    angle_rad = np.deg2rad(angle_degree)
+    mtx = np.array(
+        [[np.cos(angle_rad), -np.sin(angle_rad)],
+         [np.sin(angle_rad), np.cos(angle_rad)]])
+
+    return mtx
+
+
+def calc_normal_pos(
+        xy=np.array([[1, 3], [2, 1], [0, 0]]), normal_len=1.0,
+        angle_degree=-90):
+    """
+    Parameters
+    ----------
+    xy : ndarray
+        coordinate list (please see the examples.)
+        shape must be (N, 2).
+    """
+    rotate_mtx = get_rotate_mtx(angle_degree=angle_degree)
+    xy_centerd = xy[1:] - xy[:-1]
+    xy_rotate = vector_dot(rotate_mtx, xy_centerd)
+    aa = xy_rotate[..., 1] / xy_rotate[..., 0]
+    bb = xy[:-1, 1] - xy[:-1, 0] * aa
+
+    angle = np.arctan2(xy_rotate[..., 1], xy_rotate[..., 0])
+    x4_diff = normal_len * np.cos(angle)
+    x4 = xy[:-1, 0] + x4_diff
+    y4 = aa * x4 + bb
+    normal_pos = tstack([x4, y4])
+
+    return normal_pos
+
+
+def plot_chromaticity_diagram_demo(
+        rate=1.3, xmin=-0.1, xmax=0.8, ymin=-0.1, ymax=1.0):
+    # プロット用データ準備
+    # ---------------------------------
+    st_wl = 380
+    ed_wl = 780
+    wl_step = 1
+    plot_wl_list = [
+        410, 450, 470, 480, 485, 490, 495,
+        500, 505, 510, 520, 530, 540, 550, 560, 570, 580, 590,
+        600, 620, 690]
+    cmf_xy = calc_horseshoe_chromaticity(
+        st_wl=st_wl, ed_wl=ed_wl, wl_step=wl_step)
+    cmf_xy_norm = calc_normal_pos(
+        xy=cmf_xy, normal_len=0.05, angle_degree=90)
+    wl_list = np.arange(st_wl, ed_wl + 1, wl_step)
+    xy_image = get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, cmf_xy=cmf_xy)
+
+    fig, ax1 = plot_1_graph(
+        fontsize=20 * rate,
+        figsize=((xmax - xmin) * 10 * rate,
+                 (ymax - ymin) * 10 * rate),
+        graph_title="CIE1931 Chromaticity Diagram",
+        graph_title_size=None,
+        xlabel=None, ylabel=None,
+        axis_label_size=None,
+        legend_size=14 * rate,
+        xlim=(xmin, xmax),
+        ylim=(ymin, ymax),
+        xtick=[x * 0.1 + xmin for x in
+               range(int((xmax - xmin)/0.1) + 1)],
+        ytick=[x * 0.1 + ymin for x in
+               range(int((ymax - ymin)/0.1) + 1)],
+        xtick_size=17 * rate,
+        ytick_size=17 * rate,
+        linewidth=4 * rate,
+        minor_xtick_num=2,
+        minor_ytick_num=2)
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
+    for idx, wl in enumerate(wl_list):
+        if wl not in plot_wl_list:
+            continue
+        draw_wl_annotation(
+            ax1=ax1, wl=wl, rate=rate,
+            st_pos=[cmf_xy_norm[idx, 0], cmf_xy_norm[idx, 1]],
+            ed_pos=[cmf_xy[idx, 0], cmf_xy[idx, 1]])
+    bt709_gamut = get_primaries(name=cs.BT709)
+    ax1.plot(bt709_gamut[:, 0], bt709_gamut[:, 1],
+             c=RED, label="BT.709", lw=2.75*rate)
+    bt2020_gamut = get_primaries(name=cs.BT2020)
+    ax1.plot(bt2020_gamut[:, 0], bt2020_gamut[:, 1],
+             c=GREEN, label="BT.2020", lw=2.75*rate)
+    dci_p3_gamut = get_primaries(name=cs.P3_D65)
+    ax1.plot(dci_p3_gamut[:, 0], dci_p3_gamut[:, 1],
+             c=BLUE, label="DCI-P3", lw=2.75*rate)
+    adoobe_rgb_gamut = get_primaries(name=cs.ADOBE_RGB)
+    ax1.plot(adoobe_rgb_gamut[:, 0], adoobe_rgb_gamut[:, 1],
+             c=SKY, label="AdobeRGB", lw=2.75*rate)
+    ap0_gamut = get_primaries(name=cs.ACES_AP0)
+    ax1.plot(ap0_gamut[:, 0], ap0_gamut[:, 1], '--k',
+             label="ACES AP0", lw=1*rate)
+    ax1.plot(
+        [0.3127], [0.3290], 'x', label='D65', ms=12*rate, mew=2*rate,
+        color='k', alpha=0.8)
+    ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
+    show_and_save(
+        fig=fig, legend_loc='upper right',
+        save_fname="./chromaticity_diagram_sample.png")
+
+
 if __name__ == '__main__':
     # _check_hsv_space()
 
@@ -623,6 +890,9 @@ if __name__ == '__main__':
     for y, label in zip(y_list, label_list):
         ax1.plot(x, y, label=label)
     show_and_save(fig=fig, legend_loc='upper left', save_fname=None)
+
+    plot_chromaticity_diagram_demo(
+        rate=1.3, xmin=-0.1, xmax=0.8, ymin=-0.1, ymax=1.0)
     # plt.legend(loc='upper left')
     # plt.show()
     # plt.close(fig)

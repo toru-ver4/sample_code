@@ -4,22 +4,19 @@
 
 # import standard libraries
 import os
-from random import sample
 
 # import third-party libraries
 import numpy as np
 from colour.continuous import MultiSignals
 from colour import MultiSpectralDistributions, SpectralShape, MSDS_CMFS,\
-    SDS_ILLUMINANTS, sd_to_XYZ, XYZ_to_xyY, XYZ_to_xy
+    SDS_ILLUMINANTS, sd_to_XYZ, XYZ_to_xyY
 from colour.io import write_image
 from colour.utilities import tstack
-from colour.algebra import vector_dot
 from scipy import linalg
 
 # import my libraries
 import font_control2 as fc2
 import plot_utility as pu
-import test_pattern_generator2 as tpg
 import color_space as cs
 
 
@@ -301,60 +298,30 @@ def calc_display_white_point(
     primaries = rgbw_xyY[:3]
     primaries = np.append(primaries, [primaries[0, :]], axis=0)
     white = rgbw_xyY[3]
-    print(primaries)
-    print(white)
+    # print(primaries)
+    # print(white)
     plot_chromaticity_diagram(primaries, white)
-
-
-def calc_horseshoe_chromaticity():
-    st_wl = 380
-    ed_wl = 780
-    wl_step = 1
-    spectral_shape = SpectralShape(st_wl, ed_wl, wl_step)
-    wl_num = ed_wl - st_wl + wl_step
-    wl = np.arange(st_wl, ed_wl + 1, wl_step)
-    values = np.zeros((wl_num, wl_num))
-    for idx in range(wl_num):
-        values[idx, idx] = 1.0
-    signals = MultiSignals(data=values, domain=wl)
-    sd = MultiSpectralDistributions(data=signals)
-    illuminant = ILLUMINANT_E.interpolate(shape=spectral_shape)
-    cmfs = CIE1931_CMFS.trim(shape=spectral_shape)
-
-    large_xyz = sd_to_XYZ(sd=sd, cmfs=cmfs, illuminant=illuminant)
-    xy = XYZ_to_xy(large_xyz)
-    add_xy = np.array([xy[0, 0], xy[0, 1]]).reshape(1, 2)
-    xy = np.append(xy, add_xy, axis=0)
-
-    """
-    y=ax+b のパラメータも一緒に保存したい
-    """
-
-    fig, ax1 = pu.plot_1_graph()
-    ax1.plot(xy[..., 0], xy[..., 1])
-    pu.show_and_save(
-        fig=fig, legend_loc='upper left', save_fname="./figure/xy.png")
-
-
-def plot_chromaticity_diagram_init():
-    pass
 
 
 def plot_chromaticity_diagram(
         primaries, white,
-        rate=480/755.0*2, xmin=0.0, xmax=0.8, ymin=0.0, ymax=0.9):
+        rate=1.3, xmin=-0.1, xmax=0.8, ymin=-0.1, ymax=1.0):
     # プロット用データ準備
     # ---------------------------------
-    xy_image = tpg.get_chromaticity_image(
-        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
-    cmf_xy = tpg._get_cmfs_xy()
-
-    bt709_gamut, _ = tpg.get_primaries(name=cs.BT709)
-    bt2020_gamut, _ = tpg.get_primaries(name=cs.BT2020)
-    dci_p3_gamut, _ = tpg.get_primaries(name=cs.P3_D65)
-    adoobe_rgb_gamut, _ = tpg.get_primaries(name=cs.ADOBE_RGB)
-    xlim = (min(0, xmin), max(0.8, xmax))
-    ylim = (min(0, ymin), max(0.9, ymax))
+    st_wl = 380
+    ed_wl = 780
+    wl_step = 1
+    wl_list = np.arange(st_wl, ed_wl + 1, wl_step)
+    plot_wl_list = [
+        410, 450, 470, 480, 485, 490, 495,
+        500, 505, 510, 520, 530, 540, 550, 560, 570, 580, 590,
+        600, 620, 690]
+    cmf_xy = pu.calc_horseshoe_chromaticity(
+        st_wl=st_wl, ed_wl=ed_wl, wl_step=wl_step)
+    cmf_xy_norm = pu.calc_normal_pos(
+        xy=cmf_xy, normal_len=0.05, angle_degree=90)
+    xy_image = pu.get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, cmf_xy=cmf_xy)
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=20 * rate,
@@ -364,87 +331,54 @@ def plot_chromaticity_diagram(
         graph_title_size=None,
         xlabel=None, ylabel=None,
         axis_label_size=None,
-        legend_size=18 * rate,
-        xlim=xlim, ylim=ylim,
+        legend_size=14 * rate,
+        xlim=(xmin, xmax),
+        ylim=(ymin, ymax),
         xtick=[x * 0.1 + xmin for x in
-               range(int((xlim[1] - xlim[0])/0.1) + 1)],
+               range(int((xmax - xmin)/0.1) + 1)],
         ytick=[x * 0.1 + ymin for x in
-               range(int((ylim[1] - ylim[0])/0.1) + 1)],
+               range(int((ymax - ymin)/0.1) + 1)],
         xtick_size=17 * rate,
         ytick_size=17 * rate,
         linewidth=4 * rate,
         minor_xtick_num=2,
         minor_ytick_num=2)
-    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=3.5*rate, label=None)
-    ax1.plot((cmf_xy[-1, 0], cmf_xy[0, 0]), (cmf_xy[-1, 1], cmf_xy[0, 1]),
-             '-k', lw=3.5*rate, label=None)
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
+    for idx, wl in enumerate(wl_list):
+        if wl not in plot_wl_list:
+            continue
+        pu.draw_wl_annotation(
+            ax1=ax1, wl=wl, rate=rate,
+            st_pos=[cmf_xy_norm[idx, 0], cmf_xy_norm[idx, 1]],
+            ed_pos=[cmf_xy[idx, 0], cmf_xy[idx, 1]])
+    bt709_gamut = pu.get_primaries(name=cs.BT709)
     ax1.plot(bt709_gamut[:, 0], bt709_gamut[:, 1],
              c=pu.RED, label="BT.709", lw=2.75*rate)
+    bt2020_gamut = pu.get_primaries(name=cs.BT2020)
     ax1.plot(bt2020_gamut[:, 0], bt2020_gamut[:, 1],
              c=pu.GREEN, label="BT.2020", lw=2.75*rate)
+    dci_p3_gamut = pu.get_primaries(name=cs.P3_D65)
     ax1.plot(dci_p3_gamut[:, 0], dci_p3_gamut[:, 1],
              c=pu.BLUE, label="DCI-P3", lw=2.75*rate)
+    adoobe_rgb_gamut = pu.get_primaries(name=cs.ADOBE_RGB)
     ax1.plot(adoobe_rgb_gamut[:, 0], adoobe_rgb_gamut[:, 1],
              c=pu.SKY, label="AdobeRGB", lw=2.75*rate)
+    ap0_gamut = pu.get_primaries(name=cs.ACES_AP0)
+    ax1.plot(ap0_gamut[:, 0], ap0_gamut[:, 1], '--k',
+             label="ACES AP0", lw=1*rate)
     ax1.plot(
         primaries[..., 0], primaries[..., 1],
         c=pu.ORANGE, label="My Display Primaries", lw=2.75*rate)
     ax1.plot(
-        [0.3127], [0.3290], 'x', label='D65', ms=16, mew=5, color='k',
-        alpha=0.5)
+        [0.3127], [0.3290], 'o', label='D65', ms=14*rate,
+        color='k', alpha=0.3)
     ax1.plot(
-        white[0], white[1], '+', label='My Display White',
-        ms=16, mew=5, color='k')
+        white[0], white[1], 'x', label='My Display White',
+        ms=12*rate, mew=2*rate, color='k')
     ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
     pu.show_and_save(
         fig=fig, legend_loc='upper right',
         save_fname="./figure/display_xy.png")
-
-
-def get_rotate_mtx(angle_degree=90):
-    angle_rad = np.deg2rad(angle_degree)
-    mtx = np.array(
-        [[np.cos(angle_rad), -np.sin(angle_rad)],
-         [np.sin(angle_rad), np.cos(angle_rad)]])
-
-    return mtx
-
-
-def calc_normal_pos(
-        xy=np.array([[1, 3], [2, 1], [0, 0]]), normal_len=1.0):
-    """
-    Parameters
-    ----------
-    xy : ndarray
-        coordinate list (please see the examples.)
-        shape must be (N, 2).
-    """
-    rotate_mtx = get_rotate_mtx(angle_degree=-90)
-    xy_centerd = xy[1:] - xy[:-1]
-    xy_rotate = vector_dot(rotate_mtx, xy_centerd)
-    aa = xy_rotate[..., 1] / xy_rotate[..., 0]
-    bb = xy[:-1, 1] - xy[:-1, 0] * aa
-
-    angle = np.arctan2(xy_rotate[..., 1], xy_rotate[..., 0])
-    x4_diff = normal_len * np.cos(angle)
-    x4 = xy[:-1, 0] + x4_diff
-    y4 = aa * x4 + bb
-    normal_pos = tstack([x4, y4])
-
-    return normal_pos
-
-
-def calc_normal_param_each_point(p1=[1, 3], p2=[2, 1]):
-    x3 = 2.0
-    mtx = get_rotate_mtx(angle_degree=90)
-    xy1 = np.array([(p2[0] - p1[0]), (p2[1] - p1[1])])
-    xy2 = mtx.dot(xy1)
-    print(xy1, xy2)
-    aa = xy2[1]/xy2[0]
-    bb = p1[1] - p1[0] * aa
-    y3 = aa * x3 + bb
-    xy3 = np.array([x3, y3])
-    print(xy3)
 
 
 def debug_normal_plot():
@@ -455,14 +389,15 @@ def debug_normal_plot():
     x = radius * np.cos(rad)
     y = radius * np.sin(rad)
     xy = tstack([x, y])
-    xy_normal = calc_normal_pos(xy=xy, normal_len=normal_len)
+    xy_normal = pu.calc_normal_pos(xy=xy, normal_len=normal_len)
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(10, 10),
         bg_color=(0.96, 0.96, 0.96),
         graph_title="Title",
         graph_title_size=None,
-        xlabel="X Axis Label", ylabel="Y Axis Label",
+        xlabel="X Axis Label",
+        ylabel="Y Axis Label",
         axis_label_size=None,
         legend_size=17,
         xlim=None,
@@ -490,10 +425,10 @@ if __name__ == '__main__':
     # plot_b_display_spectral_distribution()
     # plot_sun_glass_sd()
     # modify_b_display_spd()
-    # calc_display_white_point(
-    #     display_spd_data_fname="./ref_data/ref_display_spd.csv",
-    #     spectral_shape=SpectralShape(380, 780, 1),
-    #     cmfs=CIE1931_CMFS)
+    calc_display_white_point(
+        display_spd_data_fname="./ref_data/ref_display_spd.csv",
+        spectral_shape=SpectralShape(380, 780, 1),
+        cmfs=CIE1931_CMFS)
 
     # display_spd_data_fname = "./ref_data/ref_display_spd.csv"
     # spd = prepare_display_spd(fname=display_spd_data_fname)
@@ -502,5 +437,5 @@ if __name__ == '__main__':
     # calc_horseshoe_chromaticity()
     # calc_normal_param_each_point()
     # calc_normal_pos()
-    debug_normal_plot()
+    # debug_normal_plot()
     pass
