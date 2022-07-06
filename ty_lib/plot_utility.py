@@ -626,6 +626,25 @@ def draw_wl_annotation(
         arrowprops=arrowprops, fontsize=12*rate, zorder=50)
 
 
+def add_first_value_to_end(data):
+    """
+    Examples
+    --------
+    >>> primaries = cs.get_primaries(color_space_name=cs.BT709)
+    [[ 0.64  0.33]
+     [ 0.3   0.6 ]
+     [ 0.15  0.06]]
+    >>> primaries2 = add_first_value_to_end(data=primaries)
+    [[ 0.64  0.33]
+     [ 0.3   0.6 ]
+     [ 0.15  0.06]
+     [ 0.64  0.33]]
+    """
+    new_data = np.append(data, data[0:1, :], axis=0)
+
+    return new_data
+
+
 def get_primaries(name='ITU-R BT.2020'):
     """
     Get primaries of the specific color space
@@ -641,8 +660,8 @@ def get_primaries(name='ITU-R BT.2020'):
         prmaries. [[rx, ry], [gx, gy], [bx, by], [rx, ry]]
 
     """
-    primaries = RGB_COLOURSPACES[name].primaries
-    primaries = np.append(primaries, [primaries[0, :]], axis=0)
+    primaries_original = RGB_COLOURSPACES[name].primaries
+    primaries = add_first_value_to_end(data=primaries_original)
 
     return primaries
 

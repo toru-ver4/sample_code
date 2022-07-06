@@ -18,7 +18,7 @@ from scipy import linalg
 import font_control2 as fc2
 import plot_utility as pu
 import color_space as cs
-
+from spectrum import trim_and_interpolate_in_advance
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -221,67 +221,6 @@ def prepare_display_spd(
     sds = MultiSpectralDistributions(data=signals)
 
     return sds
-
-
-def trim_and_interpolate_in_advance(
-        spd, cmfs, illuminant, spectral_shape=SpectralShape(380, 780, 1)):
-    spd2 = spd.interpolate(shape=spectral_shape)
-    cmfs2 = cmfs.trim(spectral_shape)
-    illuminant2 = illuminant.interpolate(shape=spectral_shape)
-
-    return spd2, cmfs2, illuminant2
-
-
-def calc_rgb_to_xyz_matrix_from_spectral_distribution(spd):
-    """
-    Calculate RGB to XYZ matrix from spectral distribution of the display.
-
-    Parameters
-    ----------
-    spd : MultiSpectralDistributions
-        spectral distribution of the display.
-        shape is `SpectralShape(380, 780, 1)`
-    """
-    spectral_shape = SpectralShape(380, 780, 1)
-    cmfs = CIE1931_CMFS
-    illuminant = ILLUMINANT_E
-    spd, cmfs, illuminant = trim_and_interpolate_in_advance(
-        spd=spd, cmfs=cmfs, illuminant=illuminant,
-        spectral_shape=spectral_shape)
-    rgbw_large_xyz = sd_to_XYZ(
-        sd=spd, cmfs=cmfs, illuminant=illuminant)
-
-    # calc RGB to XYZ matrix
-    rgbw_large_xyz_sum = np.sum(rgbw_large_xyz, -1).reshape(4, 1)
-    rgbw_small_xyz = (rgbw_large_xyz / rgbw_large_xyz_sum)
-
-    xyz_mtx = rgbw_small_xyz[:3].T
-    xyz_mtx_inv = linalg.inv(xyz_mtx)
-
-    w_large_xyz = rgbw_large_xyz[3]
-    w_large_xyz = w_large_xyz / w_large_xyz[1]
-
-    t_rgb = np.dot(xyz_mtx_inv, w_large_xyz)
-
-    t_mtx = np.array(
-        [[t_rgb[0], 0, 0], [0, t_rgb[1], 0], [0, 0, t_rgb[2]]])
-    rgb_to_xyz_mtx = np.dot(xyz_mtx, t_mtx)
-
-    return rgb_to_xyz_mtx
-
-
-def calc_xyz_to_rgb_matrix_from_spectral_distribution(spd):
-    """
-    Calculate XYZ to RGB matrix from spectral distribution of the display.
-
-    Parameters
-    ----------
-    spd : MultiSpectralDistributions
-        spectral distribution of the display.
-        shape is `SpectralShape(380, 780, 1)`
-    """
-    rgb_to_xyz_mtx = calc_rgb_to_xyz_matrix_from_spectral_distribution(spd)
-    return linalg.inv(rgb_to_xyz_mtx)
 
 
 def calc_display_white_point(

@@ -470,10 +470,12 @@ class ChromaticityDiagramPlot():
         self.xmax = 0.8
         self.ymin = 0.0
         self.ymax = 0.9
-        self.xy_image = tpg.get_chromaticity_image(
+        self.cmf_xy = pu.calc_horseshoe_chromaticity(
+            st_wl=380, ed_wl=780, wl_step=1)
+        self.xy_image = pu.get_chromaticity_image(
             xmin=self.xmin, xmax=self.xmax,
             ymin=self.ymin, ymax=self.ymax,
-            bg_color=0.8, samples=384)
+            bg_color=0.8, samples=384, cmf_xy=self.cmf_xy)
         self.plot_diagram_all(primaries, white)
 
     def plot_diagram_all(self, primaries, white):
@@ -482,10 +484,10 @@ class ChromaticityDiagramPlot():
         xmax = self.xmax
         ymin = self.ymin
         ymax = self.ymax
-        cmf_xy = tpg._get_cmfs_xy()
-        bt709_gamut, _ = tpg.get_primaries(name=cs.BT709)
-        bt2020_gamut, _ = tpg.get_primaries(name=cs.BT2020)
-        dci_p3_gamut, _ = tpg.get_primaries(name=cs.P3_D65)
+        cmf_xy = self.cmf_xy
+        bt709_gamut = pu.get_primaries(name=cs.BT709)
+        bt2020_gamut = pu.get_primaries(name=cs.BT2020)
+        dci_p3_gamut = pu.get_primaries(name=cs.P3_D65)
         xlim = (min(0, xmin), max(0.8, xmax))
         ylim = (min(0, ymin), max(0.9, ymax))
         self.fig, ax1 = pu.plot_1_graph(
