@@ -5,6 +5,7 @@
 # import standard libraries
 import os
 import sys
+from tkinter import Y
 
 # import third-party libraries
 import numpy as np
@@ -14,12 +15,12 @@ from PySide2.QtCore import Qt
 from PySide2.QtGui import QPixmap, QImage, QPalette, QColor, QFont
 from matplotlib.backends.backend_qt5agg\
     import FigureCanvasQTAgg as FigureCanvas
-from colour import SpectralShape
+from colour import MultiSpectralDistributions, SpectralShape
 import matplotlib.pyplot as plt
 
 # import my libraries
 import plot_utility as pu
-from spectrum import CIE1931_CMFS
+from spectrum import CIE1931_CMFS, DisplaySpectrum, create_display_sd
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -29,6 +30,92 @@ __maintainer__ = 'Toru Yoshihara'
 __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
+
+
+class DisplaySpectrumDataControl():
+    def __init__(
+            self,
+            r_mean_slider, g_mean_slider, b_mean_slider,
+            r_dist_slider, g_dist_slider, b_dist_slider):
+        self.r_mean_slider = r_mean_slider
+        self.g_mean_slider = g_mean_slider
+        self.b_mean_slider = b_mean_slider
+        self.r_dist_slider = r_dist_slider
+        self.g_dist_slider = g_dist_slider
+        self.b_dist_slider = b_dist_slider
+        msd = self.create_display_spectrum_from_slider()
+        self.ds = DisplaySpectrum(msd=msd)
+
+    def create_display_spectrum_from_slider(self):
+        r_mu = self.r_mean_slider.get_value()
+        g_mu = self.g_mean_slider.get_value()
+        b_mu = self.b_mean_slider.get_value()
+        r_sigma = self.r_dist_slider.get_value()
+        g_sigma = self.r_dist_slider.get_value()
+        b_sigma = self.r_dist_slider.get_value()
+
+        ds = create_display_sd(
+            r_mu=r_mu, g_mu=g_mu, b_mu=b_mu,
+            r_sigma=r_sigma, g_sigma=g_sigma, b_sigma=b_sigma)
+
+        return ds
+
+    def update_display_spectrum(self):
+        msd = self.create_display_spectrum_from_slider()
+        self.ds.update_msd(msd=msd)
+
+
+class EventControl():
+    def __init__(self) -> None:
+        pass
+
+    def set_display_sd_slider_event(
+            self, dsd_crtl: DisplaySpectrumDataControl,
+            display_sd_canvas,
+            r_mean_label, g_mean_label, b_mean_label,
+            r_dist_label, g_dist_label, b_dist_label,
+            r_mean_slider, g_mean_slider, b_mean_slider,
+            r_dist_slider, g_dist_slider, b_dist_slider):
+
+        self.dsd_ctrl = dsd_crtl
+        self.display_sd_canvas = display_sd_canvas
+
+        self.r_mean_label = r_mean_label
+        self.g_mean_label = g_mean_label
+        self.b_mean_label = b_mean_label
+        self.r_dist_label = r_dist_label
+        self.g_dist_label = g_dist_label
+        self.b_dist_label = b_dist_label
+        self.r_mean_slider = r_mean_slider
+        self.g_mean_slider = g_mean_slider
+        self.b_mean_slider = b_mean_slider
+        self.r_dist_slider = r_dist_slider
+        self.g_dist_slider = g_dist_slider
+        self.b_dist_slider = b_dist_slider
+
+        self.r_mean_slider.set_slot(self.display_sd_slider_event)
+        self.g_mean_slider.set_slot(self.display_sd_slider_event)
+        self.b_mean_slider.set_slot(self.display_sd_slider_event)
+        self.r_dist_slider.set_slot(self.display_sd_slider_event)
+        self.g_dist_slider.set_slot(self.display_sd_slider_event)
+        self.b_dist_slider.set_slot(self.display_sd_slider_event)
+
+    def display_sd_slider_event(self):
+        r_mean_value = self.r_mean_slider.get_value()
+        g_mean_value = self.g_mean_slider.get_value()
+        b_mean_value = self.b_mean_slider.get_value()
+        r_dist_value = self.r_dist_slider.get_value()
+        g_dist_value = self.g_dist_slider.get_value()
+        b_dist_value = self.b_dist_slider.get_value()
+
+        self.r_mean_label.set_label(r_mean_value)
+        self.g_mean_label.set_label(g_mean_value)
+        self.b_mean_label.set_label(b_mean_value)
+        self.r_dist_label.set_label(r_dist_value)
+        self.g_dist_label.set_label(g_dist_value)
+        self.b_dist_label.set_label(b_dist_value)
+
+        self.dsd_ctrl.update_display_spectrum()
 
 
 class WindowColorControl():
@@ -117,35 +204,14 @@ class TyBasicLabel(QWidget):
 
 class DisplaySpectrumPlot():
     def __init__(
-            self,
-            # r_mean, r_dist,
-            # g_mean, g_dist,
-            # b_mean, b_dist,
+            self, dsd: DisplaySpectrum,
             figsize=(10, 6)):
         super().__init__()
         spectral_shape = SpectralShape(380, 780, 1)
         self.figsize = figsize
         self.cmfs = CIE1931_CMFS.trim(spectral_shape)
-        # self.update_spectrum(
-        #     r_mean=r_mean, r_dist=r_dist, r_gain=r_gain,
-        #     g_mean=g_mean, g_dist=g_dist, g_gain=g_gain,
-        #     b_mean=b_mean, b_dist=b_dist, b_gain=b_gain)
+        self.dsd = dsd
         self.init_plot()
-
-    def update_spectrum(
-            self, r_mean, r_dist, r_gain,
-            g_mean, g_dist, g_gain, b_mean, b_dist, b_gain):
-        """
-        これは redraw みたいな関数にすべきでは？
-        スペクトルのアップデートはプロットクラスの外側で行うべき
-        """
-        param_dict = dict(
-            wavelengths=np.arange(360, 831),
-            r_mean=r_mean, r_dist=r_dist, r_gain=r_gain,
-            g_mean=g_mean, g_dist=g_dist, g_gain=g_gain,
-            b_mean=b_mean, b_dist=b_dist, b_gain=b_gain)
-        self.display_sd_obj = DisplaySpectralDistribution(**param_dict)
-        self.display_w_sd = self.display_sd_obj.get_wrgb_sd_array()[0]
 
     def init_plot(self):
         self.fig, ax1 = pu.plot_1_graph(
@@ -163,9 +229,11 @@ class DisplaySpectrumPlot():
             xtick_size=None, ytick_size=None,
             linewidth=3,
             return_figure=True)
-        # self.display_sd_line, = ax1.plot(
-        #     self.display_w_sd.wavelengths, self.display_w_sd.values, '-',
-        #     color=(0.1, 0.1, 0.1), label="Display (W=R+G+B)")
+        sd_wavelength = self.dsd.msd.domain
+        sd_white = self.dsd.msd.values[..., 3]
+        self.display_sd_line, = ax1.plot(
+            sd_wavelength, sd_white, '-',
+            color=(0.1, 0.1, 0.1), label="Display (W=R+G+B)")
         ax1.plot(
             self.cmfs.wavelengths, self.cmfs.values[..., 0], '-',
             color=pu.RED, label="CIE 1931 2 CMF(R)", lw=1.5)
@@ -221,7 +289,6 @@ class LayoutControl():
         g_sigma_layout = QHBoxLayout()
         b_mu_layout = QHBoxLayout()
         b_sigma_layout = QHBoxLayout()
-        
 
         # color_temp_layout = QHBoxLayout()
 
@@ -276,10 +343,6 @@ class MyWidget(QWidget):
         super().__init__()
         self.resize(1280, 720)
 
-        r_gain_default = 50
-        g_gain_default = 50
-        b_gain_default = 50
-
         # background color
         window_color = WindowColorControl(parent=self)
         window_color.set_bg_color(color=[0.8, 0.8, 0.8])
@@ -317,7 +380,15 @@ class MyWidget(QWidget):
         b_dist_label = TyBasicLabel(
             default=b_dist_slider.get_default(), prefix=" B_sd:", suffix="")
 
-        display_sd_plot = DisplaySpectrumPlot(figsize=(10, 6))
+        # display spectral distribution
+        dsd_ctrl = DisplaySpectrumDataControl(
+            r_mean_slider=r_mean_slider, g_mean_slider=g_mean_slider,
+            b_mean_slider=b_mean_slider,
+            r_dist_slider=r_dist_slider, g_dist_slider=g_dist_slider,
+            b_dist_slider=b_dist_slider)
+
+        display_sd_plot = DisplaySpectrumPlot(
+            figsize=(10, 6), dsd=dsd_ctrl.ds)
 
         layout.set_mpl_layout(
             canvas=display_sd_plot,
@@ -328,6 +399,20 @@ class MyWidget(QWidget):
             b_mean_slider=b_mean_slider, r_dist_slider=r_dist_slider,
             g_dist_slider=g_dist_slider, b_dist_slider=b_dist_slider
         )
+
+        # set slot
+        self.event_control = EventControl()
+        # self.event_control.set_white_slider_event(
+        #     white_slider=white_slider, white_label=white_label,
+        #     spectrum_plot=spectrum_plot, patch_img=color_checkr_img)
+        self.event_control.set_display_sd_slider_event(
+            dsd_crtl=dsd_ctrl, display_sd_canvas=display_sd_plot,
+            r_mean_label=r_mean_label, g_mean_label=g_mean_label,
+            b_mean_label=b_mean_label, r_dist_label=r_dist_label,
+            g_dist_label=g_dist_label, b_dist_label=b_dist_label,
+            r_mean_slider=r_mean_slider, g_mean_slider=g_mean_slider,
+            b_mean_slider=b_mean_slider, r_dist_slider=r_dist_slider,
+            g_dist_slider=g_dist_slider, b_dist_slider=b_dist_slider)
 
 
 def main_func():

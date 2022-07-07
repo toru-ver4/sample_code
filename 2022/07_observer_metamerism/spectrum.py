@@ -212,14 +212,14 @@ class DisplaySpectrum():
     """
     def __init__(
             self, msd: MultiSpectralDistributions) -> None:
-        self.update_msd(msd=msd, reshape=False)
         self.spectral_shape = SpectralShape(380, 780, 1)
         self.msd, self.cmfs, self.illuminant =\
             trim_and_interpolate_in_advance(
-                spd=self.msd, cmfs=CIE1931_CMFS, illuminant=ILLUMINANT_E,
+                spd=msd, cmfs=CIE1931_CMFS, illuminant=ILLUMINANT_E,
                 spectral_shape=self.spectral_shape)
+        self.primaries, self.white = self._calc_rgbw_chromaticity()
 
-    def calc_rgbw_chromaticity(self):
+    def _calc_rgbw_chromaticity(self):
         rgbw_large_xyz = sd_to_XYZ(
             sd=self.msd, cmfs=self.cmfs, illuminant=self.illuminant)
         rgbw_xyY = XYZ_to_xyY(rgbw_large_xyz)
@@ -234,6 +234,8 @@ class DisplaySpectrum():
             self.msd = msd.interpolate(shape=self.spectral_shape)
         else:
             self.msd = msd
+
+        self.primaries, self.white = self._calc_rgbw_chromaticity()
 
 
 def calc_primaries_and_white(spd):
