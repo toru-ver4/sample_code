@@ -754,7 +754,7 @@ def get_chromaticity_image(
     return rgb
 
 
-def calc_horseshoe_chromaticity(st_wl=380, ed_wl=780, wl_step=1):
+def calc_horseshoe_chromaticity(st_wl=360, ed_wl=780, wl_step=1):
     spectral_shape = SpectralShape(st_wl, ed_wl, wl_step)
     wl_num = ed_wl - st_wl + wl_step
     wl = np.arange(st_wl, ed_wl + 1, wl_step)

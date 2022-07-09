@@ -93,7 +93,7 @@ def plot_each_color(
 
 
 def plot_b_display_spectral_distribution():
-    spd = load_display_spd(fname="./spd_measure_data/rgbw_spd.csv")
+    spd = load_display_spd(fname="./spd_measure_data/rgbw_spd_3.csv")
     wl = spd[..., 0]
     val_list = np.linspace(0, 1, 5)[1:]
     fig, ax1 = pu.plot_1_graph(
@@ -128,7 +128,7 @@ def plot_b_display_spectral_distribution():
         color='k', val_list=val_list, linestyle='--',
         linewidth=1.5)
     pu.show_and_save(
-        fig=fig, legend_loc='upper right', save_fname="./figure/b_spd.png")
+        fig=fig, legend_loc='upper right', save_fname="./figure/e_spd.png")
 
 
 def plot_sun_glass_sd():
@@ -166,7 +166,8 @@ def modify_b_display_spd():
     """
     Extract Red, Green, Blue spectrum and de-noise.
     """
-    spd = load_display_spd(fname="./spd_measure_data/rgbw_spd.csv")
+    spd = load_display_spd(
+        fname="./spd_measure_data/rgbw_spd_e_360_780.csv")
     wl = spd[..., 0]
     bb = spd[..., 5]
     gg = spd[..., 10]
@@ -225,7 +226,7 @@ def prepare_display_spd(
 
 def calc_display_white_point(
         display_spd_data_fname="./ref_data/ref_display_spd.csv",
-        spectral_shape=SpectralShape(380, 780, 1),
+        spectral_shape=SpectralShape(360, 780, 1),
         cmfs=CIE1931_CMFS, illuminant=ILLUMINANT_E):
     spd = prepare_display_spd(fname=display_spd_data_fname)
     spd, cmfs, illuminant = trim_and_interpolate_in_advance(
@@ -307,12 +308,12 @@ def plot_chromaticity_diagram(
              label="ACES AP0", lw=1*rate)
     ax1.plot(
         primaries[..., 0], primaries[..., 1],
-        c=pu.ORANGE, label="My Display Primaries", lw=2.75*rate)
+        c=pu.ORANGE, label="LCD(E)", lw=2.75*rate)
     ax1.plot(
         [0.3127], [0.3290], 'o', label='D65', ms=14*rate,
         color='k', alpha=0.3)
     ax1.plot(
-        white[0], white[1], 'x', label='My Display White',
+        white[0], white[1], 'x', label='LCD(E) White',
         ms=12*rate, mew=2*rate, color='k')
     ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
     pu.show_and_save(
@@ -366,7 +367,7 @@ if __name__ == '__main__':
     # modify_b_display_spd()
     calc_display_white_point(
         display_spd_data_fname="./ref_data/ref_display_spd.csv",
-        spectral_shape=SpectralShape(380, 780, 1),
+        spectral_shape=SpectralShape(360, 780, 1),
         cmfs=CIE1931_CMFS)
 
     # display_spd_data_fname = "./ref_data/ref_display_spd.csv"

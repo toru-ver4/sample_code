@@ -32,10 +32,14 @@ __all__ = []
 CIE1931_CMFS = MultiSpectralDistributions(MSDS_CMFS["cie_2_1931"])
 
 ILLUMINANT_E = SDS_ILLUMINANTS['E']
+START_WAVELENGTH = 360
+STOP_WAVELENGTH = 780
+WAVELENGTH_STEP = 1
 
 
 def trim_and_interpolate_in_advance(
-        spd, cmfs, illuminant, spectral_shape=SpectralShape(380, 780, 1)):
+        spd, cmfs, illuminant,
+        spectral_shape=SpectralShape(360, 780, 1)):
     spd2 = spd.interpolate(shape=spectral_shape)
     cmfs2 = cmfs.trim(spectral_shape)
     illuminant2 = illuminant.interpolate(shape=spectral_shape)
@@ -63,9 +67,10 @@ def calc_rgb_to_xyz_matrix_from_spectral_distribution(
     ----------
     spd : MultiSpectralDistributions
         Spectral distribution of the display.
-        Shape is `SpectralShape(380, 780, 1)`
+        Shape is `SpectralShape(360, 780, 1)`
     """
-    spectral_shape = SpectralShape(380, 780, 1)
+    spectral_shape = SpectralShape(
+        START_WAVELENGTH, STOP_WAVELENGTH, WAVELENGTH_STEP)
     cmfs = CIE1931_CMFS
     illuminant = ILLUMINANT_E
 
@@ -103,7 +108,7 @@ def calc_xyz_to_rgb_matrix_from_spectral_distribution(spd):
     ----------
     spd : MultiSpectralDistributions
         spectral distribution of the display.
-        shape is `SpectralShape(380, 780, 1)`
+        shape is `SpectralShape(360, 780, 1)`
     """
     rgb_to_xyz_mtx = calc_rgb_to_xyz_matrix_from_spectral_distribution(spd)
     return linalg.inv(rgb_to_xyz_mtx)
@@ -212,7 +217,8 @@ class DisplaySpectrum():
     """
     def __init__(
             self, msd: MultiSpectralDistributions) -> None:
-        self.spectral_shape = SpectralShape(380, 780, 1)
+        self.spectral_shape = SpectralShape(
+            START_WAVELENGTH, STOP_WAVELENGTH, WAVELENGTH_STEP)
         self.msd, self.cmfs, self.illuminant =\
             trim_and_interpolate_in_advance(
                 spd=msd, cmfs=CIE1931_CMFS, illuminant=ILLUMINANT_E,
@@ -258,7 +264,7 @@ def calc_primaries_and_white(spd):
     """
     spd, cmfs, illuminant = trim_and_interpolate_in_advance(
         spd=spd, cmfs=CIE1931_CMFS, illuminant=ILLUMINANT_E,
-        spectral_shape=SpectralShape(380, 780, 1))
+        spectral_shape=SpectralShape(360, 780, 1))
     rgbw_large_xyz = sd_to_XYZ(sd=spd, cmfs=cmfs, illuminant=illuminant)
     rgbw_xyY = XYZ_to_xyY(rgbw_large_xyz)
     # print(rgbw_large_xyz)
@@ -286,9 +292,9 @@ if __name__ == '__main__':
     ymax = 1.0
     # プロット用データ準備
     # ---------------------------------
-    st_wl = 380
-    ed_wl = 780
-    wl_step = 1
+    st_wl = START_WAVELENGTH
+    ed_wl = STOP_WAVELENGTH
+    wl_step = WAVELENGTH_STEP
     plot_wl_list = [
         410, 450, 470, 480, 485, 490, 495,
         500, 505, 510, 520, 530, 540, 550, 560, 570, 580, 590,
