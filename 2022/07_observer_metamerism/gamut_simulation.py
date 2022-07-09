@@ -15,10 +15,11 @@ from PySide2.QtCore import Qt
 from PySide2.QtGui import QPixmap, QImage, QPalette, QColor, QFont
 from matplotlib.backends.backend_qt5agg\
     import FigureCanvasQTAgg as FigureCanvas
-from colour import MultiSpectralDistributions, SpectralShape
+from colour import SpectralShape
 import matplotlib.pyplot as plt
 
 # import my libraries
+import color_space as cs
 import plot_utility as pu
 from spectrum import CIE1931_CMFS, DisplaySpectrum, create_display_sd,\
     START_WAVELENGTH, STOP_WAVELENGTH, WAVELENGTH_STEP
@@ -106,17 +107,124 @@ class DisplaySpectrumDataControl():
         self.ds.update_msd(msd=msd)
 
 
+class ChromaticityDiagramPlotObjects():
+    def __init__(
+            self, dsd_ctrl: DisplaySpectrumDataControl):
+        self.create_objects(dsd_ctrl=dsd_ctrl)
+
+    def create_objects(self, dsd_ctrl):
+        self.mpl_obj = ChromaticityDiagramPlot(dsd_ctrl=dsd_ctrl)
+
+    def get_canvas(self):
+        return self.mpl_obj.get_widget()
+
+
+class ChromaticityDiagramPlot():
+    def __init__(
+            self, dsd_ctrl: DisplaySpectrumDataControl):
+        self.ds = dsd_ctrl.ds
+        rate = 1.0
+        xmin = -0.1
+        xmax = 0.8
+        ymin = -0.1
+        ymax = 1.0
+        st_wl = 380
+        ed_wl = 780
+        wl_step = 1
+        self.cmf_xy = pu.calc_horseshoe_chromaticity(
+            st_wl=st_wl, ed_wl=ed_wl, wl_step=wl_step)
+        self.cmf_xy_norm = pu.calc_normal_pos(
+            xy=self.cmf_xy, normal_len=0.05, angle_degree=90)
+        self.wl_list = np.arange(st_wl, ed_wl + 1, wl_step)
+
+        self.xy_image = pu.get_chromaticity_image(
+            xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, cmf_xy=self.cmf_xy)
+        self.plot_chromaticity_diagram_init(
+            rate=rate, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+
+    def plot_chromaticity_diagram_init(
+            self, rate=1.0, xmin=-0.1, xmax=0.8, ymin=-0.1, ymax=1.0):
+        plot_wl_list = [
+            410, 450, 470, 480, 485, 490, 495,
+            500, 505, 510, 520, 530, 540, 550, 560, 570, 580, 590,
+            600, 620, 690]
+        fig, ax1 = pu.plot_1_graph(
+            fontsize=20 * rate,
+            figsize=((xmax - xmin) * 10 * rate,
+                     (ymax - ymin) * 10 * rate),
+            graph_title="CIE1931 Chromaticity Diagram",
+            graph_title_size=None,
+            xlabel=None, ylabel=None,
+            axis_label_size=None,
+            legend_size=14 * rate,
+            xlim=(xmin, xmax),
+            ylim=(ymin, ymax),
+            xtick=[x * 0.1 + xmin for x in
+                   range(int((xmax - xmin)/0.1) + 1)],
+            ytick=[x * 0.1 + ymin for x in
+                   range(int((ymax - ymin)/0.1) + 1)],
+            xtick_size=17 * rate,
+            ytick_size=17 * rate,
+            linewidth=4 * rate,
+            minor_xtick_num=2,
+            minor_ytick_num=2)
+        ax1.plot(
+            self.cmf_xy[..., 0], self.cmf_xy[..., 1], '-k', lw=2*rate,
+            label=None)
+        for idx, wl in enumerate(self.wl_list):
+            if wl not in plot_wl_list:
+                continue
+            pu.draw_wl_annotation(
+                ax1=ax1, wl=wl, rate=rate,
+                st_pos=[self.cmf_xy_norm[idx, 0], self.cmf_xy_norm[idx, 1]],
+                ed_pos=[self.cmf_xy[idx, 0], self.cmf_xy[idx, 1]])
+        bt709_gamut = pu.get_primaries(name=cs.BT709)
+        ax1.plot(bt709_gamut[:, 0], bt709_gamut[:, 1],
+                 c=pu.RED, label="BT.709", lw=2.75*rate)
+        bt2020_gamut = pu.get_primaries(name=cs.BT2020)
+        ax1.plot(bt2020_gamut[:, 0], bt2020_gamut[:, 1],
+                 c=pu.GREEN, label="BT.2020", lw=2.75*rate)
+        dci_p3_gamut = pu.get_primaries(name=cs.P3_D65)
+        ax1.plot(dci_p3_gamut[:, 0], dci_p3_gamut[:, 1],
+                 c=pu.BLUE, label="DCI-P3", lw=2.75*rate)
+        primaries = self.ds.primaries
+        white = self.ds.white
+        self.primaries_line, = ax1.plot(
+            primaries[:, 0], primaries[:, 1],
+            c='k', label="Display Gamut", lw=2.75*rate)
+        ax1.plot(
+            [0.3127], [0.3290], 'o', label='D65', ms=14*rate,
+            color=[0.7, 0.7, 0.7], alpha=1.0)
+        ax1.plot(
+            white[0], white[1], 'x', label='Display White',
+            ms=12*rate, mew=2*rate, color='k')
+        ax1.imshow(self.xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
+        plt.legend(loc='upper right')
+        self.canvas = FigureCanvas(fig)
+
+    def update_plot(self):
+        primaries = self.ds.primaries
+        self.primaries_line.set_data(primaries[:, 0], primaries[:, 1])
+        self.canvas.draw()
+        # self.primaries_line.figure.canvas.draw()
+
+    def get_widget(self):
+        return self.canvas
+
+
 class EventControl():
     def __init__(self) -> None:
         pass
 
     def set_display_sd_slider_event(
             self, dsd_crtl: DisplaySpectrumDataControl,
-            spd_objects: SpdPlotObjects):
+            spd_objects: SpdPlotObjects,
+            chromaticity_objects: ChromaticityDiagramPlotObjects):
 
         self.dsd_ctrl = dsd_crtl
         self.spd_objects = spd_objects
         self.display_sd_canvas = self.spd_objects.display_sd_plot
+        self.chromaticity_diagram_obj = chromaticity_objects.mpl_obj
 
         self.spd_objects.r_mean_slider.set_slot(self.display_sd_slider_event)
         self.spd_objects.g_mean_slider.set_slot(self.display_sd_slider_event)
@@ -140,8 +248,9 @@ class EventControl():
             r_mu=r_mu, r_sigma=r_sigma,
             g_mu=g_mu, g_sigma=g_sigma,
             b_mu=b_mu, b_sigma=b_sigma)
-        
+
         self.display_sd_canvas.update_plot()
+        # self.chromaticity_diagram_obj.update_plot()
 
 
 class WindowColorControl():
@@ -241,7 +350,7 @@ class DisplaySpectrumPlot():
         self.init_plot()
 
     def init_plot(self):
-        self.fig, ax1 = pu.plot_1_graph(
+        self.fig, self.ax1 = pu.plot_1_graph(
             fontsize=14,
             figsize=self.figsize,
             graph_title="Spectral power distribution",
@@ -249,7 +358,7 @@ class DisplaySpectrumPlot():
             xlabel="Wavelength [nm]", ylabel="Relative power",
             axis_label_size=None,
             legend_size=12,
-            xlim=[380, 780],
+            xlim=[360, 730],
             ylim=[-0.05, 2.05],
             xtick=None,
             ytick=None,
@@ -257,30 +366,32 @@ class DisplaySpectrumPlot():
             linewidth=3,
             return_figure=True)
         sd_wavelength = self.dsd.msd.domain
-        self.display_sd_line_r, = ax1.plot(
-            sd_wavelength, self.dsd.msd.values[..., 0], '-',
-            color=pu.RED, label="Display (R)", lw=2)
-        self.display_sd_line_g, = ax1.plot(
-            sd_wavelength, self.dsd.msd.values[..., 1], '-',
-            color=pu.GREEN, label="Display (G)", lw=2)
-        self.display_sd_line_b, = ax1.plot(
-            sd_wavelength, self.dsd.msd.values[..., 2], '-',
-            color=pu.BLUE, label="Display (B)", lw=2)
-        self.display_sd_line_w, = ax1.plot(
+        self.display_sd_line_w, = self.ax1.plot(
             sd_wavelength, self.dsd.msd.values[..., 3], '-',
-            color=(0.1, 0.1, 0.1), label="Display (W=R+G+B)")
-        ax1.plot(
+            color=(0.1, 0.1, 0.1), label="Display (W=R+G+B)", lw=5)
+        self.display_sd_line_r, = self.ax1.plot(
+            sd_wavelength, self.dsd.msd.values[..., 0], '-',
+            color=pu.RED, label="Display (R)", lw=1.5)
+        self.display_sd_line_g, = self.ax1.plot(
+            sd_wavelength, self.dsd.msd.values[..., 1], '-',
+            color=pu.GREEN, label="Display (G)", lw=1.5)
+        self.display_sd_line_b, = self.ax1.plot(
+            sd_wavelength, self.dsd.msd.values[..., 2], '-',
+            color=pu.SKY, label="Display (B)", lw=1.5)
+        self.ax1.plot(
             self.cmfs.wavelengths, self.cmfs.values[..., 0], '--',
             color=pu.RED, label="CIE 1931 2 CMF(R)", lw=1)
-        ax1.plot(
+        self.ax1.plot(
             self.cmfs.wavelengths, self.cmfs.values[..., 1], '--',
             color=pu.GREEN, label="CIE 1931 2 CMF(G)", lw=1)
-        ax1.plot(
+        self.ax1.plot(
             self.cmfs.wavelengths, self.cmfs.values[..., 2], '--',
             color=pu.BLUE, label="CIE 1931 2 CMF(B)", lw=1)
 
         plt.legend(loc='upper right')
         self.canvas = FigureCanvas(self.fig)
+        self.canvas.draw()
+        self.background = self.fig.canvas.copy_from_bbox(self.ax1.bbox)
 
     def update_plot(self):
         sd_wavelength = self.dsd.msd.domain
@@ -289,11 +400,16 @@ class DisplaySpectrumPlot():
             [self.display_sd_line_g, self.dsd.msd.values[..., 1]],
             [self.display_sd_line_b, self.dsd.msd.values[..., 2]],
             [self.display_sd_line_w, self.dsd.msd.values[..., 3]]]
+        self.fig.canvas.restore_region(self.background)
         for update_info in update_list:
             display_sd_line_obj = update_info[0]
             display_sd_data = update_info[1]
+
             display_sd_line_obj.set_data(sd_wavelength, display_sd_data)
-            display_sd_line_obj.figure.canvas.draw()
+            self.ax1.draw_artist(display_sd_line_obj)
+        self.fig.canvas.blit(self.ax1.bbox)
+
+            # display_sd_line_obj.figure.canvas.draw()
 
     def get_widget(self):
         return self.canvas
@@ -307,6 +423,7 @@ class LayoutControl():
 
     def set_mpl_layout(
             self, spd_objcts: SpdPlotObjects,
+            chromaticity_objects: ChromaticityDiagramPlotObjects
             # canvas,
             # chromaticity_diagram_canvas,
             # r_mean_label, g_mean_label, b_mean_label,
@@ -363,20 +480,20 @@ class LayoutControl():
         # cie_dxy_layout.addWidget(cie1931_dx_label.get_widget())
         # cie_dxy_layout.addWidget(cie1931_dy_label.get_widget())
 
-        # chroma_diagram_layout = QVBoxLayout()
-        # chroma_diagram_layout.addWidget(
-        #     chromaticity_diagram_canvas.get_widget())
+        chroma_diagram_layout = QVBoxLayout()
+        chroma_diagram_layout.addWidget(
+            chromaticity_objects.get_canvas())
         # chroma_diagram_layout.addLayout(cie_xyY_layout)
         # chroma_diagram_layout.addLayout(cie_dxy_layout)
 
         self.base_layout.addLayout(mpl_layout, 0, 0)
-        # self.base_layout.addLayout(chroma_diagram_layout, 0, 1)
+        self.base_layout.addLayout(chroma_diagram_layout, 0, 1)
 
 
 class MyWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.resize(1280, 720)
+        self.resize(1920, 1080)
 
         # background color
         window_color = WindowColorControl(parent=self)
@@ -386,9 +503,14 @@ class MyWidget(QWidget):
         dsd_ctrl = DisplaySpectrumDataControl()
         spd_objects.create_spectrum_plot_obj(dsd_ctrl=dsd_ctrl)
 
+        chromaticity_diagram_objects = ChromaticityDiagramPlotObjects(
+            dsd_ctrl=dsd_ctrl)
+
         # layout
         layout = LayoutControl(self)
-        layout.set_mpl_layout(spd_objcts=spd_objects)
+        layout.set_mpl_layout(
+            spd_objcts=spd_objects,
+            chromaticity_objects=chromaticity_diagram_objects)
 
         # set slot
         self.event_control = EventControl()
@@ -396,7 +518,8 @@ class MyWidget(QWidget):
         #     white_slider=white_slider, white_label=white_label,
         #     spectrum_plot=spectrum_plot, patch_img=color_checkr_img)
         self.event_control.set_display_sd_slider_event(
-            dsd_crtl=dsd_ctrl, spd_objects=spd_objects)
+            dsd_crtl=dsd_ctrl, spd_objects=spd_objects,
+            chromaticity_objects=chromaticity_diagram_objects)
 
 
 def main_func():
