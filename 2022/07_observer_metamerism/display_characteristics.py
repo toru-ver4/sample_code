@@ -93,7 +93,7 @@ def plot_each_color(
 
 
 def plot_b_display_spectral_distribution():
-    spd = load_display_spd(fname="./spd_measure_data/rgbw_spd_3.csv")
+    spd = load_display_spd(fname="./spd_measure_data/rgbw_spd_a_360_780.csv")
     wl = spd[..., 0]
     val_list = np.linspace(0, 1, 5)[1:]
     fig, ax1 = pu.plot_1_graph(
@@ -128,7 +128,7 @@ def plot_b_display_spectral_distribution():
         color='k', val_list=val_list, linestyle='--',
         linewidth=1.5)
     pu.show_and_save(
-        fig=fig, legend_loc='upper right', save_fname="./figure/e_spd.png")
+        fig=fig, legend_loc='upper right', save_fname="./figure/a_spd.png")
 
 
 def plot_sun_glass_sd():
@@ -362,13 +362,13 @@ def debug_normal_plot():
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_measure_patch()
-    # plot_b_display_spectral_distribution()
+    plot_b_display_spectral_distribution()
     # plot_sun_glass_sd()
     # modify_b_display_spd()
-    calc_display_white_point(
-        display_spd_data_fname="./ref_data/ref_display_spd.csv",
-        spectral_shape=SpectralShape(360, 780, 1),
-        cmfs=CIE1931_CMFS)
+    # calc_display_white_point(
+    #     display_spd_data_fname="./ref_data/ref_display_spd.csv",
+    #     spectral_shape=SpectralShape(360, 780, 1),
+    #     cmfs=CIE1931_CMFS)
 
     # display_spd_data_fname = "./ref_data/ref_display_spd.csv"
     # spd = prepare_display_spd(fname=display_spd_data_fname)

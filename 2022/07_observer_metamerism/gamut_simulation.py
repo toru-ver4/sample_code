@@ -86,8 +86,8 @@ class SpdPlotObjects():
 class DisplaySpectrumDataControl():
     def __init__(self):
         msd = self.create_display_spectrum_from_slider(
-            r_mu=600, r_sigma=10, g_mu=550, g_sigma=20,
-            b_mu=450, b_sigma=30)
+            r_mu=600, r_sigma=25, g_mu=546, g_sigma=25,
+            b_mu=435, b_sigma=25)
         self.ds = DisplaySpectrum(msd=msd)
 
     def create_display_spectrum_from_slider(
@@ -250,7 +250,7 @@ class EventControl():
             b_mu=b_mu, b_sigma=b_sigma)
 
         self.display_sd_canvas.update_plot()
-        # self.chromaticity_diagram_obj.update_plot()
+        self.chromaticity_diagram_obj.update_plot()
 
 
 class WindowColorControl():
@@ -362,7 +362,9 @@ class DisplaySpectrumPlot():
             ylim=[-0.05, 2.05],
             xtick=None,
             ytick=None,
-            xtick_size=None, ytick_size=None,
+            xtick_size=None,
+            ytick_size=None,
+            minor_xtick_num=5,
             linewidth=3,
             return_figure=True)
         sd_wavelength = self.dsd.msd.domain
@@ -391,7 +393,6 @@ class DisplaySpectrumPlot():
         plt.legend(loc='upper right')
         self.canvas = FigureCanvas(self.fig)
         self.canvas.draw()
-        self.background = self.fig.canvas.copy_from_bbox(self.ax1.bbox)
 
     def update_plot(self):
         sd_wavelength = self.dsd.msd.domain
@@ -400,16 +401,13 @@ class DisplaySpectrumPlot():
             [self.display_sd_line_g, self.dsd.msd.values[..., 1]],
             [self.display_sd_line_b, self.dsd.msd.values[..., 2]],
             [self.display_sd_line_w, self.dsd.msd.values[..., 3]]]
-        self.fig.canvas.restore_region(self.background)
         for update_info in update_list:
             display_sd_line_obj = update_info[0]
             display_sd_data = update_info[1]
 
             display_sd_line_obj.set_data(sd_wavelength, display_sd_data)
             self.ax1.draw_artist(display_sd_line_obj)
-        self.fig.canvas.blit(self.ax1.bbox)
-
-            # display_sd_line_obj.figure.canvas.draw()
+        self.canvas.draw()
 
     def get_widget(self):
         return self.canvas
@@ -417,31 +415,18 @@ class DisplaySpectrumPlot():
 
 class LayoutControl():
     def __init__(self, parent) -> None:
-        # self.base_layout = QHBoxLayout(parent)
         self.base_layout = QGridLayout()
         parent.setLayout(self.base_layout)
 
     def set_mpl_layout(
             self, spd_objcts: SpdPlotObjects,
-            chromaticity_objects: ChromaticityDiagramPlotObjects
-            # canvas,
-            # chromaticity_diagram_canvas,
-            # r_mean_label, g_mean_label, b_mean_label,
-            # r_dist_label, g_dist_label, b_dist_label,
-            # r_mean_slider, g_mean_slider, b_mean_slider,
-            # r_dist_slider, g_dist_slider, b_dist_slider,
-            # color_temp_slider, color_temp_label,
-            # cie1931_xyY_label, cie2012_xyY_label,
-            # cie1931_dx_label, cie1931_dy_label
-            ):
+            chromaticity_objects: ChromaticityDiagramPlotObjects):
         r_mu_layout = QHBoxLayout()
         r_sigma_layout = QHBoxLayout()
         g_mu_layout = QHBoxLayout()
         g_sigma_layout = QHBoxLayout()
         b_mu_layout = QHBoxLayout()
         b_sigma_layout = QHBoxLayout()
-
-        # color_temp_layout = QHBoxLayout()
 
         r_mu_layout.addWidget(spd_objcts.r_mean_label.get_widget())
         r_mu_layout.addWidget(spd_objcts.r_mean_slider.get_widget())
@@ -458,9 +443,6 @@ class LayoutControl():
         b_sigma_layout.addWidget(spd_objcts.b_dist_label.get_widget())
         b_sigma_layout.addWidget(spd_objcts.b_dist_slider.get_widget())
 
-        # color_temp_layout.addWidget(color_temp_label.get_widget())
-        # color_temp_layout.addWidget(color_temp_slider.get_widget())
-
         mpl_layout = QVBoxLayout()
         canvas = spd_objcts.display_sd_plot
         mpl_layout.addWidget(canvas.get_widget())
@@ -471,20 +453,9 @@ class LayoutControl():
         mpl_layout.addLayout(b_mu_layout)
         mpl_layout.addLayout(b_sigma_layout)
 
-        # mpl_layout.addLayout(color_temp_layout)
-
-        # cie_xyY_layout = QHBoxLayout()
-        # cie_xyY_layout.addWidget(cie1931_xyY_label.get_widget())
-        # cie_xyY_layout.addWidget(cie2012_xyY_label.get_widget())
-        # cie_dxy_layout = QHBoxLayout()
-        # cie_dxy_layout.addWidget(cie1931_dx_label.get_widget())
-        # cie_dxy_layout.addWidget(cie1931_dy_label.get_widget())
-
         chroma_diagram_layout = QVBoxLayout()
         chroma_diagram_layout.addWidget(
             chromaticity_objects.get_canvas())
-        # chroma_diagram_layout.addLayout(cie_xyY_layout)
-        # chroma_diagram_layout.addLayout(cie_dxy_layout)
 
         self.base_layout.addLayout(mpl_layout, 0, 0)
         self.base_layout.addLayout(chroma_diagram_layout, 0, 1)
@@ -514,9 +485,6 @@ class MyWidget(QWidget):
 
         # set slot
         self.event_control = EventControl()
-        # self.event_control.set_white_slider_event(
-        #     white_slider=white_slider, white_label=white_label,
-        #     spectrum_plot=spectrum_plot, patch_img=color_checkr_img)
         self.event_control.set_display_sd_slider_event(
             dsd_crtl=dsd_ctrl, spd_objects=spd_objects,
             chromaticity_objects=chromaticity_diagram_objects)
