@@ -167,9 +167,9 @@ def create_display_sd(
     """
     Create display spectral distributions using normal distribution.
     """
-    st_wl = 380
-    ed_wl = 780
-    wl_step = 1
+    st_wl = START_WAVELENGTH
+    ed_wl = STOP_WAVELENGTH
+    wl_step = WAVELENGTH_STEP
     x = np.arange(st_wl, ed_wl+wl_step, wl_step)
 
     rr = norm.pdf(x, loc=r_mu, scale=r_sigma)
@@ -322,6 +322,3 @@ if __name__ == '__main__':
     # print(primaries)
     # print(white_xyY)
     ds = DisplaySpectrum(msd=msd)
-
-    rgb_gain = generate_color_checker_rgb_value()
-    print(rgb_gain)
