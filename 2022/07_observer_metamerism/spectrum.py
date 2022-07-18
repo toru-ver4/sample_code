@@ -10,7 +10,8 @@ from cv2 import illuminationChange
 import numpy as np
 from scipy.stats import norm
 from colour import MultiSpectralDistributions, SpectralShape, MSDS_CMFS,\
-    SDS_ILLUMINANTS, sd_to_XYZ, xy_to_XYZ, XYZ_to_xyY
+    SDS_ILLUMINANTS, sd_to_XYZ, xy_to_XYZ, XYZ_to_xyY,\
+    Oklab_to_XYZ, XYZ_to_Oklab
 from colour.continuous import MultiSignals
 from colour.utilities import tstack
 from scipy import linalg
@@ -314,11 +315,55 @@ class DisplaySpectrum():
         return gained_msd
 
 
+def wavelength_to_color(wl, chroma_rate=1.0):
+    """
+    Parameters
+    ----------
+    wl : ndarray
+        Wavelengths.
+    chroma_rate : float
+        A coefficient to desaturate
+
+    Examples
+    --------
+    """
+    spectral_shape = SpectralShape(
+        START_WAVELENGTH, STOP_WAVELENGTH, WAVELENGTH_STEP)
+    value = np.zeros((len(wl), len(wl)))
+    for idx in range(len(wl)):
+        value[idx, idx] = 1
+    signal = MultiSignals(data=value, domain=wl)
+    sd = MultiSpectralDistributions(data=signal)
+
+    sd, cmfs, illuminant = trim_and_interpolate_in_advance(
+        spd=sd, cmfs=CIE1931_CMFS, illuminant=ILLUMINANT_E,
+        spectral_shape=spectral_shape)
+    large_xyz = sd_to_XYZ(sd=sd, cmfs=cmfs, illuminant=illuminant)
+    rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
+
+    # It is very bad process.
+    # I should do gamut comporession instead of `rgb[rgb <= 0] = 0`
+    rgb[rgb <= 0] = 0
+
+    normalize_coef = np.max(rgb, axis=-1).reshape(-1, 1)
+    rgb = rgb / normalize_coef
+
+    # desaturation
+    large_xyz = cs.rgb_to_large_xyz(rgb, cs.BT709)
+    oklab = XYZ_to_Oklab(large_xyz)
+    oklab[..., 1:] = oklab[..., 1:] * chroma_rate
+    large_xyz = Oklab_to_XYZ(oklab)
+    rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
+    rgb = np.clip(rgb, 0.0, 1.0)
+
+    return rgb
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    msd = create_display_sd(
-        r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8)
+    # msd = create_display_sd(
+        # r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8)
     # primaries, white_xyY = calc_primaries_and_white(spd=msd)
     # print(primaries)
     # print(white_xyY)
-    ds = DisplaySpectrum(msd=msd)
+    # ds = DisplaySpectrum(msd=msd)

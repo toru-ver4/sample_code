@@ -201,3 +201,4 @@ temporary/**/**
 2022/06_interlaced_display/videos/*.mov
 2022/07_observer_metamerism/img_measure_patch/*.png
 2022/07_observer_metamerism/debug/**
+2022/07_observer_metamerism/shoot_data/**

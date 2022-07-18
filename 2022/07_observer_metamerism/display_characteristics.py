@@ -18,7 +18,9 @@ from scipy import linalg
 import font_control2 as fc2
 import plot_utility as pu
 import color_space as cs
-from spectrum import trim_and_interpolate_in_advance
+from spectrum import trim_and_interpolate_in_advance, wavelength_to_color,\
+    START_WAVELENGTH, STOP_WAVELENGTH, WAVELENGTH_STEP
+import test_pattern_generator2 as tpg
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -359,10 +361,102 @@ def debug_normal_plot():
         fig=fig, legend_loc='upper left', save_fname="./figure/circle.png")
 
 
+def create_display_measure_patch_for_1st_example():
+    width = 640
+    height = 640
+    color_list = np.array([
+        [1, 0, 0], [0, 1, 0], [0, 0, 1],
+        [1.0, 0.5, 0.25], [0.25, 1.0, 0.5], [0.5, 0.25, 1.0],
+        [1.0, 1.0, 1.0], [0.5, 0.5, 0.5], [0.25, 0.25, 0.25]])
+    for cc in color_list:
+        print(f"{cc[0]:.3f}, {cc[1]:.3f}, {cc[2]:.3f}")
+
+    for idx, cc in enumerate(color_list):
+        img = np.ones((height, width, 3)) * cc
+
+        text = f" (R, G, B) = ({cc[0]:.3f}, {cc[1]:.3f}, {cc[2]:.3f})"
+        text_draw_ctrl = fc2.TextDrawControl(
+            text=text, font_color=[0.2, 0.2, 0.2],
+            font_size=30, font_path=fc2.NOTO_SANS_CJKJP_MEDIUM,
+            stroke_width=3, stroke_fill=[0, 0, 0])
+
+        # calc position
+        _, text_height = text_draw_ctrl.get_text_width_height()
+        pos_h = 0
+        pos_v = text_height // 2
+        pos = (pos_h, pos_v)
+
+        text_draw_ctrl.draw(img=img, pos=pos)
+
+        fname = f"./img_measure_patch/ex_1st_{idx:02d}.png"
+        print(fname)
+        tpg.img_wirte_float_as_16bit_int(fname, img ** (1/2.4))
+        # write_image(img ** (1/2.4), fname, 'uint16')
+
+
+def crop_display_patch_shoot_data():
+    st_h = 2882
+    st_v = 1581
+    width_h = 208
+    width_v = 208
+    ed_h = st_h + width_h
+    ed_v = st_v + width_v
+    for idx in range(9):
+        fname_in = f"./shoot_data/1st_{idx:02d}_result.JPG"
+        fname_out = f"./figure/sub_pixel_crop_{idx:02d}.png"
+        print(fname_in)
+        img = tpg.img_read_as_float(fname_in)
+        crop_img = img[st_v:ed_v, st_h:ed_h]
+        print(fname_out)
+        tpg.img_wirte_float_as_16bit_int(fname_out, crop_img)
+
+
+def plot_display_measure_patch_for_1st_example():
+    wl_st = START_WAVELENGTH
+    wl_ed = STOP_WAVELENGTH
+    wl_step = 5
+    wl = np.arange(wl_st, wl_ed + wl_step, wl_step)
+    chroma_rate_list = np.arange(0, 110, 10) / 100
+    rgb_list = []
+    for chroma_rate in chroma_rate_list:
+        rgb = wavelength_to_color(wl=wl, chroma_rate=chroma_rate) ** (1/2.4)
+        rgb_list.append(rgb)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Wavelength to color",
+        graph_title_size=None,
+        xlabel="Wavelength [nm]",
+        ylabel="Chroma rate (for desaturation)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    for rgb, chroma_rate in zip(rgb_list, chroma_rate_list):
+        ax1.scatter(wl, np.ones_like(wl) * chroma_rate, s=40, c=rgb)
+    ax1.grid(False)
+    # ax1.plot(
+    #     wl, np.ones_like(wl) * 0.75, 'o', color=rgb_cr075,
+    #     label="chroma_rate=0.75")
+    # ax1.plot(
+    #     wl, np.ones_like(wl) * 0.5, 'o', color=rgb_cr050,
+    #     label="chroma_rate=0.50")
+    pu.show_and_save(
+        fig=fig, legend_loc=None, save_fname="./figure/wl_color.png")
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_measure_patch()
-    plot_b_display_spectral_distribution()
+    # plot_b_display_spectral_distribution()
     # plot_sun_glass_sd()
     # modify_b_display_spd()
     # calc_display_white_point(
@@ -378,4 +472,8 @@ if __name__ == '__main__':
     # calc_normal_param_each_point()
     # calc_normal_pos()
     # debug_normal_plot()
+
+    # create_display_measure_patch_for_1st_example()
+    # crop_display_patch_shoot_data()
+    plot_display_measure_patch_for_1st_example()
     pass

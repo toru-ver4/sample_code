@@ -4,6 +4,7 @@
 
 # import standard libraries
 import os
+from turtle import width
 import requests
 
 # import third-party libraries
@@ -12,11 +13,13 @@ from colour.continuous import MultiSignals
 from colour import sd_to_XYZ, MultiSpectralDistributions, MSDS_CMFS,\
     SDS_ILLUMINANTS, SpectralShape
 from colour.algebra import vector_dot
+from colour.utilities import tstack
 
 # import my libraries
 import test_pattern_generator2 as tpg
 import transfer_functions as tf
 import color_space as cs
+import plot_utility as pu
 from spectrum import DisplaySpectrum, create_display_sd,\
     CIE1931_CMFS, CIE2012_CMFS, ILLUMINANT_E, START_WAVELENGTH,\
     STOP_WAVELENGTH, WAVELENGTH_STEP
@@ -213,38 +216,150 @@ def debug_calc_msd_from_rgb_gain(
     # print(rgb_gain)
 
 
+def calc_delta_xyz(xyz1, xyz2):
+    diff_x = xyz1[..., 0] - xyz2[..., 0]
+    diff_y = xyz1[..., 1] - xyz2[..., 1]
+    diff_z = xyz1[..., 2] - xyz2[..., 2]
+
+    delta_xyz = ((diff_x ** 2) + (diff_y ** 2) + (diff_z ** 2)) ** 0.5
+
+    return delta_xyz
+
+
+def debug_plot_color_checker_delta_xyz(
+        ok_xyz, ng_xyz_709, ng_xyz_p3, ng_xyz_2020):
+    delta_709 = calc_delta_xyz(ok_xyz, ng_xyz_709)
+    delta_p3 = calc_delta_xyz(ok_xyz, ng_xyz_p3)
+    delta_2020 = calc_delta_xyz(ok_xyz, ng_xyz_2020)
+
+    # label = [
+    #     "dark skin", "light skin", "blue sky", "foliage", "blue flower",
+    #     "bluish green", "orange", "purplish blue", "moderate red", "purple",
+    #     "yellow green", "orange yellow", "blue", "green", "red", "yellow",
+    #     "magenta", "cyan", "white 9.5", "neutral 8", "neutral 6.5",
+    #     "neutral 5", "neutral 3.5", "black 2"]
+    label = [
+        "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
+        "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24"]
+
+    x = np.arange(24) + 1
+    x_709 = x - 0.25
+    x_p3 = x + 0.0
+    x_2020 = x + 0.25
+
+    fig, ax1 = pu.plot_1_graph()
+    ax1.bar(
+        x_709, delta_709, width=0.25, color=pu.RED,
+        align="center", label="BT.709")
+    ax1.bar(
+        x_p3, delta_p3, width=0.25, color=pu.GREEN,
+        align="center", label="DCI-P3")
+    ax1.bar(
+        x_2020, delta_2020, width=0.25, color=pu.BLUE,
+        align="center", label="BT.2020")
+
+    ax1.set_xticks(x, label)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', save_fname="./figure/delta_xyz.png")
+
+
+def load_2deg_151_cmfs():
+    fname_x = "./ref_data/RIT_MCSL_CMFs_151_02deg_x.csv"
+    fname_y = "./ref_data/RIT_MCSL_CMFs_151_02deg_y.csv"
+    fname_z = "./ref_data/RIT_MCSL_CMFs_151_02deg_z.csv"
+
+    xx_base = np.loadtxt(fname=fname_x, delimiter=',')
+    domain = xx_base[..., 0]
+    xx = xx_base[..., 1:]
+    yy = np.loadtxt(fname=fname_y, delimiter=',')[..., 1:]
+    zz = np.loadtxt(fname=fname_z, delimiter=',')[..., 1:]
+
+    num_of_cmfs = xx.shape[1]
+
+    cmfs_array_151 = []
+
+    for cmfs_idx in range(num_of_cmfs):
+        sd = tstack([xx[..., cmfs_idx], yy[..., cmfs_idx], zz[..., cmfs_idx]])
+        signals = MultiSignals(data=sd, domain=domain)
+        sds = MultiSpectralDistributions(data=signals)
+        cmfs_array_151.append(sds)
+
+    return cmfs_array_151
+
+
+def debug_plot_151_cmfs():
+    cmfs_array = load_2deg_151_cmfs()
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="151 color-normal human cmfs",
+        graph_title_size=None,
+        xlabel="Wavelength [nm]",
+        ylabel="Tristimulus Values",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=1,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    for cmfs in cmfs_array:
+        ax1.plot(
+            cmfs.wavelengths, cmfs.values[..., 0], '-',
+            color=pu.RED, alpha=1/5)
+        ax1.plot(
+            cmfs.wavelengths, cmfs.values[..., 1], '-',
+            color=pu.GREEN, alpha=1/5)
+        ax1.plot(
+            cmfs.wavelengths, cmfs.values[..., 2], '-',
+            color=pu.BLUE, alpha=1/5)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', save_fname="./figure/cmfs_151.png")
+
+
 def debug_func():
     # debug_numpy_mult_check()
-    bt709_msd = create_display_sd(
-        r_mu=649, r_sigma=35, g_mu=539, g_sigma=33, b_mu=460, b_sigma=13,
-        normalize_y=True)
-    p3_msd = create_display_sd(
-        r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8,
-        normalize_y=True)
-    bt2020_msd = create_display_sd(
-        r_mu=639, r_sigma=3, g_mu=530, g_sigma=4, b_mu=465, b_sigma=4,
-        normalize_y=True)
+    # bt709_msd = create_display_sd(
+    #     r_mu=649, r_sigma=35, g_mu=539, g_sigma=33, b_mu=460, b_sigma=13,
+    #     normalize_y=True)
+    # p3_msd = create_display_sd(
+    #     r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8,
+    #     normalize_y=True)
+    # bt2020_msd = create_display_sd(
+    #     r_mu=639, r_sigma=3, g_mu=530, g_sigma=4, b_mu=465, b_sigma=4,
+    #     normalize_y=True)
 
-    ok_xyz, ng_xyz =\
-        calc_mismatch_large_xyz_using_two_cmfs(
-            msd=bt709_msd, cmfs2=CIE2012_CMFS)
-    draw_mismatch_cmfs2_color_checker_image(
-        large_xyz=ok_xyz, mismatch_large_xyz=ng_xyz,
-        fname="./figure/bt709_2012_cc.png")
+    # ok_xyz, ng_xyz_709 =\
+    #     calc_mismatch_large_xyz_using_two_cmfs(
+    #         msd=bt709_msd, cmfs2=CIE2012_CMFS)
+    # draw_mismatch_cmfs2_color_checker_image(
+    #     large_xyz=ok_xyz, mismatch_large_xyz=ng_xyz_709,
+    #     fname="./figure/bt709_2012_cc.png")
 
-    ok_xyz, ng_xyz =\
-        calc_mismatch_large_xyz_using_two_cmfs(
-            msd=p3_msd, cmfs2=CIE2012_CMFS)
-    draw_mismatch_cmfs2_color_checker_image(
-        large_xyz=ok_xyz, mismatch_large_xyz=ng_xyz,
-        fname="./figure/p3_2012_cc.png")
+    # ok_xyz, ng_xyz_p3 =\
+    #     calc_mismatch_large_xyz_using_two_cmfs(
+    #         msd=p3_msd, cmfs2=CIE2012_CMFS)
+    # draw_mismatch_cmfs2_color_checker_image(
+    #     large_xyz=ok_xyz, mismatch_large_xyz=ng_xyz_p3,
+    #     fname="./figure/p3_2012_cc.png")
 
-    ok_xyz, ng_xyz =\
-        calc_mismatch_large_xyz_using_two_cmfs(
-            msd=bt2020_msd, cmfs2=CIE2012_CMFS)
-    draw_mismatch_cmfs2_color_checker_image(
-        large_xyz=ok_xyz, mismatch_large_xyz=ng_xyz,
-        fname="./figure/bt2020_2012_cc.png")
+    # ok_xyz, ng_xyz_2020 =\
+    #     calc_mismatch_large_xyz_using_two_cmfs(
+    #         msd=bt2020_msd, cmfs2=CIE2012_CMFS)
+    # draw_mismatch_cmfs2_color_checker_image(
+    #     large_xyz=ok_xyz, mismatch_large_xyz=ng_xyz_2020,
+    #     fname="./figure/bt2020_2012_cc.png")
+
+    # debug_plot_color_checker_delta_xyz(
+    #     ok_xyz=ok_xyz, ng_xyz_709=ng_xyz_709,
+    #     ng_xyz_p3=ng_xyz_p3, ng_xyz_2020=ng_xyz_2020)
+
+    debug_plot_151_cmfs()
 
 
 if __name__ == '__main__':
