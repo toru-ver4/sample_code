@@ -373,6 +373,9 @@ def create_display_measure_patch_for_1st_example():
 
     for idx, cc in enumerate(color_list):
         img = np.ones((height, width, 3)) * cc
+        mini_img = img[-208:, -208:]
+        fname_mini = f"./img_measure_patch/mini_ex_1st_{idx:02d}.png"
+        tpg.img_wirte_float_as_16bit_int(fname_mini, mini_img ** (1/2.4))
 
         text = f" (R, G, B) = ({cc[0]:.3f}, {cc[1]:.3f}, {cc[2]:.3f})"
         text_draw_ctrl = fc2.TextDrawControl(
@@ -411,15 +414,17 @@ def crop_display_patch_shoot_data():
         tpg.img_wirte_float_as_16bit_int(fname_out, crop_img)
 
 
-def plot_display_measure_patch_for_1st_example():
+def plot_wl_to_color_with_chroma_rate():
     wl_st = START_WAVELENGTH
     wl_ed = STOP_WAVELENGTH
-    wl_step = 5
+    wl_step = 1
     wl = np.arange(wl_st, wl_ed + wl_step, wl_step)
     chroma_rate_list = np.arange(0, 110, 10) / 100
     rgb_list = []
     for chroma_rate in chroma_rate_list:
+        print(f"{chroma_rate} start")
         rgb = wavelength_to_color(wl=wl, chroma_rate=chroma_rate) ** (1/2.4)
+        print(f"{chroma_rate} end")
         rgb_list.append(rgb)
 
     fig, ax1 = pu.plot_1_graph(
@@ -453,6 +458,365 @@ def plot_display_measure_patch_for_1st_example():
         fig=fig, legend_loc=None, save_fname="./figure/wl_color.png")
 
 
+def plot_measured_1st_example_spectrum():
+    sd_file = "./spd_measure_data/display_ex1st_00-08.csv"
+    sd_data_all = np.loadtxt(sd_file, delimiter=',')
+    wl = sd_data_all[..., 0]
+    intp_step = 0.1
+    wl_intp = np.arange(wl[0], wl[-1] + intp_step, intp_step)
+    print(wl_intp)
+    data = sd_data_all[..., 1:] / 0xFFFF
+    rgb = wavelength_to_color(wl=wl, chroma_rate=0.8) ** (1/2.4)
+    rgb_intp = np.zeros((len(wl_intp), 3))
+    for idx in range(3):
+        rgb_intp[..., idx] = np.interp(wl_intp, wl, rgb[..., idx])
+
+    for idx in range(data.shape[1]):
+        fig, ax1 = pu.plot_1_graph(
+            fontsize=20,
+            figsize=(10, 8),
+            bg_color=(0.6, 0.6, 0.6),
+            graph_title="Spectral distribution",
+            graph_title_size=None,
+            xlabel="Wavelength [nm]",
+            ylabel="Relative power",
+            axis_label_size=None,
+            legend_size=17,
+            xlim=None,
+            ylim=[-0.03, 0.825],
+            xtick=None,
+            ytick=None,
+            xtick_size=None, ytick_size=None,
+            linewidth=3,
+            minor_xtick_num=None,
+            minor_ytick_num=None)
+        # print(f"wl shape = {wl.shape}")
+        # print(f"data shape = {data[idx].shape}")
+        x_intp = wl_intp
+        y_intp = np.interp(x_intp, wl, data[..., idx])
+        ax1.scatter(x_intp, y_intp, s=20, c=rgb_intp)
+        fname = f"./figure/1st_example_sd_{idx:02d}.png"
+        print(fname)
+        pu.show_and_save(fig=fig, legend_loc=None, save_fname=fname)
+
+
+def plot_measured_1st_example_spectrum_mini_size():
+    sd_file = "./spd_measure_data/display_ex1st_00-08.csv"
+    sd_data_all = np.loadtxt(sd_file, delimiter=',')
+    wl = sd_data_all[..., 0]
+    intp_step = 0.1
+    wl_intp = np.arange(wl[0], wl[-1] + intp_step, intp_step)
+    print(wl_intp)
+    data = sd_data_all[..., 1:] / 0xFFFF
+    rgb = wavelength_to_color(wl=wl, chroma_rate=0.8) ** (1/2.4)
+    rgb_intp = np.zeros((len(wl_intp), 3))
+    for idx in range(3):
+        rgb_intp[..., idx] = np.interp(wl_intp, wl, rgb[..., idx])
+
+    for idx in range(data.shape[1]):
+        fig, ax1 = pu.plot_1_graph(
+            fontsize=8,
+            figsize=(208*2/100, 208*1.5/100),
+            bg_color=(0.6, 0.6, 0.6),
+            graph_title=None,
+            graph_title_size=None,
+            xlabel=None,
+            ylabel=None,
+            axis_label_size=None,
+            legend_size=8,
+            xlim=None,
+            ylim=[-0.03, 0.825],
+            xtick=None,
+            ytick=None,
+            xtick_size=None, ytick_size=None,
+            linewidth=3,
+            minor_xtick_num=None,
+            minor_ytick_num=None)
+        # print(f"wl shape = {wl.shape}")
+        # print(f"data shape = {data[idx].shape}")
+        x_intp = wl_intp
+        y_intp = np.interp(x_intp, wl, data[..., idx])
+        ax1.scatter(x_intp, y_intp, s=10, c=rgb_intp)
+        fname = f"./figure/mini_1st_example_sd_{idx:02d}.png"
+        print(fname)
+        pu.show_and_save(fig=fig, legend_loc=None, save_fname=fname)
+
+
+def plot_measured_1st_example_spectrum_mini_size_rgb():
+    rgb_list = np.array([
+        [1, 0, 0], [0, 1, 0], [0, 0, 1],
+        [1.0, 0.5, 0.25], [0.25, 1.0, 0.5], [0.5, 0.25, 1.0],
+        [1.0, 1.0, 1.0], [0.5, 0.5, 0.5], [0.25, 0.25, 0.25]])
+    sd_file = "./spd_measure_data/display_ex1st_00-08.csv"
+    sd_data_all = np.loadtxt(sd_file, delimiter=',')
+    wl = sd_data_all[..., 0]
+    intp_step = 0.1
+    wl_intp = np.arange(wl[0], wl[-1] + intp_step, intp_step)
+    print(wl_intp)
+    data = sd_data_all[..., 1:] / 0xFFFF
+    rgb = wavelength_to_color(wl=wl, chroma_rate=0.8) ** (1/2.4)
+    rgb_intp = np.zeros((len(wl_intp), 3))
+    for idx in range(3):
+        rgb_intp[..., idx] = np.interp(wl_intp, wl, rgb[..., idx])
+
+    rr = data[..., 0]
+    gg = data[..., 1]
+    bb = data[..., 2]
+
+    for idx in range(data.shape[1]):
+        fig, ax1 = pu.plot_1_graph(
+            fontsize=8,
+            figsize=(208*2/100, 208*1.5/100),
+            bg_color=(0.6, 0.6, 0.6),
+            graph_title=None,
+            graph_title_size=None,
+            xlabel=None,
+            ylabel=None,
+            axis_label_size=None,
+            legend_size=14,
+            xlim=None,
+            ylim=[-0.03, 0.825],
+            xtick=None,
+            ytick=None,
+            xtick_size=None, ytick_size=None,
+            linewidth=4,
+            minor_xtick_num=None,
+            minor_ytick_num=None)
+        # print(f"wl shape = {wl.shape}")
+        # print(f"data shape = {data[idx].shape}")
+        r_rate = rgb_list[idx, 0]
+        g_rate = rgb_list[idx, 1]
+        b_rate = rgb_list[idx, 2]
+        x_intp = wl_intp
+        y_intp = np.interp(x_intp, wl, data[..., idx])
+        lw = 2
+        ax1.scatter(x_intp, y_intp, s=10, c=rgb_intp)
+        ax1.plot(
+            wl, rr*r_rate, '--', color=pu.RED*0.5, lw=lw,
+            label=f"R * {r_rate:.02f}")
+        ax1.plot(
+            wl, gg*g_rate, ':', color=pu.GREEN*0.5, lw=lw,
+            label=f"G * {g_rate:.02f}")
+        ax1.plot(
+            wl, bb*b_rate, '-.', color=pu.SKY, lw=lw,
+            label=f"B * {b_rate:.02f}")
+        fname = f"./figure/mini_with_spectrum_1st_example_sd_{idx:02d}.png"
+        print(fname)
+        pu.show_and_save(fig=fig, legend_loc='upper right', save_fname=fname)
+
+
+def draw_subpixel_light_explain_unit(
+        h_idx, v_idx, h_unit_num, v_unit_num, rgb_value_list):
+    src_img_size = 208
+    h_border_size = 40
+    v_border_size = 60
+    idx = v_idx * h_unit_num + h_idx
+    patch_name = f"./img_measure_patch/mini_ex_1st_{idx:02d}.png"
+    spx_img_name = f"./figure/sub_pixel_crop_{idx:02d}.png"
+    font_color = [0.5, 0.5, 0.5]
+    font_size = 24
+
+    if h_idx < h_unit_num - 1:
+        width = src_img_size * 2 + h_border_size
+    else:
+        width = src_img_size * 2 + h_border_size * 2
+    if v_idx < v_unit_num - 1:
+        height = src_img_size + v_border_size
+    else:
+        height = src_img_size + v_border_size + h_border_size
+
+    img = np.zeros((height, width, 3))
+    img_patch = tpg.img_read_as_float(patch_name) ** 2.4
+    img_spx = tpg.img_read_as_float(spx_img_name) ** 2.4
+
+    tpg.merge(img, img_patch, (h_border_size, v_border_size))
+    tpg.merge(img, img_spx, (h_border_size + src_img_size, v_border_size))
+
+    rr, gg, bb = rgb_value_list[idx]
+    text_draw_ctrl = fc2.TextDrawControl(
+        text=f"(R, G, B) = ({rr:.2f}, {gg:.2f}, {bb:.2f})",
+        font_color=font_color,
+        font_size=font_size, font_path=fc2.NOTO_SANS_CJKJP_MEDIUM,
+        stroke_width=0, stroke_fill=None)
+    # calc position
+    _, text_height = text_draw_ctrl.get_text_width_height()
+    text_draw_ctrl.draw(
+        img=img, pos=(h_border_size, int(v_border_size-text_height*1.1)))
+
+    return img ** (1/2.4)
+
+
+def draw_subpixel_light_explain_image():
+    h_unit_num = 3
+    v_unit_num = 3
+    rgb_value_list = np.array([
+        [1, 0, 0], [0, 1, 0], [0, 0, 1],
+        [1.0, 0.5, 0.25], [0.25, 1.0, 0.5], [0.5, 0.25, 1.0],
+        [1.0, 1.0, 1.0], [0.5, 0.5, 0.5], [0.25, 0.25, 0.25]])
+
+    v_img_buf = []
+    for v_idx in range(v_unit_num):
+        h_img_buf = []
+        for h_idx in range(h_unit_num):
+            idx = v_idx * h_unit_num + h_idx
+            print(idx)
+            img_temp = draw_subpixel_light_explain_unit(
+                h_idx=h_idx, v_idx=v_idx,
+                h_unit_num=h_unit_num, v_unit_num=v_unit_num,
+                rgb_value_list=rgb_value_list)
+            h_img_buf.append(img_temp)
+        v_img_buf.append(np.hstack(h_img_buf))
+    img = np.vstack(v_img_buf)
+
+    tpg.img_wirte_float_as_16bit_int("./figure/lcd_explain_img.png", img)
+
+
+def draw_subpixel_light_explain_unit_with_spectrum(
+        h_idx, v_idx, h_unit_num, v_unit_num, rgb_value_list):
+    src_img_size = 208
+    h_border_size = 40
+    v_border_size = 80
+    idx = v_idx * h_unit_num + h_idx
+    patch_name = f"./img_measure_patch/mini_ex_1st_{idx:02d}.png"
+    spx_img_name = f"./figure/sub_pixel_crop_{idx:02d}.png"
+    spd_img_name = f"./figure/mini_1st_example_sd_{idx:02d}.png"
+    font_color = [0.5, 0.5, 0.5]
+    font_size = 24
+
+    img_patch = tpg.img_read_as_float(patch_name) ** 2.4
+    img_spx = tpg.img_read_as_float(spx_img_name) ** 2.4
+    img_spectrum = tpg.img_read_as_float(spd_img_name) ** 2.4
+
+    spd_height = img_spectrum.shape[0]
+
+    if h_idx < h_unit_num - 1:
+        width = src_img_size * 2 + h_border_size
+    else:
+        width = src_img_size * 2 + h_border_size * 2
+    if v_idx < v_unit_num - 1:
+        height = src_img_size + v_border_size + spd_height
+    else:
+        height = src_img_size + v_border_size + h_border_size + spd_height
+
+    img = np.zeros((height, width, 3))
+    tpg.merge(img, img_patch, (h_border_size, v_border_size))
+    tpg.merge(img, img_spx, (h_border_size + src_img_size, v_border_size))
+    tpg.merge(
+        img, img_spectrum, (h_border_size, v_border_size+src_img_size))
+
+    rr, gg, bb = rgb_value_list[idx]
+    text_draw_ctrl = fc2.TextDrawControl(
+        text=f"(R, G, B) = ({rr:.2f}, {gg:.2f}, {bb:.2f})",
+        font_color=font_color,
+        font_size=font_size, font_path=fc2.NOTO_SANS_CJKJP_MEDIUM,
+        stroke_width=0, stroke_fill=None)
+    # calc position
+    _, text_height = text_draw_ctrl.get_text_width_height()
+    text_draw_ctrl.draw(
+        img=img, pos=(h_border_size, int(v_border_size-text_height*1.1)))
+
+    return img ** (1/2.4)
+
+
+def draw_subpixel_light_explain_image_with_spectrum():
+    h_unit_num = 3
+    v_unit_num = 3
+    rgb_value_list = np.array([
+        [1, 0, 0], [0, 1, 0], [0, 0, 1],
+        [1.0, 0.5, 0.25], [0.25, 1.0, 0.5], [0.5, 0.25, 1.0],
+        [1.0, 1.0, 1.0], [0.5, 0.5, 0.5], [0.25, 0.25, 0.25]])
+
+    v_img_buf = []
+    for v_idx in range(v_unit_num):
+        h_img_buf = []
+        for h_idx in range(h_unit_num):
+            idx = v_idx * h_unit_num + h_idx
+            print(idx)
+            img_temp = draw_subpixel_light_explain_unit_with_spectrum(
+                h_idx=h_idx, v_idx=v_idx,
+                h_unit_num=h_unit_num, v_unit_num=v_unit_num,
+                rgb_value_list=rgb_value_list)
+            h_img_buf.append(img_temp)
+        v_img_buf.append(np.hstack(h_img_buf))
+    img = np.vstack(v_img_buf)
+
+    tpg.img_wirte_float_as_16bit_int(
+        "./figure/lcd_explain_img_with_spectrum.png", img)
+
+
+def draw_subpixel_light_explain_unit_with_spectrum_with_rgb(
+        h_idx, v_idx, h_unit_num, v_unit_num, rgb_value_list):
+    src_img_size = 208
+    h_border_size = 40
+    v_border_size = 80
+    idx = v_idx * h_unit_num + h_idx
+    patch_name = f"./img_measure_patch/mini_ex_1st_{idx:02d}.png"
+    spx_img_name = f"./figure/sub_pixel_crop_{idx:02d}.png"
+    spd_img_name = f"./figure/mini_with_spectrum_1st_example_sd_{idx:02d}.png"
+    font_color = [0.5, 0.5, 0.5]
+    font_size = 24
+
+    img_patch = tpg.img_read_as_float(patch_name) ** 2.4
+    img_spx = tpg.img_read_as_float(spx_img_name) ** 2.4
+    img_spectrum = tpg.img_read_as_float(spd_img_name) ** 2.4
+
+    spd_height = img_spectrum.shape[0]
+
+    if h_idx < h_unit_num - 1:
+        width = src_img_size * 2 + h_border_size
+    else:
+        width = src_img_size * 2 + h_border_size * 2
+    if v_idx < v_unit_num - 1:
+        height = src_img_size + v_border_size + spd_height
+    else:
+        height = src_img_size + v_border_size + h_border_size + spd_height
+
+    img = np.zeros((height, width, 3))
+    tpg.merge(img, img_patch, (h_border_size, v_border_size))
+    tpg.merge(img, img_spx, (h_border_size + src_img_size, v_border_size))
+    tpg.merge(
+        img, img_spectrum, (h_border_size, v_border_size+src_img_size))
+
+    rr, gg, bb = rgb_value_list[idx]
+    text_draw_ctrl = fc2.TextDrawControl(
+        text=f"(R, G, B) = ({rr:.2f}, {gg:.2f}, {bb:.2f})",
+        font_color=font_color,
+        font_size=font_size, font_path=fc2.NOTO_SANS_CJKJP_MEDIUM,
+        stroke_width=0, stroke_fill=None)
+    # calc position
+    _, text_height = text_draw_ctrl.get_text_width_height()
+    text_draw_ctrl.draw(
+        img=img, pos=(h_border_size, int(v_border_size-text_height*1.1)))
+
+    return img ** (1/2.4)
+
+
+def draw_subpixel_light_explain_image_with_spectrum_with_rgb():
+    h_unit_num = 3
+    v_unit_num = 3
+    rgb_value_list = np.array([
+        [1, 0, 0], [0, 1, 0], [0, 0, 1],
+        [1.0, 0.5, 0.25], [0.25, 1.0, 0.5], [0.5, 0.25, 1.0],
+        [1.0, 1.0, 1.0], [0.5, 0.5, 0.5], [0.25, 0.25, 0.25]])
+
+    v_img_buf = []
+    for v_idx in range(v_unit_num):
+        h_img_buf = []
+        for h_idx in range(h_unit_num):
+            idx = v_idx * h_unit_num + h_idx
+            print(idx)
+            img_temp = draw_subpixel_light_explain_unit_with_spectrum_with_rgb(
+                h_idx=h_idx, v_idx=v_idx,
+                h_unit_num=h_unit_num, v_unit_num=v_unit_num,
+                rgb_value_list=rgb_value_list)
+            h_img_buf.append(img_temp)
+        v_img_buf.append(np.hstack(h_img_buf))
+    img = np.vstack(v_img_buf)
+
+    tpg.img_wirte_float_as_16bit_int(
+        "./figure/lcd_explain_with_rgb_img_with_spectrum.png", img)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_measure_patch()
@@ -475,5 +839,11 @@ if __name__ == '__main__':
 
     # create_display_measure_patch_for_1st_example()
     # crop_display_patch_shoot_data()
-    plot_display_measure_patch_for_1st_example()
+    # plot_wl_to_color_with_chroma_rate()
+    plot_measured_1st_example_spectrum()
+    plot_measured_1st_example_spectrum_mini_size()
+    plot_measured_1st_example_spectrum_mini_size_rgb()
+    draw_subpixel_light_explain_image()
+    draw_subpixel_light_explain_image_with_spectrum()
+    draw_subpixel_light_explain_image_with_spectrum_with_rgb()
     pass

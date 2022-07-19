@@ -324,21 +324,29 @@ def wavelength_to_color(wl, chroma_rate=1.0):
     chroma_rate : float
         A coefficient to desaturate
 
+    Notes
+    -----
+    Output RGB value is interpolated data.
+
     Examples
     --------
+    >>> wl = np.array([450, 550, 600])
+    >>> wavelength_to_color(wl, chroma_rate=1.0)
+    [[  7.83768445e-02   1.94289029e-16   1.00000000e+00]
+     [  0.00000000e+00   1.00000000e+00   5.55111512e-17]
+     [  1.00000000e+00   6.22911512e-02   8.32667268e-17]]
     """
-    spectral_shape = SpectralShape(
-        START_WAVELENGTH, STOP_WAVELENGTH, WAVELENGTH_STEP)
-    value = np.zeros((len(wl), len(wl)))
-    for idx in range(len(wl)):
-        value[idx, idx] = 1
-    signal = MultiSignals(data=value, domain=wl)
+    base_wl = np.arange(360, 835, 5)
+    spectral_shape = SpectralShape(360, 830, 5)
+    value = np.identity(len(base_wl))
+    signal = MultiSignals(data=value, domain=base_wl)
     sd = MultiSpectralDistributions(data=signal)
 
     sd, cmfs, illuminant = trim_and_interpolate_in_advance(
         spd=sd, cmfs=CIE1931_CMFS, illuminant=ILLUMINANT_E,
         spectral_shape=spectral_shape)
-    large_xyz = sd_to_XYZ(sd=sd, cmfs=cmfs, illuminant=illuminant)
+    large_xyz = sd_to_XYZ(
+        sd=sd, cmfs=cmfs, illuminant=illuminant, method="Integration")
     rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
 
     # It is very bad process.
@@ -356,14 +364,19 @@ def wavelength_to_color(wl, chroma_rate=1.0):
     rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
     rgb = np.clip(rgb, 0.0, 1.0)
 
-    return rgb
+    rgb_intp = np.zeros((len(wl), 3))
+    for color_idx in range(3):
+        rgb_intp[..., color_idx] = np.interp(wl, base_wl, rgb[..., color_idx])
+
+    return rgb_intp
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # msd = create_display_sd(
-        # r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8)
+    #     r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8)
     # primaries, white_xyY = calc_primaries_and_white(spd=msd)
     # print(primaries)
     # print(white_xyY)
     # ds = DisplaySpectrum(msd=msd)
+    pass
