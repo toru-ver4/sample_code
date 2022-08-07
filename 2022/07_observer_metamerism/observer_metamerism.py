@@ -264,6 +264,9 @@ def debug_plot_color_checker_delta_xyz(
 
 
 def load_2deg_151_cmfs():
+    """
+    source: https://www.rit.edu/science/sites/rit.edu.science/files/2019-01/MCSL-Observer_Function_Database.pdf
+    """
     fname_x = "./ref_data/RIT_MCSL_CMFs_151_02deg_x.csv"
     fname_y = "./ref_data/RIT_MCSL_CMFs_151_02deg_y.csv"
     fname_z = "./ref_data/RIT_MCSL_CMFs_151_02deg_z.csv"
@@ -285,6 +288,33 @@ def load_2deg_151_cmfs():
         cmfs_array_151.append(sds)
 
     return cmfs_array_151
+
+
+def load_2deg_10_cmfs():
+    """
+    source: https://www.rit.edu/science/sites/rit.edu.science/files/2019-01/MCSL-Observer_Function_Database.pdf
+    """
+    fname_x = "./ref_data/RIT_MSCL_CMFs_10_02deg_x.csv"
+    fname_y = "./ref_data/RIT_MSCL_CMFs_10_02deg_y.csv"
+    fname_z = "./ref_data/RIT_MSCL_CMFs_10_02deg_z.csv"
+
+    xx_base = np.loadtxt(fname=fname_x, delimiter=',')
+    domain = xx_base[..., 0]
+    xx = xx_base[..., 1:]
+    yy = np.loadtxt(fname=fname_y, delimiter=',')[..., 1:]
+    zz = np.loadtxt(fname=fname_z, delimiter=',')[..., 1:]
+
+    num_of_cmfs = xx.shape[1]
+
+    cmfs_array_10 = []
+
+    for cmfs_idx in range(num_of_cmfs):
+        sd = tstack([xx[..., cmfs_idx], yy[..., cmfs_idx], zz[..., cmfs_idx]])
+        signals = MultiSignals(data=sd, domain=domain)
+        sds = MultiSpectralDistributions(data=signals)
+        cmfs_array_10.append(sds)
+
+    return cmfs_array_10
 
 
 def debug_plot_151_cmfs():
@@ -320,6 +350,44 @@ def debug_plot_151_cmfs():
             color=pu.BLUE, alpha=1/5)
     pu.show_and_save(
         fig=fig, legend_loc='upper left', save_fname="./figure/cmfs_151.png")
+
+
+def debug_plot_10_cmfs():
+    cmfs_array = load_2deg_10_cmfs()
+    spectral_shape = SpectralShape(300, 830, 1)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="10 categorical observers (xyz 2 degree)",
+        graph_title_size=None,
+        xlabel="Wavelength [nm]",
+        ylabel="Tristimulus Values",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=1,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    for cmfs in cmfs_array:
+        cmfs = cmfs.extrapolate(spectral_shape)
+        cmfs = cmfs.interpolate(spectral_shape)
+        ax1.plot(
+            cmfs.wavelengths, cmfs.values[..., 0], '-',
+            color=pu.RED, alpha=1/2)
+        ax1.plot(
+            cmfs.wavelengths, cmfs.values[..., 1], '-',
+            color=pu.GREEN, alpha=1/2)
+        ax1.plot(
+            cmfs.wavelengths, cmfs.values[..., 2], '-',
+            color=pu.BLUE, alpha=1/2)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', save_fname="./figure/cmfs_10.png")
 
 
 def debug_func():
@@ -359,7 +427,8 @@ def debug_func():
     #     ok_xyz=ok_xyz, ng_xyz_709=ng_xyz_709,
     #     ng_xyz_p3=ng_xyz_p3, ng_xyz_2020=ng_xyz_2020)
 
-    debug_plot_151_cmfs()
+    # debug_plot_151_cmfs()
+    debug_plot_10_cmfs()
 
 
 if __name__ == '__main__':

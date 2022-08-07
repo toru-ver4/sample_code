@@ -552,7 +552,6 @@ def plot_measured_1st_example_spectrum_mini_size_rgb():
     wl = sd_data_all[..., 0]
     intp_step = 0.1
     wl_intp = np.arange(wl[0], wl[-1] + intp_step, intp_step)
-    print(wl_intp)
     data = sd_data_all[..., 1:] / 0xFFFF
     rgb = wavelength_to_color(wl=wl, chroma_rate=0.8) ** (1/2.4)
     rgb_intp = np.zeros((len(wl_intp), 3))
@@ -567,13 +566,13 @@ def plot_measured_1st_example_spectrum_mini_size_rgb():
         fig, ax1 = pu.plot_1_graph(
             fontsize=8,
             figsize=(208*2/100, 208*1.5/100),
-            bg_color=(0.6, 0.6, 0.6),
+            bg_color=(0.8, 0.8, 0.8),
             graph_title=None,
             graph_title_size=None,
             xlabel=None,
             ylabel=None,
             axis_label_size=None,
-            legend_size=14,
+            legend_size=10,
             xlim=None,
             ylim=[-0.03, 0.825],
             xtick=None,
@@ -589,17 +588,22 @@ def plot_measured_1st_example_spectrum_mini_size_rgb():
         b_rate = rgb_list[idx, 2]
         x_intp = wl_intp
         y_intp = np.interp(x_intp, wl, data[..., idx])
-        lw = 2
-        ax1.scatter(x_intp, y_intp, s=10, c=rgb_intp)
+        lw = 1.5
         ax1.plot(
-            wl, rr*r_rate, '--', color=pu.RED*0.5, lw=lw,
-            label=f"R * {r_rate:.02f}")
+            x_intp, y_intp, lw=4, color=[0.1, 0.1, 0.1],
+            label="$S_D(\lambda)$")
+        r_sd_str = "$S_{D,r}(\lambda)$"
+        g_sd_str = "$S_{D,g}(\lambda)$"
+        b_sd_str = "$S_{D,b}(\lambda)$"
         ax1.plot(
-            wl, gg*g_rate, ':', color=pu.GREEN*0.5, lw=lw,
-            label=f"G * {g_rate:.02f}")
+            wl, rr*r_rate, '--', color=pu.RED, lw=lw,
+            label=f"{r_sd_str} * {r_rate:.02f}")
         ax1.plot(
-            wl, bb*b_rate, '-.', color=pu.SKY, lw=lw,
-            label=f"B * {b_rate:.02f}")
+            wl, gg*g_rate, '--', color=pu.GREEN, lw=lw,
+            label=f"{g_sd_str} * {g_rate:.02f}")
+        ax1.plot(
+            wl, bb*b_rate, '--', color=pu.SKY, lw=lw,
+            label=f"{b_sd_str} * {b_rate:.02f}")
         fname = f"./figure/mini_with_spectrum_1st_example_sd_{idx:02d}.png"
         print(fname)
         pu.show_and_save(fig=fig, legend_loc='upper right', save_fname=fname)
@@ -614,7 +618,7 @@ def draw_subpixel_light_explain_unit(
     patch_name = f"./img_measure_patch/mini_ex_1st_{idx:02d}.png"
     spx_img_name = f"./figure/sub_pixel_crop_{idx:02d}.png"
     font_color = [0.5, 0.5, 0.5]
-    font_size = 24
+    font_size = 28
 
     if h_idx < h_unit_num - 1:
         width = src_img_size * 2 + h_border_size
@@ -659,7 +663,6 @@ def draw_subpixel_light_explain_image():
         h_img_buf = []
         for h_idx in range(h_unit_num):
             idx = v_idx * h_unit_num + h_idx
-            print(idx)
             img_temp = draw_subpixel_light_explain_unit(
                 h_idx=h_idx, v_idx=v_idx,
                 h_unit_num=h_unit_num, v_unit_num=v_unit_num,
@@ -681,7 +684,7 @@ def draw_subpixel_light_explain_unit_with_spectrum(
     spx_img_name = f"./figure/sub_pixel_crop_{idx:02d}.png"
     spd_img_name = f"./figure/mini_1st_example_sd_{idx:02d}.png"
     font_color = [0.5, 0.5, 0.5]
-    font_size = 24
+    font_size = 28
 
     img_patch = tpg.img_read_as_float(patch_name) ** 2.4
     img_spx = tpg.img_read_as_float(spx_img_name) ** 2.4
@@ -754,7 +757,7 @@ def draw_subpixel_light_explain_unit_with_spectrum_with_rgb(
     spx_img_name = f"./figure/sub_pixel_crop_{idx:02d}.png"
     spd_img_name = f"./figure/mini_with_spectrum_1st_example_sd_{idx:02d}.png"
     font_color = [0.5, 0.5, 0.5]
-    font_size = 24
+    font_size = 28
 
     img_patch = tpg.img_read_as_float(patch_name) ** 2.4
     img_spx = tpg.img_read_as_float(spx_img_name) ** 2.4
@@ -803,8 +806,6 @@ def draw_subpixel_light_explain_image_with_spectrum_with_rgb():
     for v_idx in range(v_unit_num):
         h_img_buf = []
         for h_idx in range(h_unit_num):
-            idx = v_idx * h_unit_num + h_idx
-            print(idx)
             img_temp = draw_subpixel_light_explain_unit_with_spectrum_with_rgb(
                 h_idx=h_idx, v_idx=v_idx,
                 h_unit_num=h_unit_num, v_unit_num=v_unit_num,
@@ -840,8 +841,8 @@ if __name__ == '__main__':
     # create_display_measure_patch_for_1st_example()
     # crop_display_patch_shoot_data()
     # plot_wl_to_color_with_chroma_rate()
-    plot_measured_1st_example_spectrum()
-    plot_measured_1st_example_spectrum_mini_size()
+    # plot_measured_1st_example_spectrum()
+    # plot_measured_1st_example_spectrum_mini_size()
     plot_measured_1st_example_spectrum_mini_size_rgb()
     draw_subpixel_light_explain_image()
     draw_subpixel_light_explain_image_with_spectrum()
