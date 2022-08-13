@@ -4,7 +4,6 @@
 
 # import standard libraries
 import os
-from turtle import width
 import requests
 
 # import third-party libraries
@@ -22,7 +21,8 @@ import color_space as cs
 import plot_utility as pu
 from spectrum import DisplaySpectrum, create_display_sd,\
     CIE1931_CMFS, CIE2012_CMFS, ILLUMINANT_E, START_WAVELENGTH,\
-    STOP_WAVELENGTH, WAVELENGTH_STEP
+    STOP_WAVELENGTH, WAVELENGTH_STEP, trim_and_interpolate_in_advance,\
+    calc_xyz_to_rgb_matrix_from_spectral_distribution
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -36,6 +36,8 @@ __all__ = []
 
 DEFAULT_SPECTRAL_SHAPE = SpectralShape(
     START_WAVELENGTH, STOP_WAVELENGTH, WAVELENGTH_STEP)
+
+SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS = SpectralShape(390, 730, 1)
 
 
 def download_file(url, color_checker_sr_fname):
@@ -73,6 +75,95 @@ def color_checker_calc_sd_to_XYZ(
         sd=color_checker_sds, cmfs=cmfs_trimed, illuminant=illuminant_intp)
 
     return XYZ
+
+
+def create_color_checker_plus_d65_sd():
+    color_checker_sr_fname = "./ref_data/color_checker_sr.txt"
+    data = np.loadtxt(
+        fname=color_checker_sr_fname, delimiter='\t', skiprows=1).T
+    domain = np.arange(380, 740, 10)
+    data_white = np.ones((len(domain), 1)) * 1.0
+    data = np.append(data, data_white, axis=1)
+    color_checker_signals = MultiSignals(data=data, domain=domain)
+    color_checker_plut_d65_sds = MultiSpectralDistributions(
+        data=color_checker_signals)
+
+    return color_checker_plut_d65_sds
+
+
+def calc_cc_plus_d65_xyz(cmfs):
+    """
+    Parameters
+    ----------
+    cmfs : MultiSpectralDistributions
+        Color matching functions
+    """
+    color_checker_plut_d65_sds = create_color_checker_plus_d65_sd()
+    illuminant = SDS_ILLUMINANTS['D65']
+    spectral_shape = SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS
+    sds, cmfs, illuminant = trim_and_interpolate_in_advance(
+        spd=color_checker_plut_d65_sds,
+        cmfs=cmfs, illuminant=illuminant,
+        spectral_shape=spectral_shape)
+
+    large_xyz = sd_to_XYZ(
+        sd=sds, cmfs=cmfs, illuminant=illuminant)
+
+    return large_xyz
+
+
+def calc_cc_plus_d65_xyz_for_each_cmfs(cmfs_list):
+    """
+    Parameters
+    ----------
+    cmfs_list : List
+        A list of MultiSpectralDistributions
+    """
+    large_xyz_out_buf = np.zeros((10, 25, 3))
+    for idx, cmfs in enumerate(cmfs_list):
+        large_xyz = calc_cc_plus_d65_xyz(cmfs=cmfs)
+        large_xyz_out_buf[idx] = large_xyz
+
+    return large_xyz_out_buf
+
+
+def calc_xyz_to_rgb_matrix_each_display_sd_each_cmfs(
+        display_sd_list, cmfs_list):
+    spectral_shape = SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS
+    xyz_to_rgb_mtx_list = np.zeros(
+        (len(display_sd_list), len(cmfs_list), 3, 3))
+    for d_idx, display_sd in enumerate(display_sd_list):
+        for c_idx, cmfs in enumerate(cmfs_list):
+            mtx = calc_xyz_to_rgb_matrix_from_spectral_distribution(
+                spd=display_sd, cmfs=cmfs, spectral_shape=spectral_shape)
+            xyz_to_rgb_mtx_list[d_idx, c_idx] = mtx
+
+    return xyz_to_rgb_mtx_list
+
+
+def calc_tristimulus_value_for_each_sd_patch_cmfs(
+        large_xyz, xyz_to_rgb_mtx):
+    """
+    Parameters
+    ----------
+    large_xyz : ndarray
+        XYZ. shape is (num_of_cmfs, 25, 3)
+    xyz_to_rgb_mtx : ndarray
+        XYZ to RGB matrix.
+        shape is (num_of_display, num_of_cmfs, 3, 3)
+    """
+    num_of_gamut = xyz_to_rgb_mtx.shape[0]
+    num_of_cmfs = xyz_to_rgb_mtx.shape[1]
+    num_of_patch = large_xyz.shape[1]
+    out_rgb = np.zeros((num_of_gamut, num_of_cmfs, num_of_patch, 3))
+    for d_idx in range(num_of_gamut):
+        for c_idx in range(num_of_cmfs):
+            mtx = xyz_to_rgb_mtx[d_idx, c_idx]
+            large_xyz_temp = large_xyz[c_idx]
+            rgb = vector_dot(mtx, large_xyz_temp)
+            out_rgb[d_idx, c_idx] = rgb
+
+    return out_rgb / 100
 
 
 def calc_display_sd_using_metamerism(
@@ -227,7 +318,7 @@ def calc_delta_xyz(xyz1, xyz2):
 
 
 def debug_plot_color_checker_delta_xyz(
-        ok_xyz, ng_xyz_709, ng_xyz_p3, ng_xyz_2020):
+        ok_xyz, ng_xyz_709, ng_xyz_p3, ng_xyz_2020, fname_suffix="0"):
     delta_709 = calc_delta_xyz(ok_xyz, ng_xyz_709)
     delta_p3 = calc_delta_xyz(ok_xyz, ng_xyz_p3)
     delta_2020 = calc_delta_xyz(ok_xyz, ng_xyz_2020)
@@ -260,7 +351,8 @@ def debug_plot_color_checker_delta_xyz(
 
     ax1.set_xticks(x, label)
     pu.show_and_save(
-        fig=fig, legend_loc='upper left', save_fname="./figure/delta_xyz.png")
+        fig=fig, legend_loc='upper left',
+        save_fname=f"./figure/delta_xyz_{fname_suffix}.png")
 
 
 def load_2deg_151_cmfs():
@@ -390,17 +482,64 @@ def debug_plot_10_cmfs():
         fig=fig, legend_loc='upper left', save_fname="./figure/cmfs_10.png")
 
 
+def create_709_p3_2020_display_sd():
+    bt709_msd = create_display_sd(
+        r_mu=649, r_sigma=35, g_mu=539, g_sigma=33, b_mu=460, b_sigma=13,
+        normalize_y=True)
+    p3_msd = create_display_sd(
+        r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8,
+        normalize_y=True)
+    bt2020_msd = create_display_sd(
+        r_mu=639, r_sigma=3, g_mu=530, g_sigma=4, b_mu=465, b_sigma=4,
+        normalize_y=True)
+
+    return bt709_msd, p3_msd, bt2020_msd
+
+
+def debug_calc_and_plot_metamerism_delta():
+    bt709_msd, p3_msd, bt2020_msd = create_709_p3_2020_display_sd()
+    cmfs_list = load_2deg_10_cmfs()
+    result_709_list = []
+    result_p3_list = []
+    result_2020_list = []
+    ref_xyz_list = []
+
+    for idx, cmfs in enumerate(cmfs_list):
+        print(f"calc cmfs idx: {idx}")
+        ok_xyz, ng_xyz_709 =\
+            calc_mismatch_large_xyz_using_two_cmfs(
+                msd=bt709_msd, cmfs2=cmfs)
+        ok_xyz, ng_xyz_p3 =\
+            calc_mismatch_large_xyz_using_two_cmfs(
+                msd=p3_msd, cmfs2=cmfs)
+        ok_xyz, ng_xyz_2020 =\
+            calc_mismatch_large_xyz_using_two_cmfs(
+                msd=bt2020_msd, cmfs2=cmfs)
+        ref_xyz_list.append(ok_xyz)
+        result_709_list.append(ng_xyz_709)
+        result_p3_list.append(ng_xyz_p3)
+        result_2020_list.append(ng_xyz_2020)
+
+    for cmfs_idx in range(len(cmfs_list)):
+        debug_plot_color_checker_delta_xyz(
+            ok_xyz=ref_xyz_list[cmfs_idx],
+            ng_xyz_709=result_709_list[cmfs_idx],
+            ng_xyz_p3=result_p3_list[cmfs_idx],
+            ng_xyz_2020=result_2020_list[cmfs_idx],
+            fname_suffix=f"cmfs_idx-{cmfs_idx:02d}")
+
+
 def debug_func():
     # debug_numpy_mult_check()
-    # bt709_msd = create_display_sd(
-    #     r_mu=649, r_sigma=35, g_mu=539, g_sigma=33, b_mu=460, b_sigma=13,
-    #     normalize_y=True)
-    # p3_msd = create_display_sd(
-    #     r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8,
-    #     normalize_y=True)
-    # bt2020_msd = create_display_sd(
-    #     r_mu=639, r_sigma=3, g_mu=530, g_sigma=4, b_mu=465, b_sigma=4,
-    #     normalize_y=True)
+    bt709_msd = create_display_sd(
+        r_mu=649, r_sigma=35, g_mu=539, g_sigma=33, b_mu=460, b_sigma=13,
+        normalize_y=True)
+    p3_msd = create_display_sd(
+        r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8,
+        normalize_y=True)
+    bt2020_msd = create_display_sd(
+        r_mu=639, r_sigma=3, g_mu=530, g_sigma=4, b_mu=465, b_sigma=4,
+        normalize_y=True)
 
     # ok_xyz, ng_xyz_709 =\
     #     calc_mismatch_large_xyz_using_two_cmfs(
@@ -428,18 +567,19 @@ def debug_func():
     #     ng_xyz_p3=ng_xyz_p3, ng_xyz_2020=ng_xyz_2020)
 
     # debug_plot_151_cmfs()
-    debug_plot_10_cmfs()
+    # debug_plot_10_cmfs()
+
+    # debug_calc_and_plot_metamerism_delta()
+    cmfs_list = load_2deg_10_cmfs()
+    large_xyz = calc_cc_plus_d65_xyz_for_each_cmfs(cmfs_list=cmfs_list)
+    display_sd_list = [bt709_msd, p3_msd, bt2020_msd]    
+    xyz_to_rgb_mtx = calc_xyz_to_rgb_matrix_each_display_sd_each_cmfs(
+        display_sd_list=display_sd_list, cmfs_list=cmfs_list)
+    rgb = calc_tristimulus_value_for_each_sd_patch_cmfs(
+        large_xyz=large_xyz, xyz_to_rgb_mtx=xyz_to_rgb_mtx)
+    print(rgb)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     debug_func()
-    # debug_calc_msd_from_rgb_gain(
-    #     r_mu=649, r_sigma=35, g_mu=539, g_sigma=33, b_mu=460, b_sigma=13,
-    #     fname="./figure/metamerism_cc_bt709.png")
-    # debug_calc_msd_from_rgb_gain(
-    #     r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8,
-    #     fname="./figure/metamerism_cc_p3.png")
-    # debug_calc_msd_from_rgb_gain(
-    #     r_mu=639, r_sigma=3, g_mu=530, g_sigma=4, b_mu=465, b_sigma=4,
-    #     fname="./figure/metamerism_cc_bt2020.png")

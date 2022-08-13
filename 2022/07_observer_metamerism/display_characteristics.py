@@ -818,6 +818,54 @@ def draw_subpixel_light_explain_image_with_spectrum_with_rgb():
         "./figure/lcd_explain_with_rgb_img_with_spectrum.png", img)
 
 
+def plot_sd_when_white_balance_changed(
+        src_fname="./ref_data/display_b_white_point.csv",
+        graph_name="./figure/display_b_white_point.png"):
+    spd = load_display_spd(fname=src_fname)
+    wl = spd[..., 0]
+    bb_5000 = spd[..., 1]
+    bb_6500 = spd[..., 5]
+    bb_9300 = spd[..., 9]
+    gg_5000 = spd[..., 2]
+    gg_6500 = spd[..., 6]
+    gg_9300 = spd[..., 10]
+    rr_5000 = spd[..., 3]
+    rr_6500 = spd[..., 7]
+    rr_9300 = spd[..., 11]
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Spectral distribution",
+        graph_title_size=None,
+        xlabel="Wavelength [nm]",
+        ylabel="Normalized power",
+        axis_label_size=None,
+        legend_size=12,
+        xlim=None,
+        ylim=None,
+        # ylim=[-0.005, 0.02],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=5,
+        minor_ytick_num=4)
+    ax1.plot(wl, rr_5000, color=pu.RED, label='R_5000K', alpha=0.50)
+    ax1.plot(wl, rr_6500, color=pu.RED, label='R_6500K', alpha=0.75)
+    ax1.plot(wl, rr_9300, color=pu.RED, label='R_9300K', alpha=1.00)
+    ax1.plot(wl, gg_5000, color=pu.GREEN, label='G_5000K', alpha=0.50)
+    ax1.plot(wl, gg_6500, color=pu.GREEN, label='G_6500K', alpha=0.75)
+    ax1.plot(wl, gg_9300, color=pu.GREEN, label='G_9300K', alpha=1.00)
+    ax1.plot(wl, bb_5000, color=pu.BLUE, label='B_5000K', alpha=0.50)
+    ax1.plot(wl, bb_6500, color=pu.BLUE, label='B_6500K', alpha=0.75)
+    ax1.plot(wl, bb_9300, color=pu.BLUE, label='B_9300K', alpha=1.00)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right', save_fname=graph_name)
+    print(wl.shape)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_measure_patch()
@@ -843,8 +891,14 @@ if __name__ == '__main__':
     # plot_wl_to_color_with_chroma_rate()
     # plot_measured_1st_example_spectrum()
     # plot_measured_1st_example_spectrum_mini_size()
-    plot_measured_1st_example_spectrum_mini_size_rgb()
-    draw_subpixel_light_explain_image()
-    draw_subpixel_light_explain_image_with_spectrum()
-    draw_subpixel_light_explain_image_with_spectrum_with_rgb()
+    # plot_measured_1st_example_spectrum_mini_size_rgb()
+    # draw_subpixel_light_explain_image()
+    # draw_subpixel_light_explain_image_with_spectrum()
+    # draw_subpixel_light_explain_image_with_spectrum_with_rgb()
+    plot_sd_when_white_balance_changed(
+        src_fname="./ref_data/display_b_white_point.csv",
+        graph_name="./figure/display_b_white_point.png")
+    plot_sd_when_white_balance_changed(
+        src_fname="./ref_data/display_e_white_point.csv",
+        graph_name="./figure/display_e_white_point.png")
     pass

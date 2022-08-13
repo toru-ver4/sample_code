@@ -92,7 +92,10 @@ def add_white_spectrum(spd: MultiSpectralDistributions):
 
 
 def calc_rgb_to_xyz_matrix_from_spectral_distribution(
-        spd: MultiSpectralDistributions):
+        spd: MultiSpectralDistributions,
+        cmfs=CIE1931_CMFS,
+        spectral_shape=SpectralShape(
+            START_WAVELENGTH, STOP_WAVELENGTH, WAVELENGTH_STEP)):
     """
     Calculate RGB to XYZ matrix from spectral distribution of the display.
 
@@ -101,10 +104,11 @@ def calc_rgb_to_xyz_matrix_from_spectral_distribution(
     spd : MultiSpectralDistributions
         Spectral distribution of the display.
         Shape is `SpectralShape(360, 780, 1)`
+    cmfs : MultiSpectralDistributions
+        Color matching functions.
+    spectral_shape : SpectralShape
+        A spectral shape.
     """
-    spectral_shape = SpectralShape(
-        START_WAVELENGTH, STOP_WAVELENGTH, WAVELENGTH_STEP)
-    cmfs = CIE1931_CMFS
     illuminant = ILLUMINANT_E
 
     # spd = add_white_spectrum(spd=spd)
@@ -133,7 +137,11 @@ def calc_rgb_to_xyz_matrix_from_spectral_distribution(
     return rgb_to_xyz_mtx
 
 
-def calc_xyz_to_rgb_matrix_from_spectral_distribution(spd):
+def calc_xyz_to_rgb_matrix_from_spectral_distribution(
+        spd: MultiSpectralDistributions,
+        cmfs=CIE1931_CMFS,
+        spectral_shape=SpectralShape(
+            START_WAVELENGTH, STOP_WAVELENGTH, WAVELENGTH_STEP)):
     """
     Calculate XYZ to RGB matrix from spectral distribution of the display.
 
@@ -142,8 +150,13 @@ def calc_xyz_to_rgb_matrix_from_spectral_distribution(spd):
     spd : MultiSpectralDistributions
         spectral distribution of the display.
         shape is `SpectralShape(360, 780, 1)`
+    cmfs : MultiSpectralDistributions
+        Color matching functions.
+    spectral_shape : SpectralShape
+        A spectral shape.
     """
-    rgb_to_xyz_mtx = calc_rgb_to_xyz_matrix_from_spectral_distribution(spd)
+    rgb_to_xyz_mtx = calc_rgb_to_xyz_matrix_from_spectral_distribution(
+        spd=spd, cmfs=cmfs, spectral_shape=spectral_shape)
     return linalg.inv(rgb_to_xyz_mtx)
 
 
