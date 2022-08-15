@@ -95,27 +95,6 @@ def create_color_checker_plus_d65_sd():
     return color_checker_plut_d65_sds
 
 
-def calc_cc_plus_d65_xyz(cmfs):
-    """
-    Parameters
-    ----------
-    cmfs : MultiSpectralDistributions
-        Color matching functions
-    """
-    color_checker_plut_d65_sds = create_color_checker_plus_d65_sd()
-    illuminant = SDS_ILLUMINANTS['D65']
-    spectral_shape = SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS
-    sds, cmfs, illuminant = trim_and_interpolate_in_advance(
-        spd=color_checker_plut_d65_sds,
-        cmfs=cmfs, illuminant=illuminant,
-        spectral_shape=spectral_shape)
-
-    large_xyz = sd_to_XYZ(
-        sd=sds, cmfs=cmfs, illuminant=illuminant)
-
-    return large_xyz
-
-
 def calc_cc_plus_d65_xyz_for_each_cmfs(cmfs_list):
     """
     Parameters
@@ -129,13 +108,23 @@ def calc_cc_plus_d65_xyz_for_each_cmfs(cmfs_list):
         XYZ data.
         Shape is (num_of_cmfs, num_of_patch, 3).
     """
-    dummy_large_xyz = calc_cc_plus_d65_xyz(cmfs=cmfs_list[0])
+    spectral_shape = SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS
+    color_checker_plut_d65_sds = create_color_checker_plus_d65_sd()
+    color_checker_plut_d65_sds = trim_and_iterpolate(
+        color_checker_plut_d65_sds, spectral_shape)
+    illuminant = SDS_ILLUMINANTS['D65']
+    illuminant = trim_and_iterpolate(illuminant, spectral_shape)
+
+    # dummy_large_xyz = calc_cc_plus_d65_xyz(cmfs=cmfs_list[0])
     num_of_cmfs = len(cmfs_list)
-    num_of_patch = dummy_large_xyz.shape[0]
+    # num_of_patch = dummy_large_xyz.shape[0]
+    num_of_patch = color_checker_plut_d65_sds.values.shape[1]
 
     large_xyz_out_buf = np.zeros((num_of_cmfs, num_of_patch, 3))
     for idx, cmfs in enumerate(cmfs_list):
-        large_xyz = calc_cc_plus_d65_xyz(cmfs=cmfs)
+        cmfs = trim_and_iterpolate(cmfs, spectral_shape)
+        large_xyz = sd_to_XYZ(
+            sd=color_checker_plut_d65_sds, cmfs=cmfs, illuminant=illuminant)
         large_xyz_out_buf[idx] = large_xyz
 
     return large_xyz_out_buf
