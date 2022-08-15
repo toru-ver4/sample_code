@@ -3,26 +3,30 @@
 """
 
 # import standard libraries
+from difflib import diff_bytes
 import os
+from turtle import color
 import requests
 
 # import third-party libraries
 import numpy as np
-from colour.continuous import MultiSignals
+from colour.continuous import MultiSignals, Signal
 from colour import sd_to_XYZ, MultiSpectralDistributions, MSDS_CMFS,\
-    SDS_ILLUMINANTS, SpectralShape
+    SDS_ILLUMINANTS, SpectralShape, SpectralDistribution
 from colour.algebra import vector_dot
 from colour.utilities import tstack
+from colour.io import write_image
 
 # import my libraries
 import test_pattern_generator2 as tpg
 import transfer_functions as tf
 import color_space as cs
 import plot_utility as pu
-from spectrum import DisplaySpectrum, create_display_sd,\
+from spectrum import DisplaySpectrum, calc_rgb_to_xyz_matrix_from_spectral_distribution, create_display_sd,\
     CIE1931_CMFS, CIE2012_CMFS, ILLUMINANT_E, START_WAVELENGTH,\
     STOP_WAVELENGTH, WAVELENGTH_STEP, trim_and_interpolate_in_advance,\
-    calc_xyz_to_rgb_matrix_from_spectral_distribution
+    calc_xyz_to_rgb_matrix_from_spectral_distribution, trim_and_iterpolate
+import color_space as cc
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -67,9 +71,9 @@ def color_checker_calc_sd_to_XYZ(
         cmfs=MSDS_CMFS['CIE 1931 2 Degree Standard Observer'],
         illuminant=SDS_ILLUMINANTS['D65']):
     color_checker_sds = prepaere_color_checker_sr_data()
-    color_checker_sds = color_checker_sds.interpolate(shape=spectral_shape)
-    cmfs_trimed = cmfs.trim(spectral_shape)
-    illuminant_intp = illuminant.interpolate(spectral_shape)
+    color_checker_sds = trim_and_iterpolate(color_checker_sds, spectral_shape)
+    cmfs_trimed = trim_and_iterpolate(cmfs, spectral_shape)
+    illuminant_intp = trim_and_iterpolate(illuminant, spectral_shape)
     # print(illuminant)
     XYZ = sd_to_XYZ(
         sd=color_checker_sds, cmfs=cmfs_trimed, illuminant=illuminant_intp)
@@ -118,8 +122,18 @@ def calc_cc_plus_d65_xyz_for_each_cmfs(cmfs_list):
     ----------
     cmfs_list : List
         A list of MultiSpectralDistributions
+
+    Returns
+    -------
+    ndarray
+        XYZ data.
+        Shape is (num_of_cmfs, num_of_patch, 3).
     """
-    large_xyz_out_buf = np.zeros((10, 25, 3))
+    dummy_large_xyz = calc_cc_plus_d65_xyz(cmfs=cmfs_list[0])
+    num_of_cmfs = len(cmfs_list)
+    num_of_patch = dummy_large_xyz.shape[0]
+
+    large_xyz_out_buf = np.zeros((num_of_cmfs, num_of_patch, 3))
     for idx, cmfs in enumerate(cmfs_list):
         large_xyz = calc_cc_plus_d65_xyz(cmfs=cmfs)
         large_xyz_out_buf[idx] = large_xyz
@@ -129,6 +143,13 @@ def calc_cc_plus_d65_xyz_for_each_cmfs(cmfs_list):
 
 def calc_xyz_to_rgb_matrix_each_display_sd_each_cmfs(
         display_sd_list, cmfs_list):
+    """
+    Returns
+    -------
+    ndarray
+        Matrix list.
+        Shape is (num_of_display, num_of_cmfs, 3, 3)
+    """
     spectral_shape = SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS
     xyz_to_rgb_mtx_list = np.zeros(
         (len(display_sd_list), len(cmfs_list), 3, 3))
@@ -151,12 +172,18 @@ def calc_tristimulus_value_for_each_sd_patch_cmfs(
     xyz_to_rgb_mtx : ndarray
         XYZ to RGB matrix.
         shape is (num_of_display, num_of_cmfs, 3, 3)
+
+    Returns
+    -------
+    ndarray
+        RGB value.
+        Shape is (num_of_display, num_of_cmfs, num_of_patch, 3)
     """
-    num_of_gamut = xyz_to_rgb_mtx.shape[0]
+    num_of_display = xyz_to_rgb_mtx.shape[0]
     num_of_cmfs = xyz_to_rgb_mtx.shape[1]
     num_of_patch = large_xyz.shape[1]
-    out_rgb = np.zeros((num_of_gamut, num_of_cmfs, num_of_patch, 3))
-    for d_idx in range(num_of_gamut):
+    out_rgb = np.zeros((num_of_display, num_of_cmfs, num_of_patch, 3))
+    for d_idx in range(num_of_display):
         for c_idx in range(num_of_cmfs):
             mtx = xyz_to_rgb_mtx[d_idx, c_idx]
             large_xyz_temp = large_xyz[c_idx]
@@ -164,6 +191,100 @@ def calc_tristimulus_value_for_each_sd_patch_cmfs(
             out_rgb[d_idx, c_idx] = rgb
 
     return out_rgb / 100
+
+
+def create_modified_display_sd_based_on_rgb_gain_core(
+        sd: MultiSpectralDistributions, rgb):
+    """
+    Parameters
+    ----------
+    sd : DisplaySpectrum
+        display spectrum
+    """
+    r_sd = sd.values[..., 0]
+    g_sd = sd.values[..., 1]
+    b_sd = sd.values[..., 2]
+    r_sd_new = r_sd * rgb[0]
+    g_sd_new = g_sd * rgb[1]
+    b_sd_new = b_sd * rgb[2]
+    w_sd_new = r_sd_new + g_sd_new + b_sd_new
+    domain = sd.domain
+    gained_signal = Signal(data=w_sd_new, domain=domain)
+    modified_sd = SpectralDistribution(data=gained_signal)
+
+    return modified_sd
+
+
+def create_modified_display_sd_based_on_rgb_gain(
+        display_sd_list, rgb_list):
+    """
+    Parameters
+    ----------
+    display_sd_list : list
+        A list of the display spectrum.
+    rgb_list : ndarray
+        RGB value for reproducting the specific color.
+        Shape is (num_of_display, num_of_cmfs, num_of_patch)
+
+    Returns
+    -------
+    A list of SpectralDistribution
+        Shape is (num_of_display, num_of_cmfs, num_of_patch)
+    """
+    num_of_display = rgb_list.shape[0]
+    num_of_cmfs = rgb_list.shape[1]
+    num_of_patch = rgb_list.shape[2]
+    out_buf = [
+        [[0] * num_of_patch for ii in range(num_of_cmfs)]
+        for jj in range(num_of_display)]
+    spectral_shape = SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS
+
+    for d_idx in range(num_of_display):
+        sd = display_sd_list[d_idx]
+        for c_idx in range(num_of_cmfs):
+            for p_idx in range(num_of_patch):
+                out_sd = create_modified_display_sd_based_on_rgb_gain_core(
+                    sd=sd, rgb=rgb_list[d_idx, c_idx, p_idx])
+                out_sd = trim_and_iterpolate(out_sd, spectral_shape)
+                out_buf[d_idx][c_idx][p_idx] = out_sd
+
+    return out_buf
+
+
+def calc_XYZ_from_calibrated_display_sd_usin_cie1931(sd_list, rgb_list):
+    """
+    Parameters
+    ----------
+    sd_list : list
+        A list of the display spectrum.
+    rgb_list : ndarray
+        RGB value for reproducting the specific color.
+        Shape is (num_of_display, num_of_cmfs, num_of_patch)
+
+    Returns
+    -------
+    ndarray
+        A list of XYZ.
+        Shape is (num_of_display, num_of_cmfs, num_of_patch, 3)
+    """
+    num_of_display = rgb_list.shape[0]
+    num_of_cmfs = rgb_list.shape[1]
+    num_of_patch = rgb_list.shape[2]
+    out_buf = np.zeros((num_of_display, num_of_cmfs, num_of_patch, 3))
+
+    spectral_shape = SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS
+    cmfs = trim_and_iterpolate(CIE1931_CMFS, spectral_shape)
+    illuminant = trim_and_iterpolate(ILLUMINANT_E, spectral_shape)
+
+    for d_idx in range(num_of_display):
+        for c_idx in range(num_of_cmfs):
+            for p_idx in range(num_of_patch):
+                sd_data = sd_list[d_idx][c_idx][p_idx]
+                xyz = sd_to_XYZ(
+                    sd=sd_data, cmfs=cmfs, illuminant=illuminant)
+                out_buf[d_idx, c_idx, p_idx] = xyz / 100
+
+    return out_buf
 
 
 def calc_display_sd_using_metamerism(
@@ -218,9 +339,9 @@ def calc_mismatch_large_xyz_using_two_cmfs(
     cmfs1 = CIE1931_CMFS
     spectral_shape = DEFAULT_SPECTRAL_SHAPE
     illuminant = ILLUMINANT_E
-    cmfs1 = cmfs1.trim(shape=spectral_shape)
-    cmfs2 = cmfs2.trim(shape=spectral_shape)
-    illuminant = illuminant.interpolate(shape=spectral_shape)
+    cmfs1 = trim_and_iterpolate(cmfs1, spectral_shape)
+    cmfs2 = trim_and_iterpolate(cmfs2, spectral_shape)
+    illuminant = trim_and_iterpolate(illuminant, spectral_shape)
 
     cc_large_xyz_1931 = color_checker_calc_sd_to_XYZ(
         spectral_shape=spectral_shape, cmfs=cmfs1)
@@ -229,7 +350,7 @@ def calc_mismatch_large_xyz_using_two_cmfs(
 
     cc_spectrum = calc_display_sd_using_metamerism(
         large_xyz=cc_large_xyz_1931, base_msd=msd)
-    cc_spectrum = cc_spectrum.interpolate(shape=spectral_shape)
+    cc_spectrum = trim_and_iterpolate(cc_spectrum, spectral_shape)
 
     mismatch_large_xyz = sd_to_XYZ(
         sd=cc_spectrum, cmfs=cmfs2, illuminant=illuminant)
@@ -267,9 +388,9 @@ def debug_calc_msd_from_rgb_gain(
     cmfs_1931 = CIE1931_CMFS
     cmfs_2012 = CIE2012_CMFS
     illuminant = ILLUMINANT_E
-    cmfs_1931 = cmfs_1931.trim(shape=spectral_shape)
-    cmfs_2012 = cmfs_2012.trim(shape=spectral_shape)
-    illuminant = illuminant.interpolate(shape=spectral_shape)
+    cmfs_1931 = trim_and_iterpolate(cmfs_1931, spectral_shape)
+    cmfs_2012 = trim_and_iterpolate(cmfs_2012, spectral_shape)
+    illuminant = trim_and_iterpolate(illuminant, spectral_shape)
 
     cc_large_xyz = color_checker_calc_sd_to_XYZ(
         spectral_shape=spectral_shape, cmfs=cmfs_1931)
@@ -278,7 +399,7 @@ def debug_calc_msd_from_rgb_gain(
 
     cc_spectrum = calc_display_sd_using_metamerism(
         large_xyz=cc_large_xyz, base_msd=msd)
-    cc_spectrum = cc_spectrum.interpolate(shape=spectral_shape)
+    cc_spectrum = trim_and_iterpolate(cc_spectrum, spectral_shape)
 
     xyz_1931 = sd_to_XYZ(
         sd=cc_spectrum, cmfs=cmfs_1931, illuminant=illuminant)
@@ -529,6 +650,52 @@ def debug_calc_and_plot_metamerism_delta():
             fname_suffix=f"cmfs_idx-{cmfs_idx:02d}")
 
 
+def debug_save_white_patch(large_xyz):
+    # org_shape = large_xyz.shape
+    # large_xyz = large_xyz.reshape(1, -1, 3)
+    rgb = cc.large_xyz_to_rgb(
+        xyz=large_xyz, color_space_name=cs.BT709,
+        xyz_white=cs.D65, rgb_white=cs.D65)
+    # rgb = rgb.reshape(org_shape)
+    print(f"max={np.max(rgb[:, :, 24])}, min={np.min(rgb[:, :, 24])}")
+    rgb = rgb / np.max(rgb[:, :, 24])
+    img_size = 200
+    base_img = np.ones((img_size, img_size, 3))
+    v_img_buf = []
+    for d_idx in range(3):
+        h_img_buf = []
+        for c_idx in range(10):
+            img = base_img * rgb[d_idx, c_idx, 24]  # 24 is white
+            tpg.draw_outline(img, fg_color=[0.2, 0.2, 0.2], outline_width=1)
+            h_img_buf.append(img)
+        v_img_buf.append(np.hstack(h_img_buf))
+    out_img = np.vstack(v_img_buf)
+    out_img = tf.oetf(np.clip(out_img, 0.0, 1.0), tf.SRGB)
+
+    write_image(out_img, "./debug/white_with_multi_cmfs.png")
+
+
+def debug_verify_calibrated_sd(modified_sd_list, cmfs_list, large_xyz):
+    spectral_shape = SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS
+    illuminant = trim_and_iterpolate(ILLUMINANT_E, spectral_shape)
+    for d_idx in range(3):
+        for c_idx in range(10):
+            cmfs = cmfs_list[c_idx]
+            cmfs = trim_and_iterpolate(cmfs, spectral_shape)
+            for p_idx in range(25):
+                if p_idx < 24:
+                    continue
+                sd = modified_sd_list[d_idx][c_idx][p_idx]
+                sd = trim_and_iterpolate(sd, spectral_shape)
+                xyz = sd_to_XYZ(
+                    sd=sd, cmfs=cmfs, illuminant=illuminant)
+                ref_xyz = large_xyz[c_idx, p_idx]
+                diff = ref_xyz - xyz
+                msg = f"(d, c, p)=({d_idx}, {c_idx}, {p_idx}), "
+                msg += f"{ref_xyz}-{xyz}={diff}"
+                print(msg)
+
+
 def debug_func():
     # debug_numpy_mult_check()
     bt709_msd = create_display_sd(
@@ -570,14 +737,28 @@ def debug_func():
     # debug_plot_10_cmfs()
 
     # debug_calc_and_plot_metamerism_delta()
+
+    # inter-observer simulation
     cmfs_list = load_2deg_10_cmfs()
-    large_xyz = calc_cc_plus_d65_xyz_for_each_cmfs(cmfs_list=cmfs_list)
-    display_sd_list = [bt709_msd, p3_msd, bt2020_msd]    
+    large_xyz_il_d65 = calc_cc_plus_d65_xyz_for_each_cmfs(cmfs_list=cmfs_list)
+    display_sd_list = [bt709_msd, p3_msd, bt2020_msd]
     xyz_to_rgb_mtx = calc_xyz_to_rgb_matrix_each_display_sd_each_cmfs(
         display_sd_list=display_sd_list, cmfs_list=cmfs_list)
     rgb = calc_tristimulus_value_for_each_sd_patch_cmfs(
-        large_xyz=large_xyz, xyz_to_rgb_mtx=xyz_to_rgb_mtx)
-    print(rgb)
+        large_xyz=large_xyz_il_d65, xyz_to_rgb_mtx=xyz_to_rgb_mtx)
+    # rgb = rgb / np.max(rgb)
+    modified_sd_list = create_modified_display_sd_based_on_rgb_gain(
+        display_sd_list=display_sd_list, rgb_list=rgb)
+    large_xyz_1931 = calc_XYZ_from_calibrated_display_sd_usin_cie1931(
+        sd_list=modified_sd_list, rgb_list=rgb)
+    # print(large_xyz)
+
+    np.save("./debug/calibrated_xyz.npy", large_xyz_1931)
+    large_xyz_1931 = np.load("./debug/calibrated_xyz.npy")
+    debug_save_white_patch(large_xyz=large_xyz_1931)
+    debug_verify_calibrated_sd(
+        modified_sd_list=modified_sd_list, cmfs_list=cmfs_list,
+        large_xyz=large_xyz_il_d65)
 
 
 if __name__ == '__main__':

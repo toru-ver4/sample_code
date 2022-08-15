@@ -70,12 +70,19 @@ def calc_primaries_and_white(spd):
     return primaries, white
 
 
+def trim_and_iterpolate(x, spectral_shape):
+    y = x.trim(shape=spectral_shape)
+    y = y.interpolate(shape=spectral_shape)
+
+    return y
+
+
 def trim_and_interpolate_in_advance(
         spd, cmfs, illuminant,
         spectral_shape=SpectralShape(360, 780, 1)):
-    spd2 = spd.interpolate(shape=spectral_shape)
-    cmfs2 = cmfs.trim(spectral_shape)
-    illuminant2 = illuminant.interpolate(shape=spectral_shape)
+    spd2 = trim_and_iterpolate(spd, spectral_shape)
+    cmfs2 = trim_and_iterpolate(cmfs, spectral_shape)
+    illuminant2 = trim_and_iterpolate(illuminant, spectral_shape)
 
     return spd2, cmfs2, illuminant2
 
