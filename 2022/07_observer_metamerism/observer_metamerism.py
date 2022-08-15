@@ -12,7 +12,8 @@ import requests
 import numpy as np
 from colour.continuous import MultiSignals, Signal
 from colour import sd_to_XYZ, MultiSpectralDistributions, MSDS_CMFS,\
-    SDS_ILLUMINANTS, SpectralShape, SpectralDistribution, XYZ_to_xyY
+    SDS_ILLUMINANTS, SpectralShape, SpectralDistribution, XYZ_to_xyY,\
+    XYZ_to_xy, xy_to_XYZ
 from colour.algebra import vector_dot
 from colour.utilities import tstack
 from colour.io import write_image
@@ -663,8 +664,10 @@ def debug_calc_and_plot_metamerism_delta():
 def debug_save_white_patch(large_xyz):
     # org_shape = large_xyz.shape
     # large_xyz = large_xyz.reshape(1, -1, 3)
+    xy = XYZ_to_xy(large_xyz)
+    large_xyz_nomalized = xy_to_XYZ(xy)
     rgb = cc.large_xyz_to_rgb(
-        xyz=large_xyz, color_space_name=cs.BT709,
+        xyz=large_xyz_nomalized, color_space_name=cs.BT709,
         xyz_white=cs.D65, rgb_white=cs.D65)
     # rgb = rgb.reshape(org_shape)
     print(f"max={np.max(rgb[:, :, 24])}, min={np.min(rgb[:, :, 24])}")
@@ -674,7 +677,7 @@ def debug_save_white_patch(large_xyz):
     v_img_buf = []
     for d_idx in range(3):
         h_img_buf = []
-        for c_idx in range(10):
+        for c_idx in range(11):
             img = base_img * rgb[d_idx, c_idx, 24]  # 24 is white
             tpg.draw_outline(img, fg_color=[0.2, 0.2, 0.2], outline_width=1)
             h_img_buf.append(img)
@@ -700,7 +703,8 @@ def debug_save_color_checker(large_xyz):
     for d_idx in range(num_of_display):
         for c_idx in range(num_of_cmfs):
             cc_data = rgb[d_idx, c_idx, :24]
-            img = tpg.plot_color_checker_image(rgb=cc_data)
+            img = tpg.plot_color_checker_image(
+                rgb=cc_data, rgb2=ref_rgb, side_trim=True)
             img = tf.oetf(np.clip(img, 0.0, 1.0), tf.SRGB)
             fname = "./debug/color_checker_cmfs-"
             fname += f"{c_idx:02d}_display-{d_idx:02d}.png"
@@ -734,6 +738,52 @@ def debug_verify_calibrated_sd(modified_sd_list, cmfs_list, large_xyz):
 def debug_xyz_to_rgb_matrix(display_sd, cmfs):
     calc_xyz_to_rgb_matrix_from_spectral_distribution(
         spd=display_sd, cmfs=cmfs)
+
+
+def plot_11_patch_rectangle(data, size=640):
+    width_list = tpg.equal_devision(size, 4)
+    height = size // 4
+    big_height = size - height * 2
+    big_width = width_list[1] + width_list[2] 
+
+    # upper side
+    img_buf = []
+    for idx in range(4):
+        img = np.ones((height, width_list[idx], 3))
+        img = img * data[idx]
+        print(f"data_idx={idx}, {data[idx]}")
+        img_buf.append(img)
+    top_img = np.hstack(img_buf)
+
+    # bottom side
+    img_buf = []
+    idx_cnt = 0
+    for idx in range(5, 9)[::-1]:
+        img = np.ones((height, width_list[idx_cnt], 3))
+        idx_cnt += 1
+        img = img * data[idx]
+        print(f"data_idx={idx}, {data[idx]}")
+        img_buf.append(img)
+    bottom_img = np.hstack(img_buf)
+
+    # center side
+    img_buf = []
+    img = np.ones((big_height, width_list[0], 3))
+    img = img * data[9]
+    print(f"data_idx={9}, {data[9]}")
+    img_buf.append(img)
+    img = np.ones((big_height, big_width, 3))
+    img = img * data[10]
+    print(f"data_idx={10}, {data[9]}")
+    img_buf.append(img)
+    img = np.ones((big_height, width_list[3], 3))
+    img = img * data[4]
+    print(f"data_idx={4}, {data[9]}")
+    img_buf.append(img)
+    center_img = np.hstack(img_buf)
+    img = np.vstack([top_img, center_img, bottom_img])
+
+    return img
 
 
 def debug_func():
@@ -800,8 +850,13 @@ def debug_func():
     # np.save("./debug/calibrated_xyz.npy", large_xyz_1931)
 
     large_xyz_1931 = np.load("./debug/calibrated_xyz.npy")
-    debug_save_white_patch(large_xyz=large_xyz_1931)
-    debug_save_color_checker(large_xyz=large_xyz_1931)
+    img = plot_11_patch_rectangle(data=large_xyz_1931[2, :, 0])
+    img = cc.large_xyz_to_rgb(img, cs.BT709)
+    img = tf.oetf(np.clip(img, 0.0, 1.0), tf.SRGB)
+    print(np.max(img), np.min(img), img.shape)
+    write_image(img, "./debug/11patch.png")
+    # debug_save_white_patch(large_xyz=large_xyz_1931)
+    # debug_save_color_checker(large_xyz=large_xyz_1931)
     # debug_verify_calibrated_sd(
     #     modified_sd_list=modified_sd_list, cmfs_list=cmfs_list,
     #     large_xyz=large_xyz_il_d65)

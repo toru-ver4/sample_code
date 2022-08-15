@@ -970,7 +970,7 @@ def make_ycbcr_checker(height=480, v_tile_num=4):
 
 
 def plot_color_checker_image(rgb, rgb2=None, size=(1920, 1080),
-                             block_size=1/4.5):
+                             block_size=1/4.5, side_trim=True):
     """
     ColorCheckerをプロットする
 
@@ -1029,15 +1029,34 @@ def plot_color_checker_image(rgb, rgb2=None, size=(1920, 1080),
         st_v = patch_st_v + (patch_height + patch_space) * v_idx
         img_all_patch[st_v:st_v+patch_height, st_h:st_h+patch_width] = patch
 
-        # pt1 = (st_h, st_v)  # upper left
-        pt2 = (st_h + patch_width, st_v)  # upper right
-        pt3 = (st_h, st_v + patch_height)  # lower left
-        pt4 = (st_h + patch_width, st_v + patch_height)  # lower right
-        pts = np.array((pt2, pt3, pt4))
+        ## rgb2 for triangle plot
+        # pt2 = (st_h + patch_width, st_v)  # upper right
+        # pt3 = (st_h, st_v + patch_height)  # lower left
+        # pt4 = (st_h + patch_width, st_v + patch_height)  # lower right
+        # pts = np.array((pt2, pt3, pt4))
+        # sub_color = rgb[idx].tolist() if rgb2 is None else rgb2[idx].tolist()
+        # cv2.fillPoly(img_all_patch, [pts], sub_color)
+
+        # rgb2 for rectangle in rectangle
+        pt2 = (
+            st_h + np.uint16(np.round(patch_width/4*3)),
+            st_v + patch_width//4)  # upper right
+        pt3 = (
+            st_h + np.uint16(np.round(patch_width/4*3)),
+            st_v + np.uint16(np.round(patch_width/4*3)))  # upper right
+        pt4 = (
+            st_h + patch_width//4,
+            st_v + np.uint16(np.round(patch_width/4*3)))  # upper right
+        pt5 = (st_h + patch_width//4, st_v + patch_width//4)
+        pts = np.array((pt2, pt3, pt4, pt5))
         sub_color = rgb[idx].tolist() if rgb2 is None else rgb2[idx].tolist()
         cv2.fillPoly(img_all_patch, [pts], sub_color)
 
     # preview_image(img_all_patch)
+    if side_trim:
+        img_trim_h_st = patch_st_h - patch_space
+        img_trim_h_ed = patch_st_h + (patch_width + patch_space) * 6
+        img_all_patch = img_all_patch[:, img_trim_h_st:img_trim_h_ed]
 
     return img_all_patch
 
