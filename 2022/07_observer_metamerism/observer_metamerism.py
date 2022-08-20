@@ -3,12 +3,11 @@
 """
 
 # import standard libraries
-from difflib import diff_bytes
 import os
-from turtle import color
 import requests
 
 # import third-party libraries
+import cv2
 import numpy as np
 from colour.continuous import MultiSignals, Signal
 from colour import sd_to_XYZ, MultiSpectralDistributions, MSDS_CMFS,\
@@ -941,18 +940,18 @@ def calc_intra_observer_error():
     delta_xy_all = np.zeros(
         (num_of_display, num_of_cmfs, num_of_patch))
 
-    # for d_idx in range(num_of_display):
-    #     for c_idx in range(num_of_cmfs):
-    #         display_sd = display_list[d_idx]
-    #         cmfs = cmfs_list[c_idx]
-    #         ok_xyz, ng_xyz =\
-    #             calc_cc_xyz_ref_val_and_actual_cmfs2(
-    #                 msd=display_sd, cmfs2=cmfs,
-    #                 spectral_shape=SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS)
-    #         diff_xy = calc_delta_xy(ok_xyz, ng_xyz)
-    #         delta_xy_all[d_idx, c_idx] = diff_xy
-
-    # np.save(debug_fname, delta_xy_all)
+    for d_idx in range(num_of_display):
+        for c_idx in range(num_of_cmfs):
+            print(f"calc_delta_xy_disp-{d_idx}_cmfs-{c_idx}")
+            display_sd = display_list[d_idx]
+            cmfs = cmfs_list[c_idx]
+            ok_xyz, ng_xyz =\
+                calc_cc_xyz_ref_val_and_actual_cmfs2(
+                    msd=display_sd, cmfs2=cmfs,
+                    spectral_shape=SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS)
+            diff_xy = calc_delta_xy(ok_xyz, ng_xyz)
+            delta_xy_all[d_idx, c_idx] = diff_xy
+    np.save(debug_fname, delta_xy_all)
 
     delta_xy_all = np.load(debug_fname)
 
@@ -1028,10 +1027,12 @@ def draw_24_cc_patch_intra_observer_error(c_idx):
     v_num = 4
     margin_rate = 0.15
     patch_width, patch_height = get_intra_observer_error_single_patch_size()
+    margin_h = patch_width * margin_rate
+    margin_v = patch_height * margin_rate
     bg_width = int(
-        (patch_width * h_num) + patch_width * margin_rate * (h_num + 1))
+        (patch_width * h_num) + margin_h * (h_num + 1))
     bg_height = int(
-        (patch_height * v_num) + patch_height * margin_rate * (v_num + 1))
+        (patch_height * v_num) + margin_v * (v_num + 1))
 
     gc = GridCoordinate(
         bg_width=bg_width, bg_height=bg_height,
@@ -1046,6 +1047,14 @@ def draw_24_cc_patch_intra_observer_error(c_idx):
                 c_idx=c_idx, p_idx=p_idx)
             patch_img = read_image(patch_fname)[..., :3]
             tpg.merge(img, patch_img, pos_list[h_idx][v_idx])
+    legend_img = read_image("./debug/debug_display_legend_trim.png")[..., :3]
+    rate = 0.6
+    dst_size = (int(legend_img.shape[1] * rate),
+                int(legend_img.shape[0] * rate))
+    legend_img = cv2.resize(legend_img, dst_size)
+    legend_bg = np.zeros((bg_height, int(legend_img.shape[1]+margin_h), 3))
+    tpg.merge(legend_bg, legend_img, (0, int(margin_v)))
+    img = np.hstack([img, legend_bg])
     fname = f"./figure/intra_observer_error_cmfs-{c_idx:02d}.png"
     write_image(img, fname, 'uint8')
 
@@ -1064,49 +1073,42 @@ def plot_intra_observer_error(delta_xy_all):
     num_of_cmfs = delta_xy_all.shape[1]
     num_of_patch = delta_xy_all.shape[2]
 
-    # for c_idx in range(num_of_cmfs):
-    #     for p_idx in range(num_of_patch):
-    #         plot_intra_error_single_patch(
-    #             delta_xy=delta_xy_all[:, c_idx, p_idx],
-    #             patch_color=cc_rgb_srgb[p_idx], y_max=max_err,
-    #             c_idx=c_idx, p_idx=p_idx)
+    for c_idx in range(num_of_cmfs):
+        for p_idx in range(num_of_patch):
+            plot_intra_error_single_patch(
+                delta_xy=delta_xy_all[:, c_idx, p_idx],
+                patch_color=cc_rgb_srgb[p_idx], y_max=max_err,
+                c_idx=c_idx, p_idx=p_idx)
 
     for c_idx in range(num_of_cmfs):
         draw_24_cc_patch_intra_observer_error(c_idx=c_idx)
+        break
+
+
+def dummy_plot_for_display_gamut_legend():
+    fig, ax1 = pu.plot_1_graph(
+        figsize=(10, 8))
+    ax1.bar([1], [1], label="BT.709 Display", color=pu.RED)
+    ax1.bar([2], [2], label="DCI-P3 Display", color=pu.YELLOW)
+    ax1.bar([3], [3], label="BT.2020 Display", color=pu.GREEN)
+    print("hoge")
+    graph_name = "./debug/debug_display_legend.png"
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', save_fname=graph_name)
+
+    img = read_image(graph_name)
+    st_h = 100
+    st_v = 47
+    ed_h = st_h + 319
+    ed_v = st_v + 127
+    trim_img = img[st_v:ed_v, st_h:ed_h]
+    write_image(trim_img, "./debug/debug_display_legend_trim.png")
 
 
 def debug_func():
     # debug_numpy_mult_check()
-    # bt709_msd, p3_msd, bt2020_msd = create_709_p3_2020_display_sd()
-    # ok_xyz, ng_xyz_709 =\
-    #     calc_cc_xyz_ref_val_and_actual_cmfs2(
-    #         msd=bt709_msd, cmfs2=CIE2012_CMFS)
-    # draw_mismatch_cmfs2_color_checker_image(
-    #     large_xyz=ok_xyz, mismatch_large_xyz=ng_xyz_709,
-    #     fname="./figure/bt709_2012_cc.png")
-
-    # ok_xyz, ng_xyz_p3 =\
-    #     calc_cc_xyz_ref_val_and_actual_cmfs2(
-    #         msd=p3_msd, cmfs2=CIE2012_CMFS)
-    # draw_mismatch_cmfs2_color_checker_image(
-    #     large_xyz=ok_xyz, mismatch_large_xyz=ng_xyz_p3,
-    #     fname="./figure/p3_2012_cc.png")
-
-    # ok_xyz, ng_xyz_2020 =\
-    #     calc_cc_xyz_ref_val_and_actual_cmfs2(
-    #         msd=bt2020_msd, cmfs2=CIE2012_CMFS)
-    # draw_mismatch_cmfs2_color_checker_image(
-    #     large_xyz=ok_xyz, mismatch_large_xyz=ng_xyz_2020,
-    #     fname="./figure/bt2020_2012_cc.png")
-
-    # debug_plot_color_checker_delta_xyz(
-    #     ok_xyz=ok_xyz, ng_xyz_709=ng_xyz_709,
-    #     ng_xyz_p3=ng_xyz_p3, ng_xyz_2020=ng_xyz_2020)
-
     # debug_plot_151_cmfs()
     # debug_plot_10_cmfs()
-
-    # debug_calc_and_plot_metamerism_delta()
 
     # # inter-observer simulation
     # cmfs_list = load_2deg_10_cmfs()
@@ -1136,20 +1138,13 @@ def debug_func():
     # debug_verify_calibrated_sd(
     #     modified_sd_list=modified_sd_list, cmfs_list=cmfs_list,
     #     large_xyz=large_xyz_il_d65)
+
     delta_xy_all = calc_intra_observer_error()
     plot_intra_observer_error(delta_xy_all=delta_xy_all)
+
+    # dummy_plot_for_display_gamut_legend()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     debug_func()
-    # xyz = sd_to_XYZ(sd=ILLUMINANT_E, cmfs=CIE1931_CMFS, illuminant=SDS_ILLUMINANTS['D65'])
-    # print(xyz/100)
-    # cmfs_list = load_2deg_10_cmfs()
-    # bt709_msd = create_display_sd(
-    #     r_mu=649, r_sigma=35, g_mu=539, g_sigma=33, b_mu=460, b_sigma=13,
-    #     normalize_y=True)
-    # xyz = sd_to_XYZ(sd=bt709_msd, cmfs=cmfs_list[0], illuminant=ILLUMINANT_E)
-    # print(xyz)
-    # xyz = sd_to_XYZ(sd=bt709_msd, cmfs=CIE1931_CMFS, illuminant=ILLUMINANT_E)
-    # print(xyz)
