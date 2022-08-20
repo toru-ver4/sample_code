@@ -16,16 +16,17 @@ from colour import sd_to_XYZ, MultiSpectralDistributions, MSDS_CMFS,\
     XYZ_to_xy, xy_to_XYZ
 from colour.algebra import vector_dot
 from colour.utilities import tstack
-from colour.io import write_image
+from colour.io import write_image, read_image
 
 # import my libraries
 import test_pattern_generator2 as tpg
+from test_pattern_coordinate import GridCoordinate
 import transfer_functions as tf
 import color_space as cs
 import plot_utility as pu
-from spectrum import DisplaySpectrum, calc_rgb_to_xyz_matrix_from_spectral_distribution, create_display_sd,\
+from spectrum import DisplaySpectrum, create_display_sd,\
     CIE1931_CMFS, CIE2012_CMFS, ILLUMINANT_E, START_WAVELENGTH,\
-    STOP_WAVELENGTH, WAVELENGTH_STEP, trim_and_interpolate_in_advance,\
+    STOP_WAVELENGTH, WAVELENGTH_STEP,\
     calc_xyz_to_rgb_matrix_from_spectral_distribution, trim_and_iterpolate
 import color_space as cc
 
@@ -43,6 +44,17 @@ DEFAULT_SPECTRAL_SHAPE = SpectralShape(
     START_WAVELENGTH, STOP_WAVELENGTH, WAVELENGTH_STEP)
 
 SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS = SpectralShape(390, 730, 1)
+
+
+bt709_msd = create_display_sd(
+    r_mu=649, r_sigma=35, g_mu=539, g_sigma=33, b_mu=460, b_sigma=13,
+    normalize_y=True)
+p3_msd = create_display_sd(
+    r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8,
+    normalize_y=True)
+bt2020_msd = create_display_sd(
+    r_mu=639, r_sigma=3, g_mu=530, g_sigma=4, b_mu=465, b_sigma=4,
+    normalize_y=True)
 
 
 def download_file(url, color_checker_sr_fname):
@@ -67,7 +79,7 @@ def prepaere_color_checker_sr_data():
     return color_checker_sds
 
 
-def color_checker_calc_sd_to_XYZ(
+def color_checker_calc_sd_to_XYZ_D65_illuminant(
         spectral_shape=DEFAULT_SPECTRAL_SHAPE,
         cmfs=MSDS_CMFS['CIE 1931 2 Degree Standard Observer'],
         illuminant=SDS_ILLUMINANTS['D65']):
@@ -335,38 +347,41 @@ def debug_numpy_mult_check():
     print(yy)
 
 
-def calc_mismatch_large_xyz_using_two_cmfs(
-        msd=None, cmfs2=CIE2012_CMFS):
+def calc_cc_xyz_ref_val_and_actual_cmfs2(
+        msd=None, cmfs2=CIE2012_CMFS, spectral_shape=DEFAULT_SPECTRAL_SHAPE):
     """
     Returns
     -------
-    large_xyz_cmfs2 : ndarray
+    spectral_shape : ndarray
         A XYZ value calculated from spectral reflectance using cmfs2.
-    mismatch_large_xyz : ndarray
+    mismatch_large_xyz_cmfs2 : ndarray
         A XYZ value calculated from display spectral distribution
         using cmfs2.
-        display spectral distribution is based on cmfs1.
+        display spectral distribution is adjusted based on cmfs1.
     """
     cmfs1 = CIE1931_CMFS
-    spectral_shape = DEFAULT_SPECTRAL_SHAPE
-    illuminant = ILLUMINANT_E
     cmfs1 = trim_and_iterpolate(cmfs1, spectral_shape)
     cmfs2 = trim_and_iterpolate(cmfs2, spectral_shape)
-    illuminant = trim_and_iterpolate(illuminant, spectral_shape)
 
-    cc_large_xyz_1931 = color_checker_calc_sd_to_XYZ(
+    # calc reference XYZ by seeing ColorChecker under D65 illuminant
+    cc_large_xyz_1931 = color_checker_calc_sd_to_XYZ_D65_illuminant(
         spectral_shape=spectral_shape, cmfs=cmfs1)
-    large_xyz_cmfs2 = color_checker_calc_sd_to_XYZ(
+    correct_ref_xyz_cmfs2 = color_checker_calc_sd_to_XYZ_D65_illuminant(
         spectral_shape=spectral_shape, cmfs=cmfs2)
 
+    # create display spectrum using metamerism (cmfs is CIE1931)
     cc_spectrum = calc_display_sd_using_metamerism(
         large_xyz=cc_large_xyz_1931, base_msd=msd)
     cc_spectrum = trim_and_iterpolate(cc_spectrum, spectral_shape)
 
-    mismatch_large_xyz = sd_to_XYZ(
+    # calc each observer's XYZ by seeing the display
+    # adjusted for CIE1931 observer
+    illuminant = ILLUMINANT_E
+    illuminant = trim_and_iterpolate(illuminant, spectral_shape)
+    mismatch_large_xyz_cmfs2 = sd_to_XYZ(
         sd=cc_spectrum, cmfs=cmfs2, illuminant=illuminant)
 
-    return large_xyz_cmfs2, mismatch_large_xyz
+    return correct_ref_xyz_cmfs2, mismatch_large_xyz_cmfs2
 
 
 def draw_mismatch_cmfs2_color_checker_image(
@@ -403,9 +418,9 @@ def debug_calc_msd_from_rgb_gain(
     cmfs_2012 = trim_and_iterpolate(cmfs_2012, spectral_shape)
     illuminant = trim_and_iterpolate(illuminant, spectral_shape)
 
-    cc_large_xyz = color_checker_calc_sd_to_XYZ(
+    cc_large_xyz = color_checker_calc_sd_to_XYZ_D65_illuminant(
         spectral_shape=spectral_shape, cmfs=cmfs_1931)
-    cc_large_xyz_2012 = color_checker_calc_sd_to_XYZ(
+    cc_large_xyz_2012 = color_checker_calc_sd_to_XYZ_D65_illuminant(
         spectral_shape=spectral_shape, cmfs=cmfs_2012)
 
     cc_spectrum = calc_display_sd_using_metamerism(
@@ -639,13 +654,13 @@ def debug_calc_and_plot_metamerism_delta():
     for idx, cmfs in enumerate(cmfs_list):
         print(f"calc cmfs idx: {idx}")
         ok_xyz, ng_xyz_709 =\
-            calc_mismatch_large_xyz_using_two_cmfs(
+            calc_cc_xyz_ref_val_and_actual_cmfs2(
                 msd=bt709_msd, cmfs2=cmfs)
         ok_xyz, ng_xyz_p3 =\
-            calc_mismatch_large_xyz_using_two_cmfs(
+            calc_cc_xyz_ref_val_and_actual_cmfs2(
                 msd=p3_msd, cmfs2=cmfs)
         ok_xyz, ng_xyz_2020 =\
-            calc_mismatch_large_xyz_using_two_cmfs(
+            calc_cc_xyz_ref_val_and_actual_cmfs2(
                 msd=bt2020_msd, cmfs2=cmfs)
         ref_xyz_list.append(ok_xyz)
         result_709_list.append(ng_xyz_709)
@@ -712,6 +727,90 @@ def debug_save_color_checker(large_xyz):
             write_image(img, fname)
 
 
+def plot_color_checker_image_11_patch(
+        rgb, size=(1920, 1080), block_size=1/4.5, side_trim=True):
+    """
+    ColorCheckerをプロットする
+
+    Parameters
+    ----------
+    rgb : array_like
+        RGB value of the ColorChecker using 11 cmfs.
+        RGB's shape must be (11, 24, 3).
+    size : tuple
+        canvas size.
+    block_size : float
+        A each block's size.
+        This value is ratio to height of the canvas.
+
+    Returns
+    -------
+    array_like
+        A ColorChecker image.
+
+    """
+    # 基本パラメータ算出
+    # --------------------------------------
+    cc_h_num = 6
+    cc_v_num = 4
+    img_height = size[1]
+    img_width = size[0]
+    patch_width = int(img_height * block_size)
+    patch_height = patch_width
+    patch_space = int(
+        (img_height - patch_height * cc_v_num) / (cc_v_num + 1))
+
+    patch_st_h = int(
+        img_width / 2.0
+        - patch_width * cc_h_num / 2.0
+        - patch_space * (cc_h_num / 2.0 - 0.5)
+    )
+    patch_st_v = int(
+        img_height / 2.0
+        - patch_height * cc_v_num / 2.0
+        - patch_space * (cc_v_num / 2.0 - 0.5)
+    )
+
+    # 24ループで1枚の画像に24パッチを描画
+    # -------------------------------------------------
+    img_all_patch = np.zeros((img_height, img_width, 3))
+    for idx in range(cc_h_num * cc_v_num):
+        v_idx = idx // cc_h_num
+        h_idx = (idx % cc_h_num)
+        patch = np.ones((patch_height, patch_width, 3))
+        patch[:, :] = plot_11_patch_rectangle(
+            data=rgb[:, idx],
+            patch_width=patch_width, patch_height=patch_height)
+        st_h = patch_st_h + (patch_width + patch_space) * h_idx
+        st_v = patch_st_v + (patch_height + patch_space) * v_idx
+        img_all_patch[st_v:st_v+patch_height, st_h:st_h+patch_width] = patch
+
+    if side_trim:
+        img_trim_h_st = patch_st_h - patch_space
+        img_trim_h_ed = patch_st_h + (patch_width + patch_space) * 6
+        img_all_patch = img_all_patch[:, img_trim_h_st:img_trim_h_ed]
+
+    return img_all_patch
+
+
+def debug_save_color_checker_11_patch(large_xyz):
+    rgb = cc.large_xyz_to_rgb(
+        xyz=large_xyz, color_space_name=cs.BT709,
+        xyz_white=cs.D65, rgb_white=cs.D65)
+    # rgb = rgb.reshape(org_shape)
+    print(f"max={np.max(rgb)}, min={np.min(rgb)}")
+    num_of_display = rgb.shape[0]
+    for d_idx in range(num_of_display):
+        cc_data = rgb[d_idx]
+        cc_data = cc_data / np.max(cc_data)
+        img = plot_color_checker_image_11_patch(rgb=cc_data)
+        img = tf.oetf(np.clip(img, 0.0, 1.0), tf.SRGB)
+        fname = "./debug/11_patch_color_checker_cmfs-"
+        fname += f"display-{d_idx:02d}.png"
+        print(fname)
+        write_image(img, fname)
+
+
 def debug_verify_calibrated_sd(modified_sd_list, cmfs_list, large_xyz):
     spectral_shape = SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS
     illuminant = trim_and_iterpolate(ILLUMINANT_E, spectral_shape)
@@ -740,18 +839,19 @@ def debug_xyz_to_rgb_matrix(display_sd, cmfs):
         spd=display_sd, cmfs=cmfs)
 
 
-def plot_11_patch_rectangle(data, size=640):
-    width_list = tpg.equal_devision(size, 4)
-    height = size // 4
-    big_height = size - height * 2
-    big_width = width_list[1] + width_list[2] 
+def plot_11_patch_rectangle(
+        data, patch_width=640, patch_height=640):
+    width_list = tpg.equal_devision(patch_width, 4)
+    height_list = tpg.equal_devision(patch_height, 4)
+    big_height = height_list[1] + height_list[2]
+    big_width = width_list[1] + width_list[2]
 
     # upper side
     img_buf = []
     for idx in range(4):
-        img = np.ones((height, width_list[idx], 3))
+        img = np.ones((height_list[0], width_list[idx], 3))
         img = img * data[idx]
-        print(f"data_idx={idx}, {data[idx]}")
+        # print(f"data_idx={idx}, {data[idx]}")
         img_buf.append(img)
     top_img = np.hstack(img_buf)
 
@@ -759,10 +859,10 @@ def plot_11_patch_rectangle(data, size=640):
     img_buf = []
     idx_cnt = 0
     for idx in range(5, 9)[::-1]:
-        img = np.ones((height, width_list[idx_cnt], 3))
+        img = np.ones((height_list[3], width_list[idx_cnt], 3))
         idx_cnt += 1
         img = img * data[idx]
-        print(f"data_idx={idx}, {data[idx]}")
+        # print(f"data_idx={idx}, {data[idx]}")
         img_buf.append(img)
     bottom_img = np.hstack(img_buf)
 
@@ -770,15 +870,15 @@ def plot_11_patch_rectangle(data, size=640):
     img_buf = []
     img = np.ones((big_height, width_list[0], 3))
     img = img * data[9]
-    print(f"data_idx={9}, {data[9]}")
+    # print(f"data_idx={9}, {data[9]}")
     img_buf.append(img)
     img = np.ones((big_height, big_width, 3))
     img = img * data[10]
-    print(f"data_idx={10}, {data[9]}")
+    # print(f"data_idx={10}, {data[9]}")
     img_buf.append(img)
     img = np.ones((big_height, width_list[3], 3))
     img = img * data[4]
-    print(f"data_idx={4}, {data[9]}")
+    # print(f"data_idx={4}, {data[9]}")
     img_buf.append(img)
     center_img = np.hstack(img_buf)
     img = np.vstack([top_img, center_img, bottom_img])
@@ -786,34 +886,214 @@ def plot_11_patch_rectangle(data, size=640):
     return img
 
 
+def large_xyz_to_xy(large_xyz):
+    """
+    Parameters
+    ----------
+    large_xyz : ndarray
+        XYZ. shape is (..., 3)
+
+    Returns
+    -------
+    ndarray
+        xy. shape is (..., 2)
+    """
+    org_shape = large_xyz.shape
+    large_xyz_temp = large_xyz.reshape(-1, 3)
+    large_x = large_xyz_temp[..., 0]
+    large_y = large_xyz_temp[..., 1]
+    large_z = large_xyz_temp[..., 2]
+    sum_val = (large_x + large_y + large_z).reshape(-1, 1)
+    small_xyz = (large_xyz_temp / sum_val).reshape(org_shape)
+
+    return small_xyz[..., :2]
+
+
+def calc_delta_xy(large_xyz_1, large_xyz_2):
+    xy1 = large_xyz_to_xy(large_xyz_1)
+    xy2 = large_xyz_to_xy(large_xyz_2)
+    diff_xy =\
+        ((xy2[..., 0] - xy1[..., 0]) ** 2) + ((xy2[..., 1] - xy1[..., 1]) ** 2)
+    diff_xy = diff_xy ** 0.5
+
+    return diff_xy
+
+
+def calc_intra_observer_error():
+    """
+    Shape is (num_of_display, num_of_cmfs, num_of_patch, 3)
+
+    Returns
+    -------
+    ndarray
+        delta xy value between CC under D65 and CC displayed.
+        dislay spd is adjusted based on CIE1931 CMFS.
+        Shape is (num_of_display, num_of_cmfs, num_of_patch, 3)
+    """
+    display_list = create_709_p3_2020_display_sd()
+    cmfs_list = load_2deg_10_cmfs()
+    cmfs_list.append(CIE1931_CMFS)
+    num_of_display = len(display_list)
+    num_of_cmfs = len(cmfs_list)
+    num_of_patch = 24
+    debug_fname = "./debug/intra_error_diff_xy.npy"
+
+    delta_xy_all = np.zeros(
+        (num_of_display, num_of_cmfs, num_of_patch))
+
+    # for d_idx in range(num_of_display):
+    #     for c_idx in range(num_of_cmfs):
+    #         display_sd = display_list[d_idx]
+    #         cmfs = cmfs_list[c_idx]
+    #         ok_xyz, ng_xyz =\
+    #             calc_cc_xyz_ref_val_and_actual_cmfs2(
+    #                 msd=display_sd, cmfs2=cmfs,
+    #                 spectral_shape=SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS)
+    #         diff_xy = calc_delta_xy(ok_xyz, ng_xyz)
+    #         delta_xy_all[d_idx, c_idx] = diff_xy
+
+    # np.save(debug_fname, delta_xy_all)
+
+    delta_xy_all = np.load(debug_fname)
+
+    return delta_xy_all
+
+
+def create_intra_error_single_patch_name(c_idx, p_idx):
+    fname = f"./debug/intra_error_single_{c_idx:02d}_{p_idx:02d}.png"
+    return fname
+
+
+def plot_intra_error_single_patch(
+        delta_xy, y_max, patch_color, c_idx, p_idx):
+    """
+    """
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(1.5, 1.5),
+        bg_color=patch_color,
+        graph_title=None,
+        graph_title_size=None,
+        xlabel=None,
+        ylabel=None,
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=[0, y_max*1.03],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.get_xaxis().set_visible(False)
+    ax1.get_yaxis().set_visible(False)
+    ax1.spines['top'].set_visible(False)
+    ax1.spines['right'].set_visible(False)
+    ax1.spines['bottom'].set_visible(False)
+    ax1.spines['left'].set_visible(False)
+    x = np.arange(3) + 1
+    color_list = [
+        pu.RED, pu.YELLOW, pu.GREEN, pu.BLUE, pu.SKY,
+        pu.PINK, pu.ORANGE, pu.MAJENTA, pu.BROWN, pu.GRAY50,
+        pu.GRAY05]
+    for idx in range(len(x)):
+        ax1.bar(
+            x[idx], delta_xy[..., idx], color=color_list[idx],
+            edgecolor=pu.GRAY05)
+    fname = create_intra_error_single_patch_name(
+        c_idx=c_idx, p_idx=p_idx)
+    print(fname)
+    pu.show_and_save(
+        fig=fig, save_fname=fname, only_graph_area=True)
+
+
+def get_color_checker_srgb_val():
+    cc_rgb = tpg.generate_color_checker_rgb_value()
+
+    return tf.oetf(np.clip(cc_rgb, 0.0, 1.0), tf.SRGB)
+
+
+def get_intra_observer_error_single_patch_size():
+    fname = create_intra_error_single_patch_name(0, 0)
+    img = read_image(fname)
+    width = img.shape[1]
+    height = img.shape[0]
+
+    return width, height
+
+
+def draw_24_cc_patch_intra_observer_error(c_idx):
+    h_num = 6
+    v_num = 4
+    margin_rate = 0.15
+    patch_width, patch_height = get_intra_observer_error_single_patch_size()
+    bg_width = int(
+        (patch_width * h_num) + patch_width * margin_rate * (h_num + 1))
+    bg_height = int(
+        (patch_height * v_num) + patch_height * margin_rate * (v_num + 1))
+
+    gc = GridCoordinate(
+        bg_width=bg_width, bg_height=bg_height,
+        fg_width=patch_width, fg_height=patch_height,
+        h_num=6, v_num=4, remove_tblr_margin=False)
+    pos_list = gc.get_st_pos_list()
+    img = np.zeros((bg_height, bg_width, 3))
+    for v_idx in range(v_num):
+        for h_idx in range(h_num):
+            p_idx = v_idx * h_num + h_idx
+            patch_fname = create_intra_error_single_patch_name(
+                c_idx=c_idx, p_idx=p_idx)
+            patch_img = read_image(patch_fname)[..., :3]
+            tpg.merge(img, patch_img, pos_list[h_idx][v_idx])
+    fname = f"./figure/intra_observer_error_cmfs-{c_idx:02d}.png"
+    write_image(img, fname, 'uint8')
+
+
+def plot_intra_observer_error(delta_xy_all):
+    """
+    Parameters
+    ----------
+    delta_xy_all : ndarray
+        delta xy value between CC under D65 and CC displayed.
+        dislay spd is adjusted based on CIE1931 CMFS.
+        Shape is (num_of_display, num_of_cmfs, num_of_patch, 3)
+    """
+    max_err = np.max(delta_xy_all)
+    cc_rgb_srgb = get_color_checker_srgb_val()
+    num_of_cmfs = delta_xy_all.shape[1]
+    num_of_patch = delta_xy_all.shape[2]
+
+    # for c_idx in range(num_of_cmfs):
+    #     for p_idx in range(num_of_patch):
+    #         plot_intra_error_single_patch(
+    #             delta_xy=delta_xy_all[:, c_idx, p_idx],
+    #             patch_color=cc_rgb_srgb[p_idx], y_max=max_err,
+    #             c_idx=c_idx, p_idx=p_idx)
+
+    for c_idx in range(num_of_cmfs):
+        draw_24_cc_patch_intra_observer_error(c_idx=c_idx)
+
+
 def debug_func():
     # debug_numpy_mult_check()
-    bt709_msd = create_display_sd(
-        r_mu=649, r_sigma=35, g_mu=539, g_sigma=33, b_mu=460, b_sigma=13,
-        normalize_y=True)
-    p3_msd = create_display_sd(
-        r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8,
-        normalize_y=True)
-    bt2020_msd = create_display_sd(
-        r_mu=639, r_sigma=3, g_mu=530, g_sigma=4, b_mu=465, b_sigma=4,
-        normalize_y=True)        
-
+    # bt709_msd, p3_msd, bt2020_msd = create_709_p3_2020_display_sd()
     # ok_xyz, ng_xyz_709 =\
-    #     calc_mismatch_large_xyz_using_two_cmfs(
+    #     calc_cc_xyz_ref_val_and_actual_cmfs2(
     #         msd=bt709_msd, cmfs2=CIE2012_CMFS)
     # draw_mismatch_cmfs2_color_checker_image(
     #     large_xyz=ok_xyz, mismatch_large_xyz=ng_xyz_709,
     #     fname="./figure/bt709_2012_cc.png")
 
     # ok_xyz, ng_xyz_p3 =\
-    #     calc_mismatch_large_xyz_using_two_cmfs(
+    #     calc_cc_xyz_ref_val_and_actual_cmfs2(
     #         msd=p3_msd, cmfs2=CIE2012_CMFS)
     # draw_mismatch_cmfs2_color_checker_image(
     #     large_xyz=ok_xyz, mismatch_large_xyz=ng_xyz_p3,
     #     fname="./figure/p3_2012_cc.png")
 
     # ok_xyz, ng_xyz_2020 =\
-    #     calc_mismatch_large_xyz_using_two_cmfs(
+    #     calc_cc_xyz_ref_val_and_actual_cmfs2(
     #         msd=bt2020_msd, cmfs2=CIE2012_CMFS)
     # draw_mismatch_cmfs2_color_checker_image(
     #     large_xyz=ok_xyz, mismatch_large_xyz=ng_xyz_2020,
@@ -849,17 +1129,15 @@ def debug_func():
     # # print(large_xyz)
     # np.save("./debug/calibrated_xyz.npy", large_xyz_1931)
 
-    large_xyz_1931 = np.load("./debug/calibrated_xyz.npy")
-    img = plot_11_patch_rectangle(data=large_xyz_1931[2, :, 0])
-    img = cc.large_xyz_to_rgb(img, cs.BT709)
-    img = tf.oetf(np.clip(img, 0.0, 1.0), tf.SRGB)
-    print(np.max(img), np.min(img), img.shape)
-    write_image(img, "./debug/11patch.png")
+    # large_xyz_1931 = np.load("./debug/calibrated_xyz.npy")
     # debug_save_white_patch(large_xyz=large_xyz_1931)
     # debug_save_color_checker(large_xyz=large_xyz_1931)
+    # debug_save_color_checker_11_patch(large_xyz=large_xyz_1931[:, :, :24])
     # debug_verify_calibrated_sd(
     #     modified_sd_list=modified_sd_list, cmfs_list=cmfs_list,
     #     large_xyz=large_xyz_il_d65)
+    delta_xy_all = calc_intra_observer_error()
+    plot_intra_observer_error(delta_xy_all=delta_xy_all)
 
 
 if __name__ == '__main__':

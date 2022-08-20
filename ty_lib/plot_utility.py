@@ -52,6 +52,10 @@ PINK = np.array([255, 128, 130]) / 255
 ORANGE = np.array([246, 170, 0]) / 255
 MAJENTA = np.array([153, 0, 153]) / 255
 BROWN = np.array([128, 64, 0]) / 255
+GRAY50 = np.array([255, 255, 255]) / 255 * 0.50
+GRAY10 = np.array([255, 255, 255]) / 255 * 0.10
+GRAY05 = np.array([255, 255, 255]) / 255 * 0.05
+GRAY90 = np.array([255, 255, 255]) / 255 * 0.90
 
 PLOT_FONT_NAME = "Noto Sans CJK JP"
 # PLOT_FONT_NAME = "Noto Sans Mono CJK JP"
@@ -592,9 +596,16 @@ def plot_3d_init(
 
 
 def show_and_save(
-        fig, legend_loc=None, save_fname=None, show=False, dpi=100):
+        fig, legend_loc=None, save_fname=None, show=False, dpi=100,
+        only_graph_area=False):
     if legend_loc is not None:
         plt.legend(loc=legend_loc)
+
+    if only_graph_area:
+        plt.savefig(
+            save_fname, bbox_inches='tight', pad_inches=0)
+        plt.close(fig)
+        return
 
     # Adjust the position
     fig.tight_layout()
