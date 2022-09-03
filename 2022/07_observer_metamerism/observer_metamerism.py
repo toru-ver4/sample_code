@@ -4,6 +4,7 @@
 
 # import standard libraries
 import os
+from unittest.mock import patch
 import requests
 
 # import third-party libraries
@@ -26,8 +27,10 @@ import plot_utility as pu
 from spectrum import DisplaySpectrum, create_display_sd,\
     CIE1931_CMFS, CIE2012_CMFS, ILLUMINANT_E, START_WAVELENGTH,\
     STOP_WAVELENGTH, WAVELENGTH_STEP,\
-    calc_xyz_to_rgb_matrix_from_spectral_distribution, trim_and_iterpolate
+    calc_xyz_to_rgb_matrix_from_spectral_distribution, trim_and_iterpolate,\
+    wavelength_to_color
 import color_space as cc
+import font_control2 as fc2
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -809,12 +812,13 @@ def debug_save_color_checker_11_patch(large_xyz):
     rgb = cc.large_xyz_to_rgb(
         xyz=large_xyz, color_space_name=cs.BT709,
         xyz_white=cs.D65, rgb_white=cs.D65)
+    rgb = rgb / np.max(rgb)
     # rgb = rgb.reshape(org_shape)
     print(f"max={np.max(rgb)}, min={np.min(rgb)}")
     num_of_display = rgb.shape[0]
     for d_idx in range(num_of_display):
         cc_data = rgb[d_idx]
-        cc_data = cc_data / np.max(cc_data)
+        # cc_data = cc_data / np.max(cc_data)
         img = plot_color_checker_image_11_patch(rgb=cc_data)
         img = tf.oetf(np.clip(img, 0.0, 1.0), tf.SRGB)
         fname = "./figure/11_patch_color_checker_cmfs-"
@@ -1081,6 +1085,25 @@ def draw_24_cc_patch_intra_observer_error(c_idx):
     tpg.merge(legend_bg, legend_img, (0, int(margin_v)))
     img = np.hstack([img, legend_bg])
 
+    # draw categorical observer info
+    info_str_list = [
+        f"Cat.Obs. {ii+1:02d}" for ii in range(10)]
+    info_str_list.append("CIE1931 Observer")
+    print(f"c_idx={c_idx}")
+    font_color = tf.eotf(np.array([0.96, 0.96, 0.96]), tf.SRGB)
+    text_draw_ctrl = fc2.TextDrawControl(
+        text=info_str_list[c_idx], font_color=font_color,
+        font_size=20, font_path=fc2.NOTO_SANS_CJKJP_BOLD,
+        stroke_width=0, stroke_fill=None)
+    # calc position
+    pos_h = bg_width
+    pos_v = int(margin_v) * 2 + legend_img.shape[0]
+    pos = (pos_h, pos_v)
+    # draw text
+    img_linear = tf.eotf(img, tf.SRGB)
+    text_draw_ctrl.draw(img=img_linear, pos=pos)
+    img = tf.oetf(img_linear, tf.SRGB)
+
     fname = f"./figure/intra_observer_error_cmfs-{c_idx:02d}.png"
     write_image(img, fname, 'uint8')
 
@@ -1100,12 +1123,12 @@ def plot_intra_observer_error(delta_xy_all):
     num_of_cmfs = delta_xy_all.shape[1]
     num_of_patch = delta_xy_all.shape[2]
 
-    for c_idx in range(num_of_cmfs):
-        for p_idx in range(num_of_patch):
-            plot_intra_error_single_patch(
-                delta_xy=delta_xy_all[:, c_idx, p_idx],
-                patch_color=cc_rgb_srgb[p_idx], y_max=max_err,
-                c_idx=c_idx, p_idx=p_idx)
+    # for c_idx in range(num_of_cmfs):
+    #     for p_idx in range(num_of_patch):
+    #         plot_intra_error_single_patch(
+    #             delta_xy=delta_xy_all[:, c_idx, p_idx],
+    #             patch_color=cc_rgb_srgb[p_idx], y_max=max_err,
+    #             c_idx=c_idx, p_idx=p_idx)
 
     for c_idx in range(num_of_cmfs):
         draw_24_cc_patch_intra_observer_error(c_idx=c_idx)
@@ -1343,6 +1366,26 @@ def draw_24_cc_patch_inter_observer_error(d_idx):
     tpg.merge(legend_bg, legend_img, (0, int(margin_v)))
     img = np.hstack([img, legend_bg])
 
+    # draw display gamut info
+    info_str_list = [
+        "Display Gamut:\n    BT.709",
+        "Display Gamut:\n    DCI-P3",
+        "Display Gamut:\n    BT.2020"
+    ]
+    font_color = tf.eotf(np.array([0.96, 0.96, 0.96]), tf.SRGB)
+    text_draw_ctrl = fc2.TextDrawControl(
+        text=info_str_list[d_idx], font_color=font_color,
+        font_size=20, font_path=fc2.NOTO_SANS_CJKJP_BOLD,
+        stroke_width=0, stroke_fill=None)
+    # calc position
+    pos_h = bg_width
+    pos_v = int(margin_v) * 2 + legend_img.shape[0]
+    pos = (pos_h, pos_v)
+    # draw text
+    img_linear = tf.eotf(img, tf.SRGB)
+    text_draw_ctrl.draw(img=img_linear, pos=pos)
+    img = tf.oetf(img_linear, tf.SRGB)
+
     fname = f"./figure/inter_observer_error_display-{d_idx:02d}.png"
     print(fname)
     write_image(img, fname, 'uint8')
@@ -1365,6 +1408,7 @@ def plot_inter_observer_error(large_xyz_1931):
         large_xyz_1931=large_xyz_1931)
     dummy_plot_for_display_gamut_legend_inter_error()
     max_err = np.max(delta_eab)
+    print(max_err)
     cc_rgb_srgb = get_color_checker_srgb_val()
     num_of_display = large_xyz_1931.shape[0]
     # num_of_cmfs = large_xyz_1931.shape[1]
@@ -1381,6 +1425,275 @@ def plot_inter_observer_error(large_xyz_1931):
         draw_24_cc_patch_inter_observer_error(d_idx=d_idx)
 
 
+def plot_inter_observer_error_ab_plane(large_xyz_1931):
+    """
+    Parameters
+    ----------
+    large_xyz_1931 : ndarray
+        XYZ value. CIE1931 observer see the display adjusted for each CMFS.
+        Shape is (num_of_display, num_of_cmfs, num_of_patch, 3)
+
+    Returns
+    -------
+    ndarray
+        delta Eab (CIE1931 XYZ - Cat 01~10 CMFS XYZ)
+    """
+    color_list = np.array([
+        pu.RED, pu.YELLOW, pu.GREEN, pu.BLUE, pu.SKY,
+        pu.PINK, pu.ORANGE, pu.MAJENTA, pu.BROWN, pu.GRAY50])
+    lab_1976 = XYZ_to_Lab(large_xyz_1931)
+    print(lab_1976[:, :10, 18])
+    aa = lab_1976[:, :10, 18, 1]
+    bb = lab_1976[:, :10, 18, 2]
+    num_of_display = large_xyz_1931.shape[0]
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Title",
+        graph_title_size=None,
+        xlabel="a*",
+        ylabel="b*",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[-17, 17],
+        ylim=[-17, 17],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    marker_list = ["s", "D", "o"]
+    label_list = ["BT.709", "DCI-P3", "BT.2020"]
+    marker_size_list = [230, 200, 250]
+    for d_idx in range(num_of_display):
+        marker = marker_list[d_idx]
+        marker_size = marker_size_list[d_idx]
+        label = label_list[d_idx]
+        ax1.scatter(
+            aa[d_idx].flatten(), bb[d_idx].flatten(),
+            marker=marker, s=marker_size, c=color_list,
+            edgecolors='k', linewidths=1, label=label)
+    fname = "./debug/ab_plane_cie1931.png"
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right', save_fname=fname)
+
+
+def create_cc_sds_under_d65_illuminant():
+    spectral_shape = SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS
+    illuminant = SDS_ILLUMINANTS['D65']
+    color_checker_sds_under_d65 = prepaere_color_checker_sr_data()
+    color_checker_sds_under_d65 = trim_and_iterpolate(
+        color_checker_sds_under_d65, spectral_shape)
+    illuminant_intp = trim_and_iterpolate(illuminant, spectral_shape)
+
+    domain = color_checker_sds_under_d65.domain
+    cc_sds = color_checker_sds_under_d65.values
+    d65_sds = illuminant_intp.values.reshape(-1, 1)
+
+    cc_d65_sds = cc_sds * d65_sds
+
+    color_checker_signals = MultiSignals(
+        data=cc_d65_sds, domain=domain)
+    color_checker_sds_under_d65 = MultiSpectralDistributions(
+        data=color_checker_signals)
+
+    return color_checker_sds_under_d65
+
+
+def create_cc_display_metamerism():
+    """
+    Returns
+    -------
+    A list of MultiSpectralDistributions
+        Shape is (num_of_display)
+    """
+    cmfs_list = [CIE1931_CMFS]
+
+    # calc reference XYZ value using D65 illuminant
+    large_xyz_il_d65 = calc_cc_plus_d65_xyz_for_each_cmfs_D65_illuminant(
+        cmfs_list=cmfs_list)
+
+    # calc RGB tristimulus value for each display to color match on each CMFS
+    display_sd_list = create_709_p3_2020_display_sd()
+    xyz_to_rgb_mtx = calc_xyz_to_rgb_matrix_each_display_sd_each_cmfs(
+        display_sd_list=display_sd_list, cmfs_list=cmfs_list)
+    large_y_n = calc_display_Yn_for_each_cmfs(
+        display_sd_list=display_sd_list, cmfs_list=cmfs_list)
+    rgb = calc_tristimulus_value_for_each_sd_patch_cmfs(
+        large_xyz=large_xyz_il_d65, xyz_to_rgb_mtx=xyz_to_rgb_mtx,
+        rgb_nomalize_val=large_y_n)
+
+    # apply RGB tristimulus value for each display
+    modified_sd_list = create_modified_display_sd_based_on_rgb_gain(
+        display_sd_list=display_sd_list, rgb_list=rgb)
+
+    domain = modified_sd_list[0][0][0].domain
+    num_of_display = len(display_sd_list)
+    num_of_patch = 24
+
+    output_sds = []
+    for d_idx in range(num_of_display):
+        sd_list = []
+        for p_idx in range(num_of_patch):
+            sd_value = modified_sd_list[d_idx][0][p_idx].values
+            sd_list.append(sd_value)
+        color_checker_signals = MultiSignals(
+            data=tstack(sd_list), domain=domain)
+        color_checker_sds = MultiSpectralDistributions(
+            data=color_checker_signals)
+        output_sds.append(color_checker_sds)
+
+    return output_sds
+
+
+def create_cc_spectrum_with_metamerism_each_patch_name(
+        d_idx, p_idx):
+    out_fname = f"./debug/metamerism_sds_patch_{d_idx:02d}-{p_idx:02}.png"
+    return out_fname
+
+
+def plot_color_checker_spectrum_with_metamerism_each_patch(
+        domain, value, y_max, patch_color, d_idx, p_idx,
+        wl_intp, line_color_intp):
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(2, 2),
+        # figsize=(10, 10),
+        bg_color=patch_color,
+        graph_title=None,
+        graph_title_size=None,
+        xlabel=None,
+        ylabel=None,
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=[0, y_max*1.03],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.get_xaxis().set_visible(False)
+    ax1.get_yaxis().set_visible(False)
+    ax1.spines['top'].set_visible(False)
+    ax1.spines['right'].set_visible(False)
+    ax1.spines['bottom'].set_visible(False)
+    ax1.spines['left'].set_visible(False)
+    x_intp = wl_intp
+    y_intp = np.interp(x_intp, domain, value)
+    ax1.plot(domain, value, lw=7, color=pu.GRAY90)
+    ax1.scatter(x_intp, y_intp, s=10, c=line_color_intp, zorder=50)
+    fname = create_cc_spectrum_with_metamerism_each_patch_name(
+        d_idx=d_idx, p_idx=p_idx)
+    print(fname)
+    pu.show_and_save(
+        fig=fig, save_fname=fname, only_graph_area=True)
+
+
+def get_cc_sd_each_display_single_patch_size():
+    fname = create_cc_spectrum_with_metamerism_each_patch_name(0, 0)
+    img = read_image(fname)
+    width = img.shape[1]
+    height = img.shape[0]
+
+    return width, height
+
+
+def draw_color_checker_sd_each_display(d_idx):
+    h_num = 6
+    v_num = 4
+    margin_rate = 0.12
+    patch_width, patch_height = get_cc_sd_each_display_single_patch_size()
+    margin_h = patch_width * margin_rate
+    margin_v = patch_height * margin_rate
+    bg_width = int(
+        (patch_width * h_num) + margin_h * (h_num + 1))
+    bg_height = int(
+        (patch_height * v_num) + margin_v * (v_num + 1))
+
+    gc = GridCoordinate(
+        bg_width=bg_width, bg_height=bg_height,
+        fg_width=patch_width, fg_height=patch_height,
+        h_num=h_num, v_num=v_num, remove_tblr_margin=False)
+    pos_list = gc.get_st_pos_list()
+    img = np.zeros((bg_height, bg_width, 3))
+    for v_idx in range(v_num):
+        for h_idx in range(h_num):
+            p_idx = v_idx * h_num + h_idx
+            patch_fname = create_cc_spectrum_with_metamerism_each_patch_name(
+                d_idx=d_idx, p_idx=p_idx)
+            patch_img = read_image(patch_fname)[..., :3]
+            tpg.merge(img, patch_img, pos_list[h_idx][v_idx])
+
+    # draw categorical observer info
+    info_str_list = [
+        "Illuminant D65",
+        "BT.709 Display", "DCI-P3 Display", "BT.2020 Display"]
+    font_color = tf.eotf(np.array([0.96, 0.96, 0.96]), tf.SRGB)
+    text_draw_ctrl_dummy = fc2.TextDrawControl(
+        text=info_str_list[1], font_color=font_color,
+        font_size=20, font_path=fc2.NOTO_SANS_CJKJP_BOLD,
+        stroke_width=0, stroke_fill=None)
+    _, text_height = text_draw_ctrl_dummy.get_text_width_height()
+
+    text_draw_ctrl = fc2.TextDrawControl(
+        text=info_str_list[d_idx], font_color=font_color,
+        font_size=20, font_path=fc2.NOTO_SANS_CJKJP_BOLD,
+        stroke_width=0, stroke_fill=None)
+    text_draw_img_height = int(text_height * 1.2)
+    text_draw_img = np.zeros((text_draw_img_height, bg_width, 3))
+
+    # calc position
+    pos_h = int(margin_h)
+    pos_v = 0
+    pos = (pos_h, pos_v)
+    # draw text
+    text_draw_ctrl.draw(img=text_draw_img, pos=pos)
+    text_draw_img = tf.oetf(text_draw_img, tf.SRGB)
+
+    fname = f"./figure/metamerism_spectrum-{d_idx:02d}.png"
+    print(fname)
+    img = np.vstack([img, text_draw_img])
+    write_image(img, fname, 'uint8')
+
+
+def plot_color_checker_spectrum_with_metamerism():
+    cc_sds_under_d65 = create_cc_sds_under_d65_illuminant()
+    cc_sds_each_display = create_cc_display_metamerism()
+    cc_sds_list = [
+        cc_sds_under_d65, cc_sds_each_display[0],
+        cc_sds_each_display[1], cc_sds_each_display[2]]
+
+    # cc_rgb_srgb = get_color_checker_srgb_val()
+    # wl = cc_sds_under_d65.domain
+    # intp_step = 0.1
+    # wl_intp = np.arange(wl[0], wl[-1] + intp_step, intp_step)
+    # rgb = wavelength_to_color(
+    #     wl=wl, chroma_rate=0.8) ** (1/2.4)
+    # line_color_intp = np.zeros((len(wl_intp), 3))
+    # for idx in range(3):
+    #     line_color_intp[..., idx] = np.interp(wl_intp, wl, rgb[..., idx])
+
+    # domain = cc_sds_under_d65.domain
+    # for d_idx, cc_sds in enumerate(cc_sds_list):
+    #     y_max = np.max(cc_sds.values)
+    #     for p_idx in range(24):
+    #         value = cc_sds.values[..., p_idx]
+    #         plot_color_checker_spectrum_with_metamerism_each_patch(
+    #             domain=domain, value=value, y_max=y_max,
+    #             patch_color=cc_rgb_srgb[p_idx], d_idx=d_idx, p_idx=p_idx,
+    #             wl_intp=wl_intp, line_color_intp=line_color_intp)
+    #     #     break
+    #     # break
+
+    for d_idx, cc_sds in enumerate(cc_sds_list):
+        draw_color_checker_sd_each_display(d_idx=d_idx)
+        # break
+
+
 def debug_func():
     # debug_numpy_mult_check()
     # debug_plot_151_cmfs()
@@ -1389,8 +1702,14 @@ def debug_func():
     # delta_xy_all = calc_intra_observer_error()
     # plot_intra_observer_error(delta_xy_all=delta_xy_all)
 
-    large_xyz_1931 = calc_inter_observer_error()
-    plot_inter_observer_error(large_xyz_1931=large_xyz_1931)
+    # large_xyz_1931 = calc_inter_observer_error()
+    # plot_inter_observer_error(large_xyz_1931=large_xyz_1931)
+
+    # plot_inter_observer_error_ab_plane(
+    #     large_xyz_1931=large_xyz_1931)
+
+    plot_color_checker_spectrum_with_metamerism()
+    pass
 
 
 if __name__ == '__main__':

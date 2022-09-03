@@ -51,6 +51,9 @@ if platform.system() == "Windows":
     NOTO_SANS_CJKJP_MEDIUM\
         = "C:/Users/toruv/AppData/Local/Microsoft/Windows"\
         + "/Fonts/NotoSansJP-Medium.otf"
+    NOTO_SANS_CJKJP_BOLD\
+        = "C:/Users/toruv/AppData/Local/Microsoft/Windows"\
+        + "/Fonts/NotoSansJP-Bold.otf"
 
 
 def get_text_width_height(
