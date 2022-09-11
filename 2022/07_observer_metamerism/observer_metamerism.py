@@ -808,6 +808,20 @@ def plot_color_checker_image_11_patch(
     return img_all_patch
 
 
+def debug_save_only_no18_patch(all_patch_img, d_idx):
+    fname = "./figure/11_patch_color_checker_cmfs-"
+    fname += f"only_no18_display-{d_idx:02d}.png"
+    st_pos_h = 0
+    st_pos_v = 792
+    ed_pos_h = st_pos_h + 288
+    ed_pos_v = st_pos_v + 288
+
+    img = all_patch_img[st_pos_v:ed_pos_v, st_pos_h:ed_pos_h]
+    img = cv2.resize(img, dsize=None, fx=2, fy=2,
+                     interpolation=cv2.INTER_NEAREST)
+    write_image(img, fname)
+
+
 def debug_save_color_checker_11_patch(large_xyz):
     rgb = cc.large_xyz_to_rgb(
         xyz=large_xyz, color_space_name=cs.BT709,
@@ -825,6 +839,9 @@ def debug_save_color_checker_11_patch(large_xyz):
         fname += f"display-{d_idx:02d}.png"
         print(fname)
         write_image(img, fname)
+
+        # 1 color patch for blog's result
+        debug_save_only_no18_patch(all_patch_img=img, d_idx=d_idx)
 
 
 def debug_verify_calibrated_sd(modified_sd_list, cmfs_list, large_xyz):
@@ -954,21 +971,21 @@ def calc_intra_observer_error():
     num_of_patch = 24
     debug_fname = "./debug/intra_error_diff_xy.npy"
 
-    # delta_xy_all = np.zeros(
-    #     (num_of_display, num_of_cmfs, num_of_patch))
+    delta_xy_all = np.zeros(
+        (num_of_display, num_of_cmfs, num_of_patch))
 
-    # for d_idx in range(num_of_display):
-    #     for c_idx in range(num_of_cmfs):
-    #         print(f"calc_delta_xy_disp-{d_idx}_cmfs-{c_idx}")
-    #         display_sd = display_list[d_idx]
-    #         cmfs = cmfs_list[c_idx]
-    #         ok_xyz, ng_xyz =\
-    #             calc_cc_xyz_ref_val_and_actual_cmfs2(
-    #                 msd=display_sd, cmfs2=cmfs,
-    #                 spectral_shape=SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS)
-    #         diff_xy = calc_delta_xy(ok_xyz, ng_xyz)
-    #         delta_xy_all[d_idx, c_idx] = diff_xy
-    # np.save(debug_fname, delta_xy_all)
+    for d_idx in range(num_of_display):
+        for c_idx in range(num_of_cmfs):
+            print(f"calc_delta_xy_disp-{d_idx}_cmfs-{c_idx}")
+            display_sd = display_list[d_idx]
+            cmfs = cmfs_list[c_idx]
+            ok_xyz, ng_xyz =\
+                calc_cc_xyz_ref_val_and_actual_cmfs2(
+                    msd=display_sd, cmfs2=cmfs,
+                    spectral_shape=SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS)
+            diff_xy = calc_delta_xy(ok_xyz, ng_xyz)
+            delta_xy_all[d_idx, c_idx] = diff_xy
+    np.save(debug_fname, delta_xy_all)
 
     delta_xy_all = np.load(debug_fname)
 
@@ -1694,6 +1711,126 @@ def plot_color_checker_spectrum_with_metamerism():
         # break
 
 
+def draw_cmfs_differences_for_blog():
+    cmfs_list = load_2deg_10_cmfs()
+    cmfs_list.append(CIE1931_CMFS)
+    spectral_shape = SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Color matching functions",
+        graph_title_size=None,
+        xlabel="Wavelength [nm]",
+        ylabel="Tristimulus Values",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=2,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+
+    def plot_each_cmfs(cmfs, obs, linestyle):
+        ax1.plot(
+            cmfs.wavelengths, cmfs.values[..., 0], linestyle,
+            color=pu.RED, label=f"Observer {obs} "+r"$\bar{x}(\lambda)$")
+        ax1.plot(
+            cmfs.wavelengths, cmfs.values[..., 1], linestyle,
+            color=pu.GREEN, label=f"Observer {obs} "+r"$\bar{y}(\lambda)$")
+        ax1.plot(
+            cmfs.wavelengths, cmfs.values[..., 2], linestyle,
+            color=pu.BLUE, label=f"Observer {obs} "+r"$\bar{z}(\lambda)$")
+
+    cmfs = cmfs_list[10]
+    cmfs = trim_and_iterpolate(cmfs, spectral_shape)
+    plot_each_cmfs(cmfs, "A", '-')
+
+    cmfs = cmfs_list[0]
+    cmfs = trim_and_iterpolate(cmfs, spectral_shape)
+    plot_each_cmfs(cmfs, "B", '--')
+
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right',
+        save_fname="./figure/cmfs_differences_for_blog.png")
+
+
+def draw_my_display_gamut_for_blog(
+        rate=1.3, xmin=-0.1, xmax=0.8, ymin=-0.1, ymax=1.0):
+    # プロット用データ準備
+    # ---------------------------------
+    st_wl = 380
+    ed_wl = 780
+    wl_step = 1
+    plot_wl_list = [
+        410, 450, 470, 480, 485, 490, 495,
+        500, 505, 510, 520, 530, 540, 550, 560, 570, 580, 590,
+        600, 620, 690]
+    cmf_xy = pu.calc_horseshoe_chromaticity(
+        st_wl=st_wl, ed_wl=ed_wl, wl_step=wl_step)
+    cmf_xy_norm = pu.calc_normal_pos(
+        xy=cmf_xy, normal_len=0.05, angle_degree=90)
+    wl_list = np.arange(st_wl, ed_wl + 1, wl_step)
+    xy_image = pu.get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, cmf_xy=cmf_xy)
+    my_gamut = np.array(
+        [[0.63496225, 0.35557378],
+         [0.26845774, 0.64041239],
+         [0.1419248, 0.04619973],
+         [0.63496225, 0.35557378]])
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20 * rate,
+        figsize=((xmax - xmin) * 10 * rate,
+                 (ymax - ymin) * 10 * rate),
+        graph_title="CIE1931 Chromaticity Diagram",
+        graph_title_size=None,
+        xlabel=None, ylabel=None,
+        axis_label_size=None,
+        legend_size=14 * rate,
+        xlim=(xmin, xmax),
+        ylim=(ymin, ymax),
+        xtick=[x * 0.1 + xmin for x in
+               range(int((xmax - xmin)/0.1) + 1)],
+        ytick=[x * 0.1 + ymin for x in
+               range(int((ymax - ymin)/0.1) + 1)],
+        xtick_size=17 * rate,
+        ytick_size=17 * rate,
+        linewidth=4 * rate,
+        minor_xtick_num=2,
+        minor_ytick_num=2)
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
+    for idx, wl in enumerate(wl_list):
+        if wl not in plot_wl_list:
+            continue
+        pu.draw_wl_annotation(
+            ax1=ax1, wl=wl, rate=rate,
+            st_pos=[cmf_xy_norm[idx, 0], cmf_xy_norm[idx, 1]],
+            ed_pos=[cmf_xy[idx, 0], cmf_xy[idx, 1]])
+    bt709_gamut = pu.get_primaries(name=cs.BT709)
+    ax1.plot(bt709_gamut[:, 0], bt709_gamut[:, 1],
+             c=pu.RED, label="BT.709", lw=2.75*rate)
+    bt2020_gamut = pu.get_primaries(name=cs.BT2020)
+    ax1.plot(bt2020_gamut[:, 0], bt2020_gamut[:, 1],
+             c=pu.GREEN, label="BT.2020", lw=2.75*rate)
+    # dci_p3_gamut = pu.get_primaries(name=cs.P3_D65)
+    # ax1.plot(dci_p3_gamut[:, 0], dci_p3_gamut[:, 1],
+    #          c=pu.BLUE, label="DCI-P3", lw=2.75*rate)
+    ax1.plot(my_gamut[:, 0], my_gamut[:, 1],
+             c=pu.BLUE, label="My LCD monitor", lw=2.75*rate)
+    ax1.plot(
+        [0.3127], [0.3290], 'x', label='D65', ms=12*rate, mew=2*rate,
+        color='k', alpha=0.8)
+    ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right',
+        save_fname="./figure/my_display_gamut.png")
+
+
 def debug_func():
     # debug_numpy_mult_check()
     # debug_plot_151_cmfs()
@@ -1703,12 +1840,16 @@ def debug_func():
     # plot_intra_observer_error(delta_xy_all=delta_xy_all)
 
     # large_xyz_1931 = calc_inter_observer_error()
+    # debug_save_color_checker_11_patch(large_xyz=large_xyz_1931[:, :, :24])
     # plot_inter_observer_error(large_xyz_1931=large_xyz_1931)
 
     # plot_inter_observer_error_ab_plane(
     #     large_xyz_1931=large_xyz_1931)
 
-    plot_color_checker_spectrum_with_metamerism()
+    # plot_color_checker_spectrum_with_metamerism()
+
+    # draw_cmfs_differences_for_blog()
+    draw_my_display_gamut_for_blog()
     pass
 
 

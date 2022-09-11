@@ -110,6 +110,7 @@ def calc_rgb_to_xyz_matrix_from_spectral_distribution(
     ----------
     spd : MultiSpectralDistributions
         Spectral distribution of the display.
+        `spd` should contain four different spectra R, G, B and W.
         Shape is `SpectralShape(360, 780, 1)`
     cmfs : MultiSpectralDistributions
         Color matching functions.
@@ -118,7 +119,6 @@ def calc_rgb_to_xyz_matrix_from_spectral_distribution(
     """
     illuminant = ILLUMINANT_E
 
-    # spd = add_white_spectrum(spd=spd)
     spd, cmfs, illuminant = trim_and_interpolate_in_advance(
         spd=spd, cmfs=cmfs, illuminant=illuminant,
         spectral_shape=spectral_shape)
