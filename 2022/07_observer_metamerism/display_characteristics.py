@@ -169,7 +169,7 @@ def modify_b_display_spd():
     Extract Red, Green, Blue spectrum and de-noise.
     """
     spd = load_display_spd(
-        fname="./spd_measure_data/rgbw_spd_e_360_780.csv")
+        fname="./spd_measure_data/rgbw_spd_4_iPhone13_BT2020.csv")
     wl = spd[..., 0]
     bb = spd[..., 5]
     gg = spd[..., 10]
@@ -212,7 +212,7 @@ def modify_b_display_spd():
     print(wl.shape)
     out_spd = tstack([wl, rr, gg, bb, ww])
     np.savetxt(
-        "./ref_data/ref_display_spd.csv", out_spd, delimiter=',')
+        "./ref_data/ref_display_A_spd.csv", out_spd, delimiter=',')
 
 
 def prepare_display_spd(
@@ -871,7 +871,7 @@ if __name__ == '__main__':
     # create_measure_patch()
     # plot_b_display_spectral_distribution()
     # plot_sun_glass_sd()
-    # modify_b_display_spd()
+    modify_b_display_spd()
     # calc_display_white_point(
     #     display_spd_data_fname="./ref_data/ref_display_spd.csv",
     #     spectral_shape=SpectralShape(360, 780, 1),
@@ -895,10 +895,10 @@ if __name__ == '__main__':
     # draw_subpixel_light_explain_image()
     # draw_subpixel_light_explain_image_with_spectrum()
     # draw_subpixel_light_explain_image_with_spectrum_with_rgb()
-    plot_sd_when_white_balance_changed(
-        src_fname="./ref_data/display_b_white_point.csv",
-        graph_name="./figure/display_b_white_point.png")
-    plot_sd_when_white_balance_changed(
-        src_fname="./ref_data/display_e_white_point.csv",
-        graph_name="./figure/display_e_white_point.png")
+    # plot_sd_when_white_balance_changed(
+    #     src_fname="./ref_data/display_b_white_point.csv",
+    #     graph_name="./figure/display_b_white_point.png")
+    # plot_sd_when_white_balance_changed(
+    #     src_fname="./ref_data/display_e_white_point.csv",
+    #     graph_name="./figure/display_e_white_point.png")
     pass

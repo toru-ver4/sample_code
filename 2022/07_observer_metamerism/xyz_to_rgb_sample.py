@@ -28,8 +28,8 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-def load_display_spectrum():
-    data = np.loadtxt(fname="./ref_data/ref_display_spd.csv", delimiter=",")
+def load_display_spectrum(fname):
+    data = np.loadtxt(fname=fname, delimiter=",")
     sd = data[..., 1:]
     domain = np.uint16(data[..., 0])
     signals = MultiSignals(data=sd, domain=domain)
@@ -63,11 +63,11 @@ def color_checker_calc_sd_to_XYZ_D65_illuminant():
     return XYZ
 
 
-def main_func():    
+def main_func():
     np.set_printoptions(precision=4)
 
     # calc xyz_to_rgb_matrix
-    display_spd = load_display_spectrum()
+    display_spd = load_display_spectrum("./ref_data/ref_display_spd.csv")
     rgb_to_xyz_matrix = calc_rgb_to_xyz_matrix_from_spectral_distribution(
         spd=display_spd)
     xyz_to_rgb_matrix = linalg.inv(rgb_to_xyz_matrix)

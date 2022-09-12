@@ -58,19 +58,19 @@ class SpdPlotObjects():
 
         self.r_mean_label = TyBasicLabel(
             default=self.r_mean_slider.get_default(),
-            prefix="R_mu:", suffix="[nm]")
+            prefix="R_loc:", suffix="[nm]")
         self.g_mean_label = TyBasicLabel(
             default=self.g_mean_slider.get_default(),
-            prefix="G_mu:", suffix="[nm]")
+            prefix="G_loc:", suffix="[nm]")
         self.b_mean_label = TyBasicLabel(
             default=self.b_mean_slider.get_default(),
-            prefix="B_mu:", suffix="[nm]")
+            prefix="B_loc:", suffix="[nm]")
         self.r_dist_label = TyBasicLabel(
-            default=self.r_dist_slider.get_default(), prefix=" R_sd:")
+            default=self.r_dist_slider.get_default(), prefix=" R_scale:")
         self.g_dist_label = TyBasicLabel(
-            default=self.g_dist_slider.get_default(), prefix=" G_sd:")
+            default=self.g_dist_slider.get_default(), prefix=" G_scale:")
         self.b_dist_label = TyBasicLabel(
-            default=self.b_dist_slider.get_default(), prefix=" B_sd:")
+            default=self.b_dist_slider.get_default(), prefix=" B_scale:")
 
     def create_spectrum_plot_obj(self, dsd_ctrl):
         self.display_sd_plot = DisplaySpectrumPlot(

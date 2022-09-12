@@ -28,7 +28,7 @@ from spectrum import DisplaySpectrum, create_display_sd,\
     CIE1931_CMFS, CIE2012_CMFS, ILLUMINANT_E, START_WAVELENGTH,\
     STOP_WAVELENGTH, WAVELENGTH_STEP,\
     calc_xyz_to_rgb_matrix_from_spectral_distribution, trim_and_iterpolate,\
-    wavelength_to_color
+    wavelength_to_color, calc_primaries_and_white
 import color_space as cc
 import font_control2 as fc2
 
@@ -1821,7 +1821,7 @@ def draw_my_display_gamut_for_blog(
     # ax1.plot(dci_p3_gamut[:, 0], dci_p3_gamut[:, 1],
     #          c=pu.BLUE, label="DCI-P3", lw=2.75*rate)
     ax1.plot(my_gamut[:, 0], my_gamut[:, 1],
-             c=pu.BLUE, label="My LCD monitor", lw=2.75*rate)
+             c=pu.BLUE, label="LCD monitor", lw=2.75*rate)
     ax1.plot(
         [0.3127], [0.3290], 'x', label='D65', ms=12*rate, mew=2*rate,
         color='k', alpha=0.8)
@@ -1829,6 +1829,143 @@ def draw_my_display_gamut_for_blog(
     pu.show_and_save(
         fig=fig, legend_loc='upper right',
         save_fname="./figure/my_display_gamut.png")
+
+
+def load_display_spectrum(fname):
+    data = np.loadtxt(fname=fname, delimiter=",")
+    sd = data[..., 1:]
+    domain = np.uint16(data[..., 0])
+    signals = MultiSignals(data=sd, domain=domain)
+    spd = MultiSpectralDistributions(data=signals)
+
+    return spd
+
+
+def load_display_spectrum_for_A(fname):
+    data = np.loadtxt(fname=fname, delimiter=",")
+    sd = data[..., 1:]
+    domain = np.uint16(data[..., 0])
+    temp = sd[..., 0].copy()
+    sd[..., 0] = sd[..., 2]
+    sd[..., 2] = temp
+    signals = MultiSignals(data=sd, domain=domain)
+    spd = MultiSpectralDistributions(data=signals)
+
+    return spd
+
+
+def plot_2_display_spectrum_for_blog():
+    d_e = load_display_spectrum("./ref_data/ref_display_spd.csv")
+    d_a = load_display_spectrum_for_A("./ref_data/ref_display_A_spd.csv")
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Spectral Distribution",
+        graph_title_size=None,
+        xlabel="Wavelength [nm]",
+        ylabel="Relative power",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[360, 780],
+        ylim=None,
+        xtick=[x*50 + 400 for x in range(8)],
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=2,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+
+    def plot_each_spd(spd, label, linestyle):
+        ax1.plot(
+            spd.wavelengths, spd.values[..., 0], linestyle,
+            color=pu.RED, label=f"{label} R")
+        ax1.plot(
+            spd.wavelengths, spd.values[..., 1], linestyle,
+            color=pu.GREEN, label=f"{label} G")
+        ax1.plot(
+            spd.wavelengths, spd.values[..., 2], linestyle,
+            color=pu.BLUE, label=f"{label} B")
+
+    plot_each_spd(spd=d_e, label="LCD monitor", linestyle='-')
+    plot_each_spd(spd=d_a, label="iPhone 13 Pro", linestyle='--')
+
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right',
+        save_fname="./figure/2_dislay_spectrum.png")
+
+    rate = 1.3
+    xmin = -0.1
+    xmax = 0.8
+    ymin = -0.1
+    ymax = 1.0
+    st_wl = 380
+    ed_wl = 780
+    wl_step = 1
+    plot_wl_list = [
+        410, 450, 470, 480, 485, 490, 495,
+        500, 505, 510, 520, 530, 540, 550, 560, 570, 580, 590,
+        600, 620, 690]
+    cmf_xy = pu.calc_horseshoe_chromaticity(
+        st_wl=st_wl, ed_wl=ed_wl, wl_step=wl_step)
+    cmf_xy_norm = pu.calc_normal_pos(
+        xy=cmf_xy, normal_len=0.05, angle_degree=90)
+    wl_list = np.arange(st_wl, ed_wl + 1, wl_step)
+    xy_image = pu.get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, cmf_xy=cmf_xy)
+    my_gamut = np.array(
+        [[0.63496225, 0.35557378],
+         [0.26845774, 0.64041239],
+         [0.1419248, 0.04619973],
+         [0.63496225, 0.35557378]])
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20 * rate,
+        figsize=((xmax - xmin) * 10 * rate,
+                 (ymax - ymin) * 10 * rate),
+        graph_title="CIE1931 Chromaticity Diagram",
+        graph_title_size=None,
+        xlabel=None, ylabel=None,
+        axis_label_size=None,
+        legend_size=14 * rate,
+        xlim=(xmin, xmax),
+        ylim=(ymin, ymax),
+        xtick=[x * 0.1 + xmin for x in
+               range(int((xmax - xmin)/0.1) + 1)],
+        ytick=[x * 0.1 + ymin for x in
+               range(int((ymax - ymin)/0.1) + 1)],
+        xtick_size=17 * rate,
+        ytick_size=17 * rate,
+        linewidth=4 * rate,
+        minor_xtick_num=2,
+        minor_ytick_num=2)
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
+    for idx, wl in enumerate(wl_list):
+        if wl not in plot_wl_list:
+            continue
+        pu.draw_wl_annotation(
+            ax1=ax1, wl=wl, rate=rate,
+            st_pos=[cmf_xy_norm[idx, 0], cmf_xy_norm[idx, 1]],
+            ed_pos=[cmf_xy[idx, 0], cmf_xy[idx, 1]])
+
+    # p_e, _ = calc_primaries_and_white(d_e)
+    p_a, _ = calc_primaries_and_white(d_a)
+
+    bt709_gamut = pu.get_primaries(name=cs.BT709)
+    ax1.plot(bt709_gamut[:, 0], bt709_gamut[:, 1],
+             c=pu.RED, label="BT.709", lw=2.75*rate)
+    ax1.plot(my_gamut[:, 0], my_gamut[:, 1],
+             c=pu.BLUE, label="LCD monitor", lw=2.75*rate)
+    ax1.plot(p_a[:, 0], p_a[:, 1],
+             c=pu.GREEN, label="iPhone 13 Pro", lw=2.75*rate)
+    ax1.plot(
+        [0.3127], [0.3290], 'x', label='D65', ms=12*rate, mew=2*rate,
+        color='k', alpha=0.8)
+    ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right',
+        save_fname="./figure/display_gamut_comparison_E_and_A.png")
 
 
 def debug_func():
@@ -1849,7 +1986,8 @@ def debug_func():
     # plot_color_checker_spectrum_with_metamerism()
 
     # draw_cmfs_differences_for_blog()
-    draw_my_display_gamut_for_blog()
+    # draw_my_display_gamut_for_blog()
+    plot_2_display_spectrum_for_blog()
     pass
 
 
