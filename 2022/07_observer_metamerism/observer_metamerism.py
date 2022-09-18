@@ -4,8 +4,6 @@
 
 # import standard libraries
 import os
-from unittest.mock import patch
-import requests
 
 # import third-party libraries
 import cv2
@@ -28,7 +26,7 @@ from spectrum import DisplaySpectrum, create_display_sd,\
     CIE1931_CMFS, CIE2012_CMFS, ILLUMINANT_E, START_WAVELENGTH,\
     STOP_WAVELENGTH, WAVELENGTH_STEP,\
     calc_xyz_to_rgb_matrix_from_spectral_distribution, trim_and_iterpolate,\
-    wavelength_to_color, calc_primaries_and_white
+    calc_primaries_and_white
 import color_space as cc
 import font_control2 as fc2
 
@@ -1862,10 +1860,10 @@ def plot_2_display_spectrum_for_blog():
         fontsize=20,
         figsize=(12, 8),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title="Spectral Distribution",
+        graph_title="Spectral Power Distribution",
         graph_title_size=None,
         xlabel="Wavelength [nm]",
-        ylabel="Relative power",
+        ylabel="Relative Power",
         axis_label_size=None,
         legend_size=17,
         xlim=[360, 780],
@@ -1968,6 +1966,162 @@ def plot_2_display_spectrum_for_blog():
         save_fname="./figure/display_gamut_comparison_E_and_A.png")
 
 
+def plot_out_of_gamut_spectral_distribution():
+    display_spd = load_display_spectrum("./ref_data/ref_display_spd.csv")
+    xyz_to_rgb_matrix = calc_xyz_to_rgb_matrix_from_spectral_distribution(
+        spd=display_spd)
+
+    # calc Color Checker's XYZ
+    target_xy = np.array([0.170, 0.797])
+    target_large_xyz = xy_to_XYZ(target_xy)
+    rgb = vector_dot(xyz_to_rgb_matrix, target_large_xyz)
+    rgb = rgb / np.max(np.abs(rgb))
+
+    wavelengths = display_spd.wavelengths
+    rr = display_spd.values[..., 0] * rgb[0]
+    gg = display_spd.values[..., 1] * rgb[1]
+    bb = display_spd.values[..., 2] * rgb[2]
+    ww = rr + gg + bb
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Spectral Power Distribution",
+        graph_title_size=None,
+        xlabel="Wavelength [nm]",
+        ylabel="Relative Power",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[360, 780],
+        ylim=None,
+        xtick=[x*50 + 400 for x in range(8)],
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=2,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+
+    ax1.plot(
+        wavelengths, ww, color='k', label="R+G+B", lw=4)
+    ax1.plot(
+        wavelengths, rr, '--', color=pu.RED, label="R")
+    ax1.plot(
+        wavelengths, gg, '--', color=pu.GREEN, label="G")
+    ax1.plot(
+        wavelengths, bb, '--', color=pu.BLUE, label="B")
+
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right',
+        save_fname="./figure/out_of_gamut_spectrum.png")
+
+    rate = 1.3
+    xmin = -0.1
+    xmax = 0.8
+    ymin = -0.1
+    ymax = 1.0
+    st_wl = 380
+    ed_wl = 780
+    wl_step = 1
+    plot_wl_list = [
+        410, 450, 470, 480, 485, 490, 495,
+        500, 505, 510, 520, 530, 540, 550, 560, 570, 580, 590,
+        600, 620, 690]
+    cmf_xy = pu.calc_horseshoe_chromaticity(
+        st_wl=st_wl, ed_wl=ed_wl, wl_step=wl_step)
+    cmf_xy_norm = pu.calc_normal_pos(
+        xy=cmf_xy, normal_len=0.05, angle_degree=90)
+    wl_list = np.arange(st_wl, ed_wl + 1, wl_step)
+    xy_image = pu.get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, cmf_xy=cmf_xy)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20 * rate,
+        figsize=((xmax - xmin) * 10 * rate,
+                 (ymax - ymin) * 10 * rate),
+        graph_title="CIE1931 Chromaticity Diagram",
+        graph_title_size=None,
+        xlabel=None, ylabel=None,
+        axis_label_size=None,
+        legend_size=14 * rate,
+        xlim=(xmin, xmax),
+        ylim=(ymin, ymax),
+        xtick=[x * 0.1 + xmin for x in
+               range(int((xmax - xmin)/0.1) + 1)],
+        ytick=[x * 0.1 + ymin for x in
+               range(int((ymax - ymin)/0.1) + 1)],
+        xtick_size=17 * rate,
+        ytick_size=17 * rate,
+        linewidth=4 * rate,
+        minor_xtick_num=2,
+        minor_ytick_num=2)
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
+    for idx, wl in enumerate(wl_list):
+        if wl not in plot_wl_list:
+            continue
+        pu.draw_wl_annotation(
+            ax1=ax1, wl=wl, rate=rate,
+            st_pos=[cmf_xy_norm[idx, 0], cmf_xy_norm[idx, 1]],
+            ed_pos=[cmf_xy[idx, 0], cmf_xy[idx, 1]])
+
+    p_e, _ = calc_primaries_and_white(display_spd)
+    bt2020_gamut = pu.get_primaries(name=cs.BT2020)
+    ax1.plot(p_e[:, 0], p_e[:, 1],
+             c=pu.BLUE, label="LCD monitor", lw=2.75*rate)
+    ax1.plot(bt2020_gamut[:, 0], bt2020_gamut[:, 1],
+             c=pu.GREEN, label="BT.2020", lw=2.75*rate)
+    ax1.plot(
+        [0.3127], [0.3290], 'x', label='D65', ms=12*rate, mew=2*rate,
+        color='k', alpha=0.8)
+    ax1.plot(
+        target_xy[0], target_xy[1], 'o',
+        label="target_xy", ms=12*rate, mew=2*rate,
+        color=pu.RED, alpha=0.9)
+    ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right',
+        save_fname="./figure/display_gamut_with_negative_light.png")
+
+
+def calc_white_xy_each_observer_for_blog():
+    cmfs_list = load_2deg_10_cmfs()
+    cmfs_list.append(CIE1931_CMFS)
+
+    # calc reference XYZ value using D65 illuminant
+    large_xyz_il_d65 = calc_cc_plus_d65_xyz_for_each_cmfs_D65_illuminant(
+        cmfs_list=cmfs_list)
+
+    xy_under_d65 = XYZ_to_xy(large_xyz_il_d65)
+
+    np.set_printoptions(precision=3)
+
+    cmfs_idx = 9
+
+    print(f"cie1931 xy = {xy_under_d65[-1, -1]}")
+    print(f"cat.obs.{cmfs_idx+1} xy = {xy_under_d65[cmfs_idx, -1]}")
+
+    display_list = create_709_p3_2020_display_sd()
+    display_sd = display_list[1]
+
+    spectral_shape = SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS
+
+    cmfs2 = cmfs_list[cmfs_idx]
+    cmfs2 = trim_and_iterpolate(cmfs2, spectral_shape)
+    display_sd = trim_and_iterpolate(display_sd, spectral_shape)
+    illuminant_e = ILLUMINANT_E
+    illuminant_e = trim_and_iterpolate(illuminant_e, spectral_shape)
+    display_xyz = sd_to_XYZ(
+        sd=display_sd, cmfs=cmfs2, illuminant=illuminant_e)
+    display_xy = XYZ_to_xy(display_xyz)
+
+    print(f"cat.obs.{cmfs_idx+1} display xy = {display_xy[-1]}")
+
+    large_xyz_1931 = np.load("./debug/calibrated_xyz.npy")
+    cie1931_xy = XYZ_to_xy(large_xyz_1931)
+
+    print(f"cat.obs.{cmfs_idx+1} = {cie1931_xy[1, cmfs_idx, -1]}")
+
+
 def debug_func():
     # debug_numpy_mult_check()
     # debug_plot_151_cmfs()
@@ -1987,7 +2141,10 @@ def debug_func():
 
     # draw_cmfs_differences_for_blog()
     # draw_my_display_gamut_for_blog()
-    plot_2_display_spectrum_for_blog()
+    # plot_2_display_spectrum_for_blog()
+    # plot_out_of_gamut_spectral_distribution()
+
+    calc_white_xy_each_observer_for_blog()
     pass
 
 

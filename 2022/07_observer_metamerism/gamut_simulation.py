@@ -44,17 +44,17 @@ class SpdPlotObjects():
     def create_objects(self):
         # object for widget
         self.r_mean_slider = TyBasicSlider(
-            int_float_rate=1, default=600, min_val=555, max_val=700)
+            int_float_rate=1, default=650, min_val=555, max_val=700)
         self.g_mean_slider = TyBasicSlider(
-            int_float_rate=1, default=546, min_val=450, max_val=650)
+            int_float_rate=1, default=539, min_val=450, max_val=650)
         self.b_mean_slider = TyBasicSlider(
-            int_float_rate=1, default=435, min_val=380, max_val=550)
+            int_float_rate=1, default=446, min_val=380, max_val=550)
         self.r_dist_slider = TyBasicSlider(
-            int_float_rate=1, default=25, min_val=1, max_val=150)
+            int_float_rate=1, default=35, min_val=1, max_val=150)
         self.g_dist_slider = TyBasicSlider(
-            int_float_rate=1, default=25, min_val=1, max_val=150)
+            int_float_rate=1, default=34, min_val=1, max_val=150)
         self.b_dist_slider = TyBasicSlider(
-            int_float_rate=1, default=25, min_val=1, max_val=150)
+            int_float_rate=1, default=32, min_val=1, max_val=150)
 
         self.r_mean_label = TyBasicLabel(
             default=self.r_mean_slider.get_default(),
@@ -86,8 +86,8 @@ class SpdPlotObjects():
 class DisplaySpectrumDataControl():
     def __init__(self):
         msd = self.create_display_spectrum_from_slider(
-            r_mu=600, r_sigma=25, g_mu=546, g_sigma=25,
-            b_mu=435, b_sigma=25)
+            r_mu=650, r_sigma=35, g_mu=539, g_sigma=34,
+            b_mu=446, b_sigma=32)
         self.ds = DisplaySpectrum(msd=msd)
 
     def create_display_spectrum_from_slider(
@@ -353,9 +353,9 @@ class DisplaySpectrumPlot():
         self.fig, self.ax1 = pu.plot_1_graph(
             fontsize=14,
             figsize=self.figsize,
-            graph_title="Spectral power distribution",
+            graph_title="Spectral Power Distribution",
             graph_title_size=None,
-            xlabel="Wavelength [nm]", ylabel="Relative power",
+            xlabel="Wavelength [nm]", ylabel="Relative Power",
             axis_label_size=None,
             legend_size=12,
             xlim=[360, 730],
@@ -368,9 +368,18 @@ class DisplaySpectrumPlot():
             linewidth=3,
             return_figure=True)
         sd_wavelength = self.dsd.msd.domain
-        self.display_sd_line_w, = self.ax1.plot(
-            sd_wavelength, self.dsd.msd.values[..., 3], '-',
-            color=(0.1, 0.1, 0.1), label="Display (W=R+G+B)", lw=5)
+        self.ax1.plot(
+            self.cmfs.wavelengths, self.cmfs.values[..., 0], '--',
+            color=pu.RED, lw=1,
+            label="CIE1931 2° "+r'$\overline{x} (\lambda)$')
+        self.ax1.plot(
+            self.cmfs.wavelengths, self.cmfs.values[..., 1], '--',
+            color=pu.GREEN, lw=1,
+            label="CIE1931 2° "+r'$\overline{y} (\lambda)$')
+        self.ax1.plot(
+            self.cmfs.wavelengths, self.cmfs.values[..., 2], '--',
+            color=pu.BLUE, lw=1,
+            label="CIE1931 2° "+r'$\overline{z} (\lambda)$')
         self.display_sd_line_r, = self.ax1.plot(
             sd_wavelength, self.dsd.msd.values[..., 0], '-',
             color=pu.RED, label="Display (R)", lw=1.5)
@@ -379,16 +388,10 @@ class DisplaySpectrumPlot():
             color=pu.GREEN, label="Display (G)", lw=1.5)
         self.display_sd_line_b, = self.ax1.plot(
             sd_wavelength, self.dsd.msd.values[..., 2], '-',
-            color=pu.SKY, label="Display (B)", lw=1.5)
-        self.ax1.plot(
-            self.cmfs.wavelengths, self.cmfs.values[..., 0], '--',
-            color=pu.RED, label="CIE 1931 2 CMF(R)", lw=1)
-        self.ax1.plot(
-            self.cmfs.wavelengths, self.cmfs.values[..., 1], '--',
-            color=pu.GREEN, label="CIE 1931 2 CMF(G)", lw=1)
-        self.ax1.plot(
-            self.cmfs.wavelengths, self.cmfs.values[..., 2], '--',
-            color=pu.BLUE, label="CIE 1931 2 CMF(B)", lw=1)
+            color=pu.BLUE, label="Display (B)", lw=1.5)
+        self.display_sd_line_w, = self.ax1.plot(
+            sd_wavelength, self.dsd.msd.values[..., 3], '-',
+            color=(0.1, 0.1, 0.1), label="Display (W=R+G+B)", lw=5)
 
         plt.legend(loc='upper right')
         self.canvas = FigureCanvas(self.fig)
