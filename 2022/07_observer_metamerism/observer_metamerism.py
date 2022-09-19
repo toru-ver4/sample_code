@@ -50,16 +50,11 @@ bt709_msd = create_display_sd(
     r_mu=649, r_sigma=35, g_mu=539, g_sigma=33, b_mu=460, b_sigma=13,
     normalize_y=True)
 p3_msd = create_display_sd(
-    r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=458, b_sigma=8,
+    r_mu=620, r_sigma=12, g_mu=535, g_sigma=18, b_mu=462, b_sigma=8,
     normalize_y=True)
 bt2020_msd = create_display_sd(
     r_mu=639, r_sigma=3, g_mu=530, g_sigma=4, b_mu=465, b_sigma=4,
     normalize_y=True)
-
-
-def download_file(url, color_checker_sr_fname):
-    response = requests.get(url)
-    open(color_checker_sr_fname, "wb").write(response.content)
 
 
 def prepaere_color_checker_sr_data():
@@ -606,11 +601,11 @@ def debug_plot_151_cmfs():
 
 def debug_plot_10_cmfs():
     cmfs_array = load_2deg_10_cmfs()
-    spectral_shape = SpectralShape(300, 830, 1)
+    # spectral_shape = SpectralShape(300, 830, 1)
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(10, 8),
+        figsize=(12, 8),
         bg_color=(0.96, 0.96, 0.96),
         graph_title="10 categorical observers (xyz 2 degree)",
         graph_title_size=None,
@@ -627,8 +622,8 @@ def debug_plot_10_cmfs():
         minor_xtick_num=None,
         minor_ytick_num=None)
     for cmfs in cmfs_array:
-        cmfs = cmfs.extrapolate(spectral_shape)
-        cmfs = cmfs.interpolate(spectral_shape)
+        # cmfs = cmfs.extrapolate(spectral_shape)
+        # cmfs = cmfs.interpolate(spectral_shape)
         ax1.plot(
             cmfs.wavelengths, cmfs.values[..., 0], '-',
             color=pu.RED, alpha=1/2)
@@ -639,7 +634,7 @@ def debug_plot_10_cmfs():
             cmfs.wavelengths, cmfs.values[..., 2], '-',
             color=pu.BLUE, alpha=1/2)
     pu.show_and_save(
-        fig=fig, legend_loc='upper left', save_fname="./figure/cmfs_10.png")
+        fig=fig, legend_loc=None, save_fname="./figure/cmfs_10.png")
 
 
 def create_709_p3_2020_display_sd():
@@ -820,7 +815,7 @@ def debug_save_only_no18_patch(all_patch_img, d_idx):
     write_image(img, fname)
 
 
-def debug_save_color_checker_11_patch(large_xyz):
+def draw_color_checker_11_patch_for_blog(large_xyz):
     rgb = cc.large_xyz_to_rgb(
         xyz=large_xyz, color_space_name=cs.BT709,
         xyz_white=cs.D65, rgb_white=cs.D65)
@@ -983,7 +978,7 @@ def calc_intra_observer_error():
                     spectral_shape=SPECTRAL_SHAPE_FOR_10_CATEGORY_CMFS)
             diff_xy = calc_delta_xy(ok_xyz, ng_xyz)
             delta_xy_all[d_idx, c_idx] = diff_xy
-    np.save(debug_fname, delta_xy_all)
+    np.save(debug_fname, delta_xy_all)  # for cache
 
     delta_xy_all = np.load(debug_fname)
 
@@ -1138,12 +1133,12 @@ def plot_intra_observer_error(delta_xy_all):
     num_of_cmfs = delta_xy_all.shape[1]
     num_of_patch = delta_xy_all.shape[2]
 
-    # for c_idx in range(num_of_cmfs):
-    #     for p_idx in range(num_of_patch):
-    #         plot_intra_error_single_patch(
-    #             delta_xy=delta_xy_all[:, c_idx, p_idx],
-    #             patch_color=cc_rgb_srgb[p_idx], y_max=max_err,
-    #             c_idx=c_idx, p_idx=p_idx)
+    for c_idx in range(num_of_cmfs):
+        for p_idx in range(num_of_patch):
+            plot_intra_error_single_patch(
+                delta_xy=delta_xy_all[:, c_idx, p_idx],
+                patch_color=cc_rgb_srgb[p_idx], y_max=max_err,
+                c_idx=c_idx, p_idx=p_idx)
 
     for c_idx in range(num_of_cmfs):
         draw_24_cc_patch_intra_observer_error(c_idx=c_idx)
@@ -1229,38 +1224,38 @@ def calc_inter_observer_error():
         A list of XYZ.
         Shape is (num_of_display, num_of_cmfs, num_of_patch, 3)
     """
-    # cmfs_list = load_2deg_10_cmfs()
-    # cmfs_list.append(CIE1931_CMFS)
+    cmfs_list = load_2deg_10_cmfs()
+    cmfs_list.append(CIE1931_CMFS)
 
-    # # calc reference XYZ value using D65 illuminant
-    # large_xyz_il_d65 = calc_cc_plus_d65_xyz_for_each_cmfs_D65_illuminant(
-    #     cmfs_list=cmfs_list)
+    # calc reference XYZ value using D65 illuminant
+    large_xyz_il_d65 = calc_cc_plus_d65_xyz_for_each_cmfs_D65_illuminant(
+        cmfs_list=cmfs_list)
 
-    # # calc RGB tristimulus value for each display to color match on each CMFS
-    # display_sd_list = create_709_p3_2020_display_sd()
-    # xyz_to_rgb_mtx = calc_xyz_to_rgb_matrix_each_display_sd_each_cmfs(
-    #     display_sd_list=display_sd_list, cmfs_list=cmfs_list)
-    # large_y_n = calc_display_Yn_for_each_cmfs(
-    #     display_sd_list=display_sd_list, cmfs_list=cmfs_list)
-    # rgb = calc_tristimulus_value_for_each_sd_patch_cmfs(
-    #     large_xyz=large_xyz_il_d65, xyz_to_rgb_mtx=xyz_to_rgb_mtx,
-    #     rgb_nomalize_val=large_y_n)
+    # calc RGB tristimulus value for each display to color match on each CMFS
+    display_sd_list = create_709_p3_2020_display_sd()
+    xyz_to_rgb_mtx = calc_xyz_to_rgb_matrix_each_display_sd_each_cmfs(
+        display_sd_list=display_sd_list, cmfs_list=cmfs_list)
+    large_y_n = calc_display_Yn_for_each_cmfs(
+        display_sd_list=display_sd_list, cmfs_list=cmfs_list)
+    rgb = calc_tristimulus_value_for_each_sd_patch_cmfs(
+        large_xyz=large_xyz_il_d65, xyz_to_rgb_mtx=xyz_to_rgb_mtx,
+        rgb_nomalize_val=large_y_n)
 
-    # # apply RGB tristimulus value for each display
-    # modified_sd_list = create_modified_display_sd_based_on_rgb_gain(
-    #     display_sd_list=display_sd_list, rgb_list=rgb)
+    # apply RGB tristimulus value for each display
+    modified_sd_list = create_modified_display_sd_based_on_rgb_gain(
+        display_sd_list=display_sd_list, rgb_list=rgb)
 
-    # # calc each dislay spd using cie1931
-    # large_xyz_1931 = calc_XYZ_from_adjusted_display_sd_using_cie1931(
-    #     sd_list=modified_sd_list, rgb_list=rgb)
+    # calc each dislay spd using cie1931
+    large_xyz_1931 = calc_XYZ_from_adjusted_display_sd_using_cie1931(
+        sd_list=modified_sd_list, rgb_list=rgb)
 
-    # np.save("./debug/calibrated_xyz.npy", large_xyz_1931)
+    np.save("./debug/calibrated_xyz.npy", large_xyz_1931)  # for cache
 
     large_xyz_1931 = np.load("./debug/calibrated_xyz.npy")
 
-    # debug_verify_calibrated_sd(
-    #     modified_sd_list=modified_sd_list, cmfs_list=cmfs_list,
-    #     large_xyz=large_xyz_il_d65)
+    debug_verify_calibrated_sd(
+        modified_sd_list=modified_sd_list, cmfs_list=cmfs_list,
+        large_xyz=large_xyz_il_d65)
 
     return large_xyz_1931
 
@@ -1415,9 +1410,8 @@ def plot_inter_observer_error(large_xyz_1931):
         Shape is (num_of_display, num_of_cmfs, num_of_patch, 3)
     """
 
-    # debug_save_white_patch(large_xyz=large_xyz_1931)
-    # debug_save_color_checker(large_xyz=large_xyz_1931)
-    # debug_save_color_checker_11_patch(large_xyz=large_xyz_1931[:, :, :24])
+    debug_save_white_patch(large_xyz=large_xyz_1931)
+    debug_save_color_checker(large_xyz=large_xyz_1931)
 
     delta_eab = calc_delta_eab_inter_observer_error(
         large_xyz_1931=large_xyz_1931)
@@ -1429,12 +1423,12 @@ def plot_inter_observer_error(large_xyz_1931):
     # num_of_cmfs = large_xyz_1931.shape[1]
     num_of_patch = large_xyz_1931.shape[2] - 1
 
-    # for d_idx in range(num_of_display):
-    #     for p_idx in range(num_of_patch):
-    #         plot_inter_error_single_patch(
-    #             delta_xy=delta_eab[d_idx, :, p_idx],
-    #             patch_color=cc_rgb_srgb[p_idx], y_max=max_err,
-    #             d_idx=d_idx, p_idx=p_idx)
+    for d_idx in range(num_of_display):
+        for p_idx in range(num_of_patch):
+            plot_inter_error_single_patch(
+                delta_xy=delta_eab[d_idx, :, p_idx],
+                patch_color=cc_rgb_srgb[p_idx], y_max=max_err,
+                d_idx=d_idx, p_idx=p_idx)
 
     for d_idx in range(num_of_display):
         draw_24_cc_patch_inter_observer_error(d_idx=d_idx)
@@ -2122,17 +2116,20 @@ def calc_white_xy_each_observer_for_blog():
     print(f"cat.obs.{cmfs_idx+1} = {cie1931_xy[1, cmfs_idx, -1]}")
 
 
+def main_func():
+    delta_xy_all = calc_intra_observer_error()
+    plot_intra_observer_error(delta_xy_all=delta_xy_all)
+
+    large_xyz_1931 = calc_inter_observer_error()
+    draw_color_checker_11_patch_for_blog(
+        large_xyz=large_xyz_1931[:, :, :24])
+    plot_inter_observer_error(large_xyz_1931=large_xyz_1931)
+
+
 def debug_func():
     # debug_numpy_mult_check()
     # debug_plot_151_cmfs()
-    # debug_plot_10_cmfs()
-
-    # delta_xy_all = calc_intra_observer_error()
-    # plot_intra_observer_error(delta_xy_all=delta_xy_all)
-
-    # large_xyz_1931 = calc_inter_observer_error()
-    # debug_save_color_checker_11_patch(large_xyz=large_xyz_1931[:, :, :24])
-    # plot_inter_observer_error(large_xyz_1931=large_xyz_1931)
+    debug_plot_10_cmfs()
 
     # plot_inter_observer_error_ab_plane(
     #     large_xyz_1931=large_xyz_1931)
@@ -2144,10 +2141,11 @@ def debug_func():
     # plot_2_display_spectrum_for_blog()
     # plot_out_of_gamut_spectral_distribution()
 
-    calc_white_xy_each_observer_for_blog()
+    # calc_white_xy_each_observer_for_blog()
     pass
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # main_func()
     debug_func()
