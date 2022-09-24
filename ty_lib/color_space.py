@@ -50,6 +50,7 @@ RED_WIDE_GAMUT_RGB = 'REDWideGamutRGB'
 DCI_P3 = 'DCI-P3'
 SRTB = 'sRGB'
 P3_D65 = 'P3-D65'
+ADOBE_RGB = 'Adobe RGB (1998)'
 
 
 def calc_rgb_from_xyY(xyY, color_space_name, white=D65):

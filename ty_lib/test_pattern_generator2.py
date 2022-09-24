@@ -10,17 +10,14 @@ import os
 from colour.models.rgb.rgb_colourspace import RGB_to_RGB
 from colour.utilities import tstack
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
-from colour.colorimetry import MSDS_CMFS, CCS_ILLUMINANTS
-from colour.models import XYZ_to_xy, xy_to_XYZ, XYZ_to_RGB, RGB_to_XYZ
+from colour.colorimetry import CCS_ILLUMINANTS
+from colour.models import xy_to_XYZ, XYZ_to_RGB
 from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ, LCHab_to_Lab
-from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020
-from colour.utilities import normalise_maximum
-from colour import models
+from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020,\
+    RGB_COLOURSPACE_ACES2065_1, RGB_COLOURSPACE_ACESCG
+from colour.algebra import normalise_maximum
 from colour import RGB_COLOURSPACES, CCS_COLOURCHECKERS
-from scipy.spatial import Delaunay
-from scipy.ndimage.filters import convolve
 import math
 from jzazbz import jzczhz_to_jzazbz
 
@@ -331,68 +328,6 @@ def equal_devision(length, div_num):
     return ret_array
 
 
-def do_matrix(img, mtx):
-    """
-    img に対して mtx を適用する。
-    """
-    base_shape = img.shape
-
-    r, g, b = img[..., 0], img[..., 1], img[..., 2]
-    ro = r * mtx[0][0] + g * mtx[0][1] + b * mtx[0][2]
-    go = r * mtx[1][0] + g * mtx[1][1] + b * mtx[1][2]
-    bo = r * mtx[2][0] + g * mtx[2][1] + b * mtx[2][2]
-
-    out_img = np.dstack((ro, go, bo)).reshape(base_shape)
-
-    return out_img
-
-
-def _get_cmfs_xy():
-    """
-    xy色度図のプロットのための馬蹄形の外枠のxy値を求める。
-
-    Returns
-    -------
-    array_like
-        xy coordinate for chromaticity diagram
-
-    """
-    # 基本パラメータ設定
-    # ------------------
-    cmf = MSDS_CMFS.get(CMFS_NAME)
-    d65_white = D65_WHITE
-
-    # 馬蹄形のxy値を算出
-    # --------------------------
-    cmf_xy = XYZ_to_xy(cmf.values, d65_white)
-
-    return cmf_xy
-
-
-def get_primaries(name='ITU-R BT.2020'):
-    """
-    prmary color の座標を求める
-
-
-    Parameters
-    ----------
-    name : str
-        a name of the color space.
-
-    Returns
-    -------
-    array_like
-        prmaries. [[rx, ry], [gx, gy], [bx, by], [rx, ry]]
-
-    """
-    primaries = RGB_COLOURSPACES[name].primaries
-    primaries = np.append(primaries, [primaries[0, :]], axis=0)
-
-    rgb = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
-
-    return primaries, rgb
-
-
 def xy_to_rgb(xy, name='ITU-R BT.2020', normalize='maximum', specific=None):
     """
     xy値からRGB値を算出する。
@@ -455,37 +390,6 @@ def get_white_point(name):
         white_point = CCS_ILLUMINANTS[CMFS_NAME]["D65"]
 
     return white_point
-
-
-def get_secondaries(name='ITU-R BT.2020'):
-    """
-    secondary color の座標を求める
-
-    Parameters
-    ----------
-    name : str
-        a name of the color space.
-
-    Returns
-    -------
-    array_like
-        secondaries. the order is magenta, yellow, cyan.
-
-    """
-    secondary_rgb = np.array([[1.0, 0.0, 1.0],
-                              [1.0, 1.0, 0.0],
-                              [0.0, 1.0, 1.0]])
-    illuminant_XYZ = D65_WHITE
-    illuminant_RGB = D65_WHITE
-    chromatic_adaptation_transform = 'CAT02'
-    rgb_to_xyz_matrix = get_rgb_to_xyz_matrix(name)
-    large_xyz = RGB_to_XYZ(secondary_rgb, illuminant_RGB,
-                           illuminant_XYZ, rgb_to_xyz_matrix,
-                           chromatic_adaptation_transform)
-
-    xy = XYZ_to_xy(large_xyz, illuminant_XYZ)
-
-    return xy, secondary_rgb.reshape((3, 3))
 
 
 # def plot_chromaticity_diagram(
@@ -564,109 +468,6 @@ def get_secondaries(name='ITU-R BT.2020'):
 #     plt.show()
 
 
-def get_chromaticity_image(samples=1024, antialiasing=True, bg_color=0.9,
-                           xmin=0.0, xmax=1.0, ymin=0.0, ymax=1.0):
-    """
-    xy色度図の馬蹄形の画像を生成する
-
-    Returns
-    -------
-    ndarray
-        rgb image.
-    """
-
-    """
-    色域設定。sRGBだと狭くて少し変だったのでBT.2020に設定。
-    若干色が薄くなるのが難点。暇があれば改良したい。
-    """
-    # color_space = models.RGB_COLOURSPACE_BT2020
-    # color_space = models.S_GAMUT3_COLOURSPACE
-    color_space = models.ACES_CG_COLOURSPACE
-
-    # 馬蹄形のxy値を算出
-    # --------------------------
-    cmf_xy = _get_cmfs_xy()
-
-    """
-    馬蹄の内外の判別をするために三角形で領域分割する(ドロネー図を作成)。
-    ドロネー図を作れば後は外積計算で領域の内外を判別できる（たぶん）。
-
-    なお、作成したドロネー図は以下のコードでプロット可能。
-    1点補足しておくと、```plt.triplot``` の第三引数は、
-    第一、第二引数から三角形を作成するための **インデックス** のリスト
-    になっている。[[0, 1, 2], [2, 4, 3], ...]的な。
-
-    ```python
-    plt.figure()
-    plt.triplot(xy[:, 0], xy[:, 1], triangulation.simplices.copy(), '-o')
-    plt.title('triplot of Delaunay triangulation')
-    plt.show()
-    ```
-    """
-    triangulation = Delaunay(cmf_xy)
-
-    """
-    ```triangulation.find_simplex()``` で xy がどのインデックスの領域か
-    調べることができる。戻り値が ```-1``` の場合は領域に含まれないため、
-    0以下のリストで領域判定の mask を作ることができる。
-    """
-    xx, yy\
-        = np.meshgrid(np.linspace(xmin, xmax, samples),
-                      np.linspace(ymax, ymin, samples))
-    xy = np.dstack((xx, yy))
-    mask = (triangulation.find_simplex(xy) < 0).astype(np.float)
-
-    # アンチエイリアシングしてアルファチャンネルを滑らかに
-    # ------------------------------------------------
-    if antialiasing:
-        kernel = np.array([
-            [0, 1, 0],
-            [1, 2, 1],
-            [0, 1, 0],
-        ]).astype(np.float)
-        kernel /= np.sum(kernel)
-        mask = convolve(mask, kernel)
-
-    # ネガポジ反転
-    # --------------------------------
-    mask = 1 - mask[:, :, np.newaxis]
-
-    # xy のメッシュから色を復元
-    # ------------------------
-    illuminant_XYZ = D65_WHITE
-    illuminant_RGB = color_space.whitepoint
-    chromatic_adaptation_transform = 'XYZ Scaling'
-    large_xyz_to_rgb_matrix = color_space.matrix_XYZ_to_RGB
-    xy[xy == 0.0] = 1.0  # ゼロ割対策
-    large_xyz = xy_to_XYZ(xy)
-    rgb = XYZ_to_RGB(large_xyz, illuminant_XYZ, illuminant_RGB,
-                     large_xyz_to_rgb_matrix,
-                     chromatic_adaptation_transform)
-
-    """
-    そのままだとビデオレベルが低かったりするので、
-    各ドット毎にRGB値を正規化＆最大化する。
-    """
-    rgb[rgb == 0] = 1.0  # ゼロ割対策
-    rgb = normalise_maximum(rgb, axis=-1)
-
-    # mask 適用
-    # -------------------------------------
-    mask_rgb = np.dstack((mask, mask, mask))
-    rgb *= mask_rgb
-
-    # 背景色をグレーに変更
-    # -------------------------------------
-    bg_rgb = np.ones_like(rgb)
-    bg_rgb *= (1 - mask_rgb) * bg_color
-
-    rgb += bg_rgb
-
-    rgb = rgb ** (1/2.2)
-
-    return rgb
-
-
 def get_csf_color_image(width=640, height=480,
                         lv1=np.uint16(np.array([1.0, 1.0, 1.0]) * 1023 * 0x40),
                         lv2=np.uint16(np.array([1.0, 1.0, 1.0]) * 512 * 0x40),
@@ -719,110 +520,6 @@ def get_csf_color_image(width=640, height=480,
         v_pos_temp += v_pos_list[idx]
 
     return img
-
-
-def plot_xyY_color_space(name='ITU-R BT.2020', samples=1024,
-                         antialiasing=True):
-    """
-    SONY の HDR説明資料にあるような xyY の図を作る。
-
-    Parameters
-    ----------
-    name : str
-        name of the target color space.
-
-    Returns
-    -------
-    None
-
-    """
-
-    # 馬蹄の領域判別用データ作成
-    # --------------------------
-    primary_xy, _ = get_primaries(name=name)
-    triangulation = Delaunay(primary_xy)
-
-    xx, yy\
-        = np.meshgrid(np.linspace(0, 1, samples), np.linspace(1, 0, samples))
-    xy = np.dstack((xx, yy))
-    mask = (triangulation.find_simplex(xy) < 0).astype(np.float)
-
-    # アンチエイリアシングしてアルファチャンネルを滑らかに
-    # ------------------------------------------------
-    if antialiasing:
-        kernel = np.array([
-            [0, 1, 0],
-            [1, 2, 1],
-            [0, 1, 0],
-        ]).astype(np.float)
-        kernel /= np.sum(kernel)
-        mask = convolve(mask, kernel)
-
-    # ネガポジ反転
-    # --------------------------------
-    mask = 1 - mask[:, :, np.newaxis]
-
-    # xy のメッシュから色を復元
-    # ------------------------
-    illuminant_XYZ = D65_WHITE
-    illuminant_RGB = RGB_COLOURSPACES[name].whitepoint
-    chromatic_adaptation_transform = 'CAT02'
-    large_xyz_to_rgb_matrix = get_xyz_to_rgb_matrix(name)
-    rgb_to_large_xyz_matrix = get_rgb_to_xyz_matrix(name)
-    large_xyz = xy_to_XYZ(xy)
-    rgb = XYZ_to_RGB(large_xyz, illuminant_XYZ, illuminant_RGB,
-                     large_xyz_to_rgb_matrix,
-                     chromatic_adaptation_transform)
-
-    """
-    そのままだとビデオレベルが低かったりするので、
-    各ドット毎にRGB値を正規化＆最大化する。
-    """
-    rgb_org = normalise_maximum(rgb, axis=-1)
-
-    # mask 適用
-    # -------------------------------------
-    mask_rgb = np.dstack((mask, mask, mask))
-    rgb = rgb_org * mask_rgb
-    rgba = np.dstack((rgb, mask))
-
-    # こっからもういちど XYZ に変換。Yを求めるために。
-    # ---------------------------------------------
-    large_xyz2 = RGB_to_XYZ(rgb, illuminant_RGB, illuminant_XYZ,
-                            rgb_to_large_xyz_matrix,
-                            chromatic_adaptation_transform)
-
-    # ログスケールに変換する準備
-    # --------------------------
-    large_y = large_xyz2[..., 1] * 1000
-    large_y[large_y < 1] = 1.0
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    # ax.plot_wireframe(xy[..., 0], xy[..., 1], np.log10(large_y),
-    #                   rcount=100, ccount=100)
-    ax.plot_surface(xy[..., 0], xy[..., 1], np.log10(large_y),
-                    rcount=64, ccount=64, facecolors=rgb_org)
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("Y")
-    ax.set_zticks([0, 1, 2, 3])
-    ax.set_zticklabels([1, 10, 100, 1000])
-
-    # chromatcity_image の取得。z=0 の位置に貼り付ける
-    # ----------------------------------------------
-    cie1931_rgb = get_chromaticity_image(samples=samples, bg_color=0.0)
-
-    alpha = np.zeros_like(cie1931_rgb[..., 0])
-    rgb_sum = np.sum(cie1931_rgb, axis=-1)
-    alpha[rgb_sum > 0.00001] = 1
-    cie1931_rgb = np.dstack((cie1931_rgb[..., 0], cie1931_rgb[..., 1],
-                             cie1931_rgb[..., 2], alpha))
-    zz = np.zeros_like(xy[..., 0])
-    ax.plot_surface(xy[..., 0], xy[..., 1], zz,
-                    facecolors=cie1931_rgb)
-
-    plt.show()
 
 
 def log_tick_formatter(val, pos=None):
@@ -1273,7 +970,7 @@ def make_ycbcr_checker(height=480, v_tile_num=4):
 
 
 def plot_color_checker_image(rgb, rgb2=None, size=(1920, 1080),
-                             block_size=1/4.5):
+                             block_size=1/4.5, side_trim=True):
     """
     ColorCheckerをプロットする
 
@@ -1332,15 +1029,34 @@ def plot_color_checker_image(rgb, rgb2=None, size=(1920, 1080),
         st_v = patch_st_v + (patch_height + patch_space) * v_idx
         img_all_patch[st_v:st_v+patch_height, st_h:st_h+patch_width] = patch
 
-        # pt1 = (st_h, st_v)  # upper left
-        pt2 = (st_h + patch_width, st_v)  # upper right
-        pt3 = (st_h, st_v + patch_height)  # lower left
-        pt4 = (st_h + patch_width, st_v + patch_height)  # lower right
-        pts = np.array((pt2, pt3, pt4))
+        ## rgb2 for triangle plot
+        # pt2 = (st_h + patch_width, st_v)  # upper right
+        # pt3 = (st_h, st_v + patch_height)  # lower left
+        # pt4 = (st_h + patch_width, st_v + patch_height)  # lower right
+        # pts = np.array((pt2, pt3, pt4))
+        # sub_color = rgb[idx].tolist() if rgb2 is None else rgb2[idx].tolist()
+        # cv2.fillPoly(img_all_patch, [pts], sub_color)
+
+        # rgb2 for rectangle in rectangle
+        pt2 = (
+            st_h + np.uint16(np.round(patch_width/4*3)),
+            st_v + patch_width//4)  # upper right
+        pt3 = (
+            st_h + np.uint16(np.round(patch_width/4*3)),
+            st_v + np.uint16(np.round(patch_width/4*3)))  # upper right
+        pt4 = (
+            st_h + patch_width//4,
+            st_v + np.uint16(np.round(patch_width/4*3)))  # upper right
+        pt5 = (st_h + patch_width//4, st_v + patch_width//4)
+        pts = np.array((pt2, pt3, pt4, pt5))
         sub_color = rgb[idx].tolist() if rgb2 is None else rgb2[idx].tolist()
         cv2.fillPoly(img_all_patch, [pts], sub_color)
 
     # preview_image(img_all_patch)
+    if side_trim:
+        img_trim_h_st = patch_st_h - patch_space
+        img_trim_h_ed = patch_st_h + (patch_width + patch_space) * 6
+        img_all_patch = img_all_patch[:, img_trim_h_st:img_trim_h_ed]
 
     return img_all_patch
 

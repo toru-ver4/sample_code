@@ -5,7 +5,7 @@ spectrum
 
 # import standard libraries
 import os
-from colour.models.cie_xyy import xyY_to_XYZ
+from colour import xyY_to_XYZ
 
 import numpy as np
 from numpy import linalg
@@ -18,12 +18,11 @@ from colour import sd_CIE_illuminant_D_series, SpectralShape, Extrapolator
 from colour.colorimetry import MSDS_CMFS_STANDARD_OBSERVER
 from colour.utilities import tstack
 from colour.models import RGB_COLOURSPACE_BT709
-import colour_datasets
+# import colour_datasets
 
 # import my libraries
 from test_pattern_generator2 import D65_WHITE, plot_color_checker_image,\
-    img_wirte_float_as_16bit_int, _get_cmfs_xy, get_primaries,\
-    get_chromaticity_image, img_wirte_float_as_16bit_int
+    img_wirte_float_as_16bit_int
 import transfer_functions as tf
 import plot_utility as pu
 import matplotlib.pyplot as plt
@@ -83,22 +82,22 @@ def get_cie_2_2012_cmf():
     return cmfs_2012
 
 
-def get_sony_nex5_ss():
-    dataset = colour_datasets.load('3245883')
-    sony_nex_5n_name = 'SONY NEX-5N'
-    sony_ss = dataset[sony_nex_5n_name]
-    min_w = sony_ss.wavelengths[0]
-    max_w = sony_ss.wavelengths[-1]
-    print(f"{sony_nex_5n_name} default wavelength is {min_w} - {max_w} nm")
-    sony_ss.interpolate(
-        shape=VALID_SHAPE, interpolator=LinearInterpolator)
-    keyword = dict(
-        method='Constant', left=0, right=0)
-    sony_ss.extrapolate(
-        shape=VALID_SHAPE, extrapolator=Extrapolator,
-        extrapolator_kwargs=keyword)
+# def get_sony_nex5_ss():
+#     dataset = colour_datasets.load('3245883')
+#     sony_nex_5n_name = 'SONY NEX-5N'
+#     sony_ss = dataset[sony_nex_5n_name]
+#     min_w = sony_ss.wavelengths[0]
+#     max_w = sony_ss.wavelengths[-1]
+#     print(f"{sony_nex_5n_name} default wavelength is {min_w} - {max_w} nm")
+#     sony_ss.interpolate(
+#         shape=VALID_SHAPE, interpolator=LinearInterpolator)
+#     keyword = dict(
+#         method='Constant', left=0, right=0)
+#     sony_ss.extrapolate(
+#         shape=VALID_SHAPE, extrapolator=Extrapolator,
+#         extrapolator_kwargs=keyword)
 
-    return sony_ss
+#     return sony_ss
 
 
 def calc_xyY_from_single_spectrum(src_sd, ref_sd, cmfs, emit=False):
@@ -685,13 +684,13 @@ def plot_display_gamut_test():
 
     # プロット用データ準備
     # ---------------------------------
-    xy_image = get_chromaticity_image(
+    xy_image = pu.get_chromaticity_image(
         xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
-    cmf_xy = _get_cmfs_xy()
+    cmf_xy = pu.calc_horseshoe_chromaticity(st_wl=380, ed_wl=780, wl_step=1)
 
-    bt709_gamut, _ = get_primaries(name=cs.BT709)
-    bt2020_gamut, _ = get_primaries(name=cs.BT2020)
-    dci_p3_gamut, _ = get_primaries(name=cs.P3_D65)
+    bt709_gamut = pu.get_primaries(name=cs.BT709)
+    bt2020_gamut = pu.get_primaries(name=cs.BT2020)
+    dci_p3_gamut = pu.get_primaries(name=cs.P3_D65)
     xlim = (min(0, xmin), max(0.8, xmax))
     ylim = (min(0, ymin), max(0.9, ymax))
 
@@ -746,8 +745,6 @@ def apply_matrix(src, mtx):
     c = src[..., 0]*mtx[2][0] + src[..., 1]*mtx[2][1] + src[..., 2]*mtx[2][2]
 
     return np.dstack([a, b, c]).reshape(shape_bak)
-
-
 
 
 if __name__ == '__main__':
