@@ -4,7 +4,6 @@
 
 # import standard libraries
 import os
-from cv2 import illuminationChange
 
 # import third-party libraries
 import numpy as np

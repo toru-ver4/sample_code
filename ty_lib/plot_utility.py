@@ -597,9 +597,12 @@ def plot_3d_init(
 
 def show_and_save(
         fig, legend_loc=None, save_fname=None, show=False, dpi=100,
-        only_graph_area=False):
+        fontsize=None, only_graph_area=False):
     if legend_loc is not None:
-        plt.legend(loc=legend_loc)
+        if fontsize is not None:
+            plt.legend(fontsize=fontsize, loc=legend_loc)
+        else:
+            plt.legend(loc=legend_loc)
 
     if only_graph_area:
         plt.savefig(
