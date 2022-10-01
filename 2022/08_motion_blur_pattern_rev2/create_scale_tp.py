@@ -23,7 +23,7 @@ __all__ = []
 
 NUM_OF_HORIZONTAL_UNIT = 16
 NUM_OF_VERTICAL_UNIT = 9
-NUM_OF_MINOR_SCALE = 10
+NUM_OF_MINOR_SCALE = 8
 
 
 def calc_horizontal_unit_size(width):
@@ -326,3 +326,5 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     create_scale_pattern(width=1920, height=1080)
     create_scale_pattern(width=3840, height=2160)
+    create_scale_pattern(width=2048, height=1080)
+    create_scale_pattern(width=4096, height=2160)
