@@ -5,7 +5,7 @@
     <ProfileDeviceClass>mntr</ProfileDeviceClass>
     <DataColourSpace>RGB </DataColourSpace>
     <PCS>XYZ </PCS>
-    <CreationDateTime>2022-10-22T15:32:04</CreationDateTime>
+    <CreationDateTime>2022-10-23T12:46:00</CreationDateTime>
     <PrimaryPlatform>MSFT</PrimaryPlatform>
     <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
     <DeviceManufacturer></DeviceManufacturer>
@@ -21,7 +21,7 @@
   <Tags>
     <multiLocalizedUnicodeType>
       <TagSignature>desc</TagSignature>
-      <LocalizedText LanguageCountry="enUS">sRGB_MHC2_Sample,</LocalizedText>
+      <LocalizedText LanguageCountry="enUS">HDR_GM24_BT2020_MHC2_sample2-1000-1000nits</LocalizedText>
     </multiLocalizedUnicodeType>
     <multiLocalizedUnicodeType>
       <TagSignature>cprt</TagSignature>
@@ -41,7 +41,7 @@
     </s15Fixed16ArrayType>
     <XYZType>
       <TagSignature>lumi</TagSignature>
-      <XYZNumber X="0.00000000" Y="100.00000000" Z="0.00000000"></XYZNumber>
+      <XYZNumber X="0.00000000" Y="300.00000000" Z="0.00000000"></XYZNumber>
     </XYZType>
     <parametricCurveType>
       <TagSignature>rTRC</TagSignature>
@@ -53,15 +53,15 @@
     </parametricCurveType>
     <XYZType>
       <TagSignature>rXYZ</TagSignature>
-      <XYZNumber X="0.43604125" Y="0.22248454" Z="0.01392019"></XYZNumber>
+      <XYZNumber X="0.67348019" Y="0.27904258" Z="-0.00193348"></XYZNumber>
     </XYZType>
     <XYZType>
       <TagSignature>gXYZ</TagSignature>
-      <XYZNumber X="0.38511291" Y="0.71690508" Z="0.09706724"></XYZNumber>
+      <XYZNumber X="0.16567121" Y="0.67534450" Z="0.02998285"></XYZNumber>
     </XYZType>
     <XYZType>
       <TagSignature>bXYZ</TagSignature>
-      <XYZNumber X="0.14304584" Y="0.06061038" Z="0.71391257"></XYZNumber>
+      <XYZNumber X="0.12504861" Y="0.04561292" Z="0.79685063"></XYZNumber>
     </XYZType>
     <PrivateType type="MHC2">
       <TagSignature>MHC2</TagSignature>

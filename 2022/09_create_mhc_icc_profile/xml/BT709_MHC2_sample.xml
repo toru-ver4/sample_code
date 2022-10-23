@@ -5,7 +5,7 @@
     <ProfileDeviceClass>mntr</ProfileDeviceClass>
     <DataColourSpace>RGB </DataColourSpace>
     <PCS>XYZ </PCS>
-    <CreationDateTime>2022-10-22T15:32:04</CreationDateTime>
+    <CreationDateTime>2022-10-23T12:45:59</CreationDateTime>
     <PrimaryPlatform>MSFT</PrimaryPlatform>
     <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
     <DeviceManufacturer></DeviceManufacturer>
@@ -21,7 +21,7 @@
   <Tags>
     <multiLocalizedUnicodeType>
       <TagSignature>desc</TagSignature>
-      <LocalizedText LanguageCountry="enUS">sRGB_MHC2_Sample,</LocalizedText>
+      <LocalizedText LanguageCountry="enUS">SDR_GM24_BT709_MHC2_sample2</LocalizedText>
     </multiLocalizedUnicodeType>
     <multiLocalizedUnicodeType>
       <TagSignature>cprt</TagSignature>
