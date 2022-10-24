@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <IccProfile>
   <Header>
-    <PreferredCMMType>ADBE</PreferredCMMType>
-    <ProfileVersion>4.20</ProfileVersion>
+    <PreferredCMMType>SICC</PreferredCMMType>
+    <ProfileVersion>4.40</ProfileVersion>
     <ProfileDeviceClass>mntr</ProfileDeviceClass>
     <DataColourSpace>RGB </DataColourSpace>
     <PCS>XYZ </PCS>
     <CreationDateTime>2020-09-15T21:37:10</CreationDateTime>
     <PrimaryPlatform>MSFT</PrimaryPlatform>
     <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"/>
-    <DeviceManufacturer>ADBE</DeviceManufacturer>
+    <DeviceManufacturer>MSFT</DeviceManufacturer>
     <DeviceModel>0000</DeviceModel>
-    <DeviceAttributes ReflectiveOrTransparency="reflective" GlossyOrMatte="glossy" MediaPolarity="positive" MediaColour="colour"/>
-    <RenderingIntent>Perceptual</RenderingIntent>
+    <DeviceAttributes ReflectiveOrTransparency="transparency" GlossyOrMatte="glossy" MediaPolarity="positive" MediaColour="colour"/>
+    <RenderingIntent>Relative Colorimetric</RenderingIntent>
     <PCSIlluminant>
       <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"/>
     </PCSIlluminant>
-    <ProfileCreator>ADBE</ProfileCreator>
+    <ProfileCreator>MSFT</ProfileCreator>
     <ProfileID>4E81565CB7C90E4854581D688C658D84</ProfileID>
   </Header>
   <Tags>
@@ -32,14 +32,6 @@
       <TagSignature>wtpt</TagSignature>
       <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"/>
     </XYZType>
-    <s15Fixed16ArrayType>
-      <TagSignature>chad</TagSignature>
-      <Array>
-            1.04788208 0.02291870 -0.05021667
-            0.02958679 0.99047852 -0.01707458
-            -0.00924683 0.01507568 0.75167847
-      </Array>
-    </s15Fixed16ArrayType>
     <XYZType>
       <TagSignature>lumi</TagSignature>
       <XYZNumber X="0.00000000" Y="100.00000000" Z="0.00000000"/>
