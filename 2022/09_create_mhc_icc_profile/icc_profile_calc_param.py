@@ -97,6 +97,7 @@ def calc_rgb_to_xyz_mtx_included_chad_mtx(
 
     chad_mtx = calc_chromatic_adaptation_matrix(
         src_white=src_white, dst_white=dst_white)
+    # print(f"chad_mtx={chad_mtx}")
 
     output_mtx = chad_mtx.dot(rgb_to_xyz_mtx)
 

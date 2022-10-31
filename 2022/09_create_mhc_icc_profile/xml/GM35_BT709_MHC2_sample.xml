@@ -5,7 +5,7 @@
     <ProfileDeviceClass>mntr</ProfileDeviceClass>
     <DataColourSpace>RGB </DataColourSpace>
     <PCS>XYZ </PCS>
-    <CreationDateTime>2022-10-24T23:21:06</CreationDateTime>
+    <CreationDateTime>2022-10-24T23:34:03</CreationDateTime>
     <PrimaryPlatform>MSFT</PrimaryPlatform>
     <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
     <DeviceManufacturer></DeviceManufacturer>
@@ -21,7 +21,7 @@
   <Tags>
     <multiLocalizedUnicodeType>
       <TagSignature>desc</TagSignature>
-      <LocalizedText LanguageCountry="enUS">SDR_GM24_BT2020_MHC2_WIN</LocalizedText>
+      <LocalizedText LanguageCountry="enUS">SDR_GM35_BT709_MHC2_WIN</LocalizedText>
     </multiLocalizedUnicodeType>
     <multiLocalizedUnicodeType>
       <TagSignature>cprt</TagSignature>
@@ -40,20 +40,20 @@
       <TagSignature>gTRC</TagSignature>
       <TagSignature>bTRC</TagSignature>
       <ParametricCurve FunctionType="0">
-        2.40000000
+        3.50000000
       </ParametricCurve>
     </parametricCurveType>
     <XYZType>
       <TagSignature>rXYZ</TagSignature>
-      <XYZNumber X="0.63695805" Y="0.26270021" Z="0.00000000"></XYZNumber>
+      <XYZNumber X="0.41239080" Y="0.21263901" Z="0.01933082"></XYZNumber>
     </XYZType>
     <XYZType>
       <TagSignature>gXYZ</TagSignature>
-      <XYZNumber X="0.14461690" Y="0.67799807" Z="0.02807269"></XYZNumber>
+      <XYZNumber X="0.35758434" Y="0.71516868" Z="0.11919478"></XYZNumber>
     </XYZType>
     <XYZType>
       <TagSignature>bXYZ</TagSignature>
-      <XYZNumber X="0.16888098" Y="0.05930172" Z="1.06098506"></XYZNumber>
+      <XYZNumber X="0.18048079" Y="0.07219232" Z="0.95053215"></XYZNumber>
     </XYZType>
     <PrivateType type="MHC2">
       <TagSignature>MHC2</TagSignature>

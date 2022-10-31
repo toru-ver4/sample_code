@@ -5,13 +5,13 @@
     <ProfileDeviceClass>mntr</ProfileDeviceClass>
     <DataColourSpace>RGB </DataColourSpace>
     <PCS>XYZ </PCS>
-    <CreationDateTime>2022-10-23T12:45:59</CreationDateTime>
+    <CreationDateTime>2022-10-24T23:21:06</CreationDateTime>
     <PrimaryPlatform>MSFT</PrimaryPlatform>
     <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
     <DeviceManufacturer></DeviceManufacturer>
     <DeviceModel></DeviceModel>
-    <DeviceAttributes ReflectiveOrTransparency="reflective" GlossyOrMatte="glossy" MediaPolarity="positive" MediaColour="colour"></DeviceAttributes>
-    <RenderingIntent>Perceptual</RenderingIntent>
+    <DeviceAttributes ReflectiveOrTransparency="transparency" GlossyOrMatte="glossy" MediaPolarity="positive" MediaColour="colour"></DeviceAttributes>
+    <RenderingIntent>Relative Colorimetric</RenderingIntent>
     <PCSIlluminant>
       <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"></XYZNumber>
     </PCSIlluminant>
@@ -21,7 +21,7 @@
   <Tags>
     <multiLocalizedUnicodeType>
       <TagSignature>desc</TagSignature>
-      <LocalizedText LanguageCountry="enUS">SDR_GM24_P3D65_MHC2_sample</LocalizedText>
+      <LocalizedText LanguageCountry="enUS">SDR_GM24_P3D65_MHC2_WIN</LocalizedText>
     </multiLocalizedUnicodeType>
     <multiLocalizedUnicodeType>
       <TagSignature>cprt</TagSignature>
@@ -31,14 +31,6 @@
       <TagSignature>wtpt</TagSignature>
       <XYZNumber X="0.96420000" Y="1.00000000" Z="0.82490000"></XYZNumber>
     </XYZType>
-    <s15Fixed16ArrayType>
-      <TagSignature>chad</TagSignature>
-      <Array>
-            1.04788600 0.02291877 -0.05021610
-            0.02958178 0.99048352 -0.01707871
-            -0.00925188 0.01507261 0.75167813
-      </Array>
-    </s15Fixed16ArrayType>
     <XYZType>
       <TagSignature>lumi</TagSignature>
       <XYZNumber X="0.00000000" Y="100.00000000" Z="0.00000000"></XYZNumber>
@@ -53,15 +45,15 @@
     </parametricCurveType>
     <XYZType>
       <TagSignature>rXYZ</TagSignature>
-      <XYZNumber X="0.51511870" Y="0.24118917" Z="-0.00105045"></XYZNumber>
+      <XYZNumber X="0.48657095" Y="0.22897456" Z="0.00000000"></XYZNumber>
     </XYZType>
     <XYZType>
       <TagSignature>gXYZ</TagSignature>
-      <XYZNumber X="0.29197783" Y="0.69224405" Z="0.04187912"></XYZNumber>
+      <XYZNumber X="0.26566769" Y="0.69173852" Z="0.04511338"></XYZNumber>
     </XYZType>
     <XYZType>
       <TagSignature>bXYZ</TagSignature>
-      <XYZNumber X="0.15710347" Y="0.06656678" Z="0.78407133"></XYZNumber>
+      <XYZNumber X="0.19821729" Y="0.07928691" Z="1.04394437"></XYZNumber>
     </XYZType>
     <PrivateType type="MHC2">
       <TagSignature>MHC2</TagSignature>

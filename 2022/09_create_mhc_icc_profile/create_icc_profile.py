@@ -63,11 +63,11 @@ def create_mhc_icc_profile(
     cprt_element = ipxc.get_cprt_element(root)
     cprt_element.text = cprt_str
 
-    chad_mtx = ipcp.calc_chromatic_adaptation_matrix(
-        src_white=src_white, dst_white=ipcp.PCS_D50)
-    chad_mtx_element = ipxc.get_chad_mtx_element(root)
-    ipxc.set_chad_matrix_to_chad_mtx_element(
-        mtx=chad_mtx, chad_mtx_element=chad_mtx_element)
+    # chad_mtx = ipcp.calc_chromatic_adaptation_matrix(
+    #     src_white=src_white, dst_white=ipcp.PCS_D50)
+    # chad_mtx_element = ipxc.get_chad_mtx_element(root)
+    # ipxc.set_chad_matrix_to_chad_mtx_element(
+    #     mtx=chad_mtx, chad_mtx_element=chad_mtx_element)
 
     lumi_element = ipxc.get_lumi_element(root)
     ipxc.set_lumi_params_to_element(
@@ -80,7 +80,7 @@ def create_mhc_icc_profile(
     rgbXYZ_element_list = ipxc.get_rgbXYZ_element_list(root)
     src2pcs_mtx = ipcp.calc_rgb_to_xyz_mtx_included_chad_mtx(
         rgb_primaries=src_primaries,
-        src_white=src_white, dst_white=ipcp.PCS_D50)
+        src_white=src_white, dst_white=ipcp.D65)
     ipxc.set_rgbXYZ_params_to_element(
         src2pcs_mtx=src2pcs_mtx, rgb_XYZ_element_list=rgbXYZ_element_list)
 
@@ -122,11 +122,11 @@ def create_sample_identity_1dlut(num_of_sample):
 
 def debug_func():
     # parse_mhc2_data()
-    luts = create_sample_identity_1dlut(256)
+    luts = create_sample_identity_1dlut(num_of_sample=2)
 
     # SDR BT.709
     xml_fname = "./xml/BT709_MHC2_sample.xml"
-    icc_fname = "./icc_profile/SDR_GM24_BT709_MHC2_sample2.icm"
+    icc_fname = "./icc_profile/SDR_GM24_BT709_MHC2_WIN.icm"
     create_mhc_icc_profile(
         gamma=2.4, src_white=cs.D65,
         src_primaries=cs.get_primaries(cs.BT709),
@@ -139,12 +139,12 @@ def debug_func():
         max_full_frame_luminance=100,
         calibration_luts=luts)
 
-    # SDR P3D65
-    xml_fname = "./xml/P3D65_MHC2_sample.xml"
-    icc_fname = "./icc_profile/SDR_GM24_P3D65_MHC2_sample.icm"
+    # SDR BT.709
+    xml_fname = "./xml/GM35_BT709_MHC2_sample.xml"
+    icc_fname = "./icc_profile/SDR_GM35_BT709_MHC2_WIN.icm"
     create_mhc_icc_profile(
-        gamma=2.4, src_white=cs.D65,
-        src_primaries=cs.get_primaries(cs.P3_D65),
+        gamma=3.5, src_white=cs.D65,
+        src_primaries=cs.get_primaries(cs.BT709),
         desc_str=str(Path(icc_fname).stem),
         cprt_str="Copyright 2022 Toru Yoshihara",
         xml_fname=xml_fname,
@@ -154,65 +154,80 @@ def debug_func():
         max_full_frame_luminance=100,
         calibration_luts=luts)
 
-    # SDR BT2020
-    xml_fname = "./xml/SDR_BT2020_MHC2_sample.xml"
-    icc_fname = "./icc_profile/SDR_GM24_BT2020_MHC2_sample.icm"
-    create_mhc_icc_profile(
-        gamma=2.4, src_white=cs.D65,
-        src_primaries=cs.get_primaries(cs.BT2020),
-        desc_str=str(Path(icc_fname).stem),
-        cprt_str="Copyright 2022 Toru Yoshihara",
-        xml_fname=xml_fname,
-        icc_fname=icc_fname,
-        min_luminance=0.1,
-        peak_luminance=100,
-        max_full_frame_luminance=100,
-        calibration_luts=luts)
+    # # SDR P3D65
+    # xml_fname = "./xml/P3D65_MHC2_sample.xml"
+    # icc_fname = "./icc_profile/SDR_GM24_P3D65_MHC2_WIN.icm"
+    # create_mhc_icc_profile(
+    #     gamma=2.4, src_white=cs.D65,
+    #     src_primaries=cs.get_primaries(cs.P3_D65),
+    #     desc_str=str(Path(icc_fname).stem),
+    #     cprt_str="Copyright 2022 Toru Yoshihara",
+    #     xml_fname=xml_fname,
+    #     icc_fname=icc_fname,
+    #     min_luminance=0.1,
+    #     peak_luminance=100,
+    #     max_full_frame_luminance=100,
+    #     calibration_luts=luts)
 
-    # SDR AP0
-    xml_fname = "./xml/SDR_AP0_MHC2_sample.xml"
-    icc_fname = "./icc_profile/SDR_GM24_AP0_MHC2_sample.icm"
-    create_mhc_icc_profile(
-        gamma=2.4, src_white=cs.D65,
-        src_primaries=cs.get_primaries(cs.ACES_AP0),
-        desc_str=str(Path(icc_fname).stem),
-        cprt_str="Copyright 2022 Toru Yoshihara",
-        xml_fname=xml_fname,
-        icc_fname=icc_fname,
-        min_luminance=0.1,
-        peak_luminance=100,
-        max_full_frame_luminance=100,
-        calibration_luts=luts)
+    # # SDR BT2020
+    # xml_fname = "./xml/SDR_BT2020_MHC2_sample.xml"
+    # icc_fname = "./icc_profile/SDR_GM24_BT2020_MHC2_WIN.icm"
+    # create_mhc_icc_profile(
+    #     gamma=2.4, src_white=cs.D65,
+    #     src_primaries=cs.get_primaries(cs.BT2020),
+    #     desc_str=str(Path(icc_fname).stem),
+    #     cprt_str="Copyright 2022 Toru Yoshihara",
+    #     xml_fname=xml_fname,
+    #     icc_fname=icc_fname,
+    #     min_luminance=0.1,
+    #     peak_luminance=100,
+    #     max_full_frame_luminance=100,
+    #     calibration_luts=luts)
 
-    # HDR BT.2020
-    xml_fname = "./xml/HDR_BT2020_MHC2_sample.xml"
-    icc_fname = "./icc_profile/HDR_GM24_BT2020_MHC2_sample2-1000-1000nits.icm"
-    create_mhc_icc_profile(
-        gamma=2.4, src_white=cs.D65,
-        src_primaries=cs.get_primaries(cs.BT2020),
-        desc_str=str(Path(icc_fname).stem),
-        cprt_str="Copyright 2022 Toru Yoshihara",
-        min_luminance=0.005,
-        peak_luminance=1000,
-        max_full_frame_luminance=300,
-        xml_fname=xml_fname,
-        icc_fname=icc_fname,
-        calibration_luts=luts)
+    # # SDR AP0
+    # xml_fname = "./xml/SDR_AP0_MHC2_sample.xml"
+    # icc_fname = "./icc_profile/SDR_GM24_AP0_MHC2_WIN.icm"
+    # create_mhc_icc_profile(
+    #     gamma=2.4, src_white=cs.D65,
+    #     src_primaries=cs.get_primaries(cs.ACES_AP0),
+    #     desc_str=str(Path(icc_fname).stem),
+    #     cprt_str="Copyright 2022 Toru Yoshihara",
+    #     xml_fname=xml_fname,
+    #     icc_fname=icc_fname,
+    #     min_luminance=0.1,
+    #     peak_luminance=100,
+    #     max_full_frame_luminance=100,
+    #     calibration_luts=luts)
 
-    # HDR ACES AP0
-    xml_fname = "./xml/HDR_AP0_MHC2_sample.xml"
-    icc_fname = "./icc_profile/HDR_GM24_AP0_MHC2_sample2-1000-1000nits.icm"
-    create_mhc_icc_profile(
-        gamma=2.4, src_white=cs.D65,
-        src_primaries=cs.get_primaries(cs.ACES_AP0),
-        desc_str=str(Path(icc_fname).stem),
-        cprt_str="Copyright 2022 Toru Yoshihara",
-        min_luminance=0.005,
-        peak_luminance=1000,
-        max_full_frame_luminance=300,
-        xml_fname=xml_fname,
-        icc_fname=icc_fname,
-        calibration_luts=luts)
+    # # HDR BT.2020
+    # xml_fname = "./xml/HDR_BT2020_MHC2_sample.xml"
+    # icc_fname = "./icc_profile/HDR_GM24_BT2020_MHC2_sample2-1000-1000nits.icm"
+    # create_mhc_icc_profile(
+    #     gamma=2.4, src_white=cs.D65,
+    #     src_primaries=cs.get_primaries(cs.BT2020),
+    #     desc_str=str(Path(icc_fname).stem),
+    #     cprt_str="Copyright 2022 Toru Yoshihara",
+    #     min_luminance=0.005,
+    #     peak_luminance=1000,
+    #     max_full_frame_luminance=300,
+    #     xml_fname=xml_fname,
+    #     icc_fname=icc_fname,
+    #     calibration_luts=luts)
+
+    # # HDR ACES AP0
+    # xml_fname = "./xml/HDR_AP0_MHC2_sample.xml"
+    # icc_fname = "./icc_profile/HDR_GM24_AP0_MHC2_sample2-1000-1000nits.icm"
+    # create_mhc_icc_profile(
+    #     gamma=2.4, src_white=cs.D65,
+    #     src_primaries=cs.get_primaries(cs.ACES_AP0),
+    #     desc_str=str(Path(icc_fname).stem),
+    #     cprt_str="Copyright 2022 Toru Yoshihara",
+    #     min_luminance=0.005,
+    #     peak_luminance=1000,
+    #     max_full_frame_luminance=300,
+    #     xml_fname=xml_fname,
+    #     icc_fname=icc_fname,
+    #     calibration_luts=luts)
 
 
 if __name__ == '__main__':
