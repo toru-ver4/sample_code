@@ -7,6 +7,7 @@
 """
 
 import os
+import subprocess
 from colour.models.rgb.rgb_colourspace import RGB_to_RGB
 from colour.utilities import tstack
 import cv2
@@ -25,6 +26,7 @@ import transfer_functions as tf
 import create_gamut_booundary_lut as cgbl
 import font_control as fc
 import color_space as cs
+from ty_utility import add_suffix_to_filename
 
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
 D65_WHITE = CCS_ILLUMINANTS[CMFS_NAME]['D65']
@@ -289,6 +291,17 @@ def img_write(filename, img, comp_val=9):
 def img_wirte_float_as_16bit_int(filename, img_float, comp_val=9):
     img_int = np.uint16(np.round(np.clip(img_float, 0.0, 1.0) * 0xFFFF))
     img_write(filename, img_int, comp_val)
+
+
+def img_wirte_float_as_16bit_int_with_icc(
+        filename, img_float, icc_profile_name, comp_val=9):
+    temp_fname = add_suffix_to_filename(filename, "_temp")
+    img_int = np.uint16(np.round(np.clip(img_float, 0.0, 1.0) * 0xFFFF))
+    img_write(temp_fname, img_int, comp_val)
+    cmd = [
+        'convert', temp_fname, '-profile', icc_profile_name, filename]
+    subprocess.run(cmd)
+    os.remove(temp_fname)
 
 
 def equal_devision(length, div_num):
