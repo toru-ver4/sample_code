@@ -822,6 +822,89 @@ def calc_normal_pos(
     return normal_pos
 
 
+def plot_chromaticity_diagram_base(
+        rate=1.0, bt709=True, p3d65=False, bt2020=False, adobeRGB=False,
+        aces_ap1=False, aces_ap0=False, d65=True):
+    xmin = -0.1
+    xmax = 0.8
+    ymin = -0.1
+    ymax = 1.0 if aces_ap0 else 0.9
+
+    # プロット用データ準備
+    # ---------------------------------
+    st_wl = 380
+    ed_wl = 780
+    wl_step = 1
+    plot_wl_list = [
+        410, 450, 470, 480, 485, 490, 495,
+        500, 505, 510, 520, 530, 540, 550, 560, 570, 580, 590,
+        600, 620, 690]
+    cmf_xy = calc_horseshoe_chromaticity(
+        st_wl=st_wl, ed_wl=ed_wl, wl_step=wl_step)
+    cmf_xy_norm = calc_normal_pos(
+        xy=cmf_xy, normal_len=0.05, angle_degree=90)
+    wl_list = np.arange(st_wl, ed_wl + 1, wl_step)
+    xy_image = get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, cmf_xy=cmf_xy)
+
+    fig, ax1 = plot_1_graph(
+        fontsize=20 * rate,
+        figsize=((xmax - xmin) * 10 * rate,
+                 (ymax - ymin) * 10 * rate),
+        graph_title="CIE1931 Chromaticity Diagram",
+        graph_title_size=None,
+        xlabel=None, ylabel=None,
+        axis_label_size=None,
+        legend_size=14 * rate,
+        xlim=(xmin, xmax),
+        ylim=(ymin, ymax),
+        xtick=[x * 0.1 + xmin for x in
+               range(int((xmax - xmin)/0.1) + 1)],
+        ytick=[x * 0.1 + ymin for x in
+               range(int((ymax - ymin)/0.1) + 1)],
+        xtick_size=17 * rate,
+        ytick_size=17 * rate,
+        linewidth=4 * rate,
+        minor_xtick_num=2,
+        minor_ytick_num=2)
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
+    for idx, wl in enumerate(wl_list):
+        if wl not in plot_wl_list:
+            continue
+        draw_wl_annotation(
+            ax1=ax1, wl=wl, rate=rate,
+            st_pos=[cmf_xy_norm[idx, 0], cmf_xy_norm[idx, 1]],
+            ed_pos=[cmf_xy[idx, 0], cmf_xy[idx, 1]])
+
+    ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
+
+    def draw_gamut(rate, name=cs.BT709, label="BT.709", color=RED, lw=2.75):
+        gamut = get_primaries(name=name)
+        ax1.plot(gamut[:, 0], gamut[:, 1], c=color, label=label, lw=lw*rate)
+
+    if bt709:
+        draw_gamut(rate=rate, name=cs.BT709, label="BT.709", color=RED)
+    if adobeRGB:
+        draw_gamut(rate=rate, name=cs.ADOBE_RGB, label="Adobe RGB", color=SKY)
+    if p3d65:
+        draw_gamut(rate=rate, name=cs.P3_D65, label="DCI-P3", color=GREEN)
+    if bt2020:
+        draw_gamut(rate=rate, name=cs.BT2020, label="BT.2020", color=BLUE)
+    if aces_ap1:
+        draw_gamut(rate=rate, name=cs.ACES_AP1, label="ACES AP1", color=PINK)
+    if aces_ap0:
+        ap0_gamut = get_primaries(name=cs.ACES_AP0)
+        ax1.plot(
+            ap0_gamut[:, 0], ap0_gamut[:, 1], '--k', label="ACES AP0",
+            lw=1*rate)
+    if d65:
+        ax1.plot(
+            [0.3127], [0.3290], '+', label='D65', ms=16*rate, mew=2*rate,
+            color='k', alpha=0.8)
+
+    return fig, ax1
+
+
 def plot_chromaticity_diagram_demo(
         rate=1.3, xmin=-0.1, xmax=0.8, ymin=-0.1, ymax=1.0):
     # プロット用データ準備

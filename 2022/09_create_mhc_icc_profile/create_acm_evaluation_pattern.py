@@ -10,7 +10,7 @@ import os
 
 # import third-party libraries
 from colour.utilities import tstack
-from colour import XYZ_to_xy, xy_to_XYZ
+from colour import XYZ_to_xy, xy_to_XYZ, RGB_to_RGB
 import numpy as np
 
 # import my libraries
@@ -324,7 +324,7 @@ def create_gamut_evaluation_pattern():
         icc_profile_name=icc_profile_name)
 
 
-def get_result_rgb_value_from_img(img, div_num):
+def get_result_rgb_value_from_img(img, div_num, tf_gamma):
     """
     Returns
     -------
@@ -342,88 +342,43 @@ def get_result_rgb_value_from_img(img, div_num):
             rgb = img[pos[1], pos[0]]
             rgb_list[c_idx, d_idx] = rgb
 
-    rgb_list = tf.eotf(rgb_list, tf.SRGB)
+    rgb_list = tf.eotf_to_luminance(rgb_list, tf_gamma) / 100
 
     return rgb_list
 
 
-def plot_result_pattern(result_img_fname, div_num):
+def plot_result_pattern(result_img_fname, div_num, tf_gamma, gamut_name):
+    """
+
+    """
     result_img = tpg.img_read_as_float(result_img_fname)
-    result_rgb = get_result_rgb_value_from_img(img=result_img, div_num=div_num)
-    result_xy = XYZ_to_xy(cs.rgb_to_large_xyz(result_rgb, cs.BT2020))
+    result_rgb = get_result_rgb_value_from_img(
+        img=result_img, div_num=div_num, tf_gamma=tf_gamma)
+    print(result_rgb)
+    result_xy = XYZ_to_xy(cs.rgb_to_large_xyz(result_rgb, gamut_name))
     ref_xy = calc_6color_xy_coordinate(div_num=div_num)
     ref_rgb = tf.oetf(calc_6color_rgb_val(div_num=div_num), tf.SRGB)
 
-    rate = 1.3
-    xmin = -0.1
-    xmax = 0.8
-    ymin = -0.1
-    ymax = 1.0
-    # プロット用データ準備
-    # ---------------------------------
-    st_wl = 380
-    ed_wl = 780
-    wl_step = 1
-    plot_wl_list = [
-        410, 450, 470, 480, 485, 490, 495,
-        500, 505, 510, 520, 530, 540, 550, 560, 570, 580, 590,
-        600, 620, 690]
-    cmf_xy = pu.calc_horseshoe_chromaticity(
-        st_wl=st_wl, ed_wl=ed_wl, wl_step=wl_step)
-    cmf_xy_norm = pu.calc_normal_pos(
-        xy=cmf_xy, normal_len=0.05, angle_degree=90)
-    wl_list = np.arange(st_wl, ed_wl + 1, wl_step)
-    xy_image = pu.get_chromaticity_image(
-        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, cmf_xy=cmf_xy)
-
-    fig, ax1 = pu.plot_1_graph(
-        fontsize=20 * rate,
-        figsize=((xmax - xmin) * 10 * rate,
-                 (ymax - ymin) * 10 * rate),
-        graph_title="CIE1931 Chromaticity Diagram",
-        graph_title_size=None,
-        xlabel=None, ylabel=None,
-        axis_label_size=None,
-        legend_size=14 * rate,
-        xlim=(xmin, xmax),
-        ylim=(ymin, ymax),
-        xtick=[x * 0.1 + xmin for x in
-               range(int((xmax - xmin)/0.1) + 1)],
-        ytick=[x * 0.1 + ymin for x in
-               range(int((ymax - ymin)/0.1) + 1)],
-        xtick_size=17 * rate,
-        ytick_size=17 * rate,
-        linewidth=4 * rate,
-        minor_xtick_num=2,
-        minor_ytick_num=2)
-    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
-    for idx, wl in enumerate(wl_list):
-        if wl not in plot_wl_list:
-            continue
-        pu.draw_wl_annotation(
-            ax1=ax1, wl=wl, rate=rate,
-            st_pos=[cmf_xy_norm[idx, 0], cmf_xy_norm[idx, 1]],
-            ed_pos=[cmf_xy[idx, 0], cmf_xy[idx, 1]])
-    bt709_gamut = pu.get_primaries(name=cs.BT709)
-    ax1.plot(bt709_gamut[:, 0], bt709_gamut[:, 1],
-             c=pu.RED, label="BT.709", lw=2.75*rate)
-    bt2020_gamut = pu.get_primaries(name=cs.BT2020)
-    ax1.plot(bt2020_gamut[:, 0], bt2020_gamut[:, 1],
-             c=pu.GREEN, label="BT.2020", lw=2.75*rate)
-    dci_p3_gamut = pu.get_primaries(name=cs.P3_D65)
-    ax1.plot(dci_p3_gamut[:, 0], dci_p3_gamut[:, 1],
-             c=pu.BLUE, label="DCI-P3", lw=2.75*rate)
-    ap0_gamut = pu.get_primaries(name=cs.ACES_AP0)
-    ax1.plot(ap0_gamut[:, 0], ap0_gamut[:, 1], '--k',
-             label="ACES AP0", lw=1*rate)
-    ax1.plot(
-        [0.3127], [0.3290], 'x', label='D65', ms=12*rate, mew=2*rate,
-        color='k', alpha=0.8)
+    rate = 1.0
+    fig, ax1 = pu.plot_chromaticity_diagram_base(
+        rate=rate, bt709=True, p3d65=True, bt2020=True)
+    ref_ms = 150
+    measure_ms = 120
+    ax1.scatter(
+        [0.3127], [0.3290], s=ref_ms*rate, c='w', edgecolors='k',
+        linewidths=1.5*rate, label="Theoretical value", zorder=0)
+    ax1.scatter(
+        [0.3127], [0.3290], s=measure_ms*rate, marker="X",
+        linewidths=1.5*rate, label="Measured value", zorder=0,
+        c='k', edgecolors='k')
     ax1.scatter(
         ref_xy[..., 0], ref_xy[..., 1],
-        s=120*rate, c=ref_rgb.reshape(-1, 3), zorder=10,
+        s=ref_ms*rate, c=ref_rgb.reshape(-1, 3), zorder=10,
         edgecolors='k', linewidth=1.5*rate)
-    ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
+    ax1.scatter(
+        result_xy[..., 0], result_xy[..., 1], marker="X",
+        s=measure_ms*rate, c=ref_rgb.reshape(-1, 3), zorder=10,
+        linewidth=1.5*rate, edgecolors='k')
     pu.show_and_save(
         fig=fig, legend_loc='upper right',
         save_fname="./img/chromaticity_diagram_sample.png")
@@ -432,5 +387,18 @@ def plot_result_pattern(result_img_fname, div_num):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_gamut_evaluation_pattern()
+    # plot_result_pattern(
+    #     result_img_fname="./img/test.png", div_num=6,
+    #     tf_gamma=tf.SRGB, gamut_name=cs.BT709)
     plot_result_pattern(
-        result_img_fname="./img/test.png", div_num=6)
+        result_img_fname="./img/test_on_ST2084_P3D65.png", div_num=6,
+        tf_gamma=tf.ST2084, gamut_name=cs.P3_D65)
+
+    # img = tpg.img_read_as_float("./img/test.png")
+    # img = tf.eotf(img, tf.SRGB)
+    # xyz = cs.rgb_to_large_xyz(img, cs.BT2020)
+    # rgb = cs.large_xyz_to_rgb(img, cs.P3_D65)
+
+    # img = np.clip(rgb, 0, 1) * 100
+    # img = tf.oetf_from_luminance(img, tf.ST2084)
+    # tpg.img_wirte_float_as_16bit_int("./img/test_on_ST2084_P3D65.png", img)
