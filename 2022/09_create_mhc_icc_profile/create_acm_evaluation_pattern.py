@@ -7,6 +7,7 @@
 
 # import standard libraries
 import os
+from pathlib import Path
 
 # import third-party libraries
 from colour.utilities import tstack
@@ -20,6 +21,7 @@ import transfer_functions as tf
 import font_control2 as fc2
 import color_space as cs
 import plot_utility as pu
+from ty_utility import add_suffix_to_filename
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -299,14 +301,19 @@ def draw_patch(img, div_num=6):
             img[st_pos[1]:ed_pos[1], st_pos[0]:ed_pos[0]] = rgb
 
 
+def make_srgb_bt2020_tp_fname(width, height, revision):
+    return f"./img/wcg_tp_{width}x{height}_rev{revision}.png"
+
+
 def create_gamut_evaluation_pattern():
     width = 1920
     total_height = 1080
     info_area_height_rate = 0.04
     div_num = 6
+    revision = 1
     text1 = "WCG Pattern, EOTF: sRGB, Gamut: BT.2020, "
     text1 += f"White point: D65, {width}x{total_height}"
-    text2 = "Rev.1"
+    text2 = f"Rev.{revision}"
     info_img = carete_tp_bottom_information_image(
         width=width, height=total_height,
         text1=text1, text2=text2,
@@ -319,8 +326,10 @@ def create_gamut_evaluation_pattern():
 
     img = tf.oetf(img, tf.SRGB)
     icc_profile_name = "../../2020/026_create_icc_profiles/sRGB_BT2020.icc"
+    img_fname = make_srgb_bt2020_tp_fname(width, total_height, revision)
+    print(img_fname)
     tpg.img_wirte_float_as_16bit_int_with_icc(
-        filename="./img/test.png", img_float=img,
+        filename=img_fname, img_float=img,
         icc_profile_name=icc_profile_name)
 
 
@@ -354,7 +363,7 @@ def plot_result_pattern(result_img_fname, div_num, tf_gamma, gamut_name):
     result_img = tpg.img_read_as_float(result_img_fname)
     result_rgb = get_result_rgb_value_from_img(
         img=result_img, div_num=div_num, tf_gamma=tf_gamma)
-    print(result_rgb)
+    # print(result_rgb)
     result_xy = XYZ_to_xy(cs.rgb_to_large_xyz(result_rgb, gamut_name))
     ref_xy = calc_6color_xy_coordinate(div_num=div_num)
     ref_rgb = tf.oetf(calc_6color_rgb_val(div_num=div_num), tf.SRGB)
@@ -379,26 +388,36 @@ def plot_result_pattern(result_img_fname, div_num, tf_gamma, gamut_name):
         result_xy[..., 0], result_xy[..., 1], marker="X",
         s=measure_ms*rate, c=ref_rgb.reshape(-1, 3), zorder=10,
         linewidth=1.5*rate, edgecolors='k')
+
+    basename = Path(result_img_fname).stem
+    plot_fname = f"./graph/result_{basename}.png"
+    print(plot_fname)
     pu.show_and_save(
-        fig=fig, legend_loc='upper right',
-        save_fname="./img/chromaticity_diagram_sample.png")
+        fig=fig, legend_loc='upper right', save_fname=plot_fname)
+
+
+def conv_sRGB_BT2020_to_ST2084_P3D65():
+    src_img_fname = make_srgb_bt2020_tp_fname(
+        width=1920, height=1080, revision=1)
+    img = tpg.img_read_as_float(src_img_fname)
+    img = tf.eotf(img, tf.SRGB)
+    xyz = cs.rgb_to_large_xyz(img, cs.BT2020)
+    rgb = cs.large_xyz_to_rgb(xyz, cs.P3_D65)
+    img = np.clip(rgb, 0, 1) * 100
+    img = tf.oetf_from_luminance(img, tf.ST2084)
+    dst_img_fname = add_suffix_to_filename(
+        src_img_fname, suffix="_on_ST2084_P3D65")
+    print(dst_img_fname)
+    tpg.img_wirte_float_as_16bit_int(dst_img_fname, img)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_gamut_evaluation_pattern()
+    # conv_sRGB_BT2020_to_ST2084_P3D65()
     # plot_result_pattern(
-    #     result_img_fname="./img/test.png", div_num=6,
+    #     result_img_fname="./img/wcg_tp_1920x1080_rev1.png", div_num=6,
     #     tf_gamma=tf.SRGB, gamut_name=cs.BT709)
-    plot_result_pattern(
-        result_img_fname="./img/test_on_ST2084_P3D65.png", div_num=6,
-        tf_gamma=tf.ST2084, gamut_name=cs.P3_D65)
-
-    # img = tpg.img_read_as_float("./img/test.png")
-    # img = tf.eotf(img, tf.SRGB)
-    # xyz = cs.rgb_to_large_xyz(img, cs.BT2020)
-    # rgb = cs.large_xyz_to_rgb(img, cs.P3_D65)
-
-    # img = np.clip(rgb, 0, 1) * 100
-    # img = tf.oetf_from_luminance(img, tf.ST2084)
-    # tpg.img_wirte_float_as_16bit_int("./img/test_on_ST2084_P3D65.png", img)
+    # plot_result_pattern(
+    #     result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_P3D65.png",
+    #     div_num=6, tf_gamma=tf.ST2084, gamut_name=cs.P3_D65)
