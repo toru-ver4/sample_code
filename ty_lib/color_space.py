@@ -25,6 +25,7 @@ from colour.models import xy_to_XYZ
 from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab,\
     Lab_to_XYZ
 from colour.adaptation import matrix_chromatic_adaptation_VonKries as cat02_mtx
+from colour.utilities import tstack
 from scipy import linalg
 from jzazbz import jzazbz_to_large_xyz, large_xyz_to_jzazbz
 
@@ -418,6 +419,87 @@ def rgb_to_jzazbz(
     return jzazbz
 
 
+def calc_hue_from_ab(aa, bb):
+    """
+    calculate hue.
+    output range is [0, 2pi).
+
+    Examples
+    --------
+    >>> aa = np.array([1.0, 0.5, 0.0, -0.5, -1.0, -0.5, 0.0, 0.5, 0.99])
+    >>> bb = np.array([0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5, -0.001])
+    >>> hue = calc_hue_from_ab(aa, bb)
+    [0.  45.  90.  135.  180.  225.  270.  315. 359.94212549]
+    """
+    hue = np.where(aa != 0, np.arctan(bb/aa), np.pi/2*np.sign(bb))
+    add_pi_idx = (aa < 0) & (bb >= 0)
+    sub_pi_idx = (aa < 0) & (bb < 0)
+    hue[add_pi_idx] = hue[add_pi_idx] + np.pi
+    hue[sub_pi_idx] = hue[sub_pi_idx] - np.pi
+
+    hue[hue < 0] = hue[hue < 0] + 2 * np.pi
+
+    return np.rad2deg(hue)
+
+
+def xyY_to_Ych(xyY, white=D65):
+    """
+    Convert xyY to Ych color space.
+    Ych is my original color space expressed in polar coordinate.
+    `c` means chroma. `h` means hue-angle.
+
+    Examples
+    --------
+    >>> rgb = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    >>> large_xyz = rgb_to_large_xyz(rgb, BT2020)
+    >>> from colour import XYZ_to_xyY
+    >>> xyY = XYZ_to_xyY(large_xyz)
+    >>> Ych = xyY_to_Ych(xyY)
+    >>> print(Ych)
+    [[  2.62700212e-01   3.97027820e-01   3.54652706e+02]
+     [  6.77998072e-01   4.89272204e-01   1.06957225e+02]
+     [  5.93017165e-02   3.36309218e-01   2.37297530e+02]]
+    """
+    large_y = xyY[..., 2]
+    xx = xyY[..., 0] - white[0]
+    yy = xyY[..., 1] - white[1]
+
+    cc = (xx ** 2 + yy ** 2) ** 0.5
+    hh = calc_hue_from_ab(xx, yy)
+
+    return tstack([large_y, cc, hh])
+
+
+def Ych_to_xyY(Ych, white=D65):
+    """
+    Convert Ych color space to xyY.
+    Ych is my original color space expressed in polar coordinate.
+    `c` means chroma. `h` means hue-angle.
+
+    Examples
+    --------
+    >>> rgb = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    >>> large_xyz = rgb_to_large_xyz(rgb, BT2020)
+    >>> from colour import XYZ_to_xyY
+    >>> xyY = XYZ_to_xyY(large_xyz)
+    >>> Ych = xyY_to_Ych(xyY)
+    >>> xyY = Ych_to_xyY(Ych)
+    >>> print(xyY)
+    [[ 0.708       0.292       0.26270021]
+     [ 0.17        0.797       0.67799807]
+     [ 0.131       0.046       0.05930172]]
+    """
+    large_y = Ych[..., 0]
+    cc = Ych[..., 1]
+    hh = Ych[..., 2]
+
+    hh_rad = np.deg2rad(hh)
+    xx = cc * np.cos(hh_rad) + white[0]
+    yy = cc * np.sin(hh_rad) + white[1]
+
+    return tstack([xx, yy, large_y])
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(rgb2rgb_mtx(DCI_P3, ACES_AP0))
@@ -457,33 +539,42 @@ if __name__ == '__main__':
     # XYZ = calc_XYZ_from_rgb(
     #     rgb=rgb, color_space_name=BT709, white=D65)
     # print(XYZ_to_xyY(XYZ))
-    from jzazbz import large_xyz_to_jzazbz
-    print(xy_to_XYZ([0.3127, 0.3290]) * 100)
-    large_xyz_100nits = np.array([95.04559271, 100, 108.90577508])
-    large_xyz_10000nits = large_xyz_100nits * 100
-    jzazbz_10000nits = large_xyz_to_jzazbz(large_xyz_10000nits)
-    print(jzazbz_10000nits)
-    jzazbz_100nits = large_xyz_to_jzazbz(large_xyz_100nits)
-    print(jzazbz_100nits)
-    large_xyz_10000nits = jzazbz_to_rgb(
-        jzazbz=jzazbz_10000nits, color_space_name='ITU-R BT.709',
-        luminance=10000)
-    print(large_xyz_10000nits)
-    large_xyz_100nits_on_hdr = jzazbz_to_rgb(
-        jzazbz=jzazbz_100nits, color_space_name='ITU-R BT.709',
-        luminance=10000)
-    print(large_xyz_100nits_on_hdr)
-    large_xyz_100nits_on_sdr = jzazbz_to_rgb(
-        jzazbz=jzazbz_100nits, color_space_name='ITU-R BT.709',
-        luminance=100)
-    print(large_xyz_100nits_on_sdr)
+    # from jzazbz import large_xyz_to_jzazbz
+    # print(xy_to_XYZ([0.3127, 0.3290]) * 100)
+    # large_xyz_100nits = np.array([95.04559271, 100, 108.90577508])
+    # large_xyz_10000nits = large_xyz_100nits * 100
+    # jzazbz_10000nits = large_xyz_to_jzazbz(large_xyz_10000nits)
+    # print(jzazbz_10000nits)
+    # jzazbz_100nits = large_xyz_to_jzazbz(large_xyz_100nits)
+    # print(jzazbz_100nits)
+    # large_xyz_10000nits = jzazbz_to_rgb(
+    #     jzazbz=jzazbz_10000nits, color_space_name='ITU-R BT.709',
+    #     luminance=10000)
+    # print(large_xyz_10000nits)
+    # large_xyz_100nits_on_hdr = jzazbz_to_rgb(
+    #     jzazbz=jzazbz_100nits, color_space_name='ITU-R BT.709',
+    #     luminance=10000)
+    # print(large_xyz_100nits_on_hdr)
+    # large_xyz_100nits_on_sdr = jzazbz_to_rgb(
+    #     jzazbz=jzazbz_100nits, color_space_name='ITU-R BT.709',
+    #     luminance=100)
+    # print(large_xyz_100nits_on_sdr)
 
-    jab = rgb_to_jzazbz(
-        rgb=np.array([1, 1, 1]), color_space_name="ITU-R BT.709",
-        xyz_white=D65, rgb_white=D65, luminance=100)
-    print(jab)
+    # jab = rgb_to_jzazbz(
+    #     rgb=np.array([1, 1, 1]), color_space_name="ITU-R BT.709",
+    #     xyz_white=D65, rgb_white=D65, luminance=100)
+    # print(jab)
 
-    jab = rgb_to_jzazbz(
-        rgb=np.array([1, 1, 1]), color_space_name="ITU-R BT.709",
-        xyz_white=D65, rgb_white=D65, luminance=10000)
-    print(jab)
+    # jab = rgb_to_jzazbz(
+    #     rgb=np.array([1, 1, 1]), color_space_name="ITU-R BT.709",
+    #     xyz_white=D65, rgb_white=D65, luminance=10000)
+    # print(jab)
+
+    rgb = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    large_xyz = rgb_to_large_xyz(rgb, BT2020)
+    from colour import XYZ_to_xyY
+    xyY = XYZ_to_xyY(large_xyz)
+    Ych = xyY_to_Ych(xyY)
+    print(Ych)
+    xyY = Ych_to_xyY(Ych)
+    print(xyY)
