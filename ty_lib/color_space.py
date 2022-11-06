@@ -570,11 +570,11 @@ if __name__ == '__main__':
     #     xyz_white=D65, rgb_white=D65, luminance=10000)
     # print(jab)
 
-    rgb = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-    large_xyz = rgb_to_large_xyz(rgb, BT2020)
-    from colour import XYZ_to_xyY
-    xyY = XYZ_to_xyY(large_xyz)
-    Ych = xyY_to_Ych(xyY)
-    print(Ych)
-    xyY = Ych_to_xyY(Ych)
-    print(xyY)
+    # rgb = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    # large_xyz = rgb_to_large_xyz(rgb, BT2020)
+    # from colour import XYZ_to_xyY
+    # xyY = XYZ_to_xyY(large_xyz)
+    # Ych = xyY_to_Ych(xyY)
+    # print(Ych)
+    # xyY = Ych_to_xyY(Ych)
+    # print(xyY)

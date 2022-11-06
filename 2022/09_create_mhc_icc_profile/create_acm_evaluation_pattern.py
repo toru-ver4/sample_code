@@ -22,6 +22,7 @@ import font_control2 as fc2
 import color_space as cs
 import plot_utility as pu
 from ty_utility import add_suffix_to_filename
+from create_gamut_booundary_lut import create_Ych_gamut_boundary_lut
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -431,15 +432,22 @@ def conv_sRGB_BT2020_to_ST2084_BT709():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    create_gamut_evaluation_pattern()
-    conv_sRGB_BT2020_to_ST2084_P3D65()
-    conv_sRGB_BT2020_to_ST2084_BT709()
-    plot_result_pattern(
-        result_img_fname="./img/wcg_tp_1920x1080_rev1.png", div_num=6,
-        tf_gamma=tf.SRGB, gamut_name=cs.BT709)
-    plot_result_pattern(
-        result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_P3D65.png",
-        div_num=6, tf_gamma=tf.ST2084, gamut_name=cs.P3_D65)
-    plot_result_pattern(
-        result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_BT709.png",
-        div_num=6, tf_gamma=tf.ST2084, gamut_name=cs.BT709)
+    # create_gamut_evaluation_pattern()
+    # conv_sRGB_BT2020_to_ST2084_P3D65()
+    # conv_sRGB_BT2020_to_ST2084_BT709()
+    # plot_result_pattern(
+    #     result_img_fname="./img/wcg_tp_1920x1080_rev1.png", div_num=6,
+    #     tf_gamma=tf.SRGB, gamut_name=cs.BT709)
+    # plot_result_pattern(
+    #     result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_P3D65.png",
+    #     div_num=6, tf_gamma=tf.ST2084, gamut_name=cs.P3_D65)
+    # plot_result_pattern(
+    #     result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_BT709.png",
+    #     div_num=6, tf_gamma=tf.ST2084, gamut_name=cs.BT709)
+
+    create_Ych_gamut_boundary_lut(
+        hue_sample=1001, lightness_sample=1001, chroma_sample=16384,
+        color_space_name=cs.BT2020)
+    create_Ych_gamut_boundary_lut(
+        hue_sample=1001, lightness_sample=1001, chroma_sample=16384,
+        color_space_name=cs.BT709)

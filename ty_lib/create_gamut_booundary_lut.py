@@ -12,7 +12,7 @@ from colour.models.rgb.derivation import RGB_luminance
 # import third-party libraries
 import numpy as np
 from colour.utilities import tstack
-from colour import LCHab_to_Lab, Lab_to_XYZ, XYZ_to_RGB, xy_to_XYZ
+from colour import LCHab_to_Lab, Lab_to_XYZ, XYZ_to_RGB, xy_to_XYZ, xyY_to_XYZ
 from colour import RGB_COLOURSPACES
 from multiprocessing import Pool, cpu_count
 # from multiprocessing import shared_memory
@@ -1200,6 +1200,164 @@ def get_focal_point_from_lut(focal_point_lut, h_val):
     return focal_point
 
 
+def make_Ych_gb_lut_fname(
+        color_space_name, lightness_num, hue_num):
+    fname = f"./lut/Ych_gb-lut_{color_space_name}_"
+    fname += f"Y-{lightness_num}_"
+    fname += f"hh-{hue_num}.npy"
+
+    return fname
+
+
+def create_Ych_gamut_boundary_lut(
+        hue_sample=256, lightness_sample=256, chroma_sample=32768,
+        color_space_name=cs.BT2020):
+    """
+    Parameters
+    ----------
+    hue_sample : int
+        The number of hue
+    lightness_sample : int
+        The number of lightness
+    chroma_sample : int
+        The number of chroma.
+        This value is related to accuracy.
+    color_space_name : strings
+        color space name for colour.RGB_COLOURSPACES
+    """
+
+    total_process_num = lightness_sample
+    # block_process_num = cpu_count()
+    block_process_num = 16  # for 32768 sample
+    # block_process_num = 24  # for 16384 sample
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+    max_Y = 1.0
+    print(f"max_Y = {max_Y}")
+
+    mtime = MeasureExecTime()
+    mtime.start()
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            l_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
+            if l_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                large_y=l_idx/(lightness_sample-1) * max_Y,
+                chroma_sample=chroma_sample, hue_num=hue_sample,
+                cs_name=color_space_name, l_idx=l_idx)
+            args.append(d)
+            # thread_wrapper_calc_chroma_boundary_specific_lightness_xyY(d)
+        with Pool(block_process_num) as pool:
+            pool.map(
+                thread_wrapper_calc_chroma_boundary_specific_lightness_xyY,
+                args)
+            mtime.lap()
+        mtime.lap()
+    mtime.end()
+
+    lut = np.array(
+        shared_array[:lightness_sample*hue_sample*3]).reshape(
+            (lightness_sample, hue_sample, 3))
+
+    fname = make_Ych_gb_lut_fname(
+        color_space_name=color_space_name,
+        lightness_num=lightness_sample, hue_num=hue_sample)
+    np.save(fname, np.float32(lut))
+
+
+def thread_wrapper_calc_chroma_boundary_specific_lightness_xyY(args):
+    Ych = calc_chroma_boundary_specific_lightness_xyY(**args)
+
+    hue_num = args['hue_num']
+    hue_plane_size = hue_num * 3
+    l_idx = args['l_idx']
+
+    base_addr = l_idx * hue_plane_size
+
+    for h_idx in range(hue_num):
+        addr = base_addr + h_idx * 3
+        shared_array[addr:addr+3] = np.float32(Ych[h_idx])
+
+
+def calc_chroma_boundary_specific_lightness_xyY(
+        large_y, chroma_sample, hue_num, cs_name, **kwargs):
+    """
+    parameters
+    ----------
+    large_y : float
+        Y value
+    chroma_sample : int
+        Sample number of the Chroma
+        This value is related to accuracy.
+    hue_num : int
+        Sample number of the Hue
+    cs_name : string
+        A color space name. ex. "ITU-R BT.709", "ITU-R BT.2020"
+
+    Examples
+    --------
+    >>> Ych = calc_chroma_boundary_specific_lightness_xyY(
+    >>>     large_y=0.5, chroma_sample=16384, hue_num=16, cs_name=cs.BT2020)
+    [[  5.00000000e-01   1.67002381e-01   0.00000000e+00]
+     [  5.00000000e-01   2.64176280e-01   2.40000000e+01]
+     [  5.00000000e-01   2.43606177e-01   4.80000000e+01]
+     [  5.00000000e-01   2.69120430e-01   7.20000000e+01]
+     [  5.00000000e-01   3.72642373e-01   9.60000000e+01]
+     [  5.00000000e-01   3.06415186e-01   1.20000000e+02]
+     [  5.00000000e-01   1.98864677e-01   1.44000000e+02]
+     [  5.00000000e-01   1.68833547e-01   1.68000000e+02]
+     [  5.00000000e-01   1.72617958e-01   1.92000000e+02]
+     [  5.00000000e-01   1.31416712e-01   2.16000000e+02]
+     [  5.00000000e-01   1.07916743e-01   2.40000000e+02]
+     [  5.00000000e-01   1.07306354e-01   2.64000000e+02]
+     [  5.00000000e-01   1.26106330e-01   2.88000000e+02]
+     [  5.00000000e-01   1.14203748e-01   3.12000000e+02]
+     [  5.00000000e-01   1.23908930e-01   3.36000000e+02]
+     [  5.00000000e-01   1.67002381e-01   3.60000000e+02]]
+    """
+    chroma_max = 1.0
+    hue_max = 360
+    hue_base = np.linspace(0, hue_max, hue_num)
+    chroma_base = np.linspace(0, chroma_max, chroma_sample)
+    hh = hue_base.reshape((hue_num, 1))\
+        * np.ones_like(chroma_base).reshape((1, chroma_sample))
+    cc = chroma_base.reshape((1, chroma_sample))\
+        * np.ones_like(hue_base).reshape((hue_num, 1))
+    YY = np.ones_like(hh) * large_y
+    YY_base = np.ones_like(hue_base) * large_y
+
+    Ych = tstack((YY, cc, hh))
+
+    # jzazbz = jzczhz_to_jzazbz(jzczhz)
+    xyY = cs.Ych_to_xyY(Ych)
+
+    # large_xyz = jzazbz_to_large_xyz(jzazbz)
+    large_xyz = xyY_to_XYZ(xyY)
+
+    rgb_luminance = XYZ_to_RGB(
+        large_xyz, cs.D65, cs.D65,
+        RGB_COLOURSPACES[cs_name].matrix_XYZ_to_RGB)
+
+    ng_idx = is_out_of_gamut_rgb(rgb=rgb_luminance)
+
+    chroma_array = np.zeros(hue_num)
+    for h_idx in range(hue_num):
+        if large_y > 0.0:
+            chroma_ng_idx_array = np.where(ng_idx[h_idx] > 0)
+            chroma_ng_idx = np.min(chroma_ng_idx_array)
+            chroma_ng_idx = chroma_ng_idx - 1 if chroma_ng_idx > 0 else 0
+            chroma_array[h_idx]\
+                = chroma_ng_idx / (chroma_sample - 1) * chroma_max
+        else:
+            chroma_array[h_idx] = 0
+
+    Ych = tstack([YY_base, chroma_array, hue_base])
+
+    return Ych
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -1278,3 +1436,7 @@ if __name__ == '__main__':
     # lch = get_gamut_boundary_lch_from_lut(
     #     lut=lut, lh_array=lh_array, lightness_max=60)
     # print(lch)
+
+    # create_Ych_gamut_boundary_lut(
+    #     hue_sample=16, lightness_sample=101, chroma_sample=1024,
+    #     color_space_name=cs.BT2020)
