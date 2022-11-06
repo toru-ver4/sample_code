@@ -11,7 +11,7 @@ from pathlib import Path
 
 # import third-party libraries
 from colour.utilities import tstack
-from colour import XYZ_to_xy, xy_to_XYZ, RGB_to_RGB
+from colour import XYZ_to_xy, XYZ_to_xyY, xyY_to_XYZ
 import numpy as np
 
 # import my libraries
@@ -38,9 +38,9 @@ def cut_two_points_into_N_points(pos1, pos2, n):
     Parameters
     ----------
     pos1 : list
-        stating point. [x1, y1]
+        stating point. [x1, y1, Y1]
     pos2 : list
-        ending point. [x2, y2]
+        ending point. [x2, y2, Y1]
     n : int
         division number
 
@@ -51,19 +51,20 @@ def cut_two_points_into_N_points(pos1, pos2, n):
 
     Examples
     --------
-    >>> pos1 = 0.5, 0.5
-    >>> pos2 = 1.0, 0.7
+    >>> pos1 = np.array([0.5, 0.5, 0.5])
+    >>> pos2 = np.array([1.0, 0.7, 0.8])
     >>> pos_list = cut_two_points_into_N_points(pos1, pos2, 3)
     >>> print(pos_list)
-    [[ 0.5   0.5 ]
-     [ 0.75  0.6 ]
-     [ 1.    0.7 ]]
+    [[ 0.5   0.5   0.5 ]
+     [ 0.75  0.6   0.65]
+     [ 1.    0.7   0.8 ]
     """
-    x1, y1 = pos1
-    x2, y2 = pos2
+    x1, y1, Y1 = pos1
+    x2, y2, Y2 = pos2
     x = np.linspace(x1, x2, n)
     y = np.linspace(y1, y2, n)
-    pos_list = tstack([x, y])
+    Y = np.linspace(Y1, Y2, n)
+    pos_list = tstack([x, y, Y])
 
     return pos_list
 
@@ -179,54 +180,55 @@ def carete_tp_bottom_information_image(
     return img
 
 
-def calc_6color_xy_coordinate(div_num=6):
+def calc_6color_xyY_coordinate(div_num=6):
     """
     Returns
     -------
     ndarray
-        rgb list. shape is (num_of_color, div_num, 2).
+        rgb list. shape is (num_of_color, div_num, 3).
 
     Examples
     --------
-    >>> calc_6color_xy_coordinate(div_num=3)
-    [[[ 0.3127      0.329     ]
-      [ 0.51035     0.3105    ]
-      [ 0.708       0.292     ]]
+    >>> calc_6color_xyY_coordinate(div_num=3)
+    [[[ 0.3127      0.329       0.5       ]
+      [ 0.51035     0.3105      0.38135011]
+      [ 0.708       0.292       0.26270021]]
 
-     [[ 0.3127      0.329     ]
-      [ 0.379613    0.43321782]
-      [ 0.44652599  0.53743564]]
+     [[ 0.3127      0.329       0.5       ]
+      [ 0.379613    0.43321782  0.72034914]
+      [ 0.44652599  0.53743564  0.94069828]]
 
-     [[ 0.3127      0.329     ]
-      [ 0.24135     0.563     ]
-      [ 0.17        0.797     ]]
+     [[ 0.3127      0.329       0.5       ]
+      [ 0.24135     0.563       0.58899904]
+      [ 0.17        0.797       0.67799807]]
 
-     [[ 0.3127      0.329     ]
-      [ 0.22960212  0.33677795]
-      [ 0.14650423  0.34455589]]
+     [[ 0.3127      0.329       0.5       ]
+      [ 0.22960212  0.33677795  0.61864989]
+      [ 0.14650423  0.34455589  0.73729979]]
 
-     [[ 0.3127      0.329     ]
-      [ 0.22185     0.1875    ]
-      [ 0.131       0.046     ]]
+     [[ 0.3127      0.329       0.5       ]
+      [ 0.22185     0.1875      0.27965086]
+      [ 0.131       0.046       0.05930172]]
 
-     [[ 0.3127      0.329     ]
-      [ 0.34043019  0.23805585]
-      [ 0.36816038  0.14711171]]]
+     [[ 0.3127      0.329       0.5       ]
+      [ 0.34043019  0.23805585  0.41100096]
+      [ 0.36816038  0.14711171  0.32200193]]]
     """
-    white = cs.D65
+    white = np.array([0.3127, 0.3290, 0.18])
     rygcbm_rgb = np.array([
         [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 1, 1],
         [0, 0, 1], [1, 0, 1]])
     large_xyz = cs.rgb_to_large_xyz(rygcbm_rgb, cs.BT2020)
-    xy = XYZ_to_xy(large_xyz)
+    xyY = XYZ_to_xyY(large_xyz)
 
-    num_of_color = len(xy)
-    xy_list = np.zeros((num_of_color, div_num, 2))
-    for idx, ed_pos in enumerate(xy):
+    num_of_color = len(xyY)
+    xyY_list = np.zeros((num_of_color, div_num, 3))
+
+    for idx, ed_pos in enumerate(xyY):
         xy_one_color = cut_two_points_into_N_points(white, ed_pos, div_num)
-        xy_list[idx] = xy_one_color
+        xyY_list[idx] = xy_one_color
 
-    return xy_list
+    return xyY_list
 
 
 def calc_6color_rgb_val(div_num=4):
@@ -263,11 +265,11 @@ def calc_6color_rgb_val(div_num=4):
       [  1.00000000e+00   4.18646481e-01   1.00000000e+00]
       [  1.00000000e+00   3.57493955e-16   1.00000000e+00]]]
     """
-    xy = calc_6color_xy_coordinate(div_num=div_num)
-    large_xyz = xy_to_XYZ(xy)
+    xyY = calc_6color_xyY_coordinate(div_num=div_num)
+    large_xyz = xyY_to_XYZ(xyY)
     rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT2020)
-    max_list = np.max(rgb, axis=-1)[:, :, np.newaxis]
-    rgb = np.clip(rgb/max_list, 0, 1)
+    # max_list = np.max(rgb, axis=-1)[:, :, np.newaxis]
+    rgb = np.clip(rgb, 0, 1)
 
     return rgb
 
@@ -279,6 +281,7 @@ def make_patch_center_pos_list_fname(div_num):
 def draw_patch(img, div_num=6):
     height, width = img.shape[:2]
     rgb_list = calc_6color_rgb_val(div_num=div_num)
+    # print(rgb_list)
     num_of_color, div_num = rgb_list.shape[:2]
     size = 150
 
@@ -364,8 +367,8 @@ def plot_result_pattern(result_img_fname, div_num, tf_gamma, gamut_name):
     result_rgb = get_result_rgb_value_from_img(
         img=result_img, div_num=div_num, tf_gamma=tf_gamma)
     # print(result_rgb)
-    result_xy = XYZ_to_xy(cs.rgb_to_large_xyz(result_rgb, gamut_name))
-    ref_xy = calc_6color_xy_coordinate(div_num=div_num)
+    result_xyY = XYZ_to_xyY(cs.rgb_to_large_xyz(result_rgb, gamut_name))
+    ref_xyY = calc_6color_xyY_coordinate(div_num=div_num)
     ref_rgb = tf.oetf(calc_6color_rgb_val(div_num=div_num), tf.SRGB)
 
     rate = 1.0
@@ -381,11 +384,11 @@ def plot_result_pattern(result_img_fname, div_num, tf_gamma, gamut_name):
         linewidths=1.5*rate, label="Measured value", zorder=0,
         c='k', edgecolors='k')
     ax1.scatter(
-        ref_xy[..., 0], ref_xy[..., 1],
+        ref_xyY[..., 0], ref_xyY[..., 1],
         s=ref_ms*rate, c=ref_rgb.reshape(-1, 3), zorder=10,
         edgecolors='k', linewidth=1.5*rate)
     ax1.scatter(
-        result_xy[..., 0], result_xy[..., 1], marker="X",
+        result_xyY[..., 0], result_xyY[..., 1], marker="X",
         s=measure_ms*rate, c=ref_rgb.reshape(-1, 3), zorder=10,
         linewidth=1.5*rate, edgecolors='k')
 
@@ -411,13 +414,32 @@ def conv_sRGB_BT2020_to_ST2084_P3D65():
     tpg.img_wirte_float_as_16bit_int(dst_img_fname, img)
 
 
+def conv_sRGB_BT2020_to_ST2084_BT709():
+    src_img_fname = make_srgb_bt2020_tp_fname(
+        width=1920, height=1080, revision=1)
+    img = tpg.img_read_as_float(src_img_fname)
+    img = tf.eotf(img, tf.SRGB)
+    xyz = cs.rgb_to_large_xyz(img, cs.BT2020)
+    rgb = cs.large_xyz_to_rgb(xyz, cs.BT709)
+    img = np.clip(rgb, 0, 1) * 100
+    img = tf.oetf_from_luminance(img, tf.ST2084)
+    dst_img_fname = add_suffix_to_filename(
+        src_img_fname, suffix="_on_ST2084_BT709")
+    print(dst_img_fname)
+    tpg.img_wirte_float_as_16bit_int(dst_img_fname, img)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # create_gamut_evaluation_pattern()
-    # conv_sRGB_BT2020_to_ST2084_P3D65()
-    # plot_result_pattern(
-    #     result_img_fname="./img/wcg_tp_1920x1080_rev1.png", div_num=6,
-    #     tf_gamma=tf.SRGB, gamut_name=cs.BT709)
-    # plot_result_pattern(
-    #     result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_P3D65.png",
-    #     div_num=6, tf_gamma=tf.ST2084, gamut_name=cs.P3_D65)
+    create_gamut_evaluation_pattern()
+    conv_sRGB_BT2020_to_ST2084_P3D65()
+    conv_sRGB_BT2020_to_ST2084_BT709()
+    plot_result_pattern(
+        result_img_fname="./img/wcg_tp_1920x1080_rev1.png", div_num=6,
+        tf_gamma=tf.SRGB, gamut_name=cs.BT709)
+    plot_result_pattern(
+        result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_P3D65.png",
+        div_num=6, tf_gamma=tf.ST2084, gamut_name=cs.P3_D65)
+    plot_result_pattern(
+        result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_BT709.png",
+        div_num=6, tf_gamma=tf.ST2084, gamut_name=cs.BT709)
