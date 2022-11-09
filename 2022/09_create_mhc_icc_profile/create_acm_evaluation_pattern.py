@@ -185,6 +185,43 @@ def carete_tp_bottom_information_image(
     return img
 
 
+def calc_n_devided_Ych_point(Ych, div_num):
+    hue_sample = 1001
+    lightness_sample = 1001
+    h_val = Ych[2]
+    ll_base = np.linspace(0, 1, lightness_sample)
+    hh_base = np.ones_like(ll_base) * h_val
+    lh_array = tstack([ll_base, hh_base])
+    lut_bt2020_name = make_Ych_gb_lut_fname(
+        color_space_name=cs.BT2020, lightness_num=lightness_sample,
+        hue_num=hue_sample)
+    lut_bt709_name = make_Ych_gb_lut_fname(
+        color_space_name=cs.BT709, lightness_num=lightness_sample,
+        hue_num=hue_sample)
+    lut_bt2020 = TyLchLut(np.load(lut_bt2020_name))
+    lut_bt709 = TyLchLut(np.load(lut_bt709_name))
+
+    ych_2020 = lut_bt2020.interpolate(lh_array=lh_array)
+    ych_709 = lut_bt709.interpolate(lh_array=lh_array)
+    rgb_2020 = ych_to_rgb_srgb(ych_2020, cs_name=cs.BT2020)
+    rgb_709 = ych_to_rgb_srgb(ych_709, cs_name=cs.BT2020)
+
+    cusp_2020 = lut_bt2020.get_cusp(hue=h_val, ych=True)
+    cusp_709 = lut_bt709.get_cusp(hue=h_val, ych=True)
+
+    pos1 = [0, 0.20]
+    pos2 = [cusp_709[1], cusp_709[0]]
+    pos3 = [cusp_2020[1], cusp_2020[0]]
+
+    chroma = np.linspace(pos1[0], pos3[0], div_num)
+    hue = np.ones_like(chroma) * h_val
+    yy = calc_y_from_three_pos(chroma, pos1, pos2, pos3)
+
+    Ych_list = tstack([yy, chroma, hue])
+
+    return Ych_list
+
+
 def calc_6color_xyY_coordinate(div_num=6):
     """
     Returns
@@ -219,19 +256,22 @@ def calc_6color_xyY_coordinate(div_num=6):
       [ 0.34043019  0.23805585  0.41100096]
       [ 0.36816038  0.14711171  0.32200193]]]
     """
-    white = np.array([0.3127, 0.3290, 0.18])
+    # white = np.array([0.3127, 0.3290, 0.18])
     rygcbm_rgb = np.array([
         [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 1, 1],
         [0, 0, 1], [1, 0, 1]])
     large_xyz = cs.rgb_to_large_xyz(rygcbm_rgb, cs.BT2020)
     xyY = XYZ_to_xyY(large_xyz)
-
+    Ych = cs.xyY_to_Ych(xyY)
     num_of_color = len(xyY)
     xyY_list = np.zeros((num_of_color, div_num, 3))
 
     for idx, ed_pos in enumerate(xyY):
-        xy_one_color = cut_two_points_into_N_points(white, ed_pos, div_num)
-        xyY_list[idx] = xy_one_color
+        Ych_one_color = calc_n_devided_Ych_point(
+            Ych=Ych[idx], div_num=div_num)
+        xyY_list[idx] = cs.Ych_to_xyY(Ych_one_color)
+        # xy_one_color = cut_two_points_into_N_points(white, ed_pos, div_num)
+        # xyY_list[idx] = xy_one_color
 
     return xyY_list
 
@@ -288,7 +328,7 @@ def draw_patch(img, div_num=6):
     rgb_list = calc_6color_rgb_val(div_num=div_num)
     # print(rgb_list)
     num_of_color, div_num = rgb_list.shape[:2]
-    size = 150
+    size = 128
 
     gc = GridCoordinate(
         bg_width=width, bg_height=height,
@@ -313,11 +353,10 @@ def make_srgb_bt2020_tp_fname(width, height, revision):
     return f"./img/wcg_tp_{width}x{height}_rev{revision}.png"
 
 
-def create_gamut_evaluation_pattern():
+def create_gamut_evaluation_pattern(div_num=7):
     width = 1920
     total_height = 1080
     info_area_height_rate = 0.04
-    div_num = 6
     revision = 1
     text1 = "WCG Pattern, EOTF: sRGB, Gamut: BT.2020, "
     text1 += f"White point: D65, {width}x{total_height}"
@@ -327,7 +366,7 @@ def create_gamut_evaluation_pattern():
         text1=text1, text2=text2,
         height_rate=info_area_height_rate)
     height = total_height - info_img.shape[0]
-    img = np.ones((height, width, 3)) * np.array([0.01, 0.01, 0.01])
+    img = np.ones((height, width, 3)) * np.array([0.015, 0.015, 0.015])
     draw_patch(img=img, div_num=div_num)
 
     img = np.vstack((img, info_img))
@@ -551,18 +590,19 @@ def plot_ych_ch_plane_all_hue():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # create_gamut_evaluation_pattern()
-    # conv_sRGB_BT2020_to_ST2084_P3D65()
-    # conv_sRGB_BT2020_to_ST2084_BT709()
-    # plot_result_pattern(
-    #     result_img_fname="./img/wcg_tp_1920x1080_rev1.png", div_num=6,
-    #     tf_gamma=tf.SRGB, gamut_name=cs.BT709)
-    # plot_result_pattern(
-    #     result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_P3D65.png",
-    #     div_num=6, tf_gamma=tf.ST2084, gamut_name=cs.P3_D65)
-    # plot_result_pattern(
-    #     result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_BT709.png",
-    #     div_num=6, tf_gamma=tf.ST2084, gamut_name=cs.BT709)
+    div_num = 7
+    create_gamut_evaluation_pattern(div_num=div_num)
+    conv_sRGB_BT2020_to_ST2084_P3D65()
+    conv_sRGB_BT2020_to_ST2084_BT709()
+    plot_result_pattern(
+        result_img_fname="./img/wcg_tp_1920x1080_rev1.png", div_num=6,
+        tf_gamma=tf.SRGB, gamut_name=cs.BT709)
+    plot_result_pattern(
+        result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_P3D65.png",
+        div_num=div_num, tf_gamma=tf.ST2084, gamut_name=cs.P3_D65)
+    plot_result_pattern(
+        result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_BT709.png",
+        div_num=div_num, tf_gamma=tf.ST2084, gamut_name=cs.BT709)
 
     # create_Ych_gamut_boundary_lut(
     #     hue_sample=1001, lightness_sample=1001, chroma_sample=16384,
@@ -571,4 +611,4 @@ if __name__ == '__main__':
     #     hue_sample=1001, lightness_sample=1001, chroma_sample=16384,
     #     color_space_name=cs.BT709)
 
-    plot_ych_ch_plane_all_hue()
+    # plot_ych_ch_plane_all_hue()
