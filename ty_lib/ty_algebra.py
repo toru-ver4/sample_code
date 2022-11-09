@@ -55,6 +55,23 @@ def calc_linear_function_params(pos1, pos2):
     return a, b
 
 
+def calc_y_from_three_pos(x, pos1, pos2, pos3):
+    """
+    Examples
+    --------
+    """
+    a1, b1 = calc_linear_function_params(pos1=pos1, pos2=pos2)
+    a2, b2 = calc_linear_function_params(pos1=pos2, pos2=pos3)
+    x2, _ = pos2
+
+    y = np.where(
+        x < x2,
+        a1 * x + b1,
+        a2 * x + b2)
+
+    return y
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     pos1 = [-4, -1]

@@ -334,7 +334,7 @@ def get_gamut_boundary_lch_from_lut(lut, lh_array, lightness_max=100):
     return intp_lch
 
 
-def calc_cusp_specific_hue(lut, hue, lightness_max=100):
+def calc_cusp_specific_hue(lut, hue, lightness_max=100, ych=False):
     """
     calc gamut's cusp using lut.
 
@@ -363,7 +363,10 @@ def calc_cusp_specific_hue(lut, hue, lightness_max=100):
     [  60.          130.80209944   20.        ]
     """
     l_num = lut.shape[0]
-    ll_base = np.linspace(0, lightness_max, l_num)
+    if ych:
+        ll_base = np.linspace(lightness_max, 0, l_num)
+    else:
+        ll_base = np.linspace(0, lightness_max, l_num)
     hh_base = np.ones_like(ll_base) * hue
 
     lh_array = tstack([ll_base, hh_base])
@@ -371,6 +374,58 @@ def calc_cusp_specific_hue(lut, hue, lightness_max=100):
     lch = get_gamut_boundary_lch_from_lut(
         lut=lut, lh_array=lh_array, lightness_max=lightness_max)
     max_cc_idx = np.argmax(lch[..., 1])
+
+    return lch[max_cc_idx]
+
+
+def calc_cusp_specific_hue_for_YCH(lut, hue, lightness_max=100):
+    """
+    calc gamut's cusp using lut.
+
+    Parameters
+    ----------
+    lut : ndarray
+        A gamut boundary lut. shape is (N, M, 3).
+        N is the number of the Lightness.
+        M is the number of the Hue.
+    hue : float
+        A Hue value. range is 0.0 - 360.0
+    lightness_max : float
+        maximum value of lightness
+
+    Returns
+    -------
+    cusp : ndarray
+        gamut's cusp.
+        [Lightness, Chroma, Hue].
+
+    Examples
+    --------
+    >>> calc_cusp_specific_hue(
+    ...     lut=np.load("./lut/lut_sample_11_9_8192_ITU-R BT.2020.npy"),
+    ...     hue=20)
+    [  60.          130.80209944   20.        ]
+    """
+    l_num = lut.shape[0]
+    ll_base = np.linspace(lightness_max, 0, l_num)
+    hh_base = np.ones_like(ll_base) * hue
+
+    lh_array = tstack([ll_base, hh_base])
+
+    lch = get_gamut_boundary_lch_from_lut(
+        lut=lut, lh_array=lh_array, lightness_max=lightness_max)
+
+    next = lch[2:-1, 1]
+    before = lch[1:-2, 1]
+    rate = (next - before) / before
+    # for idx, val in enumerate(rate):
+    #     print(idx, val)
+    # print(np.argmin(rate))
+    # print(next.shape, before.shape)
+    max_cc_idx = np.argmin(rate) + 1
+    # print(max_cc_idx)
+    # max_cc_idx = np.argmax(lch[..., 1])
+    # print(max_cc_idx)
 
     return lch[max_cc_idx]
 
@@ -709,7 +764,7 @@ class TyLchLut():
         return get_gamut_boundary_lch_from_lut(
             lut=self.lut, lh_array=lh_array, lightness_max=self.ll_max)
 
-    def get_cusp(self, hue):
+    def get_cusp(self, hue, ych=False):
         """
         calc gamut's cusp using lut.
 
@@ -733,8 +788,12 @@ class TyLchLut():
         ...     hue=20)
         [  60.          130.80209944   20.        ]
         """
-        cusp_lch = calc_cusp_specific_hue(
-            lut=self.lut, hue=hue, lightness_max=self.ll_max)
+        if ych:
+            cusp_lch = calc_cusp_specific_hue_for_YCH(
+                lut=self.lut, hue=hue, lightness_max=self.ll_max)
+        else:
+            cusp_lch = calc_cusp_specific_hue(
+                lut=self.lut, hue=hue, lightness_max=self.ll_max)
 
         return cusp_lch
 

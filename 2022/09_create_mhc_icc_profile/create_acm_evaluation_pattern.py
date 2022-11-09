@@ -8,11 +8,13 @@
 # import standard libraries
 import os
 from pathlib import Path
+from multiprocessing import Pool, cpu_count
 
 # import third-party libraries
 from colour.utilities import tstack
 from colour import XYZ_to_xy, XYZ_to_xyY, xyY_to_XYZ
 import numpy as np
+from numpy import linalg
 
 # import my libraries
 import test_pattern_generator2 as tpg
@@ -22,7 +24,9 @@ import font_control2 as fc2
 import color_space as cs
 import plot_utility as pu
 from ty_utility import add_suffix_to_filename
-from create_gamut_booundary_lut import create_Ych_gamut_boundary_lut
+from ty_algebra import calc_y_from_three_pos
+from create_gamut_booundary_lut import create_Ych_gamut_boundary_lut,\
+    make_Ych_gb_lut_fname, TyLchLut, calc_l_focal_specific_hue_jzazbz
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -430,6 +434,121 @@ def conv_sRGB_BT2020_to_ST2084_BT709():
     tpg.img_wirte_float_as_16bit_int(dst_img_fname, img)
 
 
+def ych_to_rgb_srgb(ych, cs_name=cs.BT2020):
+    xyY = cs.Ych_to_xyY(ych)
+    large_xyz = xyY_to_XYZ(xyY)
+    rgb = cs.large_xyz_to_rgb(xyz=large_xyz, color_space_name=cs_name)
+    rgb_srgb = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.SRGB)
+
+    return rgb_srgb
+
+
+def solve_quadratic_func_param(pt1, pt2, pt3):
+    x1, y1 = pt1
+    x2, y2 = pt2
+    x3, y3 = pt3
+
+    left_equation = np.array(
+        [[x1 ** 2, x1, 1], [x2 ** 2, x2, 1], [x3 ** 2, x3, 1]])
+    right_equation = np.array([y1, y2, y3])
+
+    result_data = linalg.solve(left_equation, right_equation)
+
+    return result_data
+
+
+def thread_wrapper_plot_YCH_plane(args):
+    plot_YCH_plane(**args)
+
+
+def plot_YCH_plane(h_idx=0, h_val=0):
+    hue_sample = 1001
+    lightness_sample = 1001
+    ll_base = np.linspace(0, 1, lightness_sample)
+    hh_base = np.ones_like(ll_base) * h_val
+    lh_array = tstack([ll_base, hh_base])
+    lut_bt2020_name = make_Ych_gb_lut_fname(
+        color_space_name=cs.BT2020, lightness_num=lightness_sample,
+        hue_num=hue_sample)
+    lut_bt709_name = make_Ych_gb_lut_fname(
+        color_space_name=cs.BT709, lightness_num=lightness_sample,
+        hue_num=hue_sample)
+    lut_bt2020 = TyLchLut(np.load(lut_bt2020_name))
+    lut_bt709 = TyLchLut(np.load(lut_bt709_name))
+
+    ych_2020 = lut_bt2020.interpolate(lh_array=lh_array)
+    ych_709 = lut_bt709.interpolate(lh_array=lh_array)
+    rgb_2020 = ych_to_rgb_srgb(ych_2020, cs_name=cs.BT2020)
+    rgb_709 = ych_to_rgb_srgb(ych_709, cs_name=cs.BT2020)
+
+    cusp_2020 = lut_bt2020.get_cusp(hue=h_val, ych=True)
+    cusp_709 = lut_bt709.get_cusp(hue=h_val, ych=True)
+
+    pos1 = [0, 0.20]
+    pos2 = [cusp_709[1], cusp_709[0]]
+    pos3 = [cusp_2020[1], cusp_2020[0]]
+
+    x = np.linspace(pos1[0], pos3[0], 32)
+    y = calc_y_from_three_pos(x, pos1, pos2, pos3)
+
+    cc_2020 = ych_2020[..., 1]
+    cc_709 = ych_709[..., 1]
+    ll_2020 = ych_2020[..., 0]
+    ll_709 = ych_709[..., 0]
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 12),
+        bg_color=(0.5, 0.5, 0.5),
+        graph_title=f"YCH, hue-angle={h_val:.02f}°",
+        graph_title_size=None,
+        xlabel="Chroma", ylabel="Y",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[0, 0.5],
+        ylim=[0.0009, 1.0],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=1,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    # pu.log_sacle_settings_x_linear_y_log(ax=ax1)
+    ax1.scatter(cc_2020, ll_2020, c=rgb_2020.reshape(-1, 3))
+    ax1.scatter(cc_709, ll_709, c=rgb_709.reshape(-1, 3))
+    ax1.plot(x, y, 'o', color='k', ms=10)
+    fname = "/work/overuse/2022/09_create_mhc_icc_profile/ych/"
+    fname += f"lch_{h_idx:04d}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc=None, show=False, save_fname=fname)
+
+
+def plot_ych_ch_plane_all_hue():
+    hue_sample = 721
+    hue_list = np.linspace(0, 360, hue_sample)
+
+    total_frame = hue_sample
+    total_process_num = total_frame
+    block_process_num = int(cpu_count() * 0.8)
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            l_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
+            if l_idx >= total_process_num:                         # User
+                break
+            d = dict(h_idx=l_idx, h_val=hue_list[l_idx])
+            args.append(d)
+        #     plot_YCH_plane(**d)
+        #     break
+        # break
+        with Pool(block_process_num) as pool:
+            pool.map(thread_wrapper_plot_YCH_plane, args)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_gamut_evaluation_pattern()
@@ -445,9 +564,11 @@ if __name__ == '__main__':
     #     result_img_fname="./img/wcg_tp_1920x1080_rev1_on_ST2084_BT709.png",
     #     div_num=6, tf_gamma=tf.ST2084, gamut_name=cs.BT709)
 
-    create_Ych_gamut_boundary_lut(
-        hue_sample=1001, lightness_sample=1001, chroma_sample=16384,
-        color_space_name=cs.BT2020)
-    create_Ych_gamut_boundary_lut(
-        hue_sample=1001, lightness_sample=1001, chroma_sample=16384,
-        color_space_name=cs.BT709)
+    # create_Ych_gamut_boundary_lut(
+    #     hue_sample=1001, lightness_sample=1001, chroma_sample=16384,
+    #     color_space_name=cs.BT2020)
+    # create_Ych_gamut_boundary_lut(
+    #     hue_sample=1001, lightness_sample=1001, chroma_sample=16384,
+    #     color_space_name=cs.BT709)
+
+    plot_ych_ch_plane_all_hue()
