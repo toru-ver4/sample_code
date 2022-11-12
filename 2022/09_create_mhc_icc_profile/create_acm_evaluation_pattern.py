@@ -24,7 +24,7 @@ import font_control2 as fc2
 import color_space as cs
 import plot_utility as pu
 from ty_utility import add_suffix_to_filename
-from ty_algebra import calc_y_from_three_pos
+from ty_algebra import calc_y_from_four_pos
 from create_gamut_booundary_lut import create_Ych_gamut_boundary_lut,\
     make_Ych_gb_lut_fname, TyLchLut, calc_l_focal_specific_hue_jzazbz
 
@@ -186,36 +186,48 @@ def carete_tp_bottom_information_image(
 
 
 def calc_n_devided_Ych_point(Ych, div_num):
+    """
+    Please make the YCH LUT in advance.
+    `hue_sample` and `lightness_sample` should be `1001`.
+
+    ```
+    create_Ych_gamut_boundary_lut(
+        hue_sample=1001, lightness_sample=1001, chroma_sample=16384,
+        color_space_name=cs.BT2020)
+    create_Ych_gamut_boundary_lut(
+        hue_sample=1001, lightness_sample=1001, chroma_sample=16384,
+        color_space_name=cs.BT709)
+    ```
+
+    """
     hue_sample = 1001
     lightness_sample = 1001
     h_val = Ych[2]
-    ll_base = np.linspace(0, 1, lightness_sample)
-    hh_base = np.ones_like(ll_base) * h_val
-    lh_array = tstack([ll_base, hh_base])
     lut_bt2020_name = make_Ych_gb_lut_fname(
         color_space_name=cs.BT2020, lightness_num=lightness_sample,
         hue_num=hue_sample)
     lut_bt709_name = make_Ych_gb_lut_fname(
         color_space_name=cs.BT709, lightness_num=lightness_sample,
         hue_num=hue_sample)
+    lut_p3d65_name = make_Ych_gb_lut_fname(
+        color_space_name=cs.P3_D65, lightness_num=lightness_sample,
+        hue_num=hue_sample)
     lut_bt2020 = TyLchLut(np.load(lut_bt2020_name))
     lut_bt709 = TyLchLut(np.load(lut_bt709_name))
-
-    ych_2020 = lut_bt2020.interpolate(lh_array=lh_array)
-    ych_709 = lut_bt709.interpolate(lh_array=lh_array)
-    rgb_2020 = ych_to_rgb_srgb(ych_2020, cs_name=cs.BT2020)
-    rgb_709 = ych_to_rgb_srgb(ych_709, cs_name=cs.BT2020)
+    lut_p3d65 = TyLchLut(np.load(lut_p3d65_name))
 
     cusp_2020 = lut_bt2020.get_cusp(hue=h_val, ych=True)
     cusp_709 = lut_bt709.get_cusp(hue=h_val, ych=True)
+    cusp_p3d65 = lut_p3d65.get_cusp(hue=h_val, ych=True)
 
     pos1 = [0, 0.20]
     pos2 = [cusp_709[1], cusp_709[0]]
-    pos3 = [cusp_2020[1], cusp_2020[0]]
+    pos3 = [cusp_p3d65[1], cusp_p3d65[0]]
+    pos4 = [cusp_2020[1], cusp_2020[0]]
 
-    chroma = np.linspace(pos1[0], pos3[0], div_num)
+    chroma = np.linspace(pos1[0], pos4[0], div_num)
     hue = np.ones_like(chroma) * h_val
-    yy = calc_y_from_three_pos(chroma, pos1, pos2, pos3)
+    yy = calc_y_from_four_pos(chroma, pos1, pos2, pos3, pos4)
 
     Ych_list = tstack([yy, chroma, hue])
 
@@ -328,7 +340,7 @@ def draw_patch(img, div_num=6):
     rgb_list = calc_6color_rgb_val(div_num=div_num)
     # print(rgb_list)
     num_of_color, div_num = rgb_list.shape[:2]
-    size = 128
+    size = 120
 
     gc = GridCoordinate(
         bg_width=width, bg_height=height,
@@ -415,7 +427,7 @@ def plot_result_pattern(result_img_fname, div_num, tf_gamma, gamut_name):
     ref_xyY = calc_6color_xyY_coordinate(div_num=div_num)
     ref_rgb = tf.oetf(calc_6color_rgb_val(div_num=div_num), tf.SRGB)
 
-    rate = 1.0
+    rate = 1.5
     fig, ax1 = pu.plot_chromaticity_diagram_base(
         rate=rate, bt709=True, p3d65=True, bt2020=True)
     ref_ms = 150
@@ -512,28 +524,38 @@ def plot_YCH_plane(h_idx=0, h_val=0):
     lut_bt709_name = make_Ych_gb_lut_fname(
         color_space_name=cs.BT709, lightness_num=lightness_sample,
         hue_num=hue_sample)
+    lut_p3d65_name = make_Ych_gb_lut_fname(
+        color_space_name=cs.P3_D65, lightness_num=lightness_sample,
+        hue_num=hue_sample)
     lut_bt2020 = TyLchLut(np.load(lut_bt2020_name))
     lut_bt709 = TyLchLut(np.load(lut_bt709_name))
+    lut_p3d65 = TyLchLut(np.load(lut_p3d65_name))
 
     ych_2020 = lut_bt2020.interpolate(lh_array=lh_array)
     ych_709 = lut_bt709.interpolate(lh_array=lh_array)
+    ych_p3d65 = lut_p3d65.interpolate(lh_array=lh_array)
     rgb_2020 = ych_to_rgb_srgb(ych_2020, cs_name=cs.BT2020)
     rgb_709 = ych_to_rgb_srgb(ych_709, cs_name=cs.BT2020)
+    rgb_p3d65 = ych_to_rgb_srgb(ych_p3d65, cs_name=cs.BT2020)
 
     cusp_2020 = lut_bt2020.get_cusp(hue=h_val, ych=True)
     cusp_709 = lut_bt709.get_cusp(hue=h_val, ych=True)
+    cusp_p3d65 = lut_p3d65.get_cusp(hue=h_val, ych=True)
 
     pos1 = [0, 0.20]
     pos2 = [cusp_709[1], cusp_709[0]]
-    pos3 = [cusp_2020[1], cusp_2020[0]]
+    pos3 = [cusp_p3d65[1], cusp_p3d65[0]]
+    pos4 = [cusp_2020[1], cusp_2020[0]]
 
-    x = np.linspace(pos1[0], pos3[0], 32)
-    y = calc_y_from_three_pos(x, pos1, pos2, pos3)
+    x = np.linspace(pos1[0], pos4[0], 32)
+    y = calc_y_from_four_pos(x, pos1, pos2, pos3, pos4)
 
     cc_2020 = ych_2020[..., 1]
     cc_709 = ych_709[..., 1]
+    cc_p3d65 = ych_p3d65[..., 1]
     ll_2020 = ych_2020[..., 0]
     ll_709 = ych_709[..., 0]
+    ll_p3d65 = ych_p3d65[..., 0]
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
@@ -555,6 +577,7 @@ def plot_YCH_plane(h_idx=0, h_val=0):
     # pu.log_sacle_settings_x_linear_y_log(ax=ax1)
     ax1.scatter(cc_2020, ll_2020, c=rgb_2020.reshape(-1, 3))
     ax1.scatter(cc_709, ll_709, c=rgb_709.reshape(-1, 3))
+    ax1.scatter(cc_p3d65, ll_p3d65, c=rgb_p3d65.reshape(-1, 3))
     ax1.plot(x, y, 'o', color='k', ms=10)
     fname = "/work/overuse/2022/09_create_mhc_icc_profile/ych/"
     fname += f"lch_{h_idx:04d}.png"
@@ -590,7 +613,7 @@ def plot_ych_ch_plane_all_hue():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    div_num = 7
+    div_num = 8
     create_gamut_evaluation_pattern(div_num=div_num)
     conv_sRGB_BT2020_to_ST2084_P3D65()
     conv_sRGB_BT2020_to_ST2084_BT709()
@@ -610,5 +633,8 @@ if __name__ == '__main__':
     # create_Ych_gamut_boundary_lut(
     #     hue_sample=1001, lightness_sample=1001, chroma_sample=16384,
     #     color_space_name=cs.BT709)
+    # create_Ych_gamut_boundary_lut(
+    #     hue_sample=1001, lightness_sample=1001, chroma_sample=16384,
+    #     color_space_name=cs.P3_D65)
 
     # plot_ych_ch_plane_all_hue()
