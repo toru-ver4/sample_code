@@ -38,6 +38,7 @@ NLOG = "Nikon N-Log"
 DLOG = "DJI D-Log"
 FLOG = "FUJIFILM F-Log"
 SRGB = "sRGB"
+LINEAR = 'linear'
 # ACES_CG = 'ACEScg'
 
 slog_max = colour.models.log_decoding_SLog3((1023 / 1023),
@@ -83,7 +84,8 @@ PEAK_LUMINANCE = {GAMMA24: REF_WHITE_LUMINANCE,
                   LOG3G12: log3g12_max * REF_WHITE_LUMINANCE,
                   NLOG: nlog_max * REF_WHITE_LUMINANCE,
                   FLOG: flog_max * REF_WHITE_LUMINANCE,
-                  DLOG: dlog_max * REF_WHITE_LUMINANCE}
+                  DLOG: dlog_max * REF_WHITE_LUMINANCE,
+                  LINEAR: REF_WHITE_LUMINANCE}
 
 
 def oetf(x, name=GAMMA24):
@@ -149,6 +151,8 @@ def oetf(x, name=GAMMA24):
         y = f_log_encoding(x * MAX_VALUE[name], in_reflection=True)
     elif name == DLOG:
         y = d_log_encoding(x * MAX_VALUE[name], in_reflection=True)
+    elif name == LINEAR:
+        y = x
     else:
         raise ValueError("invalid transfer fucntion name")
 
@@ -246,6 +250,8 @@ def eotf(x, name=GAMMA24):
         y = f_log_decoding(x, out_reflection=True) / MAX_VALUE[name]
     elif name == DLOG:
         y = d_log_decoding(x, out_reflection=True) / MAX_VALUE[name]
+    elif name == LINEAR:
+        y = x
     else:
         raise ValueError("invalid transfer fucntion name")
 
