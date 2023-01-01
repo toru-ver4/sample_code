@@ -36,6 +36,8 @@ NOTO_SANS_CJKJP_MEDIUM\
     = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Medium.otf"
 NOTO_SANS_CJKJP_REGULAR\
     = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf"
+NOTO_SANS_CJKJP_BOLD\
+    = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Bold.otf"
 NOTO_SANS_CJKJP_BLACK\
     = "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Black.otf"
 BIZUDGOTIC_BOLD\

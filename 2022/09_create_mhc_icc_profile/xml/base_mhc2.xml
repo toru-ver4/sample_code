@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<IccProfile>
+  <Header>
+    <PreferredCMMType>SICC</PreferredCMMType>
+    <ProfileVersion>4.40</ProfileVersion>
+    <ProfileDeviceClass>mntr</ProfileDeviceClass>
+    <DataColourSpace>RGB </DataColourSpace>
+    <PCS>XYZ </PCS>
+    <CreationDateTime>2022-10-24T12:54:44</CreationDateTime>
+    <PrimaryPlatform>MSFT</PrimaryPlatform>
+    <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"/>
+    <DeviceAttributes ReflectiveOrTransparency="transparency" GlossyOrMatte="glossy" MediaPolarity="positive" MediaColour="colour"/>
+    <RenderingIntent>Relative Colorimetric</RenderingIntent>
+    <PCSIlluminant>
+      <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"/>
+    </PCSIlluminant>
+    <ProfileCreator>MSFT</ProfileCreator>
+    <ProfileID>BAA0FC66D70195C843A1A3E1A0E56993</ProfileID>
+  </Header>
+  <Tags>
+    <multiLocalizedUnicodeType>
+      <TagSignature>cprt</TagSignature>
+      <LocalizedText LanguageCountry="enUS"><![CDATA[Copyright (C) Microsoft Corporation.]]></LocalizedText>
+    </multiLocalizedUnicodeType>
+    <curveType>
+      <TagSignature>rTRC</TagSignature>
+      <TagSignature>gTRC</TagSignature>
+      <TagSignature>bTRC</TagSignature>
+      <Curve>
+         563
+      </Curve>
+    </curveType>
+    <XYZType>
+      <TagSignature>rXYZ</TagSignature>
+      <XYZNumber X="2.18907166" Y="1.00000000" Z="0.01603699"/>
+    </XYZType>
+    <XYZType>
+      <TagSignature>gXYZ</TagSignature>
+      <XYZNumber X="0.39729309" Y="1.00000000" Z="0.10195923"/>
+    </XYZType>
+    <XYZType>
+      <TagSignature>bXYZ</TagSignature>
+      <XYZNumber X="2.47489929" Y="1.00000000" Z="13.47644043"/>
+    </XYZType>
+    <XYZType>
+      <TagSignature>wtpt</TagSignature>
+      <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"/>
+    </XYZType>
+    <textType>
+      <TagSignature>MSCA</TagSignature>
+      <ASCII><![CDATA[{'Appversion':'1.0.124.0','D65Adapted':True}]]></ASCII>
+    </textType>
+    <XYZType>
+      <TagSignature>lumi</TagSignature>
+      <XYZNumber X="560.00000000" Y="220.00000000" Z="560.00000000"/>
+    </XYZType>
+    <PrivateType type="MHC2">
+      <TagSignature>MHC2</TagSignature>
+      <UnknownData>
+       0000000000000002000010a400dc000000000024000000540000006400000074
+       0001000000000000000000000000000000000000000100000000000000000000
+       0000000000000000000100000000000073663332000000000000000000010000
+       7366333200000000000000000001000073663332000000000000000000010000
+      </UnknownData>
+    </PrivateType>
+    <multiLocalizedUnicodeType>
+      <TagSignature>desc</TagSignature>
+      <LocalizedText LanguageCountry="enUS"><![CDATA[HDR Calibrated Profile 10/24/2022 215610]]></LocalizedText>
+    </multiLocalizedUnicodeType>
+  </Tags>
+</IccProfile>
