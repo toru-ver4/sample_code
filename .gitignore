@@ -203,7 +203,7 @@ temporary/**/**
 2022/07_observer_metamerism/debug/*.png
 2022/07_observer_metamerism/shoot_data/**
 
-2022/08_motion_blur_pattern_rev2/debug/*.png
+2022/08_motion_blur_pattern_rev2/debug/**
 
 2022/09_create_mhc_icc_profile/debug/**
 2022/09_create_mhc_icc_profile/lut/**

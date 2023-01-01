@@ -175,7 +175,7 @@ class TextDrawControl():
 
         return width, height
 
-    def draw(self, img, pos=(0, 0)):
+    def draw(self, img, pos=(0, 0), rotate=None):
         """
         drww text on the background image.
 
@@ -185,10 +185,12 @@ class TextDrawControl():
             background image data. it must be a linear space.
         pos : list or tuple(int)
             text strat position.
+        rotate : int
+            An angle of the rotation (degree).
         """
         self.img = img
         self.pos = pos
-        self.make_text_img_with_alpha()
+        self.make_text_img_with_alpha(rotate=rotate)
         self.composite_text()
 
     def draw_with_dropped_dot(
@@ -241,7 +243,7 @@ class TextDrawControl():
         self.rgb_img = img[:, :, :3]
         self.alpha_img = np.dstack((img[:, :, 3], img[:, :, 3], img[:, :, 3]))
 
-    def make_text_img_with_alpha(self):
+    def make_text_img_with_alpha(self, rotate):
         """
         draw text and split rgb image and alpha image.
         """
@@ -262,6 +264,10 @@ class TextDrawControl():
             stroke_width=self.stroke_width, stroke_fill=self.stroke_fill)
         text_img = np.asarray(text_img)[offset_y:text_size[1]] / 0xFF
         self.text_img_linear = tf.eotf(text_img, tf.SRGB)
+
+        if rotate is not None:
+            times = rotate // 90
+            self.text_img_linear = np.rot90(self.text_img_linear, times)
 
     def composite_text(self):
         text_width = self.text_img_linear.shape[1]
