@@ -10,6 +10,9 @@ plot補助ツール群
 * [Customizing matplotlib](http://matplotlib.org/users/customizing.html)
 
 """
+import matplotlib
+matplotlib.use('TkAgg')
+
 import numpy as np
 from matplotlib import ticker
 import matplotlib.pyplot as plt
