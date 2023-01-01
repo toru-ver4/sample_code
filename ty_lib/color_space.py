@@ -244,7 +244,7 @@ def get_rgb_to_xyz_matrix(name):
     DCI-P3 で D65 の係数を返せるように内部関数化した。
     """
     if name != "DCI-P3":
-        rgb_to_xyz_matrix = RGB_COLOURSPACES[name].RGB_to_XYZ_matrix
+        rgb_to_xyz_matrix = RGB_COLOURSPACES[name].matrix_RGB_to_XYZ
     else:
         rgb_to_xyz_matrix\
             = calc_rgb_to_xyz_matrix(RGB_COLOURSPACES[DCI_P3].primaries,
@@ -259,7 +259,7 @@ def get_xyz_to_rgb_matrix(name):
     DCI-P3 で D65 の係数を返せるように内部関数化した。
     """
     if name != "DCI-P3":
-        xyz_to_rgb_matrix = RGB_COLOURSPACES[name].XYZ_to_RGB_matrix
+        xyz_to_rgb_matrix = RGB_COLOURSPACES[name].matrix_XYZ_to_RGB
     else:
         rgb_to_xyz_matrix\
             = calc_rgb_to_xyz_matrix(RGB_COLOURSPACES[DCI_P3].primaries,

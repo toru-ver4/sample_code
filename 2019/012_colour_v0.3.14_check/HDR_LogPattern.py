@@ -27,37 +27,36 @@ class DciP3ColorSpace:
         self.name = "DCI-P3"
 
 
-BT709_CS = colour.models.BT709_COLOURSPACE
-BT2020_CS = colour.models.BT2020_COLOURSPACE
-V_GAMUT_CS = colour.models.V_GAMUT_COLOURSPACE
-ALEXA_WIDE_GAMUT_CS = colour.models.ALEXA_WIDE_GAMUT_COLOURSPACE
-S_GAMUT3_CINE_CS = colour.models.S_GAMUT3_CINE_COLOURSPACE
-S_GAMUT3_CS = colour.models.S_GAMUT3_COLOURSPACE
-V_LOG_CS = colour.models.V_GAMUT_COLOURSPACE
-ALEXA_WIDE_GAMUT_CS = colour.models.ALEXA_WIDE_GAMUT_COLOURSPACE
-RED_WIDE_GAMUT_RGB_CS = colour.models.RED_WIDE_GAMUT_RGB_COLOURSPACE
-DCI_P3_CS = DciP3ColorSpace()
-SRGB_CS = colour.models.sRGB_COLOURSPACE
-ACES_AP1_CS = colour.models.ACES_CG_COLOURSPACE
-ACES_AP0_CS = colour.models.ACES_2065_1_COLOURSPACE
+BT709_CS = colour.models.RGB_COLOURSPACE_BT709
+BT2020_CS = colour.models.RGB_COLOURSPACE_BT2020
+V_GAMUT_CS = colour.models.RGB_COLOURSPACE_V_GAMUT
+ALEXA_WIDE_GAMUT_CS = colour.models.RGB_COLOURSPACE_ARRI_WIDE_GAMUT_3
+S_GAMUT3_CINE_CS = colour.models.RGB_COLOURSPACE_S_GAMUT3_CINE
+S_GAMUT3_CS = colour.models.RGB_COLOURSPACE_S_GAMUT3
+V_LOG_CS = colour.models.RGB_COLOURSPACE_V_GAMUT
+RED_WIDE_GAMUT_RGB_CS = colour.models.RGB_COLOURSPACE_RED_WIDE_GAMUT_RGB
+DCI_P3_CS = colour.models.RGB_COLOURSPACE_P3_D65
+SRGB_CS = colour.models.RGB_COLOURSPACE_sRGB
+ACES_AP1_CS = colour.models.RGB_COLOURSPACE_ACESCG
+ACES_AP0_CS = colour.models.RGB_COLOURSPACE_ACES2065_1
 
-PARAM_LIST = [{'tf': tf.GAMMA24, 'cs': BT709_CS, 'wp': 'D65'},
-              {'tf': tf.GAMMA24, 'cs': BT2020_CS, 'wp': 'D65'},
-              {'tf': tf.HLG, 'cs': BT2020_CS, 'wp': 'D65'},
-              {'tf': tf.ST2084, 'cs': BT2020_CS, 'wp': 'D65'},
-              {'tf': tf.ST2084, 'cs': DCI_P3_CS, 'wp': 'D65'},
-              {'tf': tf.SLOG3, 'cs': S_GAMUT3_CS, 'wp': 'D65'},
-              {'tf': tf.SLOG3_REF, 'cs': S_GAMUT3_CS, 'wp': 'D65'},
-              {'tf': tf.VLOG, 'cs': V_LOG_CS, 'wp': 'D65'},
-              {'tf': tf.LOGC, 'cs': ALEXA_WIDE_GAMUT_CS, 'wp': 'D65'},
-              {'tf': tf.LOGC, 'cs': BT2020_CS, 'wp': 'D65'},
-              {'tf': tf.LOG3G10, 'cs': RED_WIDE_GAMUT_RGB_CS, 'wp': 'D65'},
-              {'tf': tf.LOG3G12, 'cs': RED_WIDE_GAMUT_RGB_CS, 'wp': 'D65'},
-              {'tf': tf.LOG3G10, 'cs': BT2020_CS, 'wp': 'D65'},
-              {'tf': tf.LOG3G12, 'cs': BT2020_CS, 'wp': 'D65'},
-              {'tf': tf.ST2084, 'cs': ACES_AP1_CS, 'wp': 'D60'},
-              {'tf': tf.ST2084, 'cs': ACES_AP0_CS, 'wp': 'D60'}]
-# PARAM_LIST = [{'tf': tf.SLOG3_REF, 'cs': S_GAMUT3_CS, 'wp': 'D65'}]
+# PARAM_LIST = [{'tf': tf.GAMMA24, 'cs': BT709_CS, 'wp': 'D65'},
+#               {'tf': tf.GAMMA24, 'cs': BT2020_CS, 'wp': 'D65'},
+#               {'tf': tf.HLG, 'cs': BT2020_CS, 'wp': 'D65'},
+#               {'tf': tf.ST2084, 'cs': BT2020_CS, 'wp': 'D65'},
+#               {'tf': tf.ST2084, 'cs': DCI_P3_CS, 'wp': 'D65'},
+#               {'tf': tf.SLOG3, 'cs': S_GAMUT3_CS, 'wp': 'D65'},
+#               {'tf': tf.SLOG3_REF, 'cs': S_GAMUT3_CS, 'wp': 'D65'},
+#               {'tf': tf.VLOG, 'cs': V_LOG_CS, 'wp': 'D65'},
+#               {'tf': tf.LOGC, 'cs': ALEXA_WIDE_GAMUT_CS, 'wp': 'D65'},
+#               {'tf': tf.LOGC, 'cs': BT2020_CS, 'wp': 'D65'},
+#               {'tf': tf.LOG3G10, 'cs': RED_WIDE_GAMUT_RGB_CS, 'wp': 'D65'},
+#               {'tf': tf.LOG3G12, 'cs': RED_WIDE_GAMUT_RGB_CS, 'wp': 'D65'},
+#               {'tf': tf.LOG3G10, 'cs': BT2020_CS, 'wp': 'D65'},
+#               {'tf': tf.LOG3G12, 'cs': BT2020_CS, 'wp': 'D65'},
+#               {'tf': tf.ST2084, 'cs': ACES_AP1_CS, 'wp': 'D60'},
+#               {'tf': tf.ST2084, 'cs': ACES_AP0_CS, 'wp': 'D60'}]
+PARAM_LIST = [{'tf': tf.LINEAR, 'cs': ACES_AP0_CS, 'wp': 'D60'}]
 
 
 class TpgControl:

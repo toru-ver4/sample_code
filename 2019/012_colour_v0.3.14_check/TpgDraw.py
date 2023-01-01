@@ -405,7 +405,8 @@ class TpgDraw:
         """
         24パターンの Color Checker の RGB値を得る
         """
-        colour_checker_param = colour.COLOURCHECKERS.get('ColorChecker 2005')
+        colour_checker_param\
+            = colour.CCS_COLOURCHECKERS.get('ColorChecker 2005')
 
         # 今回の処理では必要ないデータもあるので xyY と whitepoint だけ抽出
         # -------------------------------------------------------------
@@ -417,7 +418,7 @@ class TpgDraw:
         large_xyz = colour.models.xyY_to_XYZ(temp_xyY)
 
         rgb_white_point\
-            = colour.colorimetry.ILLUMINANTS['cie_2_1931'][self.white_point]
+            = colour.colorimetry.CCS_ILLUMINANTS['cie_2_1931'][self.white_point]
 
         illuminant_XYZ = whitepoint   # ColorCheckerのオリジナルデータの白色点
         illuminant_RGB = rgb_white_point  # RGBの白色点を設定
