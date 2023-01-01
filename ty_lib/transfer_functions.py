@@ -38,7 +38,7 @@ NLOG = "Nikon N-Log"
 DLOG = "DJI D-Log"
 FLOG = "FUJIFILM F-Log"
 SRGB = "sRGB"
-LINEAR = 'linear'
+LINEAR = 'Linear'
 # ACES_CG = 'ACEScg'
 
 slog_max = colour.models.log_decoding_SLog3((1023 / 1023),
