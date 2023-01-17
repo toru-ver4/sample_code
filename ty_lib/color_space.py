@@ -33,9 +33,11 @@ from jzazbz import jzazbz_to_large_xyz, large_xyz_to_jzazbz
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
 D65 = ILLUMINANTS[CMFS_NAME]['D65']
 D50 = ILLUMINANTS[CMFS_NAME]['D50']
+D60_ACES = np.array([0.32168, 0.33767])
 
 D65_XYZ = xyY_to_XYZ(xy_to_xyY(D65))
 D50_XYZ = xyY_to_XYZ(xy_to_xyY(D50))
+D60_ACES_XYZ = xyY_to_XYZ(xy_to_xyY(D60_ACES))
 
 # NAME
 BT709 = 'ITU-R BT.709'
