@@ -1,0 +1,95 @@
+ocio_profile_version: 1
+
+search_path: luts
+strictparsing: true
+luma: [0.2126, 0.7152, 0.0722]
+
+roles:
+  color_picking: ACES - ACES2065-1
+  color_timing: ACES - ACES2065-1
+  compositing_log: ACES - ACES2065-1
+  data: ACES - ACES2065-1
+  default: ACES - ACES2065-1
+  matte_paint: ACES - ACES2065-1
+  reference: ACES - ACES2065-1
+  scene_linear: ACES - ACES2065-1
+  texture_paint: ACES - ACES2065-1
+
+displays:
+  default:
+    - !<View> {name: ACES - ACES2065-1, colorspace: ACES - ACES2065-1}
+    - !<View> {name: BT.709 - Gamma 2.4, colorspace: BT.709 - Gamma 2.4}
+    - !<View> {name: BT.2020 - SMPTE ST2084, colorspace: BT.2020 - SMPTE ST2084}
+    - !<View> {name: P3D65 - SMPTE ST2084, colorspace: P3D65 - SMPTE ST2084}
+
+active_displays: [default]
+active_views: [BT.709 - Gamma 2.4, P3D65 - SMPTE ST2084, BT.2020 - SMPTE ST2084, ACES - ACES2065-1]
+
+colorspaces:
+  - !<ColorSpace>
+    name: ACES - ACES2065-1
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    description: |
+      ACES - ACES2065-1
+    isdata: false
+    allocation: uniform
+    allocationvars: [0, 1]
+
+  - !<ColorSpace>
+    name: BT.709 - Gamma 2.4
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    description: |
+      gamut: BT.709, gamma: 2.4
+    isdata: false
+    allocation: uniform
+    allocationvars: [0, 1]
+    to_reference: !<GroupTransform>
+      children:
+        - !<FileTransform> {src: Gamma_2.4_to_Linear.spi1d, interpolation: linear}
+        - !<MatrixTransform> {matrix: [0.439576, 0.383913, 0.176512, 0, 0.0896004, 0.814714, 0.0956855, 0, 0.0174155, 0.108734, 0.87385, 0, 0, 0, 0, 1]}
+    from_reference: !<GroupTransform>
+      children:
+        - !<MatrixTransform> {matrix: [2.52193, -1.13702, -0.384911, 0, -0.275479, 1.36983, -0.0943495, 0, -0.0159829, -0.147789, 1.16377, 0, 0, 0, 0, 1]}
+        - !<FileTransform> {src: Gamma_2.4_to_Linear.spi1d, interpolation: linear, direction: inverse}
+
+  - !<ColorSpace>
+    name: P3D65 - SMPTE ST2084
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    description: |
+      gamut: DCI-P3, gamma: ST2084
+    isdata: false
+    allocation: uniform
+    allocationvars: [0, 1]
+    to_reference: !<GroupTransform>
+      children:
+        - !<FileTransform> {src: SMPTE_ST2084_to_Linear.spi1d, interpolation: linear}
+        - !<MatrixTransform> {matrix: [0.518841, 0.2873, 0.193858, 0, 0.0736117, 0.821299, 0.105089, 0, -0.000400392, 0.0406738, 0.959727, 0, 0, 0, 0, 1]}
+    from_reference: !<GroupTransform>
+      children:
+        - !<MatrixTransform> {matrix: [2.02529, -0.691962, -0.333325, 0, -0.182622, 1.28662, -0.103994, 0, 0.00858455, -0.0548163, 1.04623, 0, 0, 0, 0, 1]}
+        - !<FileTransform> {src: SMPTE_ST2084_to_Linear.spi1d, interpolation: linear, direction: inverse}
+
+  - !<ColorSpace>
+    name: BT.2020 - SMPTE ST2084
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    description: |
+      gamut: BT.2020, gamma: ST2084
+    isdata: false
+    allocation: uniform
+    allocationvars: [0, 1]
+    to_reference: !<GroupTransform>
+      children:
+        - !<FileTransform> {src: SMPTE_ST2084_to_Linear.spi1d, interpolation: linear}
+        - !<MatrixTransform> {matrix: [0.678891, 0.158868, 0.16224, 0, 0.0455708, 0.860713, 0.0937164, 0, -0.00048571, 0.0250602, 0.975426, 0, 0, 0, 0, 1]}
+    from_reference: !<GroupTransform>
+      children:
+        - !<MatrixTransform> {matrix: [1.49087, -0.268713, -0.222156, 0, -0.0792372, 1.17937, -0.100131, 0, 0.0027781, -0.0304336, 1.02766, 0, 0, 0, 0, 1]}
+        - !<FileTransform> {src: SMPTE_ST2084_to_Linear.spi1d, interpolation: linear, direction: inverse}

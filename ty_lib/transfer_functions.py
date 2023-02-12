@@ -38,13 +38,14 @@ NLOG = "Nikon N-Log"
 DLOG = "DJI D-Log"
 FLOG = "FUJIFILM F-Log"
 SRGB = "sRGB"
+LINEAR = 'Linear'
 # ACES_CG = 'ACEScg'
 
 slog_max = colour.models.log_decoding_SLog3((1023 / 1023),
                                             out_reflection=False)
 slog_ref_max = colour.models.log_decoding_SLog3((1023 / 1023),
                                                 out_reflection=True)
-logc_max = colour.models.log_decoding_ALEXALogC(1.0)
+logc_max = colour.models.log_decoding_ARRILogC3(1.0)
 vlog_ire_max = colour.models.log_decoding_VLog(1.0, out_reflection=False)
 vlog_ref_max = colour.models.log_decoding_VLog(1.0, out_reflection=True)
 red_max = colour.models.log_decoding_REDLog(1.0)
@@ -83,7 +84,8 @@ PEAK_LUMINANCE = {GAMMA24: REF_WHITE_LUMINANCE,
                   LOG3G12: log3g12_max * REF_WHITE_LUMINANCE,
                   NLOG: nlog_max * REF_WHITE_LUMINANCE,
                   FLOG: flog_max * REF_WHITE_LUMINANCE,
-                  DLOG: dlog_max * REF_WHITE_LUMINANCE}
+                  DLOG: dlog_max * REF_WHITE_LUMINANCE,
+                  LINEAR: REF_WHITE_LUMINANCE}
 
 
 def oetf(x, name=GAMMA24):
@@ -136,7 +138,7 @@ def oetf(x, name=GAMMA24):
         y = colour.models.log_encoding_VLog(x * MAX_VALUE[name],
                                             in_reflection=True)
     elif name == LOGC:
-        y = colour.models.log_encoding_ALEXALogC(x * MAX_VALUE[name])
+        y = colour.models.log_encoding_ARRILogC3(x * MAX_VALUE[name])
     elif name == REDLOG:
         y = colour.models.log_encoding_REDLog(x * MAX_VALUE[name])
     elif name == LOG3G10:
@@ -149,6 +151,8 @@ def oetf(x, name=GAMMA24):
         y = f_log_encoding(x * MAX_VALUE[name], in_reflection=True)
     elif name == DLOG:
         y = d_log_encoding(x * MAX_VALUE[name], in_reflection=True)
+    elif name == LINEAR:
+        y = x
     else:
         raise ValueError("invalid transfer fucntion name")
 
@@ -233,7 +237,7 @@ def eotf(x, name=GAMMA24):
         y = colour.models.log_decoding_VLog(x, out_reflection=True)\
             / MAX_VALUE[name]
     elif name == LOGC:
-        y = colour.models.log_decoding_ALEXALogC(x) / MAX_VALUE[name]
+        y = colour.models.log_decoding_ARRILogC3(x) / MAX_VALUE[name]
     elif name == REDLOG:
         y = colour.models.log_decoding_REDLog(x) / MAX_VALUE[name]
     elif name == LOG3G10:
@@ -246,6 +250,8 @@ def eotf(x, name=GAMMA24):
         y = f_log_decoding(x, out_reflection=True) / MAX_VALUE[name]
     elif name == DLOG:
         y = d_log_decoding(x, out_reflection=True) / MAX_VALUE[name]
+    elif name == LINEAR:
+        y = x
     else:
         raise ValueError("invalid transfer fucntion name")
 

@@ -33,9 +33,11 @@ from jzazbz import jzazbz_to_large_xyz, large_xyz_to_jzazbz
 CMFS_NAME = 'CIE 1931 2 Degree Standard Observer'
 D65 = ILLUMINANTS[CMFS_NAME]['D65']
 D50 = ILLUMINANTS[CMFS_NAME]['D50']
+D60_ACES = np.array([0.32168, 0.33767])
 
 D65_XYZ = xyY_to_XYZ(xy_to_xyY(D65))
 D50_XYZ = xyY_to_XYZ(xy_to_xyY(D50))
+D60_ACES_XYZ = xyY_to_XYZ(xy_to_xyY(D60_ACES))
 
 # NAME
 BT709 = 'ITU-R BT.709'
@@ -244,7 +246,7 @@ def get_rgb_to_xyz_matrix(name):
     DCI-P3 で D65 の係数を返せるように内部関数化した。
     """
     if name != "DCI-P3":
-        rgb_to_xyz_matrix = RGB_COLOURSPACES[name].RGB_to_XYZ_matrix
+        rgb_to_xyz_matrix = RGB_COLOURSPACES[name].matrix_RGB_to_XYZ
     else:
         rgb_to_xyz_matrix\
             = calc_rgb_to_xyz_matrix(RGB_COLOURSPACES[DCI_P3].primaries,
@@ -259,7 +261,7 @@ def get_xyz_to_rgb_matrix(name):
     DCI-P3 で D65 の係数を返せるように内部関数化した。
     """
     if name != "DCI-P3":
-        xyz_to_rgb_matrix = RGB_COLOURSPACES[name].XYZ_to_RGB_matrix
+        xyz_to_rgb_matrix = RGB_COLOURSPACES[name].matrix_XYZ_to_RGB
     else:
         rgb_to_xyz_matrix\
             = calc_rgb_to_xyz_matrix(RGB_COLOURSPACES[DCI_P3].primaries,

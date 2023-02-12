@@ -207,3 +207,8 @@ temporary/**/**
 
 2022/09_create_mhc_icc_profile/debug/**
 2022/09_create_mhc_icc_profile/lut/**
+
+2023/01_create_ocio_config_for_PS_AF/AfterEffects/**
+2023/01_create_ocio_config_for_PS_AF/**/*.cube
+2023/01_create_ocio_config_for_PS_AF/**/*.spi1d
+2023/01_create_ocio_config_for_PS_AF/**/*.bkp
