@@ -45,7 +45,7 @@ slog_max = colour.models.log_decoding_SLog3((1023 / 1023),
                                             out_reflection=False)
 slog_ref_max = colour.models.log_decoding_SLog3((1023 / 1023),
                                                 out_reflection=True)
-logc_max = colour.models.log_decoding_ALEXALogC(1.0)
+logc_max = colour.models.log_decoding_ARRILogC3(1.0)
 vlog_ire_max = colour.models.log_decoding_VLog(1.0, out_reflection=False)
 vlog_ref_max = colour.models.log_decoding_VLog(1.0, out_reflection=True)
 red_max = colour.models.log_decoding_REDLog(1.0)
@@ -138,7 +138,7 @@ def oetf(x, name=GAMMA24):
         y = colour.models.log_encoding_VLog(x * MAX_VALUE[name],
                                             in_reflection=True)
     elif name == LOGC:
-        y = colour.models.log_encoding_ALEXALogC(x * MAX_VALUE[name])
+        y = colour.models.log_encoding_ARRILogC3(x * MAX_VALUE[name])
     elif name == REDLOG:
         y = colour.models.log_encoding_REDLog(x * MAX_VALUE[name])
     elif name == LOG3G10:
@@ -237,7 +237,7 @@ def eotf(x, name=GAMMA24):
         y = colour.models.log_decoding_VLog(x, out_reflection=True)\
             / MAX_VALUE[name]
     elif name == LOGC:
-        y = colour.models.log_decoding_ALEXALogC(x) / MAX_VALUE[name]
+        y = colour.models.log_decoding_ARRILogC3(x) / MAX_VALUE[name]
     elif name == REDLOG:
         y = colour.models.log_decoding_REDLog(x) / MAX_VALUE[name]
     elif name == LOG3G10:

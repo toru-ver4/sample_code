@@ -31,6 +31,8 @@ def calc_10bit_st2084_cv(linear_val=0.18):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    print(calc_10bit_st2084_cv(0.08))
+    print(calc_10bit_st2084_cv(0.10))
     print(calc_10bit_st2084_cv(0.18))
     print(calc_10bit_st2084_cv(1.0))
     print(calc_10bit_st2084_cv(10))

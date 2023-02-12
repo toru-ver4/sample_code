@@ -5,8 +5,8 @@ ocio_profile_version: 2
 # History
 #   Rev.00: New addition
 
-description: A sample config file for studying.
-name: OCIOv2-ty_sample_rev00
+description: A sample file for research of the After Effects' OpenColorIO
+name: OCIOv2-ty_sample_rev01
 
 # There are no external files.
 search_path: ./luts
@@ -19,7 +19,7 @@ family_separator: /
 
 # Roles
 roles:
-  default: BT1886-BT709
+  default: BT709-BT1886
   scene_linear: ACEScg
   data: Raw
   reference: Raw
@@ -32,7 +32,7 @@ roles:
   aces_interchange: Raw
   cie_xyz_d65_interchange: Raw
   hdr10: BT2100-PQ_ColorSpace
-  sdr_709: BT1886-BT709_ColorSpace
+  sdr_709: BT709-BT1886_ColorSpace
 
 # file_fules ... Is it okay to leave blank?
 file_rules:
@@ -42,48 +42,47 @@ viewing_rules:
 
 # Displays
 displays:
-  BT1886-BT709:
+  BT709-BT1886:
     - !<View>
-      name: Simple BT1886-BT709
+      name: Simple
       view_transform: Un-tone-mapped
-      display_colorspace: BT1886-BT709
+      display_colorspace: BT709-BT1886
 
     - !<View>
-      name: ACES_OT_BT1886-BT709
+      name: ACES_OT
       view_transform: SDR-VIDEO_BT709_1.1
-      display_colorspace: BT1886-BT709
+      display_colorspace: BT709-BT1886
 
     - !<View>
-      name: Luminance_Map_1000nit BT1886-BT709
+      name: Luminance_Map_1000nit
       view_transform: Luminance_map_1000nit
-      display_colorspace: BT1886-BT709
+      display_colorspace: BT709-BT1886
 
     - !<View>
-      name: Luminance_Map_4000nit BT1886-BT709
+      name: Luminance_Map_4000nit
       view_transform: Luminance_map_4000nit
-      display_colorspace: BT1886-BT709
+      display_colorspace: BT709-BT1886
 
   BT2100-PQ:
     - !<View>
-      name: Simple BT2100-PQ
+      name: Simple
       view_transform: Un-tone-mapped
       display_colorspace: BT2100-PQ
 
     - !<View>
-      name: ACES_OT_HDR_1000nit_BT2100-PQ
+      name: ACES_OT_HDR_1000nit
       view_transform: HDR-VIDEO-1000nit_BT2020
       display_colorspace: BT2100-PQ
 
     - !<View>
-      name: Luminance_Map_1000nit BT2100-PQ
+      name: Luminance_Map_1000nit
       view_transform: Luminance_map_1000nit
       display_colorspace: BT2100-PQ
 
     - !<View>
-      name: Luminance_Map_4000nit BT2100-PQ
+      name: Luminance_Map_4000nit
       view_transform: Luminance_map_4000nit
       display_colorspace: BT2100-PQ
-
 
 # virtual_display ... Is it okay to leave blank?
 virtual_display:
@@ -136,7 +135,7 @@ view_transforms:
 # display colorspaces
 display_colorspaces:
   - !<ColorSpace>
-    name: BT1886-BT709
+    name: BT709-BT1886
     family: Displays/SDR
     description: |
       Gamut: BT.709, EOTF: Gamma 2.4
@@ -144,6 +143,16 @@ display_colorspaces:
     categories: [ file-io ]
     encoding: sdr-video
     from_display_reference: !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.1886-REC.709"}
+
+  - !<ColorSpace>
+    name: P3D65-PQ
+    family: Displays/HDR
+    description: |
+      Gamut: BT.2020, EOTF: SMPTE ST2084
+    isdata: false
+    categories: [ file-io ]
+    encoding: hdr-video
+    from_display_reference: !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_ST2084-P3-D65"}
 
   - !<ColorSpace>
     name: BT2100-PQ
@@ -210,10 +219,23 @@ colorspaces:
         - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
 
   - !<ColorSpace>
-    name: BT1886-BT709_ColorSpace
+    name: P3D65-PQ_ColorSpace
     family: Input
     description: |
-      BT1886-BT709 for Input Data (no RRT)
+      P3D65-PQ for Input Data (no RRT)
+    isdata: false
+    categories: [ file-io ]
+    encoding: log
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_ST2084-P3-D65"}
+
+  - !<ColorSpace>
+    name: BT709-BT1886_ColorSpace
+    family: Input
+    description: |
+      BT709-BT1886 for Input Data (no RRT)
     isdata: false
     categories: [ file-io ]
     encoding: log
@@ -221,6 +243,19 @@ colorspaces:
       children:
         - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
         - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.1886-REC.709"}
+
+  - !<ColorSpace>
+    name: BT2100-PQ_Simple
+    family: Output
+    description: |
+      BT2100-PQ for Input Data (no RRT)
+    isdata: false
+    categories: [ file-io ]
+    encoding: log
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD"}
+        - !<BuiltinTransform> {style: "DISPLAY - CIE-XYZ-D65_to_REC.2100-PQ"}
 
 # Looks
 looks:
