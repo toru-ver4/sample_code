@@ -56,23 +56,23 @@ shared_views:
     view_transform: Luminance_map_4000nit
     display_colorspace: <USE_DISPLAY_NAME>
 
+  - !<View>
+    name: ACES_OT - SDR-VIDEO_BT709_1.1
+    view_transform: SDR-VIDEO_BT709_1.1
+    display_colorspace: <USE_DISPLAY_NAME>
+
+  - !<View>
+    name: ACES_OT - ACES_OT_HDR_1000nit
+    view_transform: HDR-VIDEO-1000nit_BT2020
+    display_colorspace: <USE_DISPLAY_NAME>
+
 # Displays
 displays:
   BT709-BT1886:
-    - !<Views> [tyOT - w/o TM, tyOT - Luminance_map_1000nit, tyOT - Luminance_map_4000nit]
-
-    - !<View>
-      name: ACES_OT
-      view_transform: SDR-VIDEO_BT709_1.1
-      display_colorspace: BT709-BT1886
+    - !<Views> [tyOT - w/o TM, tyOT - Luminance_map_1000nit, tyOT - Luminance_map_4000nit, ACES_OT - SDR-VIDEO_BT709_1.1]
 
   BT2100-PQ:
-    - !<Views> [tyOT - w/o TM, tyOT - Luminance_map_1000nit, tyOT - Luminance_map_4000nit]
-
-    - !<View>
-      name: ACES_OT_HDR_1000nit
-      view_transform: HDR-VIDEO-1000nit_BT2020
-      display_colorspace: BT2100-PQ
+    - !<Views> [tyOT - w/o TM, tyOT - Luminance_map_1000nit, tyOT - Luminance_map_4000nit, ACES_OT - ACES_OT_HDR_1000nit]
 
   P3D65-PQ:
     - !<Views> [tyOT - w/o TM, tyOT - Luminance_map_1000nit, tyOT - Luminance_map_4000nit]
