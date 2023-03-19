@@ -70,12 +70,15 @@ shared_views:
 displays:
   BT709-BT1886:
     - !<Views> [tyOT - w/o TM, tyOT - Luminance_map_1000nit, tyOT - Luminance_map_4000nit, ACES_OT - SDR-VIDEO_BT709_1.1]
+    - !<View> {name: Raw, colorspace: Raw}
 
   BT2100-PQ:
     - !<Views> [tyOT - w/o TM, tyOT - Luminance_map_1000nit, tyOT - Luminance_map_4000nit, ACES_OT - ACES_OT_HDR_1000nit]
+    - !<View> {name: Raw, colorspace: Raw}
 
   P3D65-PQ:
     - !<Views> [tyOT - w/o TM, tyOT - Luminance_map_1000nit, tyOT - Luminance_map_4000nit]
+    - !<View> {name: Raw, colorspace: Raw}
 
 # virtual_display ... Is it okay to leave blank?
 virtual_display:
