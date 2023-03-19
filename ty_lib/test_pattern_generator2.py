@@ -2670,6 +2670,106 @@ def scroll_image(img, offset_h, offset_v):
     return out_img
 
 
+def create_rgb_envelop_data(grid_num=11):
+    """
+    Create RGB Envelope data.
+    This data is used to gain gamut envelope.
+
+    Parameters
+    ----------
+    grid_num : int
+        number of the grid.
+
+    Returns
+    -------
+    ndarray
+        A rgb envelope data. The shape is (grid_num, 3).
+
+    Examples
+    --------
+    >>> create_rgb_envelop_data(grid_num=3)
+    [[ 0.          0.          0.        ]
+     [ 0.          0.          0.49999237]
+     [ 0.          0.          1.        ]
+     [ 0.          0.49999237  0.        ]
+     [ 0.          0.49999237  0.49999237]
+     [ 0.          0.49999237  1.        ]
+     [ 0.          1.          0.        ]
+     [ 0.          1.          0.49999237]
+     [ 0.          1.          1.        ]
+     [ 0.49999237  0.          0.        ]
+     [ 0.49999237  0.          0.49999237]
+     [ 0.49999237  0.          1.        ]
+     [ 0.49999237  0.49999237  0.        ]
+     [ 0.49999237  0.49999237  1.        ]
+     [ 0.49999237  1.          0.        ]
+     [ 0.49999237  1.          0.49999237]
+     [ 0.49999237  1.          1.        ]
+     [ 1.          0.          0.        ]
+     [ 1.          0.          0.49999237]
+     [ 1.          0.          1.        ]
+     [ 1.          0.49999237  0.        ]
+     [ 1.          0.49999237  0.49999237]
+     [ 1.          0.49999237  1.        ]
+     [ 1.          1.          0.        ]
+     [ 1.          1.          0.49999237]
+     [ 1.          1.          1.        ]]
+
+    """
+    def make_rgb_signals(n=11, max_val=255):
+        """
+        Converted by ChatGPT3.
+        Original is https://doi.org/10.55410/bjxb8678
+        """
+        if isinstance(n, np.ndarray):
+            V = n
+            n = len(V)
+        else:
+            V = np.floor(np.linspace(0, max_val, n))
+        _, rgb = make_tesselation(V)
+        rgb = np.unique(rgb, axis=0)
+
+        return rgb
+
+    def make_tesselation(gsv):
+        """
+        Converted by ChatGPT3.
+        Original is https://doi.org/10.55410/bjxb8678
+        """
+        N = len(gsv)
+        J, K = np.meshgrid(gsv, gsv)
+        J = J.ravel()
+        K = K.ravel()
+        Lower = np.zeros_like(J) + gsv[0]
+        Upper = np.zeros_like(J) + gsv[-1]
+        RGB_ref = np.vstack(
+            [
+                np.vstack([Lower, J, K]).T,
+                np.vstack([K, Lower, J]).T,
+                np.vstack([J, K, Lower]).T,
+                np.vstack([Upper, K, J]).T,
+                np.vstack([J, Upper, K]).T,
+                np.vstack([K, J, Upper]).T,
+            ]
+        )
+
+        TRI_ref = np.zeros((12 * (N - 1) ** 2, 3), dtype=int)
+        idx = 0
+        for s in range(6):
+            for q in range(N - 1):
+                for p in range(N - 1):
+                    m = N ** 2 * s + N * q + p
+                    TRI_ref[idx, :] = [m, m + N, m + 1]
+                    TRI_ref[idx + 1, :] = [m + N, m + N + 1, m + 1]
+                    idx += 2
+        return TRI_ref, RGB_ref
+
+    int_max = 65535
+    rgb = make_rgb_signals(n=grid_num, max_val=int_max)
+
+    return rgb / int_max
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
