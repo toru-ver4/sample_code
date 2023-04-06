@@ -334,10 +334,12 @@ def large_xyz_to_rgb(
 
 
 def rgb_to_large_xyz(
-        rgb, color_space_name, rgb_white=D65, xyz_white=D65):
+        rgb, color_space_name, rgb_white=D65, xyz_white=D65,
+        chromatic_adaptation_transform="Bradford"):
     large_xyz = RGB_to_XYZ(
         rgb, rgb_white, xyz_white,
-        RGB_COLOURSPACES[color_space_name].matrix_RGB_to_XYZ)
+        RGB_COLOURSPACES[color_space_name].matrix_RGB_to_XYZ,
+        chromatic_adaptation_transform=chromatic_adaptation_transform)
 
     return large_xyz
 
