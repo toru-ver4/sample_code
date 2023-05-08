@@ -44,6 +44,14 @@ imp.reload(dv_lib)
 project = dv_lib.test_func()
 ...
 dv_lib._debug_print_and_save_project_settings(project)
+
+Example 3
+import sys
+sys.path.append("C:/Users/toruv/OneDrive/work/sample_code/ty_lib")
+import imp
+import ty_davinci_control_lib as dv_lib
+imp.reload(dv_lib)
+dv_lib.get_avilable_parameters()
 """
 
 
@@ -426,6 +434,14 @@ def test_func(close_current_project=True):
     encode(resolve, project, out_path, format_str, codec, preset_name)
 
     return project
+
+
+def get_avilable_parameters():
+    _, project_manager = init_davinci17(
+        close_current_project=True)
+    project = prepare_project(project_manager)
+    _debug_print_and_save_project_settings(project)
+    _debug_print_and_save_encode_settings(project)
 
 
 if __name__ == '__main__':
