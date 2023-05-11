@@ -25,11 +25,9 @@ __all__ = []
 
 
 def oetf_st2084():
-    i_name = "./img/SMPTE ST2084_ITU-R BT.2020_D65_1920x1080_rev05_type1.exr"
-    o_name = "./img/ST2084.exr"
-    o2_name = "./img/ST2084_to_linear.exr"
+    i_name = "./img/Linear_BT.2020_1920x1080.exr"
+    o_name = "./img/ST2084_BT.2020_1920x1080.exr"
     img = read_image(i_name)
-    write_image(img / 100, o2_name)
     img = tf.oetf(img / 100, tf.ST2084)
 
     write_image(img, o_name)
