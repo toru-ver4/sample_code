@@ -1,10 +1,16 @@
-#include "ampas_color_lib.h"
+#include "ty_color_lib.h"
+
+//DEFINE_UI_PARAMS(gainR, Red Gain, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 10.0, 0.1)
+//DEFINE_UI_PARAMS(iters, Iteration, DCTLUI_SLIDER_INT, 1, 0, 10, 1)
+//DEFINE_UI_PARAMS(gain, Master Gain, DCTLUI_VALUE_BOX, 2.0)
+//DEFINE_UI_PARAMS(apply, Apply, DCTLUI_CHECK_BOX, 1)
+DEFINE_UI_PARAMS(gamut_idx, Color Gamut, DCTLUI_COMBO_BOX, 0, { GAMUT_IDX_BT709, GAMUT_IDX_P3D65, GAMUT_IDX_BT2020 }, { Rec.709, P3-D65, Rec.2020 })
 
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
 {
-    
     float3 rgb_in = to_float3(p_R, p_G, p_B);
-    float3 rgb_out = ST2084_2_Y_f3( rgb_in );
+    float3 rgb_out = rgb_2_y( rgb_in, gamut_idx );
 
-    return make_float3(rgb_out.x / 100, rgb_out.y / 100, rgb_out.z / 100);
+    return rgb_out;
+    //return rgb_in / 2.0f;
 }
