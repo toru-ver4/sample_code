@@ -1,4 +1,6 @@
 // Basic Color Library made by Toru Yoshihara
+#ifndef TY_COLOR_LIB_H
+#define TY_COLOR_LIB_H
 
 #include "ampas_color_lib.h"
 
@@ -32,3 +34,5 @@ __DEVICE__ float3 rgb_2_y(float3 in, int gamut_idx)
 
     return make_float3(y, y, y);
 }
+
+#endif

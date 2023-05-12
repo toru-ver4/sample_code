@@ -52,6 +52,8 @@
 // APPLICATIONS THEREOF, HELD BY PARTIES OTHER THAN A.M.P.A.S.,WHETHER DISCLOSED OR
 // UNDISCLOSED.
 
+#ifndef AMPAS_COLOR_LIB_H
+#define AMPAS_COLOR_LIB_H
 
 // Base functions from SMPTE ST 2084-2014
 
@@ -180,3 +182,6 @@ __DEVICE__ float3 ST2084_2_Linear_f3( float3 in )
 
   return out;
 }
+
+
+#endif
