@@ -1,10 +1,34 @@
 #include "ty_color_lib.h"
+#include "color_map_data.h"
 
 //DEFINE_UI_PARAMS(gainR, Red Gain, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 10.0, 0.1)
 //DEFINE_UI_PARAMS(iters, Iteration, DCTLUI_SLIDER_INT, 1, 0, 10, 1)
 //DEFINE_UI_PARAMS(gain, Master Gain, DCTLUI_VALUE_BOX, 2.0)
 //DEFINE_UI_PARAMS(apply, Apply, DCTLUI_CHECK_BOX, 1)
 DEFINE_UI_PARAMS(gamut_idx, Color Gamut, DCTLUI_COMBO_BOX, 0, { GAMUT_IDX_BT709, GAMUT_IDX_P3D65, GAMUT_IDX_BT2020 }, { Rec.709, P3-D65, Rec.2020 })
+
+
+__DEVICE__ float3 y_2_turbo_rgb(float y)
+{
+    float y_clip = _clampf(y, 0.0, (NUM_OF_TURBO_TBL - 1));
+    int low_idx = int(_floorf(y_clip));
+    int high_idx = int(_ceilf(y_clip));
+    float low_rate_single = y - float(low_idx);
+    float3 low_rate = to_float3(low_rate_single, low_rate_single, low_rate_single);
+    
+    float3 out;
+
+    if(low_idx == high_idx){
+        out = TURBO_TBL[low_idx];
+    }
+    else{
+        float3 high_rgb = TURBO_TBL[high_idx];
+        float3 low_rgb = TURBO_TBL[low_idx];
+        out = low_rgb + (high_rgb - low_rgb) * low_rate;
+    }
+    return out;
+}
+
 
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
 {
@@ -13,7 +37,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
     int high = int(_ceilf(x1));
 
     float3 rgb_in = to_float3(p_R, p_G, p_B);
-    float3 rgb_out = rgb_2_y(rgb_in, gamut_idx);
+    float3 rgb_out;
 
  
     if (low == high){
@@ -21,7 +45,10 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
         rgb_out = rgb_in / div2;
     }
     else{
-        rgb_out = rgb_2_y(rgb_in, gamut_idx);
+        float y = rgb_2_y(rgb_in, gamut_idx);
+        // rgb_out = to_float3(y, y, y);
+        rgb_out = y_2_turbo_rgb(y * (NUM_OF_TURBO_TBL - 1));
+
     }
     return rgb_out;
 }

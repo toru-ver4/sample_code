@@ -14,7 +14,7 @@ __CONSTANT__ float rgb2y_coef_bt2020[] = {0.26270021f, 0.67799807f, 0.05930171f}
 
 
 // Converts RGB to Y.
-__DEVICE__ float3 rgb_2_y(float3 in, int gamut_idx)
+__DEVICE__ float rgb_2_y(float3 in, int gamut_idx)
 {
     float y;
     float *coef;
@@ -32,7 +32,7 @@ __DEVICE__ float3 rgb_2_y(float3 in, int gamut_idx)
     }
     y = coef[0] * in.x + coef[1] * in.y + coef[2] * in.z;
 
-    return make_float3(y, y, y);
+    return y;
 }
 
 #endif
