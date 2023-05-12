@@ -161,7 +161,7 @@ __DEVICE__ float3 ST2084_2_Y_f3( float3 in )
 
 __DEVICE__ float3 Linear_2_ST2084_f3( float3 in )
 {
-  // converts from linear to PQ code values
+  // converts from linear (0.0 - 100.0) to PQ code values (0.0 - 1.0)
   
   float3 out;
   out.x = Linear_2_ST2084( in.x );
@@ -173,7 +173,7 @@ __DEVICE__ float3 Linear_2_ST2084_f3( float3 in )
 
 __DEVICE__ float3 ST2084_2_Linear_f3( float3 in )
 {
-  // converts from PQ code values to linear
+  // converts from PQ code values (0.0 - 1.0) to linear (0.0 - 100.0)
   
   float3 out;
   out.x = ST2084_2_Linear( in.x );

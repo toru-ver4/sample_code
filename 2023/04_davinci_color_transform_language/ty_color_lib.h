@@ -35,4 +35,83 @@ __DEVICE__ float rgb_2_y(float3 in, int gamut_idx)
     return y;
 }
 
+
+// Gamma EOTF
+__DEVICE__ float eotf_gamma(float in, float gamma)
+{
+    float y = _powf(in, gamma);
+    return y;
+}
+
+
+__DEVICE__ float oetf_gamma(float in, float gamma)
+{
+    float y = _powf(in, 1.0f/gamma);
+    return y;
+}
+
+
+__DEVICE__ float3 eotf_gamma_f3(float3 in, float gamma)
+{
+    float3 out;
+    out.x = eotf_gamma(in.x, gamma);
+    out.y = eotf_gamma(in.y, gamma);
+    out.z = eotf_gamma(in.z, gamma);
+    return out;
+}
+
+__DEVICE__ float3 oetf_gamma_f3(float3 in, float gamma)
+{
+    float3 out;
+    out.x = oetf_gamma(in.x, gamma);
+    out.y = oetf_gamma(in.y, gamma);
+    out.z = oetf_gamma(in.z, gamma);
+    return out;
+}
+
+
+// sRGB EOTF
+__DEVICE__ float eotf_srgb(float in)
+{
+    float y;
+    if(in <= 0.04045){
+        y = in / 12.92f;
+    }
+    else{
+        y = _powf((in + 0.055) / 1.055, 2.4);
+    }
+    return y;
+}
+
+// sRGB OETF
+__DEVICE__ float oetf_srgb(float in)
+{
+    float y;
+    if(in <= 0.0031308f){
+        y = in * 12.92f;
+    }
+    else{
+        y = 1.055f * _powf(in, 1.0f / 2.4f) - 0.055f;
+    }
+    return y;
+}
+
+__DEVICE__ float3 eotf_srgb_f3(float3 in)
+{
+    float3 out;
+    out.x = eotf_srgb(in.x);
+    out.y = eotf_srgb(in.y);
+    out.z = eotf_srgb(in.z);
+    return out;
+}
+
+__DEVICE__ float3 oetf_srgb_f3(float3 in)
+{
+    float3 out;
+    out.x = oetf_srgb(in.x);
+    out.y = oetf_srgb(in.y);
+    out.z = oetf_srgb(in.z);
+    return out;
+}
+
 #endif

@@ -13,6 +13,7 @@ from colour import normalised_primary_matrix
 
 # import my libraries
 import color_space as cs
+import transfer_functions as tf
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -62,8 +63,16 @@ def format_turbo_lut():
     print("}")
 
 
+def calc_st_luminance_ed_luminance(st=1, ed=10):
+    print(f"st_luminance_linear = {st}")
+    print(f"ed_luminance_linear = {ed}")
+    print(f"st_luminance_pq = {tf.oetf_from_luminance(st * 100, tf.ST2084)}")
+    print(f"ed_luminance_pq = {tf.oetf_from_luminance(ed * 100, tf.ST2084)}")
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # calc_rgb_to_y_coef()
-    check_floor_and_ceil_all()
+    # check_floor_and_ceil_all()
     # format_turbo_lut()
+    calc_st_luminance_ed_luminance()
