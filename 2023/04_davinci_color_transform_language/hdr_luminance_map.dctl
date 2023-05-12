@@ -8,9 +8,20 @@ DEFINE_UI_PARAMS(gamut_idx, Color Gamut, DCTLUI_COMBO_BOX, 0, { GAMUT_IDX_BT709,
 
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
 {
-    float3 rgb_in = to_float3(p_R, p_G, p_B);
-    float3 rgb_out = rgb_2_y( rgb_in, gamut_idx );
+    float x1 = 1.1f;
+    int low = int(_floorf(x1));
+    int high = int(_ceilf(x1));
 
+    float3 rgb_in = to_float3(p_R, p_G, p_B);
+    float3 rgb_out = rgb_2_y(rgb_in, gamut_idx);
+
+ 
+    if (low == high){
+        float3 div2 = to_float3(2.0f, 2.0f, 2.0f);
+        rgb_out = rgb_in / div2;
+    }
+    else{
+        rgb_out = rgb_2_y(rgb_in, gamut_idx);
+    }
     return rgb_out;
-    //return rgb_in / 2.0f;
 }
