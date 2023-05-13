@@ -183,5 +183,4 @@ __DEVICE__ float3 ST2084_2_Linear_f3( float3 in )
   return out;
 }
 
-
 #endif

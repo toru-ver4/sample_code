@@ -51,21 +51,21 @@ __DEVICE__ float oetf_gamma(float in, float gamma)
 }
 
 
-__DEVICE__ float3 eotf_gamma_f3(float3 in, float gamma)
+__DEVICE__ float3 eotf_gamma24_f3(float3 in)
 {
     float3 out;
-    out.x = eotf_gamma(in.x, gamma);
-    out.y = eotf_gamma(in.y, gamma);
-    out.z = eotf_gamma(in.z, gamma);
+    out.x = eotf_gamma(in.x, 2.4f);
+    out.y = eotf_gamma(in.y, 2.4f);
+    out.z = eotf_gamma(in.z, 2.4f);
     return out;
 }
 
-__DEVICE__ float3 oetf_gamma_f3(float3 in, float gamma)
+__DEVICE__ float3 oetf_gamma24_f3(float3 in)
 {
     float3 out;
-    out.x = oetf_gamma(in.x, gamma);
-    out.y = oetf_gamma(in.y, gamma);
-    out.z = oetf_gamma(in.z, gamma);
+    out.x = oetf_gamma(in.x, 2.4f);
+    out.y = oetf_gamma(in.y, 2.4f);
+    out.z = oetf_gamma(in.z, 2.4f);
     return out;
 }
 
@@ -113,5 +113,18 @@ __DEVICE__ float3 oetf_srgb_f3(float3 in)
     out.z = oetf_srgb(in.z);
     return out;
 }
+
+
+__DEVICE__ inline float3 oetf_st2084_f3(float3 in)
+{
+    return Linear_2_ST2084_f3(in);
+}
+
+
+__DEVICE__ inline float3 eotf_st2084_f3(float3 in)
+{
+    return ST2084_2_Linear_f3(in);
+}
+
 
 #endif

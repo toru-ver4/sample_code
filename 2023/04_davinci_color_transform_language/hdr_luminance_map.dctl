@@ -1,14 +1,26 @@
 #include "ty_color_lib.h"
 #include "color_map_data.h"
 
-//DEFINE_UI_PARAMS(gainR, Red Gain, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 10.0, 0.1)
-//DEFINE_UI_PARAMS(gain, Master Gain, DCTLUI_VALUE_BOX, 2.0)
-//DEFINE_UI_PARAMS(apply, Apply, DCTLUI_CHECK_BOX, 1)
-DEFINE_UI_PARAMS(gamut_idx, Color Gamut, DCTLUI_COMBO_BOX, 0, { GAMUT_IDX_BT709, GAMUT_IDX_P3D65, GAMUT_IDX_BT2020 }, { Rec.709, P3-D65, Rec.2020 })
-DEFINE_UI_PARAMS(st_luminance, Start [cd/m2], DCTLUI_SLIDER_INT, 100, 100, 300, 1)
-DEFINE_UI_PARAMS(ed_luminance, End [cd/m2], DCTLUI_SLIDER_INT, 1000, 400, 10000, 1)
+#define JUDGE_METHOD_RGB2Y   (0)
+#define JUDGE_METHOD_MAX_RGB (1)
+
+#define OVER_RANGE_COLOR_M   (0)
+#define OVER_RANGE_COLOR_Y   (1)
+#define OVER_RANGE_COLOR_C   (2)
+
+__CONSTANT__ float3 over_range_color_m_3f = {1.0f, 0.3f, 1.0f};
+__CONSTANT__ float3 over_range_color_y_3f = {1.0f, 1.0f, 0.4f};
+__CONSTANT__ float3 over_range_color_c_3f = {0.7f, 1.0f, 1.0f};
+
+DEFINE_UI_PARAMS(gamut_idx, Color Gamut, DCTLUI_COMBO_BOX, 2, { GAMUT_IDX_BT709, GAMUT_IDX_P3D65, GAMUT_IDX_BT2020 }, { Rec.709, P3-D65, Rec.2020 })
+DEFINE_UI_PARAMS(judge_data_idx, Judgment Data Type, DCTLUI_COMBO_BOX, 0, { JUDGE_METHOD_RGB2Y, JUDGE_METHOD_MAX_RGB }, { Luminance_RGB2Y, Max_Value_Among_RGB })
+DEFINE_UI_PARAMS(over_range_color_idx, Over Range Color, DCTLUI_COMBO_BOX, 0, { OVER_RANGE_COLOR_M, OVER_RANGE_COLOR_Y, OVER_RANGE_COLOR_C }, { Magenta, Yellow, Cyan })
+DEFINE_UI_PARAMS(st_luminance, Start [cd/m2], DCTLUI_SLIDER_INT, 100, 100, 500, 1)
+DEFINE_UI_PARAMS(ed_luminance, End [cd/m2], DCTLUI_SLIDER_INT, 1000, 500, 10000, 1)
 
 
+// convert Y value to the Turbo RGB value.
+// The Turbo RGB value is used to create a luminance map.
 __DEVICE__ float3 y_2_turbo_rgb(float y)
 {
     float y_clip = _clampf(y, 0.0, (NUM_OF_TURBO_TBL - 1));
@@ -31,47 +43,60 @@ __DEVICE__ float3 y_2_turbo_rgb(float y)
 }
 
 
+// main function
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
 {
-    float x1 = 1.1f;
-    int low = int(_floorf(x1));
-    int high = int(_ceilf(x1));
-
     float3 rgb_in = to_float3(p_R, p_G, p_B);
-    float3 rgb_out;
 
- 
-    if (low == high){
-        float3 div2 = to_float3(2.0f, 2.0f, 2.0f);
-        rgb_out = rgb_in / div2;
+    // convert to the linear
+    float3 rgb_linear = ST2084_2_Linear_f3(rgb_in);
+    float y;
+    float mono_y = rgb_2_y(rgb_linear, gamut_idx);
+    if(judge_data_idx == JUDGE_METHOD_RGB2Y){
+        y = mono_y;
+    }
+    else if(judge_data_idx == JUDGE_METHOD_MAX_RGB){
+        y = _fmaxf(_fmaxf(rgb_linear.x, rgb_linear.y), rgb_linear.z);
     }
     else{
-        float y = rgb_2_y(rgb_in, gamut_idx);
-        // rgb_out = to_float3(y, y, y);
-        rgb_out = y_2_turbo_rgb(y * (NUM_OF_TURBO_TBL - 1));
-
+        y = mono_y;
     }
-    // return rgb_out;
-
-    float3 rgb_linear = ST2084_2_Linear_f3(rgb_in);
-    float y = rgb_2_y(rgb_linear, gamut_idx);
+    
     float st_luminance_linear = st_luminance / 100.0f;
     float ed_luminance_linear = ed_luminance / 100.0f;
     float st_luminance_pq = Linear_2_ST2084(st_luminance_linear);
     float ed_luminance_pq = Linear_2_ST2084(ed_luminance_linear);
     float3 srgb_val;
-    if(y > ed_luminance_linear){
-        srgb_val = to_float3(1.0f, 0.0f, 1.0f);
+
+    // convert to the luminance map data (sRGB color space)
+    if(y > ed_luminance_linear){ // over range
+        if(over_range_color_idx == OVER_RANGE_COLOR_C){
+            srgb_val = over_range_color_c_3f;
+        }
+        else if(over_range_color_idx == OVER_RANGE_COLOR_M){
+            srgb_val = over_range_color_m_3f;
+        }
+        else if(over_range_color_idx == OVER_RANGE_COLOR_Y){
+            srgb_val = over_range_color_y_3f;
+        }
+        else{
+            srgb_val = over_range_color_m_3f;
+        }
     }
-    else if(y > st_luminance_linear){
+    else if(y > st_luminance_linear){ // apply luminance map
         float y_pq = Linear_2_ST2084(y);
         y_pq = (y_pq - st_luminance_pq) / (ed_luminance_pq - st_luminance_pq);
         srgb_val = y_2_turbo_rgb(y_pq * (NUM_OF_TURBO_TBL - 1));
-        // srgb_val = to_float3(y_pq, y_pq, y_pq);
     }
-    else{
-        float3 rgb_linear_normalized = rgb_linear / st_luminance_linear;
-        srgb_val = oetf_srgb_f3(rgb_linear_normalized);
+    else{ // convert to monochrome sRGB to improve the visibility of the SDR data.
+        float3 y_f3 = to_float3(mono_y, mono_y, mono_y);
+        float3 y_f3_normalized = y_f3 / st_luminance_linear;
+        srgb_val = oetf_srgb_f3(y_f3_normalized);
     }
-    return srgb_val;
+
+    // Convert sRGB data to the Timeline color space
+    float3 out = eotf_srgb_f3(srgb_val);
+    out = oetf_st2084_f3(out);
+
+    return out;
 }
