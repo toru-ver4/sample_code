@@ -26,8 +26,8 @@ __DEVICE__ float3 y_2_turbo_rgb(float y)
     float y_clip = _clampf(y, 0.0, (NUM_OF_TURBO_TBL - 1));
     int low_idx = int(_floorf(y_clip));
     int high_idx = int(_ceilf(y_clip));
-    float low_rate_single = y - float(low_idx);
-    float3 low_rate = to_float3(low_rate_single, low_rate_single, low_rate_single);
+    float low_rate = y - float(low_idx);
+    float3 low_rate_f3 = to_float3(low_rate, low_rate, low_rate);
     
     float3 out;
 
@@ -37,7 +37,7 @@ __DEVICE__ float3 y_2_turbo_rgb(float y)
     else{
         float3 high_rgb = TURBO_TBL[high_idx];
         float3 low_rgb = TURBO_TBL[low_idx];
-        out = low_rgb + (high_rgb - low_rgb) * low_rate;
+        out = low_rgb + (high_rgb - low_rgb) * low_rate_f3;
     }
     return out;
 }
@@ -46,10 +46,16 @@ __DEVICE__ float3 y_2_turbo_rgb(float y)
 // main function
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
 {
+    const float st_luminance_linear = st_luminance / 100.0f;
+    const float ed_luminance_linear = ed_luminance / 100.0f;
+    const float st_luminance_pq = oetf_st2084(st_luminance_linear);
+    const float ed_luminance_pq = oetf_st2084(ed_luminance_linear);
     float3 rgb_in = to_float3(p_R, p_G, p_B);
 
-    // convert to the linear
-    float3 rgb_linear = ST2084_2_Linear_f3(rgb_in);
+    // convert to linear
+    float3 rgb_linear = eotf_st2084_f3(rgb_in);
+
+    // convert to Y
     float y;
     float mono_y = rgb_2_y(rgb_linear, gamut_idx);
     if(judge_data_idx == JUDGE_METHOD_RGB2Y){
@@ -61,14 +67,9 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
     else{
         y = mono_y;
     }
-    
-    float st_luminance_linear = st_luminance / 100.0f;
-    float ed_luminance_linear = ed_luminance / 100.0f;
-    float st_luminance_pq = Linear_2_ST2084(st_luminance_linear);
-    float ed_luminance_pq = Linear_2_ST2084(ed_luminance_linear);
-    float3 srgb_val;
 
     // convert to the luminance map data (sRGB color space)
+    float3 srgb_val;
     if(y > ed_luminance_linear){ // over range
         if(over_range_color_idx == OVER_RANGE_COLOR_C){
             srgb_val = over_range_color_c_3f;
@@ -84,7 +85,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
         }
     }
     else if(y > st_luminance_linear){ // apply luminance map
-        float y_pq = Linear_2_ST2084(y);
+        float y_pq = oetf_st2084(y);
         y_pq = (y_pq - st_luminance_pq) / (ed_luminance_pq - st_luminance_pq);
         srgb_val = y_2_turbo_rgb(y_pq * (NUM_OF_TURBO_TBL - 1));
     }
@@ -94,7 +95,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
         srgb_val = oetf_srgb_f3(y_f3_normalized);
     }
 
-    // Convert sRGB data to the Timeline color space
+    // Convert sRGB data to the Timeline color space (ST2084)
     float3 out = eotf_srgb_f3(srgb_val);
     out = oetf_st2084_f3(out);
 
