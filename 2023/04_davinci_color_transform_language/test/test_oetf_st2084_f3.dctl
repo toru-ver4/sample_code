@@ -1,0 +1,10 @@
+#include "../ty_color_lib.h"
+
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+    
+    float3 rgb_in = to_float3(p_R, p_G, p_B);
+    float3 rgb_out = oetf_st2084_f3(rgb_in);
+
+    return make_float3(rgb_out.x, rgb_out.y, rgb_out.z);
+}

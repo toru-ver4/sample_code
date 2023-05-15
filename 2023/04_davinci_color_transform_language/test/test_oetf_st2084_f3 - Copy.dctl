@@ -1,0 +1,29 @@
+#include "../ty_color_lib.h"
+
+__CONSTANT__ float matrix[3][3] = {
+    {0.0f, 1.0f, 0.0f},
+    {0.0f, 1.0f, 0.0f},
+    {0.0f, 1.0f, 0.0f}
+};
+
+
+__DEVICE__ float3 apply_matrix(float3 in, float mtx[3][3])
+{
+    float3 out;
+    out.x = in.x * mtx[0][0] + in.y * mtx[0][1] + in.z * mtx[0][2];
+    out.y = in.x * mtx[1][0] + in.y * mtx[1][1] + in.z * mtx[1][2];
+    out.z = in.x * mtx[2][0] + in.y * mtx[2][1] + in.z * mtx[2][2];
+
+    return out;
+}
+
+
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+    
+    float3 rgb_in = to_float3(p_R, p_G, p_B);
+    // float3 rgb_out = oetf_st2084_f3(rgb_in);
+    float rgb_out = apply_matrix(rgb_in, matrix);
+
+    return rgb_out;
+}
