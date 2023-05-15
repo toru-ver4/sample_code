@@ -1,6 +1,6 @@
-DEFINE_UI_PARAMS(threshold_r, R_Threshold, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 10.0, 0.01)
-DEFINE_UI_PARAMS(threshold_g, G_Threshold, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 10.0, 0.01)
-DEFINE_UI_PARAMS(threshold_b, B_Threshold, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 10.0, 0.01)
+DEFINE_UI_PARAMS(threshold_r, R_Threshold, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 20.0, 0.01)
+DEFINE_UI_PARAMS(threshold_g, G_Threshold, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 20.0, 0.01)
+DEFINE_UI_PARAMS(threshold_b, B_Threshold, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 20.0, 0.01)
 DEFINE_UI_PARAMS(rgb_all, Sync with Green, DCTLUI_CHECK_BOX, 1)
 
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)

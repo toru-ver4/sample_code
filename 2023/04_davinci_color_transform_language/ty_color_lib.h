@@ -12,6 +12,35 @@ __CONSTANT__ float rgb2y_coef_bt709[] = {0.21263901f, 0.71516868f, 0.07219232f};
 __CONSTANT__ float rgb2y_coef_p3d65[] = {0.22897456f, 0.69173852f, 0.07928691f};
 __CONSTANT__ float rgb2y_coef_bt2020[] = {0.26270021f, 0.67799807f, 0.05930171f};
 
+__CONSTANT__ float srgb_to_bt709_mtx[3][3] = {
+    { 1.000000, 0.000000, 0.0000000 },
+    { 0.000000, 1.000000, 0.0000000 },
+    { -0.000000, -0.000000, 1.0000000 },
+};
+__CONSTANT__ float srgb_to_p3d65_mtx[3][3] = {
+    { 0.822462, 0.177538, -0.0000000 },
+    { 0.033194, 0.966806, -0.0000000 },
+    { 0.017083, 0.072397, 0.9105199 },
+};
+__CONSTANT__ float srgb_to_bt2020_mtx[3][3] = {
+    { 0.627404, 0.329283, 0.0433131 },
+    { 0.069097, 0.919540, 0.0113623 },
+    { 0.016391, 0.088013, 0.8955953 },
+};
+
+
+// Apply 3x3 matrix
+__DEVICE__ float3 apply_matrix(float3 in, float mtx[3][3])
+{
+    float3 out;
+
+    out.x = in.x * mtx[0][0] + in.y * mtx[0][1] + in.z * mtx[0][2];
+    out.y = in.x * mtx[1][0] + in.y * mtx[1][1] + in.z * mtx[1][2];
+    out.z = in.x * mtx[2][0] + in.y * mtx[2][1] + in.z * mtx[2][2];
+
+    return out;
+}
+
 
 // Converts RGB to Y.
 __DEVICE__ float rgb_2_y(float3 in, int gamut_idx)

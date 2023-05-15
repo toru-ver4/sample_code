@@ -12,7 +12,7 @@ __CONSTANT__ float3 over_range_color_m_3f = {1.0f, 0.3f, 1.0f};
 __CONSTANT__ float3 over_range_color_y_3f = {1.0f, 1.0f, 0.4f};
 __CONSTANT__ float3 over_range_color_c_3f = {0.7f, 1.0f, 1.0f};
 
-DEFINE_UI_PARAMS(gamut_idx, Color Gamut, DCTLUI_COMBO_BOX, 2, { GAMUT_IDX_BT709, GAMUT_IDX_P3D65, GAMUT_IDX_BT2020 }, { Rec.709, P3-D65, Rec.2020 })
+DEFINE_UI_PARAMS(gamut_idx, Timeline Color Gamut, DCTLUI_COMBO_BOX, 2, { GAMUT_IDX_BT709, GAMUT_IDX_P3D65, GAMUT_IDX_BT2020 }, { Rec.709, P3-D65, Rec.2020 })
 DEFINE_UI_PARAMS(judge_data_idx, Judgment Data Type, DCTLUI_COMBO_BOX, 0, { JUDGE_METHOD_RGB2Y, JUDGE_METHOD_MAX_RGB }, { Luminance_RGB2Y, Max_Value_Among_RGB })
 DEFINE_UI_PARAMS(over_range_color_idx, Over Range Color, DCTLUI_COMBO_BOX, 0, { OVER_RANGE_COLOR_M, OVER_RANGE_COLOR_Y, OVER_RANGE_COLOR_C }, { Magenta, Yellow, Cyan })
 DEFINE_UI_PARAMS(st_luminance, Start [cd/m2], DCTLUI_SLIDER_INT, 100, 100, 500, 1)
@@ -95,9 +95,26 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
         srgb_val = oetf_srgb_f3(y_f3_normalized);
     }
 
-    // Convert sRGB data to the Timeline color space (ST2084)
-    float3 out = eotf_srgb_f3(srgb_val);
-    out = oetf_st2084_f3(out);
+    // Convert sRGB data to the Timeline color space
+    float3 linear = eotf_srgb_f3(srgb_val);
+    float (*gamut_conv_matrix)[3];
+
+    if(gamut_idx == GAMUT_IDX_BT709){
+        gamut_conv_matrix = srgb_to_bt709_mtx;
+    }
+    else if(gamut_idx == GAMUT_IDX_P3D65){
+        gamut_conv_matrix = srgb_to_p3d65_mtx;
+    }
+    else if(gamut_idx == GAMUT_IDX_BT2020){
+        gamut_conv_matrix = srgb_to_bt2020_mtx;
+    }
+    else{
+        gamut_conv_matrix = srgb_to_bt709_mtx;
+    }
+    linear = apply_matrix(linear, gamut_conv_matrix);
+    
+    float3 out;
+    out = oetf_st2084_f3(linear);
 
     return out;
 }
