@@ -1,0 +1,49 @@
+#include "../ty_color_lib.h"
+
+// __CONSTANT__ float test_mtx[3][3] = {
+//     {0.0f, 0.0f, 1.0f},
+//     {0.0f, 0.0f, 1.0f},
+//     {0.0f, 0.0f, 1.0f}
+// };
+// 
+// __CONSTANT__ float srgb_to_bt709_mtx[3][3] = {
+//     { 1.000000, 0.000000, 0.0000000 },
+//     { 0.000000, 1.000000, 0.0000000 },
+//     { -0.000000, -0.000000, 1.0000000 },
+// };
+// 
+// __CONSTANT__ float srgb_to_p3d65_mtx[3][3] = {
+//     { 0.822462, 0.177538, -0.0000000 },
+//     { 0.033194, 0.966806, -0.0000000 },
+//     { 0.017083, 0.072397, 0.9105199 },
+// };
+// 
+// __CONSTANT__ float srgb_to_bt2020_mtx[3][3] = {
+//     { 0.627404, 0.329283, 0.0433131 },
+//     { 0.069097, 0.919540, 0.0113623 },
+//     { 0.016391, 0.088013, 0.8955953 },
+// };
+// 
+// 
+// __DEVICE__ float3 apply_matrix(float3 in, float mtx[3][3])
+// {
+//     float3 out;
+// 
+//     out.x = in.x * mtx[0][0] + in.y * mtx[0][1] + in.z * mtx[0][2];
+//     out.y = in.x * mtx[1][0] + in.y * mtx[1][1] + in.z * mtx[1][2];
+//     out.z = in.x * mtx[2][0] + in.y * mtx[2][1] + in.z * mtx[2][2];
+// 
+//     return out;
+// }
+
+
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+    float3 rgb_in = to_float3(p_R, p_G, p_B);
+    float (*matrix_mat)[3];
+    matrix_mat = srgb_to_bt2020_mtx;
+
+    float3 rgb_out = apply_matrix(rgb_in, matrix_mat);
+
+    return rgb_out;
+}
