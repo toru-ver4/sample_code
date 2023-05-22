@@ -7,7 +7,6 @@ create gamut boundary lut.
 import os
 import sys
 import ctypes
-from colour.models.rgb.derivation import RGB_luminance
 
 # import third-party libraries
 import numpy as np
@@ -143,7 +142,9 @@ def calc_chroma_boundary_specific_l(
 
 
 def calc_chroma_boundary_specific_hue_method_b(
-        hue, chroma_sample, lightness_sample, cs_name, **kwargs):
+        hue, chroma_sample, lightness_sample, cs_name, ll_max=100,
+        chroma_max=CIELAB_CHROMA_MAX,
+        lch_to_lab_func=LCHab_to_Lab, lab_to_rgb_func=cs.lab_to_rgb, **kwargs):
     """
     parameters
     ----------
@@ -157,9 +158,7 @@ def calc_chroma_boundary_specific_hue_method_b(
         A color space name. ex. "ITU-R BT.709", "ITU-R BT.2020"
     """
     # lch --> rgb
-    ll_max = 100
     ll_base = np.linspace(0, ll_max, lightness_sample)
-    chroma_max = CIELAB_CHROMA_MAX
     chroma_base = np.linspace(0, chroma_max, chroma_sample)
     ll = ll_base.reshape((lightness_sample, 1))\
         * np.ones_like(chroma_base).reshape((1, chroma_sample))
@@ -168,8 +167,8 @@ def calc_chroma_boundary_specific_hue_method_b(
     hh = np.ones_like(ll) * hue
 
     lch = tstack((ll, cc, hh))
-    lab = LCHab_to_Lab(lch)
-    rgb = cs.lab_to_rgb(lab=lab, color_space_name=cs_name)
+    lab = lch_to_lab_func(lch)
+    rgb = lab_to_rgb_func(lab, cs_name)
     ng_idx = is_out_of_gamut_rgb(rgb=rgb)
     # print(lch)
     # print(lab)
@@ -201,8 +200,44 @@ def thread_wrapper_calc_chroma_boundary_method_b_specific_hue(args):
         shared_array[addr:addr+3] = np.float32(plane_lut[l_idx])
 
 
+def calc_chroma_boundary_specific_ligheness_cielab_method_c(
+        lch, cs_name, c0, lab_to_rgb_func=cs.lab_to_rgb):
+    """
+    """
+    # lch --> rgb
+
+    ll = lch[..., 0]
+    chroma_init = lch[..., 1]
+    hue = np.deg2rad(lch[..., 2])
+
+    trial_num = 20
+
+    r_val = chroma_init
+
+    for t_idx in range(trial_num):
+        aa = r_val * np.cos(hue)
+        bb = r_val * np.sin(hue)
+        lab = tstack((ll, aa, bb))
+        rgb = lab_to_rgb_func(lab, cs_name)
+
+        ng_idx = is_out_of_gamut_rgb(rgb=rgb)
+        ok_idx = np.logical_not(ng_idx)
+        add_sub = c0 / (2 ** (t_idx))
+        r_val[ok_idx] = r_val[ok_idx] + add_sub
+        r_val[~ok_idx] = r_val[~ok_idx] - add_sub
+
+    zero_idx = (chroma_init <= 0)
+    r_val[zero_idx] = 0.0
+
+    lch_result = tstack([ll, r_val, np.rad2deg(hue)])
+
+    return lch_result
+
+
 def create_cielab_gamut_boundary_lut_method_b(
-        lightness_sample, chroma_sample, hue_sample, cs_name):
+        lightness_sample, chroma_sample, hue_sample, cs_name,
+        lab_to_rgb_func=cs.lab_to_rgb, ll_max=100,
+        chroma_max=CIELAB_CHROMA_MAX):
     """
     parameters
     ----------
@@ -218,7 +253,7 @@ def create_cielab_gamut_boundary_lut_method_b(
     """
 
     total_process_num = hue_sample
-    block_process_num = 16
+    block_process_num = 8
     # block_process_num = 3  # for 32768 sample
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
@@ -234,7 +269,8 @@ def create_cielab_gamut_boundary_lut_method_b(
             d = dict(
                 hue=h_idx/(hue_sample-1)*360, chroma_sample=chroma_sample,
                 lightness_sample=lightness_sample, cs_name=cs_name,
-                hue_sample=hue_sample, hue_idx=h_idx)
+                hue_sample=hue_sample, hue_idx=h_idx, ll_max=ll_max,
+                lab_to_rgb_func=lab_to_rgb_func, chroma_max=chroma_max)
             args.append(d)
             # thread_wrapper_calc_chroma_boundary_specific_hue(d)
         with Pool(cpu_count()) as pool:

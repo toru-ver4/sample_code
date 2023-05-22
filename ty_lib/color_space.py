@@ -21,9 +21,9 @@ import os
 import numpy as np
 from colour.colorimetry import CCS_ILLUMINANTS as ILLUMINANTS
 from colour import RGB_COLOURSPACES
-from colour.models import xy_to_XYZ
+from colour.models import xy_to_XYZ, Jab_to_JCh, JCh_to_Jab
 from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab,\
-    Lab_to_XYZ
+    Lab_to_XYZ, Oklab_to_XYZ, XYZ_to_Oklab
 from colour.adaptation import matrix_chromatic_adaptation_VonKries as cat02_mtx
 from colour.utilities import tstack
 from scipy import linalg
@@ -324,6 +324,23 @@ def lab_to_rgb(lab, color_space_name, xyz_white=D65, rgb_white=D65):
     return rgb_linear
 
 
+def oklab_to_rgb(oklab, color_space_name, xyz_white=D65, rgb_white=D65):
+    rgb_linear = large_xyz_to_rgb(
+        xyz=Oklab_to_XYZ(oklab), color_space_name=color_space_name,
+        xyz_white=xyz_white, rgb_white=rgb_white)
+
+    return rgb_linear
+
+
+def rgb_to_oklab(rgb_linear, color_space_name, xyz_white=D65, rgb_white=D65):
+    oklab = XYZ_to_Oklab(
+        rgb_to_large_xyz(
+            rgb=rgb_linear, color_space_name=color_space_name,
+            rgb_white=rgb_white, xyz_white=xyz_white))
+
+    return oklab
+
+
 def large_xyz_to_rgb(
         xyz, color_space_name, xyz_white=D65, rgb_white=D65):
     rgb_linear = XYZ_to_RGB(
@@ -500,6 +517,14 @@ def Ych_to_xyY(Ych, white=D65):
     yy = cc * np.sin(hh_rad) + white[1]
 
     return tstack([xx, yy, large_y])
+
+
+def oklab_to_oklch(oklab):
+    return Jab_to_JCh(oklab)
+
+
+def oklch_to_oklab(oklch):
+    return JCh_to_Jab(oklch)
 
 
 if __name__ == '__main__':
