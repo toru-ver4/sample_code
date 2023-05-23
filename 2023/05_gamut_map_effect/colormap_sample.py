@@ -45,6 +45,17 @@ def debug_plot_oklab():
     print(rgb)
 
 
+def check_primary_secondary_hue_angle():
+    pp = np.array(
+        [[1, 0, 0], [0, 1, 0], [0, 0, 1],
+         [1, 0, 1], [1, 1, 0], [0, 1, 1]])
+    xyz = cs.rgb_to_large_xyz(pp, cs.BT709)
+    oklab = cs.XYZ_to_Oklab(xyz)
+    oklch = cs.oklab_to_oklch(oklab)
+    print(oklch[..., 2])
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    debug_plot_oklab()
+    # debug_plot_oklab()
+    check_primary_secondary_hue_angle()

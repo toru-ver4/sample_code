@@ -98,7 +98,7 @@ def debug_plot_cielab_ab_plane_with_interpolation(
     ll_num = l_num_intp
 
     total_process_num = ll_num
-    block_process_num = int(cpu_count() / 4 + 0.999)
+    block_process_num = int(cpu_count() / 2 + 0.999)
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
     for b_idx in range(block_num):
@@ -172,7 +172,7 @@ def plot_ab_plane_with_interpolation_core(
     ax1.imshow(
         rgb_gm24, extent=(-ab_max, ab_max, -ab_max, ab_max), aspect='auto')
     ax1.plot(aa, bb, color='k')
-    fname = "/work/overuse/2023/05_oog_color_map/oklab/"
+    fname = "/work/overuse/2023/05_oog_color_map/oklab_ab_low/"
     fname += f"ab_w_lut_{color_space_name}_{l_idx:04d}.png"
     print(fname)
     pu.show_and_save(
@@ -246,7 +246,7 @@ def debug_plot_cielab_cl_plane_with_interpolation(
         lightness_num=lightness_sample, hue_num=hue_sample)
 
     total_process_num = h_num_intp
-    block_process_num = int(cpu_count() / 2 + 0.9)
+    block_process_num = int(cpu_count() / 4 + 0.9)
     print(f"block_process_num {block_process_num}")
     block_num = int(round(total_process_num / block_process_num + 0.5))
 
@@ -273,21 +273,21 @@ def debug_plot_cielab_cl_plane_with_interpolation(
 def plot_oklab(
         hue_sample, lightness_sample, color_space_name,
         l_num_intp, h_num_intp):
-    debug_plot_cielab_ab_plane_with_interpolation(
-        hue_sample=hue_sample, lightness_sample=lightness_sample,
-        l_num_intp=l_num_intp, color_space_name=color_space_name)
-    # debug_plot_cielab_cl_plane_with_interpolation(
+    # debug_plot_cielab_ab_plane_with_interpolation(
     #     hue_sample=hue_sample, lightness_sample=lightness_sample,
-    #     h_num_intp=h_num_intp, color_space_name=color_space_name)
+    #     l_num_intp=l_num_intp, color_space_name=color_space_name)
+    debug_plot_cielab_cl_plane_with_interpolation(
+        hue_sample=hue_sample, lightness_sample=lightness_sample,
+        h_num_intp=h_num_intp, color_space_name=color_space_name)
 
 
 def create_oklab_luts_all():
     chroma_sample = 256
     hue_sample = 4096
     lightness_sample = 1024
-    color_space_name_list = [cs.BT709, cs.P3_D65, cs.BT2020]
+    # color_space_name_list = [cs.BT709, cs.P3_D65, cs.BT2020]
     # color_space_name_list = [cs.BT2020]
-    # color_space_name_list = [cs.BT709, cs.P3_D65]
+    color_space_name_list = [cs.BT709]
 
     met = MeasureExecTime()
     met.start()
@@ -298,11 +298,11 @@ def create_oklab_luts_all():
         #     color_space_name=color_space_name)
         plot_oklab(
             hue_sample=hue_sample, lightness_sample=lightness_sample,
-            color_space_name=color_space_name, l_num_intp=1000, h_num_intp=360)
+            color_space_name=color_space_name, l_num_intp=1000,
+            h_num_intp=1000)
     met.end()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # create_luts_all()
     create_oklab_luts_all()
