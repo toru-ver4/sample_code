@@ -1,0 +1,196 @@
+DEFINE_UI_PARAMS(h_center_pos, H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(v_center_pos, V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(h_info_pos, Info H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(v_info_pos, Info V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(font_size_rate, Font Size, DCTLUI_SLIDER_FLOAT, 0.005, 0.00, 0.03, 0.0001)
+
+ __CONSTANT__ float3 cross_hair_color = {1.0, 0.0, 1.0};
+ __CONSTANT__ float3 seven_seg_color = {0.5, 0.5, 0.5};
+
+
+__DEVICE__ int draw_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float h_center_pos, float v_center_pos)
+{
+    float3 *line_color = &cross_hair_color;
+
+    float cross_hair_rate = 0.025;
+    int line_width = 3;
+    int h_pos = int(h_center_pos * p_Width + 0.5);
+    int h_pos_st = int(h_pos - p_Height * cross_hair_rate);
+    int h_pos_ed = int(h_pos + p_Height * cross_hair_rate);
+    int v_pos = int(v_center_pos * p_Height + 0.5);
+    int v_pos_st = int(v_pos - p_Height * cross_hair_rate);
+    int v_pos_ed = int(v_pos + p_Height * cross_hair_rate);
+
+    // h-line
+    if((h_pos_st <= p_X) && (p_X < h_pos_ed)){
+        if(((v_pos - line_width) <= p_Y) && (p_Y < (v_pos + line_width))){
+            rgb->x = line_color->x;
+            rgb->y = line_color->y;
+            rgb->z = line_color->z;
+        }
+    }
+
+    if((v_pos_st <= p_Y) && (p_Y < v_pos_ed)){
+        if(((h_pos - line_width) <= p_X) && (p_X < (h_pos + line_width))){
+            rgb->x = line_color->x;
+            rgb->y = line_color->y;
+            rgb->z = line_color->z;
+        }
+    }
+    return 0;
+}
+
+
+__DEVICE__ int draw_rectangle(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float2 st_pos, float2 ed_pos, float3 *line_color)
+{
+    if((st_pos.x <= p_X) && (p_X < ed_pos.x)){
+        if((st_pos.y <= p_Y) && (p_Y < ed_pos.y)){
+            rgb->x = line_color->x;
+            rgb->y = line_color->y;
+            rgb->z = line_color->z;
+        }
+    }
+
+    return 0;
+}
+
+
+__DEVICE__ int draw_digit(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float2 g_st_pos, int r_height, int r_width, int d_mask, float3 *line_color)
+{
+    float2 st_pos;
+    float2 ed_pos;
+
+    // A
+    if((d_mask & 0x01) == 0x01){
+        st_pos = make_float2(g_st_pos.x + r_height, g_st_pos.y);
+        ed_pos = make_float2(st_pos.x + r_width, st_pos.y + r_height);
+        draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
+    }
+
+    // B
+    if((d_mask & 0x02) == 0x02){
+        st_pos = make_float2(g_st_pos.x + r_height + r_width, g_st_pos.y + r_height);
+        ed_pos = make_float2(st_pos.x + r_height, st_pos.y + r_width);
+        draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
+    }
+
+    // C
+    if((d_mask & 0x04) == 0x04){
+        st_pos = make_float2(g_st_pos.x + r_height + r_width, g_st_pos.y + r_height * 2 + r_width);
+        ed_pos = make_float2(st_pos.x + r_height, st_pos.y + r_width);
+        draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
+    }
+
+    // D
+    if((d_mask & 0x08) == 0x08){
+        st_pos = make_float2(g_st_pos.x + r_height, g_st_pos.y + (r_height + r_width) * 2);
+        ed_pos = make_float2(st_pos.x + r_width, st_pos.y + r_height);
+        draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
+    }
+
+    // E
+    if((d_mask & 0x10) == 0x10){
+        st_pos = make_float2(g_st_pos.x, g_st_pos.y + r_height * 2 + r_width);
+        ed_pos = make_float2(st_pos.x + r_height, st_pos.y + r_width);
+        draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
+    }
+
+    // F
+    if((d_mask & 0x20) == 0x20){
+        st_pos = make_float2(g_st_pos.x, g_st_pos.y + r_height);
+        ed_pos = make_float2(st_pos.x + r_height, st_pos.y + r_width);
+        draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
+    }
+
+    // G
+    if((d_mask & 0x40) == 0x40){
+        st_pos = make_float2(g_st_pos.x + r_height, g_st_pos.y + r_height + r_width);
+        ed_pos = make_float2(st_pos.x + r_width, st_pos.y + r_height);
+        draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
+    }
+
+    // H
+    if((d_mask & 0x80) == 0x80){
+        st_pos = make_float2(g_st_pos.x, g_st_pos.y + (r_height + r_width) * 2);
+        ed_pos = make_float2(st_pos.x + r_height, st_pos.y + r_height);
+        draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
+    }
+
+    return 0;
+}
+
+
+// main function
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB)
+{
+    float3 out;
+    float r = _tex2D(p_TexR, p_X, p_Y) * 0.5f;
+    float g = _tex2D(p_TexG, p_X, p_Y) * 0.5f;
+    float b = _tex2D(p_TexB, p_X, p_Y) * 0.5f;
+    out = make_float3(r, g, b);
+
+    draw_cross_hair(p_Width, p_Height, p_X, p_Y, &out, h_center_pos, v_center_pos);
+
+    float rectangle_width_rate = 0.05;
+    float rectangle_height_rate = 0.01;
+    float2 st_pos;
+    float2 ed_pos;
+    st_pos.x = p_Width * h_info_pos;
+    st_pos.y = p_Height * v_info_pos;
+    ed_pos.x = st_pos.x + p_Height * rectangle_width_rate;
+    ed_pos.y = st_pos.y + p_Height * rectangle_height_rate;
+
+    // draw_rectangle(p_Width, p_Height, p_X, p_Y, &out, st_pos, ed_pos, &seven_seg_color);
+
+    // float2 digit_st_pos = make_float2(0, 0);
+    float3 font_color = make_float3(1.0, 1.0, 0.0);
+    int r_height = int(p_Height * font_size_rate + 0.5);
+    int r_width = r_height * 5;
+    int text_one_width = r_width + r_height * 4;
+    int text_one_width_dot = r_height * 4;
+
+    int d_mask = 0x6F;
+    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+
+    d_mask = 0x80;
+    st_pos.x = st_pos.x + text_one_width;
+    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+
+    d_mask = 0x7F;
+    st_pos.x = st_pos.x + text_one_width_dot;
+    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+
+    d_mask = 0x07;
+    st_pos.x = st_pos.x + text_one_width;
+    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+
+    d_mask = 0x7D;
+    st_pos.x = st_pos.x + text_one_width;
+    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+
+    d_mask = 0x6D;
+    st_pos.x = st_pos.x + text_one_width;
+    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+
+    d_mask = 0x66;
+    st_pos.x = st_pos.x + text_one_width;
+    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+
+    d_mask = 0x4F;
+    st_pos.x = st_pos.x + text_one_width;
+    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+
+    d_mask = 0x5B;
+    st_pos.x = st_pos.x + text_one_width;
+    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+
+    d_mask = 0x06;
+    st_pos.x = st_pos.x + text_one_width;
+    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+
+    d_mask = 0x3F;
+    st_pos.x = st_pos.x + text_one_width;
+    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+
+    return out;
+}
