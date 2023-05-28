@@ -1,13 +1,11 @@
-DEFINE_UI_PARAMS(h_center_pos, Picker H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
-DEFINE_UI_PARAMS(v_center_pos, Picker V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
-DEFINE_UI_PARAMS(h_info_pos, Debug Info H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
-DEFINE_UI_PARAMS(v_info_pos, Debug Info V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
-DEFINE_UI_PARAMS(font_size_rate, Font Size Ratio, DCTLUI_SLIDER_INT, 20, 1, 100, 1)
+#ifndef SHOW_INTERNAL_VALUE_H
+#define SHOW_INTERNAL_VALUE_H
 
 __CONSTANT__ float3 cross_hair_color = {1.0, 0.0, 1.0};
 __CONSTANT__ float3 seven_seg_color = {0.5, 0.5, 0.5};
 __CONSTANT__ int digit_to_mask[] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
 #define TEXT_PERIOD_MASK (0x80)
+
 
 __DEVICE__ int draw_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float h_center_pos, float v_center_pos)
 {
@@ -193,39 +191,4 @@ __DEVICE__ int draw_rgb_digits(int p_Width, int p_Height, int p_X, int p_Y, floa
 }
 
 
-// main function
-__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB)
-{
-    float3 out;
-    float r = _tex2D(p_TexR, p_X, p_Y) * 0.5f;
-    float g = _tex2D(p_TexG, p_X, p_Y) * 0.5f;
-    float b = _tex2D(p_TexB, p_X, p_Y) * 0.5f;
-    out = make_float3(r, g, b);
-
-    draw_cross_hair(p_Width, p_Height, p_X, p_Y, &out, h_center_pos, v_center_pos);
-
-    float rectangle_width_rate = 0.05;
-    float rectangle_height_rate = 0.01;
-    float2 st_pos;
-    float2 ed_pos;
-    st_pos.x = p_Width * h_info_pos;
-    st_pos.y = p_Height * v_info_pos;
-    ed_pos.x = st_pos.x + p_Height * rectangle_width_rate;
-    ed_pos.y = st_pos.y + p_Height * rectangle_height_rate;
-
-    // draw_rectangle(p_Width, p_Height, p_X, p_Y, &out, st_pos, ed_pos, &seven_seg_color);
-
-    // float2 digit_st_pos = make_float2(0, 0);
-    float3 font_color = make_float3(1.0, 1.0, 0.0);
-    const float font_size_int_max = 100.0;  // It is the same value with max value of the `font_size_rate`
-    int r_height = int(float(p_Height * font_size_rate) / (font_size_int_max * 60.0f) + 0.5f);
-    int r_width = r_height * 5;
-    int text_one_width = r_width + r_height * 4;
-    int text_one_width_dot = r_height * 4;
-    float3 drawing_rgb_value = make_float3(0.00001, 999999, 3.14159265);
-
-    // draw_digits(p_Width, p_Height, p_X, p_Y, &out, 10000, decimal_digits_ui, st_pos, r_height, r_width, &font_color);
-    draw_rgb_digits(p_Width, p_Height, p_X, p_Y, &out, &drawing_rgb_value, st_pos, r_height, r_width, &font_color);
-
-    return out;
-}
+#endif
