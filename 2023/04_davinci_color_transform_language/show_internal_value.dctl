@@ -3,7 +3,6 @@ DEFINE_UI_PARAMS(v_center_pos, Picker V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0,
 DEFINE_UI_PARAMS(h_info_pos, Debug Info H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
 DEFINE_UI_PARAMS(v_info_pos, Debug Info V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
 DEFINE_UI_PARAMS(font_size_rate, Font Size Ratio, DCTLUI_SLIDER_INT, 20, 1, 100, 1)
-DEFINE_UI_PARAMS(decimal_digits_ui, Decimal Digits, DCTLUI_SLIDER_INT, 3, 1, 7, 1)
 
 __CONSTANT__ float3 cross_hair_color = {1.0, 0.0, 1.0};
 __CONSTANT__ float3 seven_seg_color = {0.5, 0.5, 0.5};
@@ -122,15 +121,15 @@ __DEVICE__ int draw_single_digit(int p_Width, int p_Height, int p_X, int p_Y, fl
 }
 
 
-__DEVICE__ int calc_integer_digits(float draw_value)
+__DEVICE__ int calc_integer_digits(float drawing_value)
 {
     int integer_digits = 1;
-    int max_digits = 10;
+    int max_digits = 5;
     int ii;
 
     for(ii=max_digits; ii > 0; ii--){
-        if(draw_value >= _powf(10, ii)){
-            integer_digits = ii + 1;
+        if(drawing_value >= _powf(10, ii - 1)){
+            integer_digits = ii;
             break;
         }
     }
@@ -138,7 +137,7 @@ __DEVICE__ int calc_integer_digits(float draw_value)
 }
 
 
-__DEVICE__ int draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float draw_value, int decimal_digits, float2 g_st_pos, int r_height, int r_width, float3 *font_color)
+__DEVICE__ float2 draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float drawing_value, float2 g_st_pos, int r_height, int r_width, float3 *font_color)
 {
     int ii;
     int text_width = r_width + r_height * 4;
@@ -146,18 +145,20 @@ __DEVICE__ int draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float3 *
     float magnitude_value;
     int digit;
     int integer_digits;
-    int draw_value_int;
-    integer_digits = calc_integer_digits(draw_value);
+    int decimal_digits;
+    int drawing_value_int;
+    integer_digits = calc_integer_digits(drawing_value);
+    decimal_digits = 6 - integer_digits;
 
     // convert float to int for roundup.
-    draw_value_int = int(_round(draw_value * _powf(10, decimal_digits)));
+    drawing_value_int = int(_round(drawing_value * _powf(10, decimal_digits)));
 
     // draw integer value
     float2 st_pos = g_st_pos;
     st_pos.x -= r_width;  // To neutralize the effect of the initial offset calculation in the for loop.
     for(ii=0; ii<integer_digits; ii++){
         magnitude_value = _powf(10, (integer_digits + decimal_digits - ii - 1));
-        digit = int(_fmod((_floorf(draw_value_int / magnitude_value)), 10));
+        digit = int(_fmod((_floorf(drawing_value_int / magnitude_value)), 10));
         st_pos.x += text_width;
         draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, digit_to_mask[digit], font_color);
     }
@@ -170,11 +171,24 @@ __DEVICE__ int draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float3 *
     // draw decimal value
     for(ii=0; ii<decimal_digits; ii++){
         magnitude_value = _powf(10, decimal_digits - ii - 1);
-        digit = int(_fmod((_floorf(draw_value_int / magnitude_value)), 10));
+        digit = int(_fmod((_floorf(drawing_value_int / magnitude_value)), 10));
         draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, digit_to_mask[digit], font_color);
         st_pos.x += text_width;
     }
 
+    st_pos.x += text_width;  // This is the margen between R, G, B.
+
+    return st_pos;
+}
+
+
+__DEVICE__ int draw_rgb_digits(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float3 *drawing_rgb_value, float2 g_st_pos, int r_height, int r_width, float3 *font_color)
+{
+    float2 st_pos = g_st_pos;
+
+    st_pos = draw_digits(p_Width, p_Height, p_X, p_Y, rgb, drawing_rgb_value->x, st_pos, r_height, r_width, font_color);
+    st_pos = draw_digits(p_Width, p_Height, p_X, p_Y, rgb, drawing_rgb_value->y, st_pos, r_height, r_width, font_color);
+    st_pos = draw_digits(p_Width, p_Height, p_X, p_Y, rgb, drawing_rgb_value->z, st_pos, r_height, r_width, font_color);
     return 0;
 }
 
@@ -208,51 +222,10 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTU
     int r_width = r_height * 5;
     int text_one_width = r_width + r_height * 4;
     int text_one_width_dot = r_height * 4;
+    float3 drawing_rgb_value = make_float3(0.123, 10000.1, 0.00001);
 
-    draw_digits(p_Width, p_Height, p_X, p_Y, &out, 10000, decimal_digits_ui, st_pos, r_height, r_width, &font_color);
-
-//    int d_mask = digit_to_mask[9];
-//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-//
-//    d_mask = TEXT_PERIOD_MASK;
-//    st_pos.x = st_pos.x + text_one_width;
-//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-//
-//    d_mask = digit_to_mask[8];
-//    st_pos.x = st_pos.x + text_one_width_dot;
-//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-//
-//    d_mask = digit_to_mask[7];
-//    st_pos.x = st_pos.x + text_one_width;
-//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-//
-//    d_mask = digit_to_mask[6];
-//    st_pos.x = st_pos.x + text_one_width;
-//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-//
-//    d_mask = digit_to_mask[5];
-//    st_pos.x = st_pos.x + text_one_width;
-//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-//
-//    d_mask = digit_to_mask[4];
-//    st_pos.x = st_pos.x + text_one_width;
-//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-//
-//    d_mask = digit_to_mask[3];
-//    st_pos.x = st_pos.x + text_one_width;
-//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-//
-//    d_mask = digit_to_mask[2];
-//    st_pos.x = st_pos.x + text_one_width;
-//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-//
-//    d_mask = digit_to_mask[1];
-//    st_pos.x = st_pos.x + text_one_width;
-//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-//
-//    d_mask = digit_to_mask[0];
-//    st_pos.x = st_pos.x + text_one_width;
-//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+    // draw_digits(p_Width, p_Height, p_X, p_Y, &out, 10000, decimal_digits_ui, st_pos, r_height, r_width, &font_color);
+    draw_rgb_digits(p_Width, p_Height, p_X, p_Y, &out, &drawing_rgb_value, st_pos, r_height, r_width, &font_color);
 
     return out;
 }
