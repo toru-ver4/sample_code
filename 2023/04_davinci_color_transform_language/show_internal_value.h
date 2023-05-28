@@ -1,28 +1,73 @@
 #ifndef SHOW_INTERNAL_VALUE_H
 #define SHOW_INTERNAL_VALUE_H
 
-__CONSTANT__ float3 cross_hair_color = {1.0, 0.0, 1.0};
+#define FONT_COLOR_IDX_RED (0)
+#define FONT_COLOR_IDX_GREEN (1)
+#define FONT_COLOR_IDX_BLUE (2)
+#define FONT_COLOR_IDX_CYAN (3)
+#define FONT_COLOR_IDX_MAGENTA (4)
+#define FONT_COLOR_IDX_YELLOW (5)
+
+#define CROSS_HAIR_COLOR_IDX_RED (0)
+#define CROSS_HAIR_COLOR_IDX_GREEN (1)
+#define CROSS_HAIR_COLOR_IDX_BLUE (2)
+#define CROSS_HAIR_COLOR_IDX_CYAN (3)
+#define CROSS_HAIR_COLOR_IDX_MAGENTA (4)
+#define CROSS_HAIR_COLOR_IDX_YELLOW (5)
+
+__CONSTANT__ float3 rgbmyc_color[] = {
+    {0.5, 0.0, 0.0},
+    {0.0, 0.5, 0.0},
+    {0.0, 0.0, 0.5},
+    {0.0, 0.5, 0.5},
+    {0.5, 0.0, 0.5},
+    {0.5, 0.5, 0.0},
+};
+
+__CONSTANT__ float3 cross_hair_color = {0.5, 0.0, 0.5};
 __CONSTANT__ float3 seven_seg_color = {0.5, 0.5, 0.5};
 __CONSTANT__ int digit_to_mask[] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
 #define TEXT_PERIOD_MASK (0x80)
+#define TEXT_EFFECTIVE_DIGIT (6)
 
 
-__DEVICE__ int draw_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float h_center_pos, float v_center_pos)
+__DEVICE__ float2 calc_cross_hair_pos(int p_Width, int p_Height, int p_X, int p_Y, float h_center_pos_rate, float v_center_pos_rate)
 {
-    float3 *line_color = &cross_hair_color;
+    float2 pos;
+    pos.x = h_center_pos_rate * p_Width + 0.5;
+    pos.y = v_center_pos_rate * p_Height + 0.5;
 
+    return pos;
+}
+
+
+__DEVICE__ float3 capture_rgb_value(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB, float h_center_pos_rate, float v_center_pos_rate)
+{
+    float3 out;
+    float2 center_pos = calc_cross_hair_pos(p_Width, p_Height, p_X, p_Y, h_center_pos_rate, v_center_pos_rate);
+    out.x = _tex2D(p_TexR, int(center_pos.x), int(center_pos.y));
+    out.y = _tex2D(p_TexG, int(center_pos.x), int(center_pos.y));
+    out.z = _tex2D(p_TexB, int(center_pos.x), int(center_pos.y));
+
+    return out;
+}
+
+
+__DEVICE__ int draw_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float h_center_pos_rate, float v_center_pos_rate, float3 *line_color)
+{
     float cross_hair_rate = 0.025;
+    float2 center_pos = calc_cross_hair_pos(p_Width, p_Height, p_X, p_Y, h_center_pos_rate, v_center_pos_rate);
     int line_width = 3;
-    int h_pos = int(h_center_pos * p_Width + 0.5);
-    int h_pos_st = int(h_pos - p_Height * cross_hair_rate);
-    int h_pos_ed = int(h_pos + p_Height * cross_hair_rate);
-    int v_pos = int(v_center_pos * p_Height + 0.5);
-    int v_pos_st = int(v_pos - p_Height * cross_hair_rate);
-    int v_pos_ed = int(v_pos + p_Height * cross_hair_rate);
+    //int center_pos.x = int(h_center_pos_rate * p_Width + 0.5);
+    int h_pos_st = int(center_pos.x - p_Height * cross_hair_rate);
+    int h_pos_ed = int(center_pos.x + p_Height * cross_hair_rate);
+    //int center_pos.y = int(v_center_pos_rate * p_Height + 0.5);
+    int v_pos_st = int(center_pos.y - p_Height * cross_hair_rate);
+    int v_pos_ed = int(center_pos.y + p_Height * cross_hair_rate);
 
     // h-line
     if((h_pos_st <= p_X) && (p_X < h_pos_ed)){
-        if(((v_pos - line_width) <= p_Y) && (p_Y < (v_pos + line_width))){
+        if(((center_pos.y - line_width) <= p_Y) && (p_Y < (center_pos.y + line_width))){
             rgb->x = line_color->x;
             rgb->y = line_color->y;
             rgb->z = line_color->z;
@@ -30,7 +75,7 @@ __DEVICE__ int draw_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, floa
     }
 
     if((v_pos_st <= p_Y) && (p_Y < v_pos_ed)){
-        if(((h_pos - line_width) <= p_X) && (p_X < (h_pos + line_width))){
+        if(((center_pos.x - line_width) <= p_X) && (p_X < (center_pos.x + line_width))){
             rgb->x = line_color->x;
             rgb->y = line_color->y;
             rgb->z = line_color->z;
@@ -122,7 +167,7 @@ __DEVICE__ int draw_single_digit(int p_Width, int p_Height, int p_X, int p_Y, fl
 __DEVICE__ int calc_integer_digits(float drawing_value)
 {
     int integer_digits = 1;
-    int max_digits = 5;
+    int max_digits = TEXT_EFFECTIVE_DIGIT;
     int ii;
 
     for(ii=max_digits; ii > 0; ii--){
@@ -146,7 +191,7 @@ __DEVICE__ float2 draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float
     int decimal_digits;
     int drawing_value_int;
     integer_digits = calc_integer_digits(drawing_value);
-    decimal_digits = 6 - integer_digits;
+    decimal_digits = TEXT_EFFECTIVE_DIGIT - integer_digits;
 
     // convert float to int for roundup.
     drawing_value_int = int(_round(drawing_value * _powf(10, decimal_digits)));

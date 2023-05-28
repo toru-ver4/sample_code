@@ -1,10 +1,12 @@
 #include "./show_internal_value.h"
 
-DEFINE_UI_PARAMS(h_center_pos, Picker H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
-DEFINE_UI_PARAMS(v_center_pos, Picker V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(h_center_pos_rate, Picker H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(v_center_pos_rate, Picker V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
 DEFINE_UI_PARAMS(h_info_pos, Debug Info H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
 DEFINE_UI_PARAMS(v_info_pos, Debug Info V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
 DEFINE_UI_PARAMS(font_size_rate, Font Size Ratio, DCTLUI_SLIDER_INT, 20, 1, 100, 1)
+DEFINE_UI_PARAMS(font_color_idx, Font Color, DCTLUI_COMBO_BOX, 5, {COLOR_IDX_RED, COLOR_IDX_GREEN, COLOR_IDX_BLUE, COLOR_IDX_CYAN, COLOR_IDX_MAGENTA, COLOR_IDX_YELLOW}, {Red, Green, Blue, Cyan, Magenta, Yellow})
+DEFINE_UI_PARAMS(cross_hair_color_idx, Font Color, DCTLUI_COMBO_BOX, 4, {CROSS_HAIR_COLOR_IDX_RED, CROSS_HAIR_COLOR_IDX_GREEN, CROSS_HAIR_COLOR_IDX_BLUE, CROSS_HAIR_COLOR_IDX_CYAN, CROSS_HAIR_COLOR_IDX_MAGENTA, CROSS_HAIR_COLOR_IDX_YELLOW}, {Red, Green, Blue, Cyan, Magenta, Yellow})
 
 
 // main function
@@ -15,8 +17,12 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTU
     float g = _tex2D(p_TexG, p_X, p_Y) * 0.5f;
     float b = _tex2D(p_TexB, p_X, p_Y) * 0.5f;
     out = make_float3(r, g, b);
+    float3 font_color = rgbmyc_color[font_color_idx];
+    float3 cross_hair_color = rgbmyc_color[cross_hair_color_idx];
 
-    draw_cross_hair(p_Width, p_Height, p_X, p_Y, &out, h_center_pos, v_center_pos);
+    float3 drawing_rgb_value = capture_rgb_value(p_Width, p_Height, p_X, p_Y, p_TexR, p_TexG, p_TexB, h_center_pos_rate, v_center_pos_rate);
+
+    draw_cross_hair(p_Width, p_Height, p_X, p_Y, &out, h_center_pos_rate, v_center_pos_rate, &cross_hair_color);
 
     float rectangle_width_rate = 0.05;
     float rectangle_height_rate = 0.01;
@@ -27,16 +33,11 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTU
     ed_pos.x = st_pos.x + p_Height * rectangle_width_rate;
     ed_pos.y = st_pos.y + p_Height * rectangle_height_rate;
 
-    // draw_rectangle(p_Width, p_Height, p_X, p_Y, &out, st_pos, ed_pos, &seven_seg_color);
-
-    // float2 digit_st_pos = make_float2(0, 0);
-    float3 font_color = make_float3(1.0, 1.0, 0.0);
     const float font_size_int_max = 100.0;  // It is the same value with max value of the `font_size_rate`
     int r_height = int(float(p_Height * font_size_rate) / (font_size_int_max * 60.0f) + 0.5f);
     int r_width = r_height * 5;
     int text_one_width = r_width + r_height * 4;
     int text_one_width_dot = r_height * 4;
-    float3 drawing_rgb_value = make_float3(0.00001, 999999, 3.14159265);
 
     draw_rgb_digits(p_Width, p_Height, p_X, p_Y, &out, &drawing_rgb_value, st_pos, r_height, r_width, &font_color);
 
