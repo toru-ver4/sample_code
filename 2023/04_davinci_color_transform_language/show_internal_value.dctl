@@ -3,7 +3,6 @@ DEFINE_UI_PARAMS(v_center_pos, Picker V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0,
 DEFINE_UI_PARAMS(h_info_pos, Debug Info H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
 DEFINE_UI_PARAMS(v_info_pos, Debug Info V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
 DEFINE_UI_PARAMS(font_size_rate, Font Size Ratio, DCTLUI_SLIDER_INT, 20, 1, 100, 1)
-DEFINE_UI_PARAMS(integer_digits_ui, Integer Digits, DCTLUI_SLIDER_INT, 1, 1, 5, 1)
 DEFINE_UI_PARAMS(decimal_digits_ui, Decimal Digits, DCTLUI_SLIDER_INT, 3, 1, 7, 1)
 
 __CONSTANT__ float3 cross_hair_color = {1.0, 0.0, 1.0};
@@ -123,26 +122,56 @@ __DEVICE__ int draw_single_digit(int p_Width, int p_Height, int p_X, int p_Y, fl
 }
 
 
-__DEVICE__ int draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float draw_value, int integer_digits, int decimal_digits, float2 g_st_pos, int r_height, int r_width, float3 *font_color)
+__DEVICE__ int calc_integer_digits(float draw_value)
+{
+    int integer_digits = 1;
+    int max_digits = 10;
+    int ii;
+
+    for(ii=max_digits; ii > 0; ii--){
+        if(draw_value >= _powf(10, ii)){
+            integer_digits = ii + 1;
+            break;
+        }
+    }
+    return integer_digits;
+}
+
+
+__DEVICE__ int draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float draw_value, int decimal_digits, float2 g_st_pos, int r_height, int r_width, float3 *font_color)
 {
     int ii;
     int text_width = r_width + r_height * 4;
     int text_width_period = r_height * 4;
-    int draw_value_10x;
+    float magnitude_value;
+    int digit;
+    int integer_digits;
+    int draw_value_int;
+    integer_digits = calc_integer_digits(draw_value);
 
+    // convert float to int for roundup.
+    draw_value_int = int(_round(draw_value * _powf(10, decimal_digits)));
+
+    // draw integer value
     float2 st_pos = g_st_pos;
     st_pos.x -= r_width;  // To neutralize the effect of the initial offset calculation in the for loop.
     for(ii=0; ii<integer_digits; ii++){
+        magnitude_value = _powf(10, (integer_digits + decimal_digits - ii - 1));
+        digit = int(_fmod((_floorf(draw_value_int / magnitude_value)), 10));
         st_pos.x += text_width;
-        draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, 0x7F, font_color);
+        draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, digit_to_mask[digit], font_color);
     }
 
+    // draw "."
     st_pos.x += text_width;
     draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, TEXT_PERIOD_MASK, font_color);
     st_pos.x += text_width_period;
 
+    // draw decimal value
     for(ii=0; ii<decimal_digits; ii++){
-        draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, 0x7F, font_color);
+        magnitude_value = _powf(10, decimal_digits - ii - 1);
+        digit = int(_fmod((_floorf(draw_value_int / magnitude_value)), 10));
+        draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, digit_to_mask[digit], font_color);
         st_pos.x += text_width;
     }
 
@@ -180,7 +209,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTU
     int text_one_width = r_width + r_height * 4;
     int text_one_width_dot = r_height * 4;
 
-    draw_digits(p_Width, p_Height, p_X, p_Y, &out, 12.345, integer_digits_ui, decimal_digits_ui, st_pos, r_height, r_width, &font_color);
+    draw_digits(p_Width, p_Height, p_X, p_Y, &out, 10000, decimal_digits_ui, st_pos, r_height, r_width, &font_color);
 
 //    int d_mask = digit_to_mask[9];
 //    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
