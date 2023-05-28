@@ -1,12 +1,15 @@
-DEFINE_UI_PARAMS(h_center_pos, H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
-DEFINE_UI_PARAMS(v_center_pos, V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
-DEFINE_UI_PARAMS(h_info_pos, Info H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
-DEFINE_UI_PARAMS(v_info_pos, Info V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
-DEFINE_UI_PARAMS(font_size_rate, Font Size, DCTLUI_SLIDER_FLOAT, 0.005, 0.00, 0.03, 0.0001)
+DEFINE_UI_PARAMS(h_center_pos, Picker H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(v_center_pos, Picker V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(h_info_pos, Debug Info H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(v_info_pos, Debug Info V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(font_size_rate, Font Size Ratio, DCTLUI_SLIDER_INT, 20, 1, 100, 1)
+DEFINE_UI_PARAMS(integer_digits_ui, Integer Digits, DCTLUI_SLIDER_INT, 1, 1, 5, 1)
+DEFINE_UI_PARAMS(decimal_digits_ui, Decimal Digits, DCTLUI_SLIDER_INT, 3, 1, 7, 1)
 
- __CONSTANT__ float3 cross_hair_color = {1.0, 0.0, 1.0};
- __CONSTANT__ float3 seven_seg_color = {0.5, 0.5, 0.5};
-
+__CONSTANT__ float3 cross_hair_color = {1.0, 0.0, 1.0};
+__CONSTANT__ float3 seven_seg_color = {0.5, 0.5, 0.5};
+__CONSTANT__ int digit_to_mask[] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
+#define TEXT_PERIOD_MASK (0x80)
 
 __DEVICE__ int draw_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float h_center_pos, float v_center_pos)
 {
@@ -55,7 +58,7 @@ __DEVICE__ int draw_rectangle(int p_Width, int p_Height, int p_X, int p_Y, float
 }
 
 
-__DEVICE__ int draw_digit(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float2 g_st_pos, int r_height, int r_width, int d_mask, float3 *line_color)
+__DEVICE__ int draw_single_digit(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float2 g_st_pos, int r_height, int r_width, int d_mask, float3 *line_color)
 {
     float2 st_pos;
     float2 ed_pos;
@@ -120,6 +123,33 @@ __DEVICE__ int draw_digit(int p_Width, int p_Height, int p_X, int p_Y, float3 *r
 }
 
 
+__DEVICE__ int draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float draw_value, int integer_digits, int decimal_digits, float2 g_st_pos, int r_height, int r_width, float3 *font_color)
+{
+    int ii;
+    int text_width = r_width + r_height * 4;
+    int text_width_period = r_height * 4;
+    int draw_value_10x;
+
+    float2 st_pos = g_st_pos;
+    st_pos.x -= r_width;  // To neutralize the effect of the initial offset calculation in the for loop.
+    for(ii=0; ii<integer_digits; ii++){
+        st_pos.x += text_width;
+        draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, 0x7F, font_color);
+    }
+
+    st_pos.x += text_width;
+    draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, TEXT_PERIOD_MASK, font_color);
+    st_pos.x += text_width_period;
+
+    for(ii=0; ii<decimal_digits; ii++){
+        draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, 0x7F, font_color);
+        st_pos.x += text_width;
+    }
+
+    return 0;
+}
+
+
 // main function
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB)
 {
@@ -144,53 +174,56 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTU
 
     // float2 digit_st_pos = make_float2(0, 0);
     float3 font_color = make_float3(1.0, 1.0, 0.0);
-    int r_height = int(p_Height * font_size_rate + 0.5);
+    const float font_size_int_max = 100.0;  // It is the same value with max value of the `font_size_rate`
+    int r_height = int(float(p_Height * font_size_rate) / (font_size_int_max * 60.0f) + 0.5f);
     int r_width = r_height * 5;
     int text_one_width = r_width + r_height * 4;
     int text_one_width_dot = r_height * 4;
 
-    int d_mask = 0x6F;
-    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+    draw_digits(p_Width, p_Height, p_X, p_Y, &out, 12.345, integer_digits_ui, decimal_digits_ui, st_pos, r_height, r_width, &font_color);
 
-    d_mask = 0x80;
-    st_pos.x = st_pos.x + text_one_width;
-    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-
-    d_mask = 0x7F;
-    st_pos.x = st_pos.x + text_one_width_dot;
-    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-
-    d_mask = 0x07;
-    st_pos.x = st_pos.x + text_one_width;
-    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-
-    d_mask = 0x7D;
-    st_pos.x = st_pos.x + text_one_width;
-    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-
-    d_mask = 0x6D;
-    st_pos.x = st_pos.x + text_one_width;
-    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-
-    d_mask = 0x66;
-    st_pos.x = st_pos.x + text_one_width;
-    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-
-    d_mask = 0x4F;
-    st_pos.x = st_pos.x + text_one_width;
-    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-
-    d_mask = 0x5B;
-    st_pos.x = st_pos.x + text_one_width;
-    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-
-    d_mask = 0x06;
-    st_pos.x = st_pos.x + text_one_width;
-    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
-
-    d_mask = 0x3F;
-    st_pos.x = st_pos.x + text_one_width;
-    draw_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+//    int d_mask = digit_to_mask[9];
+//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+//
+//    d_mask = TEXT_PERIOD_MASK;
+//    st_pos.x = st_pos.x + text_one_width;
+//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+//
+//    d_mask = digit_to_mask[8];
+//    st_pos.x = st_pos.x + text_one_width_dot;
+//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+//
+//    d_mask = digit_to_mask[7];
+//    st_pos.x = st_pos.x + text_one_width;
+//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+//
+//    d_mask = digit_to_mask[6];
+//    st_pos.x = st_pos.x + text_one_width;
+//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+//
+//    d_mask = digit_to_mask[5];
+//    st_pos.x = st_pos.x + text_one_width;
+//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+//
+//    d_mask = digit_to_mask[4];
+//    st_pos.x = st_pos.x + text_one_width;
+//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+//
+//    d_mask = digit_to_mask[3];
+//    st_pos.x = st_pos.x + text_one_width;
+//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+//
+//    d_mask = digit_to_mask[2];
+//    st_pos.x = st_pos.x + text_one_width;
+//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+//
+//    d_mask = digit_to_mask[1];
+//    st_pos.x = st_pos.x + text_one_width;
+//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
+//
+//    d_mask = digit_to_mask[0];
+//    st_pos.x = st_pos.x + text_one_width;
+//    draw_single_digit(p_Width, p_Height, p_X, p_Y, &out, st_pos, r_height, r_width, d_mask, &font_color);
 
     return out;
 }
