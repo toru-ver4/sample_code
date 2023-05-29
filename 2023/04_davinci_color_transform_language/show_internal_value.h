@@ -27,6 +27,7 @@ __CONSTANT__ float3 rgbmyc_color[] = {
 
 __CONSTANT__ float3 cross_hair_color = {0.5, 0.0, 0.5};
 __CONSTANT__ float3 seven_seg_color = {0.5, 0.5, 0.5};
+__CONSTANT__ float3 cross_hair_edge_color = {0.0, 0.0, 0.0};
 __CONSTANT__ int digit_to_mask[] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
 #define TEXT_PERIOD_MASK (0x80)
 #define TEXT_EFFECTIVE_DIGIT (6)
@@ -58,15 +59,34 @@ __DEVICE__ int draw_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, floa
 {
     float cross_hair_rate = 0.025;
     float2 center_pos = calc_cross_hair_pos(p_Width, p_Height, p_X, p_Y, h_center_pos_rate, v_center_pos_rate);
-    int line_width = 3;
+    float3 *edge_color = &cross_hair_edge_color;
+    int line_width = int(2.5 * (p_Height / 1080) + 0.5);
+    int edge_width = int(2.5 * (p_Height / 1080) + 0.5);
     //int center_pos.x = int(h_center_pos_rate * p_Width + 0.5);
     int h_pos_st = int(center_pos.x - p_Height * cross_hair_rate);
     int h_pos_ed = int(center_pos.x + p_Height * cross_hair_rate);
+
     //int center_pos.y = int(v_center_pos_rate * p_Height + 0.5);
     int v_pos_st = int(center_pos.y - p_Height * cross_hair_rate);
     int v_pos_ed = int(center_pos.y + p_Height * cross_hair_rate);
 
-    // h-line
+    // edge
+    if((h_pos_st - edge_width <= p_X) && (p_X < h_pos_ed + edge_width)){
+        if(((center_pos.y - line_width - edge_width) <= p_Y) && (p_Y < (center_pos.y + line_width + edge_width))){
+            rgb->x = edge_color->x;
+            rgb->y = edge_color->y;
+            rgb->z = edge_color->z;
+        }
+    }
+    if((v_pos_st - edge_width <= p_Y) && (p_Y < v_pos_ed + edge_width)){
+        if(((center_pos.x - line_width - edge_width) <= p_X) && (p_X < (center_pos.x + line_width + edge_width))){
+            rgb->x = edge_color->x;
+            rgb->y = edge_color->y;
+            rgb->z = edge_color->z;
+        }
+    }
+
+    // internal
     if((h_pos_st <= p_X) && (p_X < h_pos_ed)){
         if(((center_pos.y - line_width) <= p_Y) && (p_Y < (center_pos.y + line_width))){
             rgb->x = line_color->x;
@@ -263,7 +283,7 @@ __DEVICE__ int draw_rgb_digits_core(int p_Width, int p_Height, int p_X, int p_Y,
 }
 
 
-__DEVICE__ int draw_rgb_digits(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB, float3 *out, int cross_hair_color_idx, int font_color_idx, float h_center_pos_rate, float v_center_pos_rate, float h_info_pos, float v_info_pos, float font_size_rate)
+__DEVICE__ int draw_rgb_digits_with_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB, float3 *out, int cross_hair_color_idx, int font_color_idx, float h_center_pos_rate, float v_center_pos_rate, float h_info_pos, float v_info_pos, float font_size_rate)
 {
 
     float3 font_color = rgbmyc_color[font_color_idx];
