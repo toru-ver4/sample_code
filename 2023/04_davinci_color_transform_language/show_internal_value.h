@@ -15,6 +15,7 @@
 #define CROSS_HAIR_COLOR_IDX_MAGENTA (4)
 #define CROSS_HAIR_COLOR_IDX_YELLOW (5)
 
+
 __CONSTANT__ float3 rgbmyc_color[] = {
     {0.5, 0.0, 0.0},
     {0.0, 0.5, 0.0},
@@ -180,11 +181,22 @@ __DEVICE__ int calc_integer_digits(float drawing_value)
 }
 
 
+__DEVICE__ float2 calc_text_width(int r_width, int r_height)
+{
+    float2 out;
+    out.x = r_width + r_height * 4;  // text width for digits
+    out.y = r_height * 4;            // text width for period
+
+    return out;
+}
+
+
 __DEVICE__ float2 draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float drawing_value, float2 g_st_pos, int r_height, int r_width, float3 *font_color)
 {
     int ii;
-    int text_width = r_width + r_height * 4;
-    int text_width_period = r_height * 4;
+    float2 text_width_float = calc_text_width(r_width, r_height);
+    int text_width = int(text_width_float.x);
+    int text_width_period = int(text_width_float.y);
     float magnitude_value;
     int digit;
     int integer_digits;
@@ -193,12 +205,13 @@ __DEVICE__ float2 draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float
     integer_digits = calc_integer_digits(drawing_value);
     decimal_digits = TEXT_EFFECTIVE_DIGIT - integer_digits;
 
+
     // convert float to int for roundup.
     drawing_value_int = int(_round(drawing_value * _powf(10, decimal_digits)));
 
     // draw integer value
     float2 st_pos = g_st_pos;
-    st_pos.x -= r_width;  // To neutralize the effect of the initial offset calculation in the for loop.
+    st_pos.x -= text_width;  // To neutralize the effect of the initial offset calculation in the for loop.
     for(ii=0; ii<integer_digits; ii++){
         magnitude_value = _powf(10, (integer_digits + decimal_digits - ii - 1));
         digit = int(_fmod((_floorf(drawing_value_int / magnitude_value)), 10));
@@ -225,13 +238,58 @@ __DEVICE__ float2 draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float
 }
 
 
-__DEVICE__ int draw_rgb_digits(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float3 *drawing_rgb_value, float2 g_st_pos, int r_height, int r_width, float3 *font_color)
+__DEVICE__ int draw_rgb_digits_core(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float3 *drawing_rgb_value, float2 g_st_pos, int r_height, int r_width, float3 *font_color)
 {
     float2 st_pos = g_st_pos;
+    float2 text_width_float = calc_text_width(r_width, r_height);
+    int text_width = int(text_width_float.x);
+    int text_width_period = int(text_width_float.y);
+    int text_height = (r_height + r_width) * 2;
+    int text_height_margin = r_height * 2;
+
+    // draw background (dark)
+    if((p_Y >= (g_st_pos.y - text_height_margin)) && (p_Y < (g_st_pos.y + text_height + text_height_margin))){
+        if((p_X >= (g_st_pos.x - r_height * 2)) && (p_X < (g_st_pos.x + (text_width * TEXT_EFFECTIVE_DIGIT + text_width_period + text_width) * 3 - text_width))){
+            rgb->x = rgb->x / 2.0;
+            rgb->y = rgb->y / 2.0;
+            rgb->z = rgb->z / 2.0;
+        }
+    }
 
     st_pos = draw_digits(p_Width, p_Height, p_X, p_Y, rgb, drawing_rgb_value->x, st_pos, r_height, r_width, font_color);
     st_pos = draw_digits(p_Width, p_Height, p_X, p_Y, rgb, drawing_rgb_value->y, st_pos, r_height, r_width, font_color);
     st_pos = draw_digits(p_Width, p_Height, p_X, p_Y, rgb, drawing_rgb_value->z, st_pos, r_height, r_width, font_color);
+    return 0;
+}
+
+
+__DEVICE__ int draw_rgb_digits(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB, float3 *out, int cross_hair_color_idx, int font_color_idx, float h_center_pos_rate, float v_center_pos_rate, float h_info_pos, float v_info_pos, float font_size_rate)
+{
+
+    float3 font_color = rgbmyc_color[font_color_idx];
+    float3 cross_hair_color = rgbmyc_color[cross_hair_color_idx];
+
+    float3 drawing_rgb_value = capture_rgb_value(p_Width, p_Height, p_X, p_Y, p_TexR, p_TexG, p_TexB, h_center_pos_rate, v_center_pos_rate);
+
+    draw_cross_hair(p_Width, p_Height, p_X, p_Y, out, h_center_pos_rate, v_center_pos_rate, &cross_hair_color);
+
+    float rectangle_width_rate = 0.05;
+    float rectangle_height_rate = 0.01;
+    float2 st_pos;
+    float2 ed_pos;
+    st_pos.x = p_Width * h_info_pos;
+    st_pos.y = p_Height * v_info_pos;
+    ed_pos.x = st_pos.x + p_Height * rectangle_width_rate;
+    ed_pos.y = st_pos.y + p_Height * rectangle_height_rate;
+
+    const float font_size_int_max = 100.0;  // It is the same value with max value of the `font_size_rate`
+    int r_height = int(float(p_Height * font_size_rate) / (font_size_int_max * 60.0f) + 0.5f);
+    int r_width = r_height * 5;
+    int text_one_width = r_width + r_height * 4;
+    int text_one_width_dot = r_height * 4;
+
+    draw_rgb_digits_core(p_Width, p_Height, p_X, p_Y, out, &drawing_rgb_value, st_pos, r_height, r_width, &font_color);
+
     return 0;
 }
 
