@@ -13,9 +13,9 @@ DEFINE_UI_PARAMS(cross_hair_color_idx, Font Color, DCTLUI_COMBO_BOX, 4, {CROSS_H
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB)
 {
     float3 out;
-    float r = _tex2D(p_TexR, p_X, p_Y) * 0.5f;
-    float g = _tex2D(p_TexG, p_X, p_Y) * 0.5f;
-    float b = _tex2D(p_TexB, p_X, p_Y) * 0.5f;
+    float r = _tex2D(p_TexR, p_X, p_Y);
+    float g = _tex2D(p_TexG, p_X, p_Y);
+    float b = _tex2D(p_TexB, p_X, p_Y);
     out = make_float3(r, g, b);
     draw_rgb_digits_with_cross_hair(p_Width, p_Height, p_X, p_Y, p_TexR, p_TexG, p_TexB, &out, cross_hair_color_idx, font_color_idx, h_center_pos_rate, v_center_pos_rate, h_info_pos, v_info_pos, font_size_rate);
 
