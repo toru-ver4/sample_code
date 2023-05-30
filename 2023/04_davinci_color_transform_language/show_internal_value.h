@@ -30,6 +30,7 @@ __CONSTANT__ float3 seven_seg_color = {0.5, 0.5, 0.5};
 __CONSTANT__ float3 cross_hair_edge_color = {0.0, 0.0, 0.0};
 __CONSTANT__ int digit_to_mask[] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
 #define TEXT_PERIOD_MASK (0x80)
+#define TEXT_NEGATIVE_MASK (0x40)
 #define TEXT_EFFECTIVE_DIGIT (6)
 
 
@@ -57,7 +58,7 @@ __DEVICE__ float3 capture_rgb_value(int p_Width, int p_Height, int p_X, int p_Y,
 
 __DEVICE__ int draw_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float h_center_pos_rate, float v_center_pos_rate, float3 *line_color)
 {
-    float cross_hair_rate = 0.025;
+    float cross_hair_rate = 0.035;
     float2 center_pos = calc_cross_hair_pos(p_Width, p_Height, p_X, p_Y, h_center_pos_rate, v_center_pos_rate);
     float3 *edge_color = &cross_hair_edge_color;
     int line_width = int(2.5 * (p_Height / 1080) + 0.5);
@@ -102,6 +103,7 @@ __DEVICE__ int draw_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, floa
             rgb->z = line_color->z;
         }
     }
+
     return 0;
 }
 
@@ -222,15 +224,29 @@ __DEVICE__ float2 draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float
     int integer_digits;
     int decimal_digits;
     int drawing_value_int;
+    int is_negative = 0;
+    float2 st_pos = g_st_pos;
+
+    if(drawing_value < 0){
+        is_negative = 1;
+    }
+    drawing_value = _fabs(drawing_value);
     integer_digits = calc_integer_digits(drawing_value);
     decimal_digits = TEXT_EFFECTIVE_DIGIT - integer_digits;
+    if(is_negative){
+        decimal_digits -= 1;  // Using one digit to render the "-" character.
+    }
 
-
-    // convert float to int for roundup.
+    // convert float to int for round-up.
     drawing_value_int = int(_round(drawing_value * _powf(10, decimal_digits)));
 
+    // for negative value
+    if(is_negative){
+        draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, TEXT_NEGATIVE_MASK, font_color);
+        st_pos.x += text_width;
+    }
+
     // draw integer value
-    float2 st_pos = g_st_pos;
     st_pos.x -= text_width;  // To neutralize the effect of the initial offset calculation in the for loop.
     for(ii=0; ii<integer_digits; ii++){
         magnitude_value = _powf(10, (integer_digits + decimal_digits - ii - 1));
@@ -252,7 +268,7 @@ __DEVICE__ float2 draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float
         st_pos.x += text_width;
     }
 
-    st_pos.x += text_width;  // This is the margen between R, G, B.
+    st_pos.x += text_width;  // This is the margen between R, G, and B.
 
     return st_pos;
 }
@@ -270,9 +286,9 @@ __DEVICE__ int draw_rgb_digits_core(int p_Width, int p_Height, int p_X, int p_Y,
     // draw background (dark)
     if((p_Y >= (g_st_pos.y - text_height_margin)) && (p_Y < (g_st_pos.y + text_height + text_height_margin))){
         if((p_X >= (g_st_pos.x - r_height * 2)) && (p_X < (g_st_pos.x + (text_width * TEXT_EFFECTIVE_DIGIT + text_width_period + text_width) * 3 - text_width))){
-            rgb->x = rgb->x / 2.0;
-            rgb->y = rgb->y / 2.0;
-            rgb->z = rgb->z / 2.0;
+            rgb->x = rgb->x / 3.0;
+            rgb->y = rgb->y / 3.0;
+            rgb->z = rgb->z / 3.0;
         }
     }
 
