@@ -34,6 +34,20 @@ __CONSTANT__ int digit_to_mask[] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x
 #define TEXT_EFFECTIVE_DIGIT (6)
 
 
+__DEVICE__ int draw_rectangle(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float2 st_pos, float2 ed_pos, float3 *line_color)
+{
+    if((st_pos.x <= p_X) && (p_X < ed_pos.x)){
+        if((st_pos.y <= p_Y) && (p_Y < ed_pos.y)){
+            rgb->x = line_color->x;
+            rgb->y = line_color->y;
+            rgb->z = line_color->z;
+        }
+    }
+
+    return 0;
+}
+
+
 __DEVICE__ float2 calc_cross_hair_pos(int p_Width, int p_Height, int p_X, int p_Y, float h_center_pos_rate, float v_center_pos_rate)
 {
     float2 pos;
@@ -58,11 +72,14 @@ __DEVICE__ float3 capture_rgb_value(int p_Width, int p_Height, int p_X, int p_Y,
 
 __DEVICE__ int draw_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float h_center_pos_rate, float v_center_pos_rate, float3 *line_color)
 {
-    float cross_hair_rate = 0.035;
+    float cross_hair_rate = 0.04;
     float2 center_pos = calc_cross_hair_pos(p_Width, p_Height, p_X, p_Y, h_center_pos_rate, v_center_pos_rate);
     float3 *edge_color = &cross_hair_edge_color;
-    int line_width = int(2.5 * (p_Height / 1080) + 0.5);
-    int edge_width = int(2.5 * (p_Height / 1080) + 0.5);
+    float2 st_pos;
+    float2 ed_pos;
+    int line_width = int(_round(6 * (p_Height / 1080)));
+    int edge_width = int(_round(12 * (p_Height / 1080)));
+    int line_margin = int((edge_width - line_width) / 2.0);
     //int center_pos.x = int(h_center_pos_rate * p_Width + 0.5);
     int h_pos_st = int(center_pos.x - p_Height * cross_hair_rate);
     int h_pos_ed = int(center_pos.x + p_Height * cross_hair_rate);
@@ -71,52 +88,90 @@ __DEVICE__ int draw_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, floa
     int v_pos_st = int(center_pos.y - p_Height * cross_hair_rate);
     int v_pos_ed = int(center_pos.y + p_Height * cross_hair_rate);
 
-    // edge
-    if((h_pos_st - edge_width <= p_X) && (p_X < h_pos_ed + edge_width)){
-        if(((center_pos.y - line_width - edge_width) <= p_Y) && (p_Y < (center_pos.y + line_width + edge_width))){
-            rgb->x = edge_color->x;
-            rgb->y = edge_color->y;
-            rgb->z = edge_color->z;
-        }
-    }
-    if((v_pos_st - edge_width <= p_Y) && (p_Y < v_pos_ed + edge_width)){
-        if(((center_pos.x - line_width - edge_width) <= p_X) && (p_X < (center_pos.x + line_width + edge_width))){
-            rgb->x = edge_color->x;
-            rgb->y = edge_color->y;
-            rgb->z = edge_color->z;
-        }
-    }
+    // top-edge
+    st_pos.x = int(_round(center_pos.x - edge_width / 2.0));
+    st_pos.y = v_pos_st;
+    ed_pos.x = int(_round(center_pos.x + edge_width / 2.0));
+    ed_pos.y = int(_round(center_pos.y - edge_width / 2.0));
+    draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, edge_color);
+    // top-line
+    st_pos.x = st_pos.x + line_margin;
+    st_pos.y = st_pos.y + line_margin;
+    ed_pos.x = ed_pos.x - line_margin;
+    ed_pos.y = ed_pos.y - line_margin;
+    draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
 
-    // internal
-    if((h_pos_st <= p_X) && (p_X < h_pos_ed)){
-        if(((center_pos.y - line_width) <= p_Y) && (p_Y < (center_pos.y + line_width))){
-            rgb->x = line_color->x;
-            rgb->y = line_color->y;
-            rgb->z = line_color->z;
-        }
-    }
+    // right-edge
+    st_pos.x = int(_round(center_pos.x + edge_width / 2.0));
+    st_pos.y = int(_round(center_pos.y - edge_width / 2.0));
+    ed_pos.x = h_pos_ed;
+    ed_pos.y = int(_round(center_pos.y + edge_width / 2.0));
+    draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, edge_color);
+    // right-line
+    st_pos.x = st_pos.x + line_margin;
+    st_pos.y = st_pos.y + line_margin;
+    ed_pos.x = ed_pos.x - line_margin;
+    ed_pos.y = ed_pos.y - line_margin;
+    draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
 
-    if((v_pos_st <= p_Y) && (p_Y < v_pos_ed)){
-        if(((center_pos.x - line_width) <= p_X) && (p_X < (center_pos.x + line_width))){
-            rgb->x = line_color->x;
-            rgb->y = line_color->y;
-            rgb->z = line_color->z;
-        }
-    }
+    // bottom-edge
+    st_pos.x = int(_round(center_pos.x - edge_width / 2.0));
+    st_pos.y = int(_round(center_pos.y + edge_width / 2.0));
+    ed_pos.x = int(_round(center_pos.x + edge_width / 2.0));
+    ed_pos.y = v_pos_ed;
+    draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, edge_color);
+    // bottom-line
+    st_pos.x = st_pos.x + line_margin;
+    st_pos.y = st_pos.y + line_margin;
+    ed_pos.x = ed_pos.x - line_margin;
+    ed_pos.y = ed_pos.y - line_margin;
+    draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
 
-    return 0;
-}
+    // left-edge
+    st_pos.x = h_pos_st;
+    st_pos.y = int(_round(center_pos.y - edge_width / 2.0));
+    ed_pos.x = int(_round(center_pos.x - edge_width / 2.0));
+    ed_pos.y = int(_round(center_pos.y + edge_width / 2.0));
+    draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, edge_color);
+    // left-line
+    st_pos.x = st_pos.x + line_margin;
+    st_pos.y = st_pos.y + line_margin;
+    ed_pos.x = ed_pos.x - line_margin;
+    ed_pos.y = ed_pos.y - line_margin;
+    draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
 
-
-__DEVICE__ int draw_rectangle(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float2 st_pos, float2 ed_pos, float3 *line_color)
-{
-    if((st_pos.x <= p_X) && (p_X < ed_pos.x)){
-        if((st_pos.y <= p_Y) && (p_Y < ed_pos.y)){
-            rgb->x = line_color->x;
-            rgb->y = line_color->y;
-            rgb->z = line_color->z;
-        }
-    }
+//    // edge
+//    if((h_pos_st - edge_width <= p_X) && (p_X < h_pos_ed + edge_width)){
+//        if(((center_pos.y - line_width - edge_width) <= p_Y) && (p_Y < (center_pos.y + line_width + edge_width))){
+//            rgb->x = edge_color->x;
+//            rgb->y = edge_color->y;
+//            rgb->z = edge_color->z;
+//        }
+//    }
+//    if((v_pos_st - edge_width <= p_Y) && (p_Y < v_pos_ed + edge_width)){
+//        if(((center_pos.x - line_width - edge_width) <= p_X) && (p_X < (center_pos.x + line_width + edge_width))){
+//            rgb->x = edge_color->x;
+//            rgb->y = edge_color->y;
+//            rgb->z = edge_color->z;
+//        }
+//    }
+//
+//    // internal
+//    if((h_pos_st <= p_X) && (p_X < h_pos_ed)){
+//        if(((center_pos.y - line_width) <= p_Y) && (p_Y < (center_pos.y + line_width))){
+//            rgb->x = line_color->x;
+//            rgb->y = line_color->y;
+//            rgb->z = line_color->z;
+//        }
+//    }
+//
+//    if((v_pos_st <= p_Y) && (p_Y < v_pos_ed)){
+//        if(((center_pos.x - line_width) <= p_X) && (p_X < (center_pos.x + line_width))){
+//            rgb->x = line_color->x;
+//            rgb->y = line_color->y;
+//            rgb->z = line_color->z;
+//        }
+//    }
 
     return 0;
 }
