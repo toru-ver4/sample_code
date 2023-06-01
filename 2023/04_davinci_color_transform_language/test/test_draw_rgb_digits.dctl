@@ -1,0 +1,63 @@
+#include "../show_internal_value.h"
+
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB)
+{
+    float3 out;
+    float2 st_pos = make_float2(0.0, 0.0);
+    const float font_size_int_max = 100.0;  // It is the same value with max value of the `font_size_rate`
+    float3 drawing_rgb_value;
+    float3 font_color = make_float3(1.0, 1.0, 0.0);
+    const int st_pos_y_offset = 150;
+    int font_size_rate = 30;
+
+    float r = _tex2D(p_TexR, p_X, p_Y) * 0.5f;
+    float g = _tex2D(p_TexG, p_X, p_Y) * 0.5f;
+    float b = _tex2D(p_TexB, p_X, p_Y) * 0.5f;
+    out = make_float3(r, g, b);
+
+    int r_height = int(float(p_Height * font_size_rate) / (font_size_int_max * 60.0f) + 0.5f);
+    int r_width = r_height * 5;
+    st_pos.y = 0;
+
+    // positive minimum, max, zero
+    drawing_rgb_value = make_float3(0.00001, 999999, 3.14159265);
+    draw_rgb_digits(
+        p_Width, p_Height, p_X, p_Y, &out, &drawing_rgb_value,
+        st_pos, r_height, r_width, &font_color);
+    st_pos.y += st_pos_y_offset;
+
+    // positive underflow, overflow, zero
+    drawing_rgb_value = make_float3(0.0000049, 999999.9, 0.0000);
+    draw_rgb_digits(
+        p_Width, p_Height, p_X, p_Y, &out, &drawing_rgb_value,
+        st_pos, r_height, r_width, &font_color);
+    st_pos.y += st_pos_y_offset;
+
+    // negative minimum, max, zero
+    drawing_rgb_value = make_float3(-0.0001, -99999, -3.14159265);
+    draw_rgb_digits(
+        p_Width, p_Height, p_X, p_Y, &out, &drawing_rgb_value,
+        st_pos, r_height, r_width, &font_color);
+    st_pos.y += st_pos_y_offset;
+
+    // negative underflow, overflow, zero
+    drawing_rgb_value = make_float3(-0.000049, -99999.5, -0.0000);
+    draw_rgb_digits(p_Width, p_Height, p_X, p_Y, &out, &drawing_rgb_value, st_pos, r_height, r_width, &font_color);
+    st_pos.y += st_pos_y_offset;
+
+    // normal value 1
+    drawing_rgb_value = make_float3(1.0, 98.76543, 14.76859);
+    draw_rgb_digits(
+        p_Width, p_Height, p_X, p_Y, &out, &drawing_rgb_value,
+        st_pos, r_height, r_width, &font_color);
+    st_pos.y += st_pos_y_offset;
+
+    // normal value 2
+    drawing_rgb_value = make_float3(-0.045, -1.0, -98.786543);
+    draw_rgb_digits(
+        p_Width, p_Height, p_X, p_Y, &out, &drawing_rgb_value,
+        st_pos, r_height, r_width, &font_color);
+    st_pos.y += st_pos_y_offset;
+
+    return out;
+}
