@@ -140,39 +140,6 @@ __DEVICE__ int draw_cross_hair(int p_Width, int p_Height, int p_X, int p_Y, floa
     ed_pos.y = ed_pos.y - line_margin;
     draw_rectangle(p_Width, p_Height, p_X, p_Y, rgb, st_pos, ed_pos, line_color);
 
-//    // edge
-//    if((h_pos_st - edge_width <= p_X) && (p_X < h_pos_ed + edge_width)){
-//        if(((center_pos.y - line_width - edge_width) <= p_Y) && (p_Y < (center_pos.y + line_width + edge_width))){
-//            rgb->x = edge_color->x;
-//            rgb->y = edge_color->y;
-//            rgb->z = edge_color->z;
-//        }
-//    }
-//    if((v_pos_st - edge_width <= p_Y) && (p_Y < v_pos_ed + edge_width)){
-//        if(((center_pos.x - line_width - edge_width) <= p_X) && (p_X < (center_pos.x + line_width + edge_width))){
-//            rgb->x = edge_color->x;
-//            rgb->y = edge_color->y;
-//            rgb->z = edge_color->z;
-//        }
-//    }
-//
-//    // internal
-//    if((h_pos_st <= p_X) && (p_X < h_pos_ed)){
-//        if(((center_pos.y - line_width) <= p_Y) && (p_Y < (center_pos.y + line_width))){
-//            rgb->x = line_color->x;
-//            rgb->y = line_color->y;
-//            rgb->z = line_color->z;
-//        }
-//    }
-//
-//    if((v_pos_st <= p_Y) && (p_Y < v_pos_ed)){
-//        if(((center_pos.x - line_width) <= p_X) && (p_X < (center_pos.x + line_width))){
-//            rgb->x = line_color->x;
-//            rgb->y = line_color->y;
-//            rgb->z = line_color->z;
-//        }
-//    }
-
     return 0;
 }
 
@@ -329,7 +296,7 @@ __DEVICE__ float2 draw_digits(int p_Width, int p_Height, int p_X, int p_Y, float
 }
 
 
-__DEVICE__ int draw_rgb_digits_core(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float3 *drawing_rgb_value, float2 g_st_pos, int r_height, int r_width, float3 *font_color)
+__DEVICE__ int draw_rgb_digits(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float3 *drawing_rgb_value, float2 g_st_pos, int r_height, int r_width, float3 *font_color)
 {
     float2 st_pos = g_st_pos;
     float2 text_width_float = calc_text_width(r_width, r_height);
@@ -379,7 +346,7 @@ __DEVICE__ int draw_rgb_digits_with_cross_hair(int p_Width, int p_Height, int p_
     int text_one_width = r_width + r_height * 4;
     int text_one_width_dot = r_height * 4;
 
-    draw_rgb_digits_core(p_Width, p_Height, p_X, p_Y, out, &drawing_rgb_value, st_pos, r_height, r_width, &font_color);
+    draw_rgb_digits(p_Width, p_Height, p_X, p_Y, out, &drawing_rgb_value, st_pos, r_height, r_width, &font_color);
 
     return 0;
 }
