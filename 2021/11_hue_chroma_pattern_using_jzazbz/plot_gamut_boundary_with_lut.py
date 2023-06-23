@@ -1230,9 +1230,9 @@ if __name__ == '__main__':
     # plot_cj_plane_with_interpolation(
     #     color_space_name=cs.P3_D65, luminance=100)
 
-    plot_cups(luminance=10000)
-    plot_cups(luminance=1000)
-    plot_cups(luminance=100)
+    # plot_cups(luminance=10000)
+    # plot_cups(luminance=1000)
+    # plot_cups(luminance=100)
 
     # plot_rgb_near_cups()
 

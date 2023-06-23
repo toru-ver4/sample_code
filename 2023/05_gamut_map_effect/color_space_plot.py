@@ -101,9 +101,9 @@ def create_valid_oklab_cl_plane_image_gm24(
     # ng_idx = cgb.is_outer_gamut(lab=lab, color_space_name=color_space_name)
     rgb[ng_idx] = dummy_rgb
 
-    srgb = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.GAMMA24)
+    rgb_gm24 = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.GAMMA24)
 
-    return srgb
+    return rgb_gm24
 
 
 if __name__ == '__main__':
