@@ -35,28 +35,53 @@ def debug_calc_delta_rgb_p():
     calc_delta_rgb_p(rgb=rgb)
 
 
+def img_to_L_like(img, gamut_str=cs.BT709, gamma=2.4):
+    coef = cs.get_rgb_to_xyz_matrix(name=gamut_str)[1]
+    l_like = img[..., 0] * coef[0] + img[..., 1] * coef[1]\
+        + img[..., 2] * coef[2]
+
+    return l_like ** (1/gamma)
+
+
 def debug_delta_rgb_p_using_hc_pattern():
     i_fname = "./debug/BT2020-BT709_HC_Pattern.png"
     img_non_linear = tpg.img_read_as_float(i_fname)
 
-    # img_non_linear = np.array(
-    #     [[[927, 416, 221], [904, 425, 242], [882, 432, 259]]]) / 1023
+    # Setting up the OKLAB color map LUT
+    color_map_lut_name = make_color_map_lut_name()
+    luts = np.load(color_map_lut_name)
+    num_of_color_map = luts.shape[0]
+
     img_2020 = img_non_linear ** 2.4
     large_xyz = cs.rgb_to_large_xyz(img_2020, color_space_name=cs.BT2020)
     img_709 = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
-    img_709_gray = img_709[..., 0] * 0.2126 + img_709[..., 1] * 0.7152\
-        + img_709[..., 2] * 0.0722
-    img_709_gray = img_709_gray ** (1/2.4)
-    img_709_gray = tstack([img_709_gray, img_709_gray, img_709_gray])
+
+    img_L_like = img_to_L_like(img_2020, gamut_str=cs.BT2020)
+    img_gray = tstack([img_L_like, img_L_like, img_L_like])
+
+    # create color map for each lut
     delta = calc_delta_rgb_p(rgb=img_709)
-    delta_turbo_img = apply_turbo_colormap(delta)
+    map_imgs = np.zeros(
+        (num_of_color_map, img_709.shape[0], img_709.shape[1], 3))
+    for idx, lut in enumerate(luts):
+        map_img = apply_colormap_from_3_1dlut(delta, lut)
+        map_imgs[idx] = map_img
+
     # print(img_709[874, 256, :])
-    gray_idx = delta <= 0
-
     out_img = np.zeros_like(img_non_linear)
+    gray_idx = delta <= 0
+    out_img[gray_idx] = img_gray[gray_idx]
 
-    out_img[gray_idx] = img_709_gray[gray_idx]
-    out_img[~gray_idx] = delta_turbo_img[~gray_idx]
+    # apply each color map
+    thresholds = np.linspace(0, 1, num_of_color_map + 1)
+    for idx in range(num_of_color_map):
+        t0 = thresholds[idx]
+        t1 = thresholds[idx + 1]
+        map_idx = (~gray_idx & (t0 <= img_L_like)) & (img_L_like < t1)
+        out_img[map_idx] = map_imgs[idx][map_idx]
+
+    # delta_turbo_img = apply_turbo_colormap(delta)
+    # out_img[~gray_idx] = delta_turbo_img[~gray_idx]
 
     tpg.img_wirte_float_as_16bit_int(
         "./debug/delta_rgb_p.png", np.clip(out_img, 0.0, 1.0))
@@ -180,5 +205,5 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_calc_delta_rgb_p()
     # debug_turbo()
-    debug_apply_oklab_colormap()
-    # debug_delta_rgb_p_using_hc_pattern()
+    # debug_apply_oklab_colormap()
+    debug_delta_rgb_p_using_hc_pattern()
