@@ -43,9 +43,37 @@ def img_to_L_like(img, gamut_str=cs.BT709, gamma=2.4):
     return l_like ** (1/gamma)
 
 
-def debug_delta_rgb_p_using_hc_pattern():
-    i_fname = "./debug/BT2020-BT709_HC_Pattern.png"
-    img_non_linear = tpg.img_read_as_float(i_fname)
+def debug_delta_rgb_p_using_hc_pattern_turbo(
+        in_fname="./debug/BT2020-BT709_HC_Pattern.png",
+        out_fname="./debug/delta_rgb_turbo.png"):
+
+    img_non_linear = tpg.img_read_as_float(in_fname)
+
+    img_2020 = img_non_linear ** 2.4
+    large_xyz = cs.rgb_to_large_xyz(img_2020, color_space_name=cs.BT2020)
+    img_709 = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
+    img_709_gray = img_709[..., 0] * 0.2126 + img_709[..., 1] * 0.7152\
+        + img_709[..., 2] * 0.0722
+    img_709_gray = img_709_gray ** (1/2.4)
+    img_709_gray = tstack([img_709_gray, img_709_gray, img_709_gray])
+    delta = calc_delta_rgb_p(rgb=img_709)
+    delta_turbo_img = apply_turbo_colormap(delta)
+    # print(img_709[874, 256, :])
+    gray_idx = delta <= 0
+
+    out_img = np.zeros_like(img_non_linear)
+
+    out_img[gray_idx] = img_709_gray[gray_idx]
+    out_img[~gray_idx] = delta_turbo_img[~gray_idx]
+
+    print(out_fname)
+    tpg.img_wirte_float_as_16bit_int(out_fname, np.clip(out_img, 0.0, 1.0))
+
+
+def debug_delta_rgb_p_using_hc_pattern_oklab(
+        in_fname="./debug/BT2020-BT709_HC_Pattern.png",
+        out_fname="./debug/delta_rgb_p_oklab.png"):
+    img_non_linear = tpg.img_read_as_float(in_fname)
 
     # Setting up the OKLAB color map LUT
     color_map_lut_name = make_color_map_lut_name()
@@ -80,11 +108,8 @@ def debug_delta_rgb_p_using_hc_pattern():
         map_idx = (~gray_idx & (t0 <= img_L_like)) & (img_L_like < t1)
         out_img[map_idx] = map_imgs[idx][map_idx]
 
-    # delta_turbo_img = apply_turbo_colormap(delta)
-    # out_img[~gray_idx] = delta_turbo_img[~gray_idx]
-
-    tpg.img_wirte_float_as_16bit_int(
-        "./debug/delta_rgb_p.png", np.clip(out_img, 0.0, 1.0))
+    print(out_fname)
+    tpg.img_wirte_float_as_16bit_int(out_fname, np.clip(out_img, 0.0, 1.0))
 
 
 def debug_turbo():
@@ -206,4 +231,5 @@ if __name__ == '__main__':
     # debug_calc_delta_rgb_p()
     # debug_turbo()
     # debug_apply_oklab_colormap()
-    debug_delta_rgb_p_using_hc_pattern()
+    debug_delta_rgb_p_using_hc_pattern_turbo()
+    debug_delta_rgb_p_using_hc_pattern_oklab()
