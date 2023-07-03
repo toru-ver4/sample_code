@@ -237,9 +237,124 @@ def plot_oklab_cl_plane_with_interpolation_core(
         fig=fig, legend_loc=None, show=False, save_fname=fname)
 
 
+def thread_wrapper_plot_oklab_cl_plane_with_interpolation_bt709_bt2020(args):
+    plot_oklab_cl_plane_with_interpolation_bt709_bt2020_core(**args)
+
+
+def plot_oklab_cl_plane_with_interpolation_bt709_bt2020_core(
+        bg_lut_name_bt709, bg_lut_name_p3d65, bg_lut_name_bt2020,
+        h_idx, h_val):
+    bg_lut_bt709 = TyLchLut(lut=np.load(bg_lut_name_bt709))
+    bg_lut_p3d65 = TyLchLut(lut=np.load(bg_lut_name_p3d65))
+    bg_lut_bt2020 = TyLchLut(lut=np.load(bg_lut_name_bt2020))
+    sample_num = 1536
+    jj_sample = 1536
+    ll_max = 1.0
+    cc_max = 0.45
+    print(f"h_val={h_val} started")
+
+    rgb_gm24 = create_valid_oklab_cl_plane_image_gm24(
+        h_val=h_val, c_max=cc_max, c_sample=sample_num, l_sample=sample_num,
+        color_space_name=cs.BT2020, bg_val=0.5)
+    graph_title = f"CL plane,  {cs.BT2020},  Hue={h_val:.2f}°,  "
+
+    ll_base = np.linspace(0, bg_lut_bt709.ll_max, jj_sample)
+    hh_base = np.ones_like(ll_base) * h_val
+    lh_array = tstack([ll_base, hh_base])
+    lch_bt709 = bg_lut_bt709.interpolate(lh_array=lh_array)
+    lch_p3d65 = bg_lut_p3d65.interpolate(lh_array=lh_array)
+    lch_bt2020 = bg_lut_bt2020.interpolate(lh_array=lh_array)
+
+    chroma_bt709 = lch_bt709[..., 1]
+    lightness_bt709 = lch_bt709[..., 0]
+    chroma_p3d65 = lch_p3d65[..., 1]
+    lightness_p3d65 = lch_p3d65[..., 0]
+    chroma_bt2020 = lch_bt2020[..., 1]
+    lightness_bt2020 = lch_bt2020[..., 0]
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 12),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=graph_title,
+        graph_title_size=None,
+        xlabel="C", ylabel="L",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[0, cc_max],
+        ylim=[0, ll_max],
+        xtick=None,
+        ytick=[x * 0.1 for x in range(11)],
+        xtick_size=None, ytick_size=None,
+        linewidth=1,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.imshow(
+        rgb_gm24, extent=(0, cc_max, 0, ll_max), aspect='auto')
+    w_idx = lightness_bt709 <= 0.6
+    ax1.plot(chroma_p3d65[w_idx], lightness_p3d65[w_idx], '--', color='w')
+    ax1.plot(chroma_p3d65[~w_idx], lightness_p3d65[~w_idx], '--', color='k')
+    ax1.plot(chroma_bt709, lightness_bt709, '--', color="#808080")
+    ax1.plot(chroma_bt2020, lightness_bt2020, color='k')
+    fname = "/work/overuse/2023/05_oog_color_map/oklab_cl_2020/"
+    fname += f"ok_CL_w_lut_bt2020_bt709_{h_idx:04d}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc=None, show=False, save_fname=fname)
+
+
+def debug_plot_cielab_cl_plane_with_interpolation_bt2020_bt709(
+        hue_sample=256, lightness_sample=256, h_num_intp=256):
+
+    # create_lab_gamut_boundary_method_c(
+    #     hue_sample=hue_sample, lightness_sample=lightness_sample,
+    #     chroma_sample=512,
+    #     color_space_name=cs.BT709)
+    # create_lab_gamut_boundary_method_c(
+    #     hue_sample=hue_sample, lightness_sample=lightness_sample,
+    #     chroma_sample=512,
+    #     color_space_name=cs.BT2020)
+
+    lut_name_bt709 = make_oklab_gb_lut_fname_method_c(
+        color_space_name=cs.BT709,
+        lightness_num=lightness_sample, hue_num=hue_sample)
+    lut_name_p3d65 = make_oklab_gb_lut_fname_method_c(
+        color_space_name=cs.P3_D65,
+        lightness_num=lightness_sample, hue_num=hue_sample)
+    lut_name_bt2020 = make_oklab_gb_lut_fname_method_c(
+        color_space_name=cs.BT2020,
+        lightness_num=lightness_sample, hue_num=hue_sample)
+
+    total_process_num = h_num_intp
+    block_process_num = int(cpu_count() / 3 + 0.9)
+    print(f"block_process_num {block_process_num}")
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            h_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, h_idx={h_idx}")  # User
+            if h_idx >= total_process_num:                         # User
+                break
+            d = dict(
+                bg_lut_name_bt709=lut_name_bt709,
+                bg_lut_name_p3d65=lut_name_p3d65,
+                bg_lut_name_bt2020=lut_name_bt2020,
+                h_idx=h_idx,
+                h_val=h_idx/(h_num_intp-1)*360)
+            # plot_oklab_cl_plane_with_interpolation_bt709_bt2020_core(**d)
+            args.append(d)
+        #     break
+        # break
+        with Pool(cpu_count()) as pool:
+            pool.map(
+                thread_wrapper_plot_oklab_cl_plane_with_interpolation_bt709_bt2020, args)
+
+
 def debug_plot_cielab_cl_plane_with_interpolation(
         hue_sample=256, lightness_sample=256, h_num_intp=256,
-        color_space_name=cs.BT2020):
+        color_space_name=cs.BT709):
 
     lut_name = make_oklab_gb_lut_fname_method_c(
         color_space_name=color_space_name,
@@ -273,9 +388,9 @@ def debug_plot_cielab_cl_plane_with_interpolation(
 def plot_oklab(
         hue_sample, lightness_sample, color_space_name,
         l_num_intp, h_num_intp):
-    # debug_plot_cielab_ab_plane_with_interpolation(
-    #     hue_sample=hue_sample, lightness_sample=lightness_sample,
-    #     l_num_intp=l_num_intp, color_space_name=color_space_name)
+    debug_plot_cielab_ab_plane_with_interpolation(
+        hue_sample=hue_sample, lightness_sample=lightness_sample,
+        l_num_intp=l_num_intp, color_space_name=color_space_name)
     debug_plot_cielab_cl_plane_with_interpolation(
         hue_sample=hue_sample, lightness_sample=lightness_sample,
         h_num_intp=h_num_intp, color_space_name=color_space_name)
@@ -305,4 +420,6 @@ def create_oklab_luts_all():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    create_oklab_luts_all()
+    # create_oklab_luts_all()
+    debug_plot_cielab_cl_plane_with_interpolation_bt2020_bt709(
+        hue_sample=4096, lightness_sample=1024, h_num_intp=361)

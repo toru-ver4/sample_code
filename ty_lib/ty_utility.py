@@ -46,6 +46,20 @@ def add_suffix_to_filename(fname="./img/hoge.png", suffix="_with_icc"):
     return new_name
 
 
+def change_fname_extension(fname="./img/hoge.png", ext=".tif"):
+    """
+    Example
+    -------
+    >>> change_fname_extension(fname="./img/hoge.png", ext=".tif")
+    ./img/hoge.tif
+    """
+    pp = Path(fname)
+    parent = str(pp.parent)
+    new_name = parent + "/" + pp.stem + ext
+
+    return new_name
+
+
 def conv_Nbit_to_linear(x, bit_depth=8, tf_str=tf.GAMMA24):
     """
     Examples
