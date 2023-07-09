@@ -218,3 +218,5 @@ temporary/**/**
 2023/05_gamut_map_effect/lut
 2023/05_gamut_map_effect/color_map_lut.npy
 2023/05_gamut_map_effect/debug/**
+2023/06_Investigate_PS5/**/*.webm
+2023/06_Investigate_PS5/**/*.mp4
