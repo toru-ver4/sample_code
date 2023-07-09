@@ -42,7 +42,7 @@ def plot_hdr_adj_on_st2084():
         fontsize=20,
         figsize=(10, 8),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title="HDR Adjustment Point (ST2084 scale)",
+        graph_title="Adjust HDR (ST2084 scale)",
         graph_title_size=None,
         xlabel="Adjustment Index",
         ylabel="ST2084 Code Value (10-bit)",
@@ -75,7 +75,7 @@ def plot_hdr_adj_on_inear():
         fontsize=20,
         figsize=(10, 8),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title="HDR Adjustment Point (Linear scale)",
+        graph_title="Adjust HDR (Linear scale)",
         graph_title_size=None,
         xlabel="Adjustment Index",
         ylabel="Luminance [nits]",
@@ -112,7 +112,7 @@ def actual_plot():
         fontsize=20,
         figsize=(10, 8),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title="HDR Adjustment Point (ST2084 scale)",
+        graph_title="Adjust HDR (ST2084 scale)",
         graph_title_size=None,
         xlabel="Adjustment Index",
         ylabel="ST2084 Code Value (10-bit)",
@@ -138,7 +138,7 @@ def actual_plot():
         fontsize=20,
         figsize=(10, 8),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title="HDR Adjustment Point (Linear scale)",
+        graph_title="Adjust HDR (Linear scale)",
         graph_title_size=None,
         xlabel="Adjustment Index",
         ylabel="Luminance [nits]",
@@ -159,6 +159,32 @@ def actual_plot():
     pu.show_and_save(
         fig=fig, legend_loc='upper left',
         save_fname="./img/adj_plot_linear_correct.png")
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=None,
+        graph_title_size=None,
+        xlabel="Adjustment Index",
+        ylabel="Luminance [nits]",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=[4 * x for x in range(9)],
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    pu.log_sacle_settings_x_linear_y_log(
+        ax=ax1, alpha_major=0.6)
+    ax1.plot(x_high, y_high_l, '-o', label="Estimated Highlight Luminance")
+    # ax1.plot(x_low, y_low_l, '-o', label="Shadow")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left',
+        save_fname="./img/adj_plot_linear_correct_high_only.png")
 
 
 def create_white():
@@ -201,11 +227,22 @@ def convert_container_webm_to_mp4():
     subprocess.run(args)
 
 
+def debug_printf_st2084():
+    l_1 = 100
+    l_1_2084 = np.round(tf.oetf_from_luminance(l_1, tf.ST2084) * 1023)
+    print(l_1_2084)
+
+    cv = 144 / 1023
+    ll = tf.eotf_to_luminance(cv, tf.ST2084)
+    print(ll)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # plot_hdr_adj_on_st2084()
-    # plot_hdr_adj_on_inear()
-    # actual_plot()
+    plot_hdr_adj_on_st2084()
+    plot_hdr_adj_on_inear()
+    actual_plot()
     # create_white()
-    convert_container_mp4_to_webm()
+    # convert_container_mp4_to_webm()
     # convert_container_webm_to_mp4(
+    # debug_printf_st2084()
