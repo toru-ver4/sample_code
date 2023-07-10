@@ -1,5 +1,5 @@
-#ifndef SHOW_INTERNAL_VALUE_H
-#define SHOW_INTERNAL_VALUE_H
+#ifndef TY_DRAW_LIB
+#define TY_DRAW_LIB
 
 #define FONT_COLOR_IDX_RED (0)
 #define FONT_COLOR_IDX_GREEN (1)
@@ -28,6 +28,7 @@ __CONSTANT__ float3 rgbmyc_color[] = {
 __CONSTANT__ float3 cross_hair_color = {0.5, 0.0, 0.5};
 __CONSTANT__ float3 seven_seg_color = {0.5, 0.5, 0.5};
 __CONSTANT__ float3 cross_hair_edge_color = {0.0, 0.0, 0.0};
+__CONSTANT__ float3 black_color = {0.0, 0.0, 0.0};
 __CONSTANT__ int digit_to_mask[] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
 #define TEXT_PERIOD_MASK (0x80)
 #define TEXT_NEGATIVE_MASK (0x40)
