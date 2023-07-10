@@ -16,6 +16,12 @@
 #define CROSS_HAIR_COLOR_IDX_YELLOW (5)
 
 
+typedef struct{
+    int x;
+    int y;
+} int2;
+
+
 __CONSTANT__ float3 rgbmyc_color[] = {
     {0.5, 0.0, 0.0},
     {0.0, 0.5, 0.0},
@@ -33,6 +39,20 @@ __CONSTANT__ int digit_to_mask[] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x
 #define TEXT_PERIOD_MASK (0x80)
 #define TEXT_NEGATIVE_MASK (0x40)
 #define TEXT_EFFECTIVE_DIGIT (6)
+
+
+__DEVICE__ int draw_rectangle_int(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, int2 st_pos, int2 ed_pos, float3 *line_color)
+{
+    if((st_pos.x <= p_X) && (p_X < ed_pos.x)){
+        if((st_pos.y <= p_Y) && (p_Y < ed_pos.y)){
+            rgb->x = line_color->x;
+            rgb->y = line_color->y;
+            rgb->z = line_color->z;
+        }
+    }
+
+    return 0;
+}
 
 
 __DEVICE__ int draw_rectangle(int p_Width, int p_Height, int p_X, int p_Y, float3 *rgb, float2 st_pos, float2 ed_pos, float3 *line_color)
