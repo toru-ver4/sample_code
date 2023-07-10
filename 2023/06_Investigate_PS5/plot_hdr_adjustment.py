@@ -229,7 +229,7 @@ def convert_container_webm_to_mp4():
 
 def debug_printf_st2084():
     l_1 = 100
-    l_1_2084 = np.round(tf.oetf_from_luminance(l_1, tf.ST2084) * 1023)
+    l_1_2084 = tf.oetf_from_luminance(l_1, tf.ST2084)
     print(l_1_2084)
 
     cv = 144 / 1023
@@ -239,10 +239,10 @@ def debug_printf_st2084():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    plot_hdr_adj_on_st2084()
-    plot_hdr_adj_on_inear()
-    actual_plot()
+    # plot_hdr_adj_on_st2084()
+    # plot_hdr_adj_on_inear()
+    # actual_plot()
     # create_white()
     # convert_container_mp4_to_webm()
     # convert_container_webm_to_mp4(
-    # debug_printf_st2084()
+    debug_printf_st2084()
