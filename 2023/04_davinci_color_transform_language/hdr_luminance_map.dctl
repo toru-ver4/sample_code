@@ -1,4 +1,5 @@
 #include "ty_color_lib.h"
+#include "ty_draw_lib.h"
 #include "color_map_data.h"
 
 #define JUDGE_METHOD_RGB2Y   (0)
@@ -60,6 +61,9 @@ __DEVICE__ float3 draw_scale(int p_Width, int p_Height, int p_X, int p_Y, float3
 
     float gray_cv;
     float3 out = rgb_in;
+
+    // draw horizontal line for scale
+
 
     // draw lamp pattern
     if((st_pos_x <= p_X) && (p_X < ed_pos_x)){
