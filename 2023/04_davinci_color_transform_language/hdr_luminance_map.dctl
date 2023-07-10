@@ -19,6 +19,11 @@ DEFINE_UI_PARAMS(over_range_color_idx, Over Range Color, DCTLUI_COMBO_BOX, 0, { 
 DEFINE_UI_PARAMS(st_luminance, Start [cd/m2], DCTLUI_SLIDER_INT, 100, 100, 500, 1)
 DEFINE_UI_PARAMS(ed_luminance, End [cd/m2], DCTLUI_SLIDER_INT, 1000, 500, 10000, 1)
 
+typedef struct{
+    int x;
+    int y;
+} int2;
+
 
 // convert Y value to the Turbo RGB value.
 // The Turbo RGB value is used to create a luminance map.
@@ -50,25 +55,30 @@ __DEVICE__ float3 draw_scale(int p_Width, int p_Height, int p_X, int p_Y, float3
     const float st_pos_v_rate = 0.05;
     const float ed_pos_h_rate = 0.05;
     const float ed_pos_v_rate = 0.95;
+    const float scale_h_rate = 0.2;
 
     const float pq_100_cv = 0.508078421517;
     const float pq_10000_cv = 1.0;
 
-    const int st_pos_x = int(_round(st_pos_h_rate * p_Width));
-    const int st_pos_y = int(_round(st_pos_v_rate * p_Height));
-    const int ed_pos_x = int(_round(ed_pos_h_rate * p_Width));
-    const int ed_pos_y = int(_round(ed_pos_v_rate * p_Height));
+    int2 st_pos;
+    int2 ed_pos;
+    st_pos.x = int(_round(st_pos_h_rate * p_Width));
+    st_pos.y = int(_round(st_pos_v_rate * p_Height));
+    ed_pos.x = int(_round(ed_pos_h_rate * p_Width));
+    ed_pos.y = int(_round(ed_pos_v_rate * p_Height));
 
     float gray_cv;
     float3 out = rgb_in;
 
     // draw horizontal line for scale
+    // float2 st_pos;
+    // float2 ed_pos;
 
 
     // draw lamp pattern
-    if((st_pos_x <= p_X) && (p_X < ed_pos_x)){
-        if((st_pos_y <= p_Y) && (p_Y < ed_pos_y)){
-            gray_cv = (float(p_Y) - st_pos_y) / (ed_pos_y - st_pos_y);
+    if((st_pos.x <= p_X) && (p_X < ed_pos.x)){
+        if((st_pos.y <= p_Y) && (p_Y < ed_pos.y)){
+            gray_cv = (float(p_Y) - st_pos.y) / (ed_pos.y - st_pos.y);
             gray_cv = (pq_10000_cv - pq_100_cv) * gray_cv + pq_100_cv;
             out.x = gray_cv;
             out.y = gray_cv;
