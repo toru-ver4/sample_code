@@ -100,6 +100,28 @@ def calc_rgb_to_rgb_mtx(src_gamut=cs.BT709, dst_gamut=cs.BT2020):
     print_matrix(rgb_2_rgb_mtx)
 
 
+def calc_pq_cv_params_for_scale():
+    """
+    __CONSTANT__ float scale_cv_list[] = {0.508078421517, 0.676584810783, 0.751827096247};
+    __CONSTANT__ int scale_cv_list_size = 3;
+    """
+    luminance_list = [100, 200, 400, 600, 800, 1000, 2000, 4000, 6000, 8000, 10000]
+    out_str = "__CONSTANT__ float scale_cv_list[] = {"
+    for luminance in luminance_list:
+        pq_cv = tf.oetf_from_luminance(luminance, tf.ST2084)
+        out_str += f"{pq_cv:.7f}"
+        out_str += ", " if luminance != luminance_list[-1] else ""
+    out_str += "};\n"
+    out_str += "__CONSTANT__ int scale_y_list[] = {"
+    for luminance in luminance_list:
+        out_str += f"{luminance}"
+        out_str += ", " if luminance != luminance_list[-1] else ""
+    out_str += "};\n"
+    out_str += f"__CONSTANT__ int scale_cv_list_size = {len(luminance_list)};\n"
+    print(out_str)
+
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # calc_rgb_to_y_coef()
@@ -107,6 +129,7 @@ if __name__ == '__main__':
     # format_turbo_lut()
     # calc_st_luminance_ed_luminance()
     # calc_timeline_val()
-    calc_rgb_to_rgb_mtx(dst_gamut=cs.BT709)
-    calc_rgb_to_rgb_mtx(dst_gamut=cs.P3_D65)
-    calc_rgb_to_rgb_mtx(dst_gamut=cs.BT2020)
+    # calc_rgb_to_rgb_mtx(dst_gamut=cs.BT709)
+    # calc_rgb_to_rgb_mtx(dst_gamut=cs.P3_D65)
+    # calc_rgb_to_rgb_mtx(dst_gamut=cs.BT2020)
+    calc_pq_cv_params_for_scale()
