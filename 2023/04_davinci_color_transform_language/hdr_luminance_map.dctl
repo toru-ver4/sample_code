@@ -22,6 +22,7 @@ DEFINE_UI_PARAMS(judge_data_idx, Judgment Data Type, DCTLUI_COMBO_BOX, 0, { JUDG
 DEFINE_UI_PARAMS(over_range_color_idx, Over Range Color, DCTLUI_COMBO_BOX, 0, { OVER_RANGE_COLOR_M, OVER_RANGE_COLOR_Y, OVER_RANGE_COLOR_C }, { Magenta, Yellow, Cyan })
 DEFINE_UI_PARAMS(st_luminance, Start [cd/m2], DCTLUI_SLIDER_INT, 100, 100, 500, 1)
 DEFINE_UI_PARAMS(ed_luminance, End [cd/m2], DCTLUI_SLIDER_INT, 1000, 500, 10000, 1)
+DEFINE_UI_PARAMS(show_scale, Show scale, DCTLUI_CHECK_BOX, 1)
 
 
 // convert Y value to the Turbo RGB value.
@@ -121,9 +122,15 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
     const float st_luminance_pq = oetf_st2084(st_luminance_linear);
     const float ed_luminance_pq = oetf_st2084(ed_luminance_linear);
     float3 rgb_in = to_float3(p_R, p_G, p_B);
+    float3 rgb_with_scale;
 
     // draw scale
-    float3 rgb_with_scale = draw_scale(p_Width, p_Height, p_X, p_Y, rgb_in);
+    if(show_scale){
+        rgb_with_scale = draw_scale(p_Width, p_Height, p_X, p_Y, rgb_in);
+    }
+    else{
+        rgb_with_scale = rgb_in;
+    }
 
     // convert to linear
     float3 rgb_linear = eotf_st2084_f3(rgb_with_scale);
