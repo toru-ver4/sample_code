@@ -105,7 +105,7 @@ def calc_pq_cv_params_for_scale():
     __CONSTANT__ float scale_cv_list[] = {0.508078421517, 0.676584810783, 0.751827096247};
     __CONSTANT__ int scale_cv_list_size = 3;
     """
-    luminance_list = [100, 200, 400, 600, 800, 1000, 2000, 4000, 6000, 8000, 10000]
+    luminance_list = [100, 200, 300, 400, 600, 1000, 2000, 3000, 4000, 6000, 10000]
     out_str = "__CONSTANT__ float scale_cv_list[] = {"
     for luminance in luminance_list:
         pq_cv = tf.oetf_from_luminance(luminance, tf.ST2084)

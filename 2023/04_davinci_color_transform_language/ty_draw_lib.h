@@ -265,7 +265,7 @@ __DEVICE__ float2 draw_digits_int(int p_Width, int p_Height, int p_X, int p_Y, f
     int text_width_period = int(text_width_float.y);
     float magnitude_value;
     int digit;
-    int integer_digits;
+    int integer_digits = calc_integer_digits(drawing_value);
     int decimal_digits;
     int drawing_value_int;
     int is_negative = 0;
@@ -273,11 +273,24 @@ __DEVICE__ float2 draw_digits_int(int p_Width, int p_Height, int p_X, int p_Y, f
     st_pos.x = g_st_pos.x;
     st_pos.y = g_st_pos.y;
 
+    // draw background
+    int text_height = (r_height + r_width) * 2;
+    int text_height_margin = r_height * 2;
+
+    // draw background (dark)
+    if((p_Y >= (g_st_pos.y - text_height_margin)) && (p_Y < (g_st_pos.y + text_height + text_height_margin))){
+        if((p_X >= (g_st_pos.x - r_height * 2)) && (p_X < (g_st_pos.x + (text_width * integer_digits + text_width) - text_width))){
+            rgb->x = rgb->x / 3.0;
+            rgb->y = rgb->y / 3.0;
+            rgb->z = rgb->z / 3.0;
+        }
+    }
+
     if(drawing_value < 0){
         is_negative = 1;
     }
     drawing_value = _fabs(drawing_value);
-    integer_digits = calc_integer_digits(drawing_value);
+    // integer_digits = calc_integer_digits(drawing_value);
     decimal_digits = TEXT_EFFECTIVE_DIGIT - integer_digits;
     if(is_negative){
         decimal_digits -= 1;  // Using one digit to render the "-" character.
@@ -300,21 +313,6 @@ __DEVICE__ float2 draw_digits_int(int p_Width, int p_Height, int p_X, int p_Y, f
         st_pos.x += text_width;
         draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, digit_to_mask[digit], font_color);
     }
-
-    // // draw "."
-    // st_pos.x += text_width;
-    // draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, TEXT_PERIOD_MASK, font_color);
-    // st_pos.x += text_width_period;
-// 
-    // // draw decimal value
-    // for(ii=0; ii<decimal_digits; ii++){
-    //     magnitude_value = _powf(10, decimal_digits - ii - 1);
-    //     digit = int(_fmod((_floorf(drawing_value_int / magnitude_value)), 10));
-    //     draw_single_digit(p_Width, p_Height, p_X, p_Y, rgb, st_pos, r_height, r_width, digit_to_mask[digit], font_color);
-    //     st_pos.x += text_width;
-    // }
-// 
-    // st_pos.x += text_width;  // This is the margen between R, G, and B.
 
     return st_pos;
 }

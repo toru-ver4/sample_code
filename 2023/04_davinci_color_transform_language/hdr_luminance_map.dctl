@@ -13,8 +13,8 @@ __CONSTANT__ float3 over_range_color_m_3f = {1.0f, 0.3f, 1.0f};
 __CONSTANT__ float3 over_range_color_y_3f = {1.0f, 1.0f, 0.4f};
 __CONSTANT__ float3 over_range_color_c_3f = {0.7f, 1.0f, 1.0f};
 
-__CONSTANT__ float scale_cv_list[] = {0.5080784, 0.5791332, 0.6525786, 0.6962941, 0.7275252, 0.7518271, 0.8274246, 0.9025724, 0.9460286, 0.9765439, 1.0000000};
-__CONSTANT__ int scale_y_list[] = {100, 200, 400, 600, 800, 1000, 2000, 4000, 6000, 8000, 10000};
+__CONSTANT__ float scale_cv_list[] = {0.5080784, 0.5791332, 0.6218628, 0.6525786, 0.6962941, 0.7518271, 0.8274246, 0.8714864, 0.9025724, 0.9460286, 1.0000000};
+__CONSTANT__ int scale_y_list[] = {100, 200, 300, 400, 600, 1000, 2000, 3000, 4000, 6000, 10000};
 __CONSTANT__ int scale_cv_list_size = 11;
 
 DEFINE_UI_PARAMS(gamut_idx, Timeline Color Gamut, DCTLUI_COMBO_BOX, 2, { GAMUT_IDX_BT709, GAMUT_IDX_P3D65, GAMUT_IDX_BT2020 }, { Rec.709, P3-D65, Rec.2020 })
@@ -54,8 +54,8 @@ __DEVICE__ float3 draw_scale(int p_Width, int p_Height, int p_X, int p_Y, float3
     const float st_pos_v_rate = 0.05;
     const float ed_pos_h_rate = 0.05;
     const float ed_pos_v_rate = 0.95;
-    const float scale_h_rate = 0.3;
-    const float font_size_rate = 0.002;
+    const float scale_h_rate = 0.2;
+    const float font_size_rate = 0.0014;
 
     const float pq_100_cv = 0.508078421517;
     const float pq_10000_cv = 1.0;
@@ -98,7 +98,7 @@ __DEVICE__ float3 draw_scale(int p_Width, int p_Height, int p_X, int p_Y, float3
     }
 
     int r_height = int(_round(float(p_Height) * font_size_rate));
-    int r_width = r_height * 5;
+    int r_width = r_height * 4;
     int half_text_height = (r_height * 13) / 2;
     font_st_pos.x = scale_ed_pos.x;
     for(int ii=0; ii<scale_cv_list_size; ii++){
