@@ -24,12 +24,12 @@ DEFINE_UI_PARAMS(st_luminance, Start [cd/m2], DCTLUI_SLIDER_INT, 100, 100, 500, 
 DEFINE_UI_PARAMS(ed_luminance, End [cd/m2], DCTLUI_SLIDER_INT, 1000, 500, 10000, 1)
 DEFINE_UI_PARAMS(show_scale, Show scale, DCTLUI_CHECK_BOX, 1)
 
-__CONSTANT__ float st_pos_h_rate = 0.02;
+__CONSTANT__ float st_pos_h_rate = 0.01;
 __CONSTANT__ float st_pos_v_rate = 0.05;
-__CONSTANT__ float ed_pos_h_rate = 0.05;
+__CONSTANT__ float ed_pos_h_rate = 0.03;
 __CONSTANT__ float ed_pos_v_rate = 0.95;
 __CONSTANT__ float scale_h_rate = 0.2;
-__CONSTANT__ float font_size_rate = 0.0014;
+__CONSTANT__ float font_size_rate = 2;
 __CONSTANT__ float pq_100_cv = 0.508078421517;
 __CONSTANT__ float pq_10000_cv = 1.0;
 
@@ -134,7 +134,7 @@ __DEVICE__ float3 draw_scale_text(int p_Width, int p_Height, int p_X, int p_Y, f
     float3 out = rgb_in;
 
     // draw text
-    int r_height = int(_round(float(p_Height) * font_size_rate));
+    int r_height = int(_round(float(p_Height) / 1080.0 * font_size_rate));
     int r_width = r_height * 4;
     int half_text_height = (r_height * 13) / 2;
     font_st_pos.x = scale_ed_pos.x;
