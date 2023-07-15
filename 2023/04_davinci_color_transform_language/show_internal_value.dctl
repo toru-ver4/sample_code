@@ -1,4 +1,4 @@
-#include "./show_internal_value.h"
+#include "./ty_draw_lib.h"
 
 DEFINE_UI_PARAMS(h_center_pos_rate, Picker H Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
 DEFINE_UI_PARAMS(v_center_pos_rate, Picker V Pos, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
