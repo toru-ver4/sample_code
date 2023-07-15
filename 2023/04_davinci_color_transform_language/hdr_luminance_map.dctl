@@ -90,60 +90,6 @@ __DEVICE__ float3 draw_scale(int p_Width, int p_Height, int p_X, int p_Y, float3
     float3 line_color = to_float3(st_luminance_pq*0.999, st_luminance_pq*0.999, st_luminance_pq*0.999);
 
     // draw horizontal line for scale
-    // int2 scale_st_pos;
-    // int2 scale_ed_pos;
-    // int scale_edge_len = int(_round(float(ed_pos.x - st_pos.x) * scale_h_rate));
-    // scale_st_pos.x = st_pos.x - scale_edge_len;
-    // scale_ed_pos.x = ed_pos.x + scale_edge_len;
-    // for(int ii=0; ii<scale_cv_list_size; ii++){
-    //     float cv = scale_cv_list[ii];
-    //     scale_st_pos.y = int(_round(float(ed_pos.y - st_pos.y) * (cv - pq_100_cv) / (pq_10000_cv - pq_100_cv) + float(st_pos.y)));
-    //     scale_st_pos.y = scale_st_pos.y - 1;  // To make the line thicker
-    //     scale_ed_pos.y = scale_st_pos.y + 1;
-    //     scale_ed_pos.y = scale_ed_pos.y + 1;  // To make the line thicker
-    //     draw_rectangle_int(p_Width, p_Height, p_X, p_Y, &out, scale_st_pos, scale_ed_pos, &line_color);
-    // }
-
-    // draw lamp pattern
-    if((st_pos.x <= p_X) && (p_X < ed_pos.x)){
-        if((st_pos.y <= p_Y) && (p_Y < ed_pos.y)){
-            gray_cv = (float(p_Y) - st_pos.y) / (ed_pos.y - st_pos.y);
-            gray_cv = (pq_10000_cv - pq_100_cv) * gray_cv + pq_100_cv;
-            out.x = gray_cv;
-            out.y = gray_cv;
-            out.z = gray_cv;
-        }
-    }
-
-    // draw text
-    // int r_height = int(_round(float(p_Height) * font_size_rate));
-    // int r_width = r_height * 4;
-    // int half_text_height = (r_height * 13) / 2;
-    // font_st_pos.x = scale_ed_pos.x;
-    // for(int ii=0; ii<scale_cv_list_size; ii++){
-    //     float cv = scale_cv_list[ii];
-    //     scale_st_pos.y = int(_round(float(ed_pos.y - st_pos.y) * (cv - pq_100_cv) / (pq_10000_cv - pq_100_cv) + float(st_pos.y)));
-    //     font_st_pos.y = scale_st_pos.y + 1 - half_text_height;
-    //     float drawing_value = scale_y_list[ii];
-    //     draw_digits_int(p_Width, p_Height, p_X, p_Y, &out, drawing_value, font_st_pos, r_height, r_width, &grey_color);
-    // }
-
-    return out;
-}
-
-
-__DEVICE__ float3 draw_scale_text(int p_Width, int p_Height, int p_X, int p_Y, float3 rgb_in, float st_luminance_pq)
-{
-    int2 st_pos = calc_draw_scale_st_pos(p_Width, p_Height);
-    int2 ed_pos = calc_draw_scale_ed_pos(p_Width, p_Height);
-    int2 font_st_pos;
-
-    float gray_cv;
-    float3 out = rgb_in;
-
-    float3 line_color = to_float3(st_luminance_pq*0.999, st_luminance_pq*0.999, st_luminance_pq*0.999);
-
-    // draw horizontal line for scale
     int2 scale_st_pos;
     int2 scale_ed_pos;
     int scale_edge_len = int(_round(float(ed_pos.x - st_pos.x) * scale_h_rate));
@@ -157,6 +103,35 @@ __DEVICE__ float3 draw_scale_text(int p_Width, int p_Height, int p_X, int p_Y, f
         scale_ed_pos.y = scale_ed_pos.y + 1;  // To make the line thicker
         draw_rectangle_int(p_Width, p_Height, p_X, p_Y, &out, scale_st_pos, scale_ed_pos, &line_color);
     }
+
+    // draw lamp pattern
+    if((st_pos.x <= p_X) && (p_X < ed_pos.x)){
+        if((st_pos.y <= p_Y) && (p_Y < ed_pos.y)){
+            gray_cv = (float(p_Y) - st_pos.y) / (ed_pos.y - st_pos.y);
+            gray_cv = (pq_10000_cv - pq_100_cv) * gray_cv + pq_100_cv;
+            out.x = gray_cv;
+            out.y = gray_cv;
+            out.z = gray_cv;
+        }
+    }
+
+    return out;
+}
+
+
+__DEVICE__ float3 draw_scale_text(int p_Width, int p_Height, int p_X, int p_Y, float3 rgb_in)
+{
+    int2 st_pos = calc_draw_scale_st_pos(p_Width, p_Height);
+    int2 ed_pos = calc_draw_scale_ed_pos(p_Width, p_Height);
+    int2 font_st_pos;
+    int2 scale_st_pos;
+    int2 scale_ed_pos;
+    int scale_edge_len = int(_round(float(ed_pos.x - st_pos.x) * scale_h_rate));
+    scale_st_pos.x = st_pos.x - scale_edge_len;
+    scale_ed_pos.x = ed_pos.x + scale_edge_len;
+
+    float gray_cv;
+    float3 out = rgb_in;
 
     // draw text
     int r_height = int(_round(float(p_Height) * font_size_rate));
@@ -259,7 +234,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
 
     // add scale text
     if(show_scale){
-        out = draw_scale_text(p_Width, p_Height, p_X, p_Y, out, st_luminance_pq);
+        out = draw_scale_text(p_Width, p_Height, p_X, p_Y, out);
     }
     else{
         out = out;
