@@ -1048,6 +1048,65 @@ def create_jzazbz_gamut_boundary_lut_type2(
     np.save(fname, np.float32(lut))
 
 
+def calc_chroma_boundary_specific_ligheness_jzazbz_method_c(
+        lch, cs_name, peak_luminance, c0):
+    """
+    Method C. Plese see my blog listed below
+    https://trev16.hatenablog.com/entry/2021/11/06/161810
+
+    This function use the result value of the method_b (type2)
+    Therefore you need to create lch array using method b (type2) in advance.
+
+    Parameters
+    ----------
+    lch : ndarray
+        lightness, chroma, hue array
+    cs_name : string
+        A color space name. ex. "ITU-R BT.709", "ITU-R BT.2020"
+    peak_luminance : float
+        A peak luminance.
+        If you're expecting full spec HDR, set `peak_luminance` to 10000.
+    c0 : float
+        A length of the first interval.
+        `c0 = JZAZBZ_CHROMA_MAX / (chroma_sample - 1)`
+
+    Examples
+    --------
+    >>> 
+    """
+    # lch --> rgb
+
+    jj = lch[..., 0]
+    chroma_init = lch[..., 1]
+    hue = np.deg2rad(lch[..., 2])
+
+    trial_num = 24
+
+    r_val = chroma_init
+
+    for t_idx in range(trial_num):
+        aa = r_val * np.cos(hue)
+        bb = r_val * np.sin(hue)
+        jzazbz = tstack((jj, aa, bb))
+        large_xyz = jzazbz_to_large_xyz(jzazbz)
+        rgb_luminance = XYZ_to_RGB(
+            large_xyz, cs.D65, cs.D65,
+            RGB_COLOURSPACES[cs_name].matrix_XYZ_to_RGB)
+
+        ng_idx = is_out_of_gamut_rgb(rgb=rgb_luminance/peak_luminance)
+        ok_idx = np.logical_not(ng_idx)
+        add_sub = c0 / (2 ** (t_idx))
+        r_val[ok_idx] = r_val[ok_idx] + add_sub
+        r_val[~ok_idx] = r_val[~ok_idx] - add_sub
+
+    zero_idx = (chroma_init <= 0)
+    r_val[zero_idx] = 0.0
+
+    jzczhz = tstack([jj, r_val, np.rad2deg(hue)])
+
+    return jzczhz
+
+
 def thread_wrapper_create_jzazbz_gamut_boundary_lut_type3(args):
     calc_chroma_boundary_specific_ligheness_jzazbz_type3(**args)
 
