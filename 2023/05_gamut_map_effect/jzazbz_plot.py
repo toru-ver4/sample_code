@@ -17,6 +17,7 @@ from create_gamut_booundary_lut import create_jzazbz_gamut_boundary_lut_type2,\
     make_jzazbz_gb_lut_fname_methodb_b, make_jzazbz_gb_lut_fname_method_c,\
     calc_chroma_boundary_specific_ligheness_jzazbz_method_c,\
     JZAZBZ_CHROMA_MAX
+from jzazbz_azbz_czhz_plot import plot_cj_plane_with_interpolation
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -89,8 +90,9 @@ def debug_plot_jzazbz(
         luminance=luminance)
 
 
-def create_jzazbz_cl_plane():
+def create_jzazbz_cl_plane_and_plot():
     hue_sample = 4096
+    hue_sample_intp = 361
     lightness_sample = 1024
     chroma_sample = 1024
     color_space_name = cs.BT2020
@@ -99,8 +101,12 @@ def create_jzazbz_cl_plane():
         hue_sample=hue_sample, lightness_sample=lightness_sample,
         chroma_sample=chroma_sample, color_space_name=color_space_name,
         luminance=luminance)
+    plot_cj_plane_with_interpolation(
+        hue_sample=hue_sample, lightness_sample=lightness_sample,
+        h_num_intp=hue_sample_intp, color_space_name=color_space_name,
+        luminance=luminance)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    create_jzazbz_cl_plane()
+    create_jzazbz_cl_plane_and_plot()
