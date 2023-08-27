@@ -11,7 +11,7 @@ plot補助ツール群
 
 """
 import matplotlib
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 
 import numpy as np
 from matplotlib import ticker
