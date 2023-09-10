@@ -22,6 +22,7 @@ import numpy as np
 import colour
 
 # NAME
+BT709 = ""
 GAMMA24 = 'Gamma 2.4'
 GAMMA35 = 'Gamma 3.5'
 ST2084 = 'SMPTE ST2084'
@@ -60,7 +61,7 @@ dlog_max = 41.99939267086707
 
 REF_WHITE_LUMINANCE = 100
 
-MAX_VALUE = {GAMMA24: 1.0, GAMMA35: 1.0, SRGB: 1.0,
+MAX_VALUE = {GAMMA24: 1.0, GAMMA35: 1.0, SRGB: 1.0, BT709: 1.0,
              ST2084: 10000, HLG: 1000,
              VLOG_IRE: vlog_ire_max, VLOG: vlog_ref_max,
              LOGC: logc_max,
@@ -72,6 +73,7 @@ MAX_VALUE = {GAMMA24: 1.0, GAMMA35: 1.0, SRGB: 1.0,
 PEAK_LUMINANCE = {GAMMA24: REF_WHITE_LUMINANCE,
                   GAMMA35: REF_WHITE_LUMINANCE,
                   SRGB: REF_WHITE_LUMINANCE,
+                  BT709: REF_WHITE_LUMINANCE,
                   ST2084: 10000,
                   HLG: 1000,
                   VLOG_IRE: vlog_ire_max * REF_WHITE_LUMINANCE,
@@ -120,6 +122,8 @@ def oetf(x, name=GAMMA24):
         y = (x * MAX_VALUE[name]) ** (1/3.5)
     elif name == SRGB:
         y = colour.models.eotf_inverse_sRGB(x * MAX_VALUE[name])
+    elif name == BT709:
+        y = colour.models.oetf_BT709(x * MAX_VALUE[name])
     elif name == HLG:
         y = colour.models.eotf_inverse_HLG_BT2100(x * MAX_VALUE[name])
     elif name == ST2084:
@@ -219,6 +223,8 @@ def eotf(x, name=GAMMA24):
         y = x ** 3.5
     elif name == SRGB:
         y = colour.models.eotf_sRGB(x)
+    elif name == BT709:
+        y = colour.models.oetf_inverse_BT709(x) / MAX_VALUE[name]
     elif name == ST2084:
         # fix me!
         y = colour.models.eotf_ST2084(x) / MAX_VALUE[name]
