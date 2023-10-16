@@ -90,6 +90,11 @@ ENV/
 env.bak/
 venv.bak/
 
+# Rye?
+pyproject.toml
+requirements-dev.lock
+requirements.lock
+
 # Spyder project settings
 .spyderproject
 .spyproject
