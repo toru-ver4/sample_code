@@ -8,15 +8,17 @@ import os
 
 # import third-party libraries
 import numpy as np
-from colour import xy_to_xyY, xyY_to_XYZ
+from colour import xy_to_xyY, xyY_to_XYZ, LUT3D, write_LUT
 from colour.io import write_image, read_image
 from colour.utilities import tstack
+from colour.models import eotf_sRGB, log_encoding_ARRILogC4, \
+    log_encoding_SLog3, oetf_ARIBSTDB67, eotf_inverse_ST2084, \
+    oetf_inverse_ARIBSTDB67
 
 # import my libraries
 import color_space as cs
 import test_pattern_generator2 as tpg
 import plot_utility as pu
-import transfer_functions as tf
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -32,21 +34,48 @@ EXP_RANGE = 12
 EXP_REF_VAL = 0.18
 
 
-def create_gamut_check_pattern():
-    x_min = -0.1
-    x_max = 1.1
-    y_min = -0.1
-    y_max = 1.1
-    width = 1920
-    height = 1080
-    x = np.linspace(x_min, x_max, width)
-    y = np.linspace(y_min, y_max, height)
-    xx, yy = np.meshgrid(x, y)
-    xy = tstack([xx, yy])
-    xyY = xy_to_xyY(xy, 0.001)
-    large_xyz = xyY_to_XYZ(xyY)
-    rgb_709 = cs.large_xyz_to_rgb(xyz=large_xyz, color_space_name=cs.BT709)
-    write_image(rgb_709, "./img/gamut_check_pattern.exr")
+def log_encoding_apple_log(x):
+    """
+    Scence linear to Apple Log.
+
+    Parameters
+    ----------
+    x : ndarray
+        A scene linear light (1.0 is SDR diffuse white)
+
+    Examples
+    --------
+    >>> log_encoding_apple_log(0.18)
+    0.488271418052
+
+    Note
+    ----
+    Valid range of `x` is from 2^-12 to 2^12
+    """
+    lut_1d = np.load("./secret/apple_log_encode_lut.npy")
+    y = np.interp(x, xp=lut_1d[..., 0], fp=lut_1d[..., 1])
+
+    return y
+
+
+def log_decoding_apple_log(x):
+    """
+    Scence Apple Log to linear.
+
+    Parameters
+    ----------
+    x : ndarray
+        Apple Log value
+
+    Examples
+    --------
+    >>> log_decoding_apple_log(0.488271418052)
+    0.179995837368
+    """
+    lut_1d = np.load("./secret/apple_log_decode_lut.npy")
+    y = np.interp(x, xp=lut_1d[..., 0], fp=lut_1d[..., 1])
+
+    return y
 
 
 def create_test_pattern_for_verify_on_Resolve():
@@ -194,39 +223,63 @@ def save_apple_log_as_1dlut():
     np.save("./secret/apple_log_decode_lut.npy", lut)
 
 
-def log_encoding_apple_log(x):
+def create_el_zone_3dlut(
+        decode_func=log_decoding_apple_log, fname_prefix="Apple_Log"):
     """
-    Scence linear to Apple Log.
-
-    Parameters
-    ----------
-    x : ndarray
-        A scene linear light (1.0 is SDR diffuse white)
-
-    None
-    ----
-    valid range of `x` is from 2^-12 to 2^12
+    A test implementation of EL Zone System.
+    https://www.elzonesystem.com/
     """
-    lut_1d = np.load("./secret/apple_log_encode_lut.npy")
-    y = np.interp(x, xp=lut_1d[..., 0], fp=lut_1d[..., 1])
+    def rgb_to_y_bt2020(rgb):
+        y = rgb[..., 0] * 0.2627 + rgb[..., 1] * 0.6780 + rgb[..., 2] * 0.0593
+        return y
 
-    return y
+    gray18 = 0.18
+    lut3d_num_of_grid = 65
+    exp_range = 7
+    stops_list = [
+        -7, -6, -5, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 5, 6, 7]
+    color_list_8bit = [
+        [3, 3, 3], [98, 71, 155], [158, 126, 184], [24, 116, 167],
+        [39, 174, 228], [27, 168, 75], [93, 187, 71], [148, 200, 64],
+        [144, 140, 135], [251, 232, 0], [255, 248, 166], [244, 112, 42],
+        [247, 170, 71], [239, 28, 38], [229, 126, 140], [243, 190, 192],
+        [255, 255, 255]
+    ]
+    color_list_linear = eotf_sRGB(np.array(color_list_8bit) / 255)
+    color_list_log = color_list_linear ** (1/2.4)
 
+    log_value = LUT3D.linear_table(lut3d_num_of_grid)
+    out_lut = np.zeros_like(log_value)
+    linear = decode_func(log_value)
+    linear_y = rgb_to_y_bt2020(linear)
 
-def log_decoding_apple_log(x):
-    """
-    Scence Apple Log to linear.
+    for idx, stops in enumerate(stops_list):
+        if stops == -exp_range:
+            upper_diff = stops_list[idx + 1] - stops_list[idx]
+            high_stops = stops + upper_diff / 2
+            low_stops = -20
+        elif stops == exp_range:
+            lower_diff = stops_list[idx] - stops_list[idx - 1]
+            high_stops = 20
+            low_stops = stops - lower_diff / 2
+        else:
+            upper_diff = stops_list[idx + 1] - stops_list[idx]
+            lower_diff = stops_list[idx] - stops_list[idx - 1]
+            high_stops = stops + upper_diff / 2
+            low_stops = stops - lower_diff / 2
+        low_value = gray18 * (2 ** low_stops)
+        high_value = gray18 * (2 ** high_stops)
+        # print(f"{stops}, {low_stops}, {high_stops}, {low_value}, {high_value}")
 
-    Parameters
-    ----------
-    x : ndarray
-        Apple Log value 
+        t_idx = ((low_value <= linear_y) & (linear_y < high_value))
+        out_lut[t_idx] = color_list_log[idx]
 
-    """
-    lut_1d = np.load("./secret/apple_log_decode_lut.npy")
-    y = np.interp(x, xp=lut_1d[..., 0], fp=lut_1d[..., 1])
+    info_txt = f"EL Zone System for {fname_prefix}"
+    lut_fname = f"./lut/EL_Zone_System_for_{fname_prefix}_"
+    lut_fname += f"{lut3d_num_of_grid}-grid_BT1886.cube"
+    lut3d = LUT3D(table=out_lut, name=info_txt)
 
-    return y
+    write_LUT(lut3d, lut_fname)
 
 
 if __name__ == '__main__':
@@ -238,4 +291,7 @@ if __name__ == '__main__':
     # debug_plot_apple_log_encoding()
     # debug_plot_apple_log_decoding()
 
-    create_gamut_check_pattern()
+    create_el_zone_3dlut(
+        decode_func=oetf_inverse_ARIBSTDB67, fname_prefix="HLG")
+    create_el_zone_3dlut(
+        decode_func=log_decoding_apple_log, fname_prefix="Apple_Log")
