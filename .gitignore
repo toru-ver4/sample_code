@@ -226,5 +226,6 @@ temporary/**/**
 2023/05_gamut_map_effect/debug/**
 2023/06_Investigate_PS5/**/*.webm
 2023/06_Investigate_PS5/**/*.mp4
-2023/11_Study_Apple_Log/secret/**
-2023/11_Study_Apple_Log/lut/**
+2023/11_Study_Apple_Log/secret/*.exr
+2023/11_Study_Apple_Log/secret/*.npy
+2023/11_Study_Apple_Log/lut/*.cube
