@@ -8,7 +8,7 @@ import os
 
 # import third-party libraries
 import numpy as np
-from colour import xy_to_xyY, xyY_to_XYZ, LUT3D, write_LUT
+from colour import LUT3D, write_LUT
 from colour.io import write_image, read_image
 from colour.utilities import tstack
 from colour.models import eotf_sRGB, log_encoding_ARRILogC4, \
@@ -16,7 +16,6 @@ from colour.models import eotf_sRGB, log_encoding_ARRILogC4, \
     oetf_inverse_ARIBSTDB67
 
 # import my libraries
-import color_space as cs
 import test_pattern_generator2 as tpg
 import plot_utility as pu
 
@@ -228,6 +227,9 @@ def create_el_zone_3dlut(
     """
     A test implementation of EL Zone System.
     https://www.elzonesystem.com/
+
+    Please note that this is not an official implementation.
+    It's an unofficial version based on my own interpretation.
     """
     def rgb_to_y_bt2020(rgb):
         y = rgb[..., 0] * 0.2627 + rgb[..., 1] * 0.6780 + rgb[..., 2] * 0.0593
@@ -282,6 +284,124 @@ def create_el_zone_3dlut(
     write_LUT(lut3d, lut_fname)
 
 
+def plot_apple_log_encodings():
+    num_of_sample = 43
+    ref_val = 0.18
+    exp_range = 8
+    x = tpg.get_log2_x_scale(
+        sample_num=num_of_sample, ref_val=ref_val,
+        min_exposure=-exp_range, max_exposure=exp_range)
+    y = log_encoding_apple_log(x)
+    y_10bit = y * 1023
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Apple Log Encoding Characteristics",
+        graph_title_size=None,
+        xlabel=r"Stops from 18% gray",
+        ylabel="Code Value (10-bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=[-30, 1053],
+        xtick=None,
+        ytick=[x * 64 for x in range(16)] + [1023],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.set_xscale('log', base=2)
+    ax1.set_xticks([2**i for i in range(-exp_range, exp_range+1)])
+    ax1.set_xticklabels([str(i) for i in range(-exp_range, exp_range+1)])
+    # ax1.set_xticks([-8 + x for x in range(exp_range * 2 + 1)])
+    ax1.plot(x/ref_val, y_10bit, '-o', color=pu.RED, label="Apple Log")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', show=True,
+        save_fname="./img/Apple_Log_Encode.png")
+
+
+def plot_log_encodings():
+    def to_10bit(x, clip=False):
+        if clip:
+            return np.round(np.clip(x, 0.0, 1.0) * 1023).astype(np.uint16)
+        else:
+            return np.round(x * 1023).astype(np.uint16)
+
+    num_of_sample = 43
+    ref_val = 0.18
+    exp_range = 12
+    x = tpg.get_log2_x_scale(
+        sample_num=num_of_sample, ref_val=ref_val,
+        min_exposure=-exp_range, max_exposure=exp_range)
+    apple_log = log_encoding_apple_log(x)
+    apple_log_10bit = to_10bit(apple_log)
+    logc4 = log_encoding_ARRILogC4(x)
+    logc4_10bit = to_10bit(logc4)
+    slog3 = log_encoding_SLog3(x)
+    slog3_10_bit = to_10bit(slog3)
+    hlg = oetf_ARIBSTDB67(x)
+    hlg_10bit = np.round((hlg * 219 + 16) * 4).astype(np.uint16)
+    st2084 = eotf_inverse_ST2084(x*100)
+    st2084_10bit = to_10bit(st2084)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Log Encoding Characteristics",
+        graph_title_size=None,
+        xlabel=r"Stops from 18% gray",
+        ylabel="Code Value (10-bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=[-30, 1053],
+        xtick=None,
+        ytick=[x * 64 for x in range(16)] + [1023],
+        xtick_size=None, ytick_size=None,
+        linewidth=2,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.set_xscale('log', base=2)
+    ax1.set_xticks([2**i for i in range(-exp_range, exp_range+1, 2)])
+    ax1.set_xticklabels([str(i) for i in range(-exp_range, exp_range+1, 2)])
+
+    ax1.plot(
+        x/ref_val, st2084_10bit, '-o', color=pu.ORANGE,
+        label="ST 2084 (Inverse EOTF)")
+    ax1.plot(
+        x/ref_val, slog3_10_bit, '-o', color=pu.BLUE, label="S-Log3")
+    ax1.plot(
+        x/ref_val, logc4_10bit, '-o', color=pu.GREEN,
+        label="LogC4 (Full Range)")
+    ax1.plot(
+        x/ref_val, hlg_10bit, '-o', color=pu.BROWN, label="HLG (ARIB STD-B67)")
+    ax1.plot(
+        x/ref_val, apple_log_10bit, '-o', color=pu.RED, label="Apple Log")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', show=True,
+        save_fname="./img/Log_Encodes.png")
+
+
+def create_tp_for_verify_el_zone_system_lut_apple_log():
+    width = 1920
+    height = 1080
+    num_of_sample = width
+    ref_val = 0.18
+    exp_range = 8
+    x = tpg.get_log2_x_scale(
+        sample_num=num_of_sample, ref_val=ref_val,
+        min_exposure=-exp_range, max_exposure=exp_range)
+    y = log_encoding_apple_log(x)
+    img = tpg.h_mono_line_to_img(y, height)
+    fname = "./img/src_apple_log_log2_"
+    fname += f"-{exp_range}_to_{exp_range}_stops.exr"
+    print(fname)
+    write_image(img, fname)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_test_pattern_for_apple_log_encoding_analysis()
@@ -291,7 +411,11 @@ if __name__ == '__main__':
     # debug_plot_apple_log_encoding()
     # debug_plot_apple_log_decoding()
 
-    create_el_zone_3dlut(
-        decode_func=oetf_inverse_ARIBSTDB67, fname_prefix="HLG")
-    create_el_zone_3dlut(
-        decode_func=log_decoding_apple_log, fname_prefix="Apple_Log")
+    # plot_apple_log_encodings()
+    # plot_log_encodings()
+
+    # create_el_zone_3dlut(
+    #     decode_func=oetf_inverse_ARIBSTDB67, fname_prefix="HLG")
+    # create_el_zone_3dlut(
+    #     decode_func=log_decoding_apple_log, fname_prefix="Apple_Log")
+    # create_tp_for_verify_el_zone_system_lut_apple_log()
