@@ -410,7 +410,9 @@ class TpgDraw:
 
         # 今回の処理では必要ないデータもあるので xyY と whitepoint だけ抽出
         # -------------------------------------------------------------
-        _name, data, whitepoint = colour_checker_param
+        # _name, data, whitepoint = colour_checker_param
+        data = colour_checker_param.data
+        whitepoint = colour_checker_param.illuminant
         temp_xyY = []
         for key in data.keys():
             temp_xyY.append(data[key])

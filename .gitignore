@@ -229,3 +229,4 @@ temporary/**/**
 2023/11_Study_Apple_Log/secret/*.exr
 2023/11_Study_Apple_Log/secret/*.npy
 2023/11_Study_Apple_Log/lut/*.cube
+2023/10_Study_Gain_Map_HDR/gain_map/*.png
