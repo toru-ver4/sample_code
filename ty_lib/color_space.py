@@ -342,19 +342,19 @@ def rgb_to_oklab(rgb_linear, color_space_name, xyz_white=D65, rgb_white=D65):
 
 
 def large_xyz_to_rgb(
-        xyz, color_space_name, xyz_white=D65, rgb_white=D65):
+        xyz, color_space_name, rgb_white=D65):
     rgb_linear = XYZ_to_RGB(
-        xyz, xyz_white, rgb_white,
-        RGB_COLOURSPACES[color_space_name].matrix_XYZ_to_RGB)
+        XYZ=xyz, colourspace=RGB_COLOURSPACES[color_space_name],
+        illuminant=rgb_white, chromatic_adaptation_transform=None)
 
     return rgb_linear
 
 
 def rgb_to_large_xyz(
-        rgb, color_space_name, rgb_white=D65, xyz_white=D65):
+        rgb, color_space_name, xyz_white=D65):
     large_xyz = RGB_to_XYZ(
-        rgb, rgb_white, xyz_white,
-        RGB_COLOURSPACES[color_space_name].matrix_RGB_to_XYZ)
+        RGB=rgb, colourspace=RGB_COLOURSPACES[color_space_name],
+        rgb_white=xyz_white, chromatic_adaptation_transform=None)
 
     return large_xyz
 
