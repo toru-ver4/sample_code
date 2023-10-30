@@ -46,6 +46,18 @@ def linearize_input_image(fname, tf_name=tf.ST2084, cs_name=cs.P3_D65):
     return linear_img
 
 
+def non_linearize_output_image(
+        img_linear, tf_name=tf.ST2084, cs_name=cs.P3_D65):
+    large_xyz = cs.rgb_to_large_xyz(
+        rgb=img_linear, color_space_name=GAIN_MAP_CS_NAME)
+    rgb = cs.large_xyz_to_rgb(
+        xyz=large_xyz, color_space_name=cs_name)
+    rgb_non_linear = tf.oetf_from_luminance(
+        rgb * tf.REF_WHITE_LUMINANCE, tf_name)
+
+    return rgb_non_linear
+
+
 def create_gain_map_fname(sdr_fname, hdr_fname):
     """
     Examples
@@ -94,6 +106,7 @@ def create_log2_gain_map_image(sdr_linear, hdr_linear):
     gain_map = np.log2((hdr_linear + K_HDR)/(sdr_linear + K_SDR))
     min_val = calc_min_val_color(gain_map=gain_map)
     max_val = calc_max_val_color(gain_map=gain_map)
+    print(f"min_val, max_val = {min_val} {max_val}")
 
     gain_map = (gain_map - min_val) / (max_val - min_val)
 
@@ -105,11 +118,13 @@ def save_gain_map_img(
     gain_map_metadata_fname = create_gain_map_metadata_fname(
         gain_map_fname=gain_map_fname)
 
-    # apply oetf
+    # apply oetf [option]
     gain_map_img_log2 = gain_map_img_log2 ** (1/GAIN_MAP_ENCODE_GAMMA)
 
     # save
-    pass
+    tpg.img_wirte_float_as_16bit_int(gain_map_fname, gain_map_img_log2)
+    metadata = np.array([min_val, max_val])
+    np.save(gain_map_metadata_fname, metadata)
 
 
 def create_and_save_gain_map(
@@ -118,7 +133,6 @@ def create_and_save_gain_map(
         sdr_cs_name=cs.P3_D65, hdr_cs_name=cs.P3_D65,
         sdr_tf_name=tf.GAMMA24, hdr_tf_name=tf.ST2084):
 
-    # define
     gain_map_fname = create_gain_map_fname(
         sdr_fname=sdr_fname, hdr_fname=hdr_fname)
 
@@ -138,21 +152,82 @@ def create_and_save_gain_map(
         min_val=min_val, max_val=max_val, gain_map_fname=gain_map_fname)
 
 
-def create_intermediate_hdr_image():
-    pass
+def create_intermediate_hdr_image(
+        base_sdr_img, gain_map, min_val, max_val):
+    gg = gain_map * (max_val - min_val) + min_val
+    hdr_img = (base_sdr_img + K_SDR) * (2 ** gg) - K_HDR
+
+    return hdr_img
+
+
+def calc_weight_w(hdr_white, sdr_white, min_val, max_val):
+    """
+    Paramters
+    ---------
+    hdr_white : float
+        HDR peak luminance (e.g. 1000 nits)
+    sdr_white : float
+        SDR white luminance (e.g. 203 nits)
+    min_val : float
+        A minimum value of the gain map (log2 space)
+    max_val : float
+        A maximum value of the gain map (log2 space)
+    """
+    hh = np.log2(hdr_white/sdr_white)
+    ff = (hh - min_val) / (max_val - min_val)
+
+    return np.clip(ff, 0.0, 1.0)
+
+
+def create_out_hdr_fname(
+        sdr_fname, display_sdr_white_nit, display_hdr_white_nit):
+    base_dir = "/work/overuse/2023/10_Gain_Map_HDR"
+    basename = Path(sdr_fname).name
+    fname = f"{base_dir}/{basename}_{display_sdr_white_nit}_"
+    fname += f"{display_hdr_white_nit}.png"
+
+    return fname
 
 
 def apply_gain_map(
         sdr_fname="./img/SDR_TyTP_P3D65.png",
-        gain_map_img="./img/gain_map_SDR_TyTP_P3D65_HDR_TyTP_P3D65.png",
-        sdr_white_nit=203, hdr_white_nit=10000):
+        sdr_cs_name=cs.P3_D65, sdr_tf_name=tf.GAMMA24,
+        hdr_cs_name=cs.P3_D65, hdr_tf_name=tf.ST2084,
+        gain_map_img_fname="./img/gain_map_SDR_TyTP_P3D65_HDR_TyTP_P3D65.png",
+        display_sdr_white_nit=203, display_hdr_white_nit=10000):
     """
     2種類の出力をするかもしれない。
     1つは正直ベースにパラメータをファイル名に埋め込んだ版。
     もう1つは YouTube アップロード用にパラメータは消して連番ファイルにした版。
     なお、パラメータは文字列として画像に焼く
     """
-    pass
+    metadata_fname = create_gain_map_metadata_fname(gain_map_img_fname)
+    metadata = np.load(metadata_fname)
+    min_val, max_val = metadata
+    print(f"min_val, max_val = {min_val} {max_val}")
+
+    sdr_liner = linearize_input_image(
+        fname=sdr_fname, tf_name=sdr_tf_name, cs_name=sdr_cs_name)
+    ww = calc_weight_w(
+        hdr_white=display_hdr_white_nit, sdr_white=display_sdr_white_nit,
+        min_val=min_val, max_val=max_val)
+
+    gain_map_img = tpg.img_read_as_float(gain_map_img_fname)
+    gain_map_with_w = gain_map_img * ww
+
+    hdr_img_linear = create_intermediate_hdr_image(
+        base_sdr_img=sdr_liner, gain_map=gain_map_with_w,
+        min_val=min_val, max_val=max_val)
+
+    hdr_img_non_linear = non_linearize_output_image(
+        img_linear=hdr_img_linear, tf_name=hdr_tf_name, cs_name=hdr_cs_name)
+    fname = create_out_hdr_fname(
+        sdr_fname=sdr_fname,
+        display_sdr_white_nit=display_sdr_white_nit,
+        display_hdr_white_nit=display_hdr_white_nit)
+
+    print(fname)
+    tpg.img_wirte_float_as_16bit_int(fname, hdr_img_non_linear)
 
 
 def debug_func():
@@ -167,13 +242,15 @@ def debug_func():
         sdr_cs_name=sdr_cs_name, hdr_cs_name=hdr_cs_name,
         sdr_tf_name=sdr_tf_name, hdr_tf_name=hdr_tf_name)
 
-    sdr_white_nit = 203
-    hdr_white_nit = 1000
-    gain_map_img_name = create_gain_map_fname(
+    display_sdr_white_nit = 100
+    display_hdr_white_nit = 1000
+    gain_map_img_fname = create_gain_map_fname(
         sdr_fname=sdr_fname, hdr_fname=hdr_fname)
     apply_gain_map(
-        sdr_fname=sdr_fname, gain_map_img=gain_map_img_name,
-        sdr_white_nit=sdr_white_nit, hdr_white_nit=hdr_white_nit)
+        sdr_fname=sdr_fname, gain_map_img_fname=gain_map_img_fname,
+        sdr_cs_name=sdr_cs_name, sdr_tf_name=sdr_tf_name,
+        display_sdr_white_nit=display_sdr_white_nit,
+        display_hdr_white_nit=display_hdr_white_nit)
 
 
 if __name__ == '__main__':

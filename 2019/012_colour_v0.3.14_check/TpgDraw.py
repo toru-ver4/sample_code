@@ -183,6 +183,15 @@ class TpgDraw:
         fg_color = tuple([text_video_level_8bit for x in range(3)])
         return fg_color
 
+    def get_bg_color_for_pillow(self):
+        """
+        Pillow 用 に 8bit精度のFG COLORを算出する
+        """
+        text_video_level_8bit\
+            = int(self.bg_code_value / self.convert_to_8bit_coef)
+        bg_color = tuple([text_video_level_8bit for x in range(3)])
+        return bg_color
+
     def convert_from_pillow_to_numpy(self, img):
         img = np.uint16(np.asarray(img)) * self.convert_to_8bit_coef
 
@@ -204,7 +213,9 @@ class TpgDraw:
 
         # かなり汚い実装。0x00 で無いピクセルのインデックスを抽出し、
         # そのピクセルのみを元の画像に上書きするという処理をしている。
-        text_index = txt_img > 0
+        bg_code_value\
+            = self.get_bg_color_for_pillow() * self.convert_to_8bit_coef
+        text_index = txt_img > bg_code_value[0]
         temp_img = self.img[st_pos_v:ed_pos_v, st_pos_h:ed_pos_h]
         temp_img[text_index] = txt_img[text_index]
         self.img[st_pos_v:ed_pos_v, st_pos_h:ed_pos_h] = temp_img
@@ -223,8 +234,8 @@ class TpgDraw:
         text_width = text_img_size[0]
         text_height = text_img_size[1]
         fg_color = self.get_fg_color_for_pillow()
-        bg_coor = (0x00, 0x00, 0x00)
-        txt_img = Image.new("RGB", (text_width, text_height), bg_coor)
+        bg_color = self.get_bg_color_for_pillow()
+        txt_img = Image.new("RGB", (text_width, text_height), bg_color)
         draw = ImageDraw.Draw(txt_img)
         font = ImageFont.truetype("./fonts/NotoSansMonoCJKjp-Regular.otf",
                                   font_size)
@@ -490,7 +501,8 @@ class TpgDraw:
         st_pos_v = int(self.info_text_st_pos_v_coef * self.img_height)
         for text in text_list:
             pos = (st_pos_h, st_pos_v)
-            text_img_size = (self.img_width - st_pos_h, text_height)
+            # text_img_size = (self.img_width - st_pos_h, text_height)
+            text_img_size = (self.img_width // 4, text_height)
             self.merge_each_spec_text(pos, font_size, text_img_size, text)
             st_pos_v += text_height
 
