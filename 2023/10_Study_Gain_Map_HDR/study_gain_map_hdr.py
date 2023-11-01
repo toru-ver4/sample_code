@@ -14,6 +14,7 @@ import numpy as np
 import test_pattern_generator2 as tpg
 import transfer_functions as tf
 import color_space as cs
+import plot_utility as pu
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -106,9 +107,16 @@ def create_log2_gain_map_image(sdr_linear, hdr_linear):
     gain_map = np.log2((hdr_linear + K_HDR)/(sdr_linear + K_SDR))
     min_val = calc_min_val_color(gain_map=gain_map)
     max_val = calc_max_val_color(gain_map=gain_map)
-    print(f"min_val, max_val = {min_val} {max_val}")
 
+    # normalize
+    # for idx in range(3):
+    #     gain_map[..., idx]\
+    #         = (gain_map[..., idx] - min_val[idx])\
+    #         / (max_val[idx] - min_val[idx])
     gain_map = (gain_map - min_val) / (max_val - min_val)
+
+    print(f"min_val, max_val = {min_val} {max_val}")
+    print(f"gain_map_before_normlize={gain_map[830, 62]}")
 
     return gain_map, min_val, max_val
 
@@ -153,9 +161,17 @@ def create_and_save_gain_map(
 
 
 def create_intermediate_hdr_image(
-        base_sdr_img, gain_map, min_val, max_val):
+        base_sdr_img, gain_map, min_val, max_val, weight_w):
     gg = gain_map * (max_val - min_val) + min_val
-    hdr_img = (base_sdr_img + K_SDR) * (2 ** gg) - K_HDR
+    gg = gg * weight_w
+    # hdr_img = (base_sdr_img + K_SDR) * (2 ** gg) - K_HDR
+
+    hdr_img = np.zeros_like(base_sdr_img)
+    for ii in range(3):
+        hdr_img[..., ii]\
+            = (base_sdr_img[..., ii] + K_SDR) * (2 ** gg[..., ii]) - K_HDR
+
+    hdr_img[hdr_img < 0] = 0.0
 
     return hdr_img
 
@@ -213,10 +229,9 @@ def apply_gain_map(
         min_val=min_val, max_val=max_val)
 
     gain_map_img = tpg.img_read_as_float(gain_map_img_fname)
-    gain_map_with_w = gain_map_img * ww
 
     hdr_img_linear = create_intermediate_hdr_image(
-        base_sdr_img=sdr_liner, gain_map=gain_map_with_w,
+        base_sdr_img=sdr_liner, gain_map=gain_map_img, weight_w=ww,
         min_val=min_val, max_val=max_val)
 
     hdr_img_non_linear = non_linearize_output_image(
@@ -243,16 +258,60 @@ def debug_func():
         sdr_tf_name=sdr_tf_name, hdr_tf_name=hdr_tf_name)
 
     display_sdr_white_nit = 100
-    display_hdr_white_nit = 1000
+    display_hdr_white_nit = 100
     gain_map_img_fname = create_gain_map_fname(
         sdr_fname=sdr_fname, hdr_fname=hdr_fname)
     apply_gain_map(
         sdr_fname=sdr_fname, gain_map_img_fname=gain_map_img_fname,
         sdr_cs_name=sdr_cs_name, sdr_tf_name=sdr_tf_name,
+        hdr_cs_name=hdr_cs_name, hdr_tf_name=hdr_tf_name,
         display_sdr_white_nit=display_sdr_white_nit,
         display_hdr_white_nit=display_hdr_white_nit)
+
+
+def plot_weighting_parameter_w():
+    sdr_white = np.linspace(100, 500, 1024)
+    hdr_white = 1000
+    gain_map_max_nits = 600
+    gain_map_max = np.log2(gain_map_max_nits/100)
+    gain_map_min = 0.0
+
+    hh = np.log2(hdr_white / sdr_white)
+    ww = (hh - gain_map_min) / gain_map_max - gain_map_min
+    ww = np.clip(ww, 0.0, 1.0)
+
+    title = f"HDR white = {hdr_white} nits, "
+    title += f"Gain map max = {gain_map_max_nits} nits"
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=title,
+        graph_title_size=None,
+        xlabel="SDR white [nits]",
+        ylabel='Weight parameter "W"',
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(sdr_white, ww, label="W")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right', save_fname=None,
+        show=True)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     debug_func()
+    # plot_weighting_parameter_w()
+    # min = -2.33710495
+    # max = 6.64384191
+    # val = 0.26115816
+    # print(val * (max - min) + min)
