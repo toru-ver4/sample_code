@@ -6,6 +6,7 @@
 # import standard libraries
 import os
 from pathlib import Path
+from multiprocessing import Pool, cpu_count
 
 # import third-party libraries
 import numpy as np
@@ -15,6 +16,7 @@ import test_pattern_generator2 as tpg
 import transfer_functions as tf
 import color_space as cs
 import plot_utility as pu
+import font_control2 as fc2
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -195,12 +197,22 @@ def calc_weight_w(hdr_white, sdr_white, min_val, max_val):
     return np.clip(ff, 0.0, 1.0)
 
 
-def create_out_hdr_fname(
+def create_out_hdr_fname_one_file(
         sdr_fname, display_sdr_white_nit, display_hdr_white_nit):
     base_dir = "/work/overuse/2023/10_Gain_Map_HDR"
     basename = Path(sdr_fname).name
     fname = f"{base_dir}/{basename}_{display_sdr_white_nit}_"
     fname += f"{display_hdr_white_nit}.png"
+
+    return fname
+
+
+def create_out_seq_hdr_fname(
+        sdr_fname, idx=0, prefix="SW-100_HW-10000",
+        base_dir="/work/overuse/2023/10_Gain_Map_HDR"):
+
+    basename = Path(sdr_fname).name
+    fname = f"{base_dir}/{basename}_{prefix}_{idx:04d}.png"
 
     return fname
 
@@ -220,7 +232,7 @@ def apply_gain_map(
     metadata_fname = create_gain_map_metadata_fname(gain_map_img_fname)
     metadata = np.load(metadata_fname)
     min_val, max_val = metadata
-    print(f"min_val, max_val = {min_val} {max_val}")
+    # print(f"min_val, max_val = {min_val} {max_val}")
 
     sdr_liner = linearize_input_image(
         fname=sdr_fname, tf_name=sdr_tf_name, cs_name=sdr_cs_name)
@@ -234,18 +246,10 @@ def apply_gain_map(
         base_sdr_img=sdr_liner, gain_map=gain_map_img, weight_w=ww,
         min_val=min_val, max_val=max_val)
 
-    hdr_img_non_linear = non_linearize_output_image(
-        img_linear=hdr_img_linear, tf_name=hdr_tf_name, cs_name=hdr_cs_name)
-    fname = create_out_hdr_fname(
-        sdr_fname=sdr_fname,
-        display_sdr_white_nit=display_sdr_white_nit,
-        display_hdr_white_nit=display_hdr_white_nit)
-
-    print(fname)
-    tpg.img_wirte_float_as_16bit_int(fname, hdr_img_non_linear)
+    return hdr_img_linear
 
 
-def debug_func():
+def debug_simple_implementation():
     sdr_fname = "./img/SDR_TyTP_P3D65.png"
     hdr_fname = "./img/HDR_tyTP_P3D65.png"
     sdr_cs_name = cs.P3_D65
@@ -261,12 +265,117 @@ def debug_func():
     display_hdr_white_nit = 100
     gain_map_img_fname = create_gain_map_fname(
         sdr_fname=sdr_fname, hdr_fname=hdr_fname)
-    apply_gain_map(
+    hdr_img_linear = apply_gain_map(
         sdr_fname=sdr_fname, gain_map_img_fname=gain_map_img_fname,
         sdr_cs_name=sdr_cs_name, sdr_tf_name=sdr_tf_name,
         hdr_cs_name=hdr_cs_name, hdr_tf_name=hdr_tf_name,
         display_sdr_white_nit=display_sdr_white_nit,
         display_hdr_white_nit=display_hdr_white_nit)
+    hdr_img_non_linear = non_linearize_output_image(
+        img_linear=hdr_img_linear, tf_name=hdr_tf_name, cs_name=hdr_cs_name)
+    fname = create_out_hdr_fname_one_file(
+        sdr_fname=sdr_fname,
+        display_sdr_white_nit=display_sdr_white_nit,
+        display_hdr_white_nit=display_hdr_white_nit)
+    print(fname)
+    tpg.img_wirte_float_as_16bit_int(fname, hdr_img_non_linear)
+
+
+def draw_luminance_info(img, display_sdr_white, display_hdr_white):
+    # create instance
+    font_color = (0.5, 0.5, 0.5)
+    stroke_color = (0.0, 0.0, 0.0)
+    text = f"D_SDR_W: {display_sdr_white} nits\n"
+    text += f"D_HDR_W: {display_hdr_white} nits\n"
+    pos = [60, 30]
+    text_draw_ctrl = fc2.TextDrawControl(
+        text=text, font_color=font_color,
+        font_size=30, font_path=fc2.NOTO_SANS_MONO_REGULAR,
+        stroke_width=0, stroke_fill=stroke_color)
+
+    text_draw_ctrl.draw(img=img, pos=pos)
+
+
+def thread_wrapper_apply_gain_map_seq(args):
+    apply_gain_map_seq(**args)
+
+
+def apply_gain_map_seq(
+        idx, sdr_fname, hdr_fname, output_dir,
+        sdr_cs_name, hdr_cs_name, sdr_tf_name, hdr_tf_name,
+        display_sdr_white_nit, display_hdr_white_nit):
+    gain_map_img_fname = create_gain_map_fname(
+        sdr_fname=sdr_fname, hdr_fname=hdr_fname)
+    hdr_img_linear = apply_gain_map(
+        sdr_fname=sdr_fname, gain_map_img_fname=gain_map_img_fname,
+        sdr_cs_name=sdr_cs_name, sdr_tf_name=sdr_tf_name,
+        hdr_cs_name=hdr_cs_name, hdr_tf_name=hdr_tf_name,
+        display_sdr_white_nit=display_sdr_white_nit,
+        display_hdr_white_nit=display_hdr_white_nit)
+    draw_luminance_info(
+        img=hdr_img_linear, display_sdr_white=display_sdr_white_nit,
+        display_hdr_white=display_hdr_white_nit)
+    hdr_img_non_linear = non_linearize_output_image(
+        img_linear=hdr_img_linear, tf_name=hdr_tf_name, cs_name=hdr_cs_name)
+    fname = create_out_seq_hdr_fname(
+        sdr_fname=sdr_fname, idx=idx, base_dir=output_dir,
+        prefix="SDR_White_100_Fixed")
+    print(fname)
+    tpg.img_wirte_float_as_16bit_int(fname, hdr_img_non_linear)
+
+
+def debug_check_effect_of_weight_w():
+    sdr_fname = "./img/SDR_TyTP_P3D65.png"
+    hdr_fname = "./img/HDR_tyTP_P3D65.png"
+    sdr_cs_name = cs.P3_D65
+    hdr_cs_name = cs.P3_D65
+    sdr_tf_name = tf.GAMMA24
+    hdr_tf_name = tf.ST2084
+    create_and_save_gain_map(
+        sdr_fname=sdr_fname, hdr_fname=hdr_fname,
+        sdr_cs_name=sdr_cs_name, hdr_cs_name=hdr_cs_name,
+        sdr_tf_name=sdr_tf_name, hdr_tf_name=hdr_tf_name)
+
+    display_sdr_white_nit = 100
+    num_of_sample = 512
+    # display_hdr_white_nit_list = np.arange(100, 10001, 1)
+    display_hdr_white_nit_list = tpg.get_log10_x_scale(
+        sample_num=num_of_sample, ref_val=100, min_exposure=0, max_exposure=2)
+    display_hdr_white_nit_list\
+        = np.round(display_hdr_white_nit_list).astype(np.uint16)
+
+    total_process_num = len(display_hdr_white_nit_list)
+    block_process_num = int(cpu_count() / 2 + 0.999)
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+    output_dir = "/work/overuse/2023/10_Gain_Map_HDR/SDR_100"
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            l_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
+            if l_idx >= total_process_num:                         # User
+                break
+            display_hdr_white_nit = display_hdr_white_nit_list[l_idx]
+            d = dict(
+                idx=l_idx, sdr_fname=sdr_fname, hdr_fname=hdr_fname,
+                output_dir=output_dir,
+                sdr_cs_name=sdr_cs_name, hdr_cs_name=hdr_cs_name,
+                sdr_tf_name=sdr_tf_name, hdr_tf_name=hdr_tf_name,
+                display_sdr_white_nit=display_sdr_white_nit,
+                display_hdr_white_nit=display_hdr_white_nit)
+            # apply_gain_map_seq(**d)
+            args.append(d)
+        #     break
+        # break
+        with Pool(block_process_num) as pool:
+            pool.map(thread_wrapper_apply_gain_map_seq, args)
+
+
+def debug_func():
+    # debug_simple_implementation()
+    debug_check_effect_of_weight_w()
+
 
 
 def plot_weighting_parameter_w():
