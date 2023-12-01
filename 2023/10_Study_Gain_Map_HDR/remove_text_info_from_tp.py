@@ -43,7 +43,7 @@ def main_func(fname):
     ed_pos2_v = st_pos2_v + 120
 
     img[st_pos1_v:ed_pos1_v, st_pos1_h:ed_pos1_h] = bg_color
-    img[st_pos2_v:ed_pos2_v, st_pos2_h:ed_pos2_h] = bg_color
+    # img[st_pos2_v:ed_pos2_v, st_pos2_h:ed_pos2_h] = bg_color
 
     tpg.img_wirte_float_as_16bit_int(out_fname, img)
 
@@ -51,7 +51,7 @@ def main_func(fname):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     fname_list = [
-        "./img/org_tp/SDR_TyTP_P3D65.png", "./img/org_tp/HDR_tyTP_P3D65.png"
+        "./img/org_tp/HDR_tyTP_P3D65.png"
     ]
     for fname in fname_list:
         main_func(fname=fname)
