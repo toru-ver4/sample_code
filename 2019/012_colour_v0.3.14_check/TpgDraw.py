@@ -450,6 +450,7 @@ class TpgDraw:
         rgb[rgb > 1.0] = 1.0
 
         point_100nits = 100 / tf.PEAK_LUMINANCE[self.transfer_function]
+        # point_100nits = 203 / tf.PEAK_LUMINANCE[self.transfer_function]
         rgb = tf.oetf(rgb * point_100nits, self.transfer_function)
         rgb = np.uint16(np.round(rgb * self.img_max))
 
