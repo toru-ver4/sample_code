@@ -25,7 +25,7 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-def main_func(fname):
+def remove_hdr_info_text(fname):
     pp = Path(fname)
     out_fname = "./img/" + pp.name
 
@@ -37,21 +37,33 @@ def main_func(fname):
     ed_pos1_h = st_pos1_h + 169
     ed_pos1_v = st_pos1_v + 34
 
-    st_pos2_h = 48
-    st_pos2_v = 626
-    ed_pos2_h = st_pos2_h + 1833
-    ed_pos2_v = st_pos2_v + 120
+    # st_pos2_h = 48
+    # st_pos2_v = 626
+    # ed_pos2_h = st_pos2_h + 1833
+    # ed_pos2_v = st_pos2_v + 120
 
     img[st_pos1_v:ed_pos1_v, st_pos1_h:ed_pos1_h] = bg_color
     # img[st_pos2_v:ed_pos2_v, st_pos2_h:ed_pos2_h] = bg_color
 
+    print(out_fname)
     tpg.img_wirte_float_as_16bit_int(out_fname, img)
+    return out_fname
+
+
+def make_sdr_version_tp(hdr_fname):
+    sdr_fname = hdr_tp_fname.replace("HDR", "SDR")
+    img = tpg.img_read_as_float(hdr_tp_fname)
+    linear = tf.eotf_to_luminance(img, tf.ST2084)
+    ref_white = 203
+    linear[linear > ref_white] = ref_white
+
+    sdr_img = tf.oetf(linear / ref_white, tf.GAMMA24)
+    print(sdr_fname)
+    tpg.img_wirte_float_as_16bit_int(sdr_fname, sdr_img)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    fname_list = [
-        "./img/org_tp/HDR_tyTP_P3D65.png"
-    ]
-    for fname in fname_list:
-        main_func(fname=fname)
+    hdr_tp_fname = remove_hdr_info_text(
+        fname="./img/org_tp/HDR_tyTP_P3D65.png")
+    make_sdr_version_tp(hdr_fname=hdr_tp_fname)
