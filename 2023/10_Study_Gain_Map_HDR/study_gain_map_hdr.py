@@ -287,21 +287,25 @@ def calc_weight_w_ty_v3(hdr_white, sdr_white, min_val, max_val):
 
 
 def create_out_hdr_fname_one_file(
-        sdr_fname, display_sdr_white_nit, display_hdr_white_nit):
+        hdr_fname, display_sdr_white_nit, display_hdr_white_nit):
     base_dir = "/work/overuse/2023/10_Gain_Map_HDR"
-    basename = Path(sdr_fname).name
-    fname = f"{base_dir}/{basename}_{display_sdr_white_nit}_"
+    basename = Path(hdr_fname).name
+    dst_dir_path = Path(f"{base_dir}/{basename}")
+    dst_dir_path.mkdir(parents=True, exist_ok=True)
+    fname = f"{base_dir}/{basename}/{basename}_{display_sdr_white_nit}_"
     fname += f"{display_hdr_white_nit}.png"
 
     return fname
 
 
 def create_out_seq_hdr_fname(
-        sdr_fname, idx=0, prefix="SW-100_HW-10000",
+        hdr_fname, idx=0, prefix="SW-100_HW-10000",
         base_dir="/work/overuse/2023/10_Gain_Map_HDR"):
 
-    basename = Path(sdr_fname).name
-    fname = f"{base_dir}/{basename}_{prefix}_{idx:04d}.png"
+    basename = Path(hdr_fname).stem
+    dst_dir_path = Path(f"{base_dir}/{basename}")
+    dst_dir_path.mkdir(parents=True, exist_ok=True)
+    fname = f"{base_dir}/{basename}/{basename}_{prefix}_{idx:04d}.png"
 
     return fname
 
@@ -349,10 +353,10 @@ def apply_gain_map(
 
 
 def debug_simple_implementation(
+        sdr_fname="./img/SDR_TyTP_P3D65.png",
+        hdr_fname="./img/HDR_tyTP_P3D65.png",
         display_sdr_white_nit=203,
         display_hdr_white_nit=10000):
-    sdr_fname = "./img/SDR_TyTP_P3D65.png"
-    hdr_fname = "./img/HDR_tyTP_P3D65.png"
     sdr_cs_name = cs.P3_D65
     hdr_cs_name = cs.P3_D65
     sdr_tf_name = tf.GAMMA24
@@ -373,7 +377,7 @@ def debug_simple_implementation(
     hdr_img_non_linear = non_linearize_output_image(
         img_linear=hdr_img_linear, tf_name=hdr_tf_name, cs_name=hdr_cs_name)
     fname = create_out_hdr_fname_one_file(
-        sdr_fname=sdr_fname,
+        hdr_fname=hdr_fname,
         display_sdr_white_nit=display_sdr_white_nit,
         display_hdr_white_nit=display_hdr_white_nit)
     print(fname)
@@ -405,24 +409,29 @@ def debug_new_w_method_with_random_img():
     hdr_img_non_linear = non_linearize_output_image(
         img_linear=hdr_img_linear, tf_name=hdr_tf_name, cs_name=hdr_cs_name)
     fname = create_out_hdr_fname_one_file(
-        sdr_fname=sdr_fname,
+        hdr_fname=hdr_fname,
         display_sdr_white_nit=display_sdr_white_nit,
         display_hdr_white_nit=display_hdr_white_nit)
     print(fname)
     tpg.img_wirte_float_as_16bit_int(fname, hdr_img_non_linear)
 
 
-def draw_luminance_info(img, display_sdr_white, display_hdr_white):
+def draw_luminance_info(
+        img, weight, src_sdr_white, src_hdr_white,
+        display_sdr_white, display_hdr_white):
     # create instance
     font_color = (0.5, 0.5, 0.5)
     stroke_color = (0.0, 0.0, 0.0)
-    text = f"D_SDR_W: {display_sdr_white} nits\n"
-    text += f"D_HDR_W: {display_hdr_white} nits\n"
+    text = f"S_SDR_W: {src_sdr_white:4} nits,  "
+    text += f"S_HDR_W: {src_hdr_white:5} nits\n"
+    text += f"D_SDR_W: {display_sdr_white:4} nits,  "
+    text += f"D_HDR_W: {display_hdr_white:5} nits\n"
+    text += f"WEIGHT:  {weight:.3f}"
     pos = [60, 30]
     text_draw_ctrl = fc2.TextDrawControl(
         text=text, font_color=font_color,
-        font_size=30, font_path=fc2.NOTO_SANS_MONO_REGULAR,
-        stroke_width=3, stroke_fill=stroke_color)
+        font_size=42, font_path=fc2.NOTO_SANS_MONO_BOLD,
+        stroke_width=4, stroke_fill=stroke_color)
 
     text_draw_ctrl.draw(img=img, pos=pos)
 
@@ -434,6 +443,7 @@ def thread_wrapper_apply_gain_map_seq(args):
 def apply_gain_map_seq(
         idx, sdr_fname, hdr_fname, output_dir,
         sdr_cs_name, hdr_cs_name, sdr_tf_name, hdr_tf_name,
+        src_sdr_white, src_hdr_white,
         display_sdr_white_nit, display_hdr_white_nit):
     gain_map_img_fname = create_gain_map_fname(
         sdr_fname=sdr_fname, hdr_fname=hdr_fname)
@@ -442,23 +452,36 @@ def apply_gain_map_seq(
         sdr_cs_name=sdr_cs_name, sdr_tf_name=sdr_tf_name,
         display_sdr_white_nit=display_sdr_white_nit,
         display_hdr_white_nit=display_hdr_white_nit)
+
+    # for debug
+    metadata_fname = create_gain_map_metadata_fname(gain_map_img_fname)
+    metadata = np.load(metadata_fname)
+    min_val, max_val = metadata
+    weight = calc_weight_w(
+        hdr_white=display_hdr_white_nit, sdr_white=display_sdr_white_nit,
+        min_val=min_val, max_val=max_val)
     draw_luminance_info(
-        img=hdr_img_linear, display_sdr_white=display_sdr_white_nit,
+        img=hdr_img_linear, weight=weight,
+        src_sdr_white=src_sdr_white, src_hdr_white=src_hdr_white,
+        display_sdr_white=display_sdr_white_nit,
         display_hdr_white=display_hdr_white_nit)
+
     hdr_img_non_linear = non_linearize_output_image(
         img_linear=hdr_img_linear, tf_name=hdr_tf_name, cs_name=hdr_cs_name)
     fname = create_out_seq_hdr_fname(
-        sdr_fname=sdr_fname, idx=idx, base_dir=output_dir,
-        prefix="SDR_White_100_Fixed")
+        hdr_fname=hdr_fname, idx=idx, base_dir=output_dir,
+        prefix=f"REF_WHITE_{display_sdr_white_nit}")
     print(fname)
     tpg.img_wirte_float_as_16bit_int(fname, hdr_img_non_linear)
 
 
-def debug_check_effect_of_weight_w():
-    sdr_fname = "./img/SDR_TyTP_P3D65.png"
-    hdr_fname = "./img/HDR_tyTP_P3D65.png"
-    # sdr_fname = "./debug/P3D65_GM24_SDR_High_Luminance.png"
-    # hdr_fname = "./debug/P3D65_ST2084_HDR_High_Luminance.png"
+def debug_check_effect_of_weight_w(
+    sdr_fname="./img/SDR_TyTP_P3D65.png",
+    hdr_fname="./img/HDR_tyTP_P3D65.png",
+    src_sdr_white=203,
+    src_hdr_white=1000,
+    display_sdr_white_nit=203,
+):
     sdr_cs_name = cs.P3_D65
     hdr_cs_name = cs.P3_D65
     sdr_tf_name = tf.GAMMA24
@@ -468,20 +491,20 @@ def debug_check_effect_of_weight_w():
         sdr_cs_name=sdr_cs_name, hdr_cs_name=hdr_cs_name,
         sdr_tf_name=sdr_tf_name, hdr_tf_name=hdr_tf_name)
 
-    display_sdr_white_nit = 203
-    num_of_sample = 512
-    # display_hdr_white_nit_list = np.arange(100, 10001, 1)
-    display_hdr_white_nit_list = tpg.get_log10_x_scale(
-        sample_num=num_of_sample, ref_val=100, min_exposure=0, max_exposure=2)
+    num_of_sample = 300
+
+    st_log = np.log2(display_sdr_white_nit)
+    ed_log = np.log2(10000)
+    log_scale = np.linspace(st_log, ed_log, num_of_sample)
+    display_hdr_white_nit_list = 2 ** log_scale
+
     display_hdr_white_nit_list\
         = np.round(display_hdr_white_nit_list).astype(np.uint16)
 
     total_process_num = len(display_hdr_white_nit_list)
     block_process_num = int(cpu_count() / 2 + 0.999)
     block_num = int(round(total_process_num / block_process_num + 0.5))
-    output_dir = "/work/overuse/2023/10_Gain_Map_HDR/ASC_StEM2_SDR_"
-    output_dir += f"{display_sdr_white_nit}"
-    Path(output_dir).mkdir(exist_ok=True)
+    output_dir = "/work/overuse/2023/10_Gain_Map_HDR/"
 
     for b_idx in range(block_num):
         args = []
@@ -496,6 +519,7 @@ def debug_check_effect_of_weight_w():
                 output_dir=output_dir,
                 sdr_cs_name=sdr_cs_name, hdr_cs_name=hdr_cs_name,
                 sdr_tf_name=sdr_tf_name, hdr_tf_name=hdr_tf_name,
+                src_sdr_white=src_sdr_white, src_hdr_white=src_hdr_white,
                 display_sdr_white_nit=display_sdr_white_nit,
                 display_hdr_white_nit=display_hdr_white_nit)
             # apply_gain_map_seq(**d)
@@ -560,20 +584,48 @@ def debug_dpx_to_png(src, dst):
 
 
 def debug_func():
-    peak_luminance_list = [
-        203, 400, 600, 1000, 4000, 10000
+    # peak_luminance_list = [
+    #     203, 400, 600, 1000, 4000, 10000
+    # ]
+    # hdr_src_clip_luminance_list = [
+    #     600, 1000, 4000, 10000
+    # ]
+    # for peak_luminance in peak_luminance_list:
+    #     for hdr_clip_lumi in hdr_src_clip_luminance_list:
+    #         sdr_fname = "./img/SDR_TyTP_P3D65.png"
+    #         hdr_fname = f"./img/HDR_tyTP_P3D65_{hdr_clip_lumi}.png"
+    #         debug_simple_implementation(
+    #             sdr_fname=sdr_fname,
+    #             hdr_fname=hdr_fname,
+    #             display_sdr_white_nit=203,
+    #             display_hdr_white_nit=peak_luminance)
+
+    debug_check_effect_of_weight_w(
+        sdr_fname="./img/SDR_TyTP_P3D65.png",
+        hdr_fname="./img/HDR_tyTP_P3D65.png",
+        src_sdr_white=203,
+        src_hdr_white=10000,
+        display_sdr_white_nit=203)
+
+    hdr_src_clip_luminance_list = [
+        600, 1000, 4000, 10000
     ]
-    for peak_luminance in peak_luminance_list:
-        debug_simple_implementation(
-            display_sdr_white_nit=203,
-            display_hdr_white_nit=peak_luminance)
-    # debug_check_effect_of_weight_w()
-    # calc_diff_two_images_hdr_sdr(
-    #     hdr_dst_fname="./debug/SDR_Random_P3D65.png_100_100_ty_w.png",
-    #     sdr_src_fname="./img/SDR_Random_P3D65.png")
-    # calc_diff_two_images_hdr_hdr(
-    #     hdr_dst_fname="./debug/SDR_Random_P3D65.png_100_10000_ty_w.png",
-    #     hdr_src_fname="./img/HDR_Random_P3D65.png")
+    for hdr_clip_lumi in hdr_src_clip_luminance_list:
+        hdr_fname = f"./img/HDR_tyTP_P3D65_{hdr_clip_lumi}.png"
+        debug_check_effect_of_weight_w(
+            sdr_fname="./img/SDR_TyTP_P3D65.png",
+            hdr_fname=hdr_fname,
+            src_sdr_white=203,
+            src_hdr_white=hdr_clip_lumi,
+            display_sdr_white_nit=203)
+
+    # debug_check_effect_of_weight_w(
+    #     sdr_fname="./debug/P3D65_GM24_SDR_High_Luminance.png",
+    #     hdr_fname="./debug/P3D65_ST2084_HDR_High_Luminance.png",
+    #     src_sdr_white=203,
+    #     src_hdr_white=4000,
+    #     display_sdr_white_nit=203)
+
     # create_random_img()
     # debug_new_w_method_with_random_img()
     # debug_dpx_to_png(

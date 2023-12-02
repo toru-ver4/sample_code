@@ -14,6 +14,7 @@ import numpy as np
 import test_pattern_generator2 as tpg
 import transfer_functions as tf
 import color_space as cs
+from ty_utility import add_suffix_to_filename
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -62,8 +63,26 @@ def make_sdr_version_tp(hdr_fname):
     tpg.img_wirte_float_as_16bit_int(sdr_fname, sdr_img)
 
 
+def make_reduced_luminance_hdr_tp(hdr_tp_fname, target_luminance=10000):
+    img = tpg.img_read_as_float(hdr_tp_fname)
+    linear = tf.eotf_to_luminance(img, tf.ST2084)
+    linear[linear > target_luminance] = target_luminance
+    img_out = tf.oetf_from_luminance(linear, tf.ST2084)
+
+    out_fname = add_suffix_to_filename(
+        fname=hdr_tp_fname, suffix=f"_{target_luminance}")
+    print(out_fname)
+    tpg.img_wirte_float_as_16bit_int(out_fname, img_out)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     hdr_tp_fname = remove_hdr_info_text(
         fname="./img/org_tp/HDR_tyTP_P3D65.png")
-    make_sdr_version_tp(hdr_fname=hdr_tp_fname)
+    target_luminance_list = [
+        600, 1000, 4000, 10000
+    ]
+    for target_luminance in target_luminance_list:
+        make_reduced_luminance_hdr_tp(
+            hdr_tp_fname=hdr_tp_fname, target_luminance=target_luminance)
+    # make_sdr_version_tp(hdr_fname=hdr_tp_fname)
