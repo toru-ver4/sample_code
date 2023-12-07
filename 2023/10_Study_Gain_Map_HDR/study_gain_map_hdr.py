@@ -11,6 +11,7 @@ from multiprocessing import Pool, cpu_count
 # import third-party libraries
 import numpy as np
 from colour.io import read_image
+from colour import read_LUT
 
 # import my libraries
 import test_pattern_generator2 as tpg
@@ -142,6 +143,7 @@ def save_gain_map_img(
 def create_and_save_gain_map(
         sdr_fname="./img/SDR_TyTP_P3D65.png",
         hdr_fname="./img/HDR_tyTP_P3D65.png",
+        sdr_white=HDR_REF_WHITE,
         sdr_cs_name=cs.P3_D65, hdr_cs_name=cs.P3_D65,
         sdr_tf_name=tf.GAMMA24, hdr_tf_name=tf.ST2084):
 
@@ -152,7 +154,7 @@ def create_and_save_gain_map(
     sdr_liner = linearize_input_image(
         fname=sdr_fname, tf_name=sdr_tf_name, cs_name=sdr_cs_name)
     # convert from 100 nits to 203 nits for consistency
-    sdr_liner = sdr_liner / tf.REF_WHITE_LUMINANCE * HDR_REF_WHITE
+    sdr_liner = sdr_liner / tf.REF_WHITE_LUMINANCE * sdr_white
 
     # linearlize hdr image
     hdr_liner = linearize_input_image(
@@ -423,7 +425,7 @@ def draw_luminance_info(
     font_color = (0.5, 0.5, 0.5)
     stroke_color = (0.0, 0.0, 0.0)
     text = f"S_SDR_W: {src_sdr_white:4} nits,  "
-    text += f"S_HDR_W: {src_hdr_white:5} nits\n"
+    text += f"S_HDR_W: {int(round(src_hdr_white)):5} nits\n"
     text += f"D_SDR_W: {display_sdr_white:4} nits,  "
     text += f"D_HDR_W: {display_hdr_white:5} nits\n"
     text += f"WEIGHT:  {weight:.3f}"
@@ -475,12 +477,27 @@ def apply_gain_map_seq(
     tpg.img_wirte_float_as_16bit_int(fname, hdr_img_non_linear)
 
 
+def calc_peak_luminance_from_st2084_img(fname):
+    """
+    Note
+    ----
+    The return value is not Y value.
+    The return value is calulurated from each color value.
+    """
+    img = tpg.img_read_as_float(fname)
+    linear = tf.eotf_to_luminance(img, tf.ST2084)
+    peak_luminance = np.max(linear)
+
+    return peak_luminance
+
+
 def debug_check_effect_of_weight_w(
     sdr_fname="./img/SDR_TyTP_P3D65.png",
     hdr_fname="./img/HDR_tyTP_P3D65.png",
     src_sdr_white=203,
-    src_hdr_white=1000,
+    src_hdr_white=None,
     display_sdr_white_nit=203,
+    num_of_sample=8
 ):
     sdr_cs_name = cs.P3_D65
     hdr_cs_name = cs.P3_D65
@@ -488,10 +505,13 @@ def debug_check_effect_of_weight_w(
     hdr_tf_name = tf.ST2084
     create_and_save_gain_map(
         sdr_fname=sdr_fname, hdr_fname=hdr_fname,
+        sdr_white=src_sdr_white,
         sdr_cs_name=sdr_cs_name, hdr_cs_name=hdr_cs_name,
         sdr_tf_name=sdr_tf_name, hdr_tf_name=hdr_tf_name)
 
-    num_of_sample = 300
+    if src_hdr_white is None:
+        src_hdr_white = calc_peak_luminance_from_st2084_img(
+            fname=hdr_fname)
 
     st_log = np.log2(display_sdr_white_nit)
     ed_log = np.log2(10000)
@@ -583,6 +603,45 @@ def debug_dpx_to_png(src, dst):
     tpg.img_wirte_float_as_16bit_int(dst, img)
 
 
+def debug_create_sub_img(hdr_fname, sdr_fname):
+    hdr_img = tpg.img_read_as_float(hdr_fname)
+    sdr_img = tpg.img_read_as_float(sdr_fname)
+
+    hdr_linear = tf.eotf_to_luminance(hdr_img, tf.ST2084)
+    sdr_linear = tf.eotf_to_luminance(sdr_img, tf.GAMMA24)
+    sdr_linear = sdr_linear * HDR_REF_WHITE / tf.REF_WHITE_LUMINANCE
+
+    hdr_sdr_linear = np.clip(hdr_linear - sdr_linear, 0.0, 10000.0)
+    sdr_hdr_linear = np.clip(sdr_linear - hdr_linear, 0.0, 10000.0)
+
+    hdr_sdr_img = tf.oetf_from_luminance(hdr_sdr_linear, tf.ST2084)
+    sdr_hdr_img = tf.oetf_from_luminance(sdr_hdr_linear, tf.ST2084)
+
+    tpg.img_wirte_float_as_16bit_int("./debug/hdr-sdr.png", hdr_sdr_img)
+    tpg.img_wirte_float_as_16bit_int("./debug/sdr-hdr.png", sdr_hdr_img)
+
+
+def debug_create_sdr_img_using_3dlut(hdr_fname):
+    sdr_fname = hdr_fname.replace("HDR", "SDR")
+    hdr_img = tpg.img_read_as_float(hdr_fname)
+    hdr_liner = tf.eotf_to_luminance(hdr_img, tf.ST2084)
+    large_xyz = cs.rgb_to_large_xyz(hdr_liner, cs.P3_D65)
+    hdr_2020_linear = cs.large_xyz_to_rgb(large_xyz, cs.BT2020)
+    hdr_2020_img = tf.oetf_from_luminance(
+        np.clip(hdr_2020_linear, 0.0, 10000), tf.ST2084)
+    # tpg.img_wirte_float_as_16bit_int("./debug/2020.png", hdr_2020_img)
+    lut3d = read_LUT("./debug/BT2446_BT2407_modified_grid_65_gamma_2.4.cube")
+    sdr_709_img = lut3d.apply(hdr_2020_img)
+
+    sdr_709_linear = tf.eotf(sdr_709_img, tf.GAMMA24)
+    large_xyz = cs.rgb_to_large_xyz(sdr_709_linear, cs.BT709)
+    sdr_p3d65_linear = cs.large_xyz_to_rgb(large_xyz, cs.P3_D65)
+    sdr_p3d65_img = tf.oetf(np.clip(sdr_p3d65_linear, 0.0, 1.0), tf.GAMMA24)
+
+    print(sdr_fname)
+    tpg.img_wirte_float_as_16bit_int(sdr_fname, sdr_p3d65_img)
+
+
 def debug_func():
     # peak_luminance_list = [
     #     203, 400, 600, 1000, 4000, 10000
@@ -600,31 +659,38 @@ def debug_func():
     #             display_sdr_white_nit=203,
     #             display_hdr_white_nit=peak_luminance)
 
-    debug_check_effect_of_weight_w(
-        sdr_fname="./img/SDR_TyTP_P3D65.png",
-        hdr_fname="./img/HDR_tyTP_P3D65.png",
-        src_sdr_white=203,
-        src_hdr_white=10000,
-        display_sdr_white_nit=203)
+    # debug_check_effect_of_weight_w(
+    #     sdr_fname="./img/SDR_TyTP_P3D65.png",
+    #     hdr_fname="./img/HDR_tyTP_P3D65.png",
+    #     src_sdr_white=203,
+    #     src_hdr_white=10000,
+    #     display_sdr_white_nit=203)
 
-    hdr_src_clip_luminance_list = [
-        600, 1000, 4000, 10000
-    ]
-    for hdr_clip_lumi in hdr_src_clip_luminance_list:
-        hdr_fname = f"./img/HDR_tyTP_P3D65_{hdr_clip_lumi}.png"
-        debug_check_effect_of_weight_w(
-            sdr_fname="./img/SDR_TyTP_P3D65.png",
-            hdr_fname=hdr_fname,
-            src_sdr_white=203,
-            src_hdr_white=hdr_clip_lumi,
-            display_sdr_white_nit=203)
+    # hdr_src_clip_luminance_list = [
+    #     600, 1000, 4000, 10000
+    # ]
+    # for hdr_clip_lumi in hdr_src_clip_luminance_list:
+    #     hdr_fname = f"./img/HDR_tyTP_P3D65_{hdr_clip_lumi}.png"
+    #     debug_check_effect_of_weight_w(
+    #         sdr_fname="./img/SDR_TyTP_P3D65.png",
+    #         hdr_fname=hdr_fname,
+    #         src_sdr_white=203,
+    #         src_hdr_white=hdr_clip_lumi,
+    #         display_sdr_white_nit=203)
+
+    # debug_simple_implementation(
+    #     sdr_fname="./debug/HDR_komorebi.png",
+    #     hdr_fname="./debug/SDR_komorebi.png",
+    #     display_sdr_white_nit=203,
+    #     display_hdr_white_nit=10000)
 
     # debug_check_effect_of_weight_w(
-    #     sdr_fname="./debug/P3D65_GM24_SDR_High_Luminance.png",
-    #     hdr_fname="./debug/P3D65_ST2084_HDR_High_Luminance.png",
-    #     src_sdr_white=203,
-    #     src_hdr_white=4000,
-    #     display_sdr_white_nit=203)
+    #     sdr_fname="./debug/HDR_komorebi.png",
+    #     hdr_fname="./debug/SDR_komorebi.png",
+    #     src_sdr_white=HDR_REF_WHITE,
+    #     src_hdr_white=None,
+    #     display_sdr_white_nit=203,
+    #     num_of_sample=8)
 
     # create_random_img()
     # debug_new_w_method_with_random_img()
@@ -639,6 +705,12 @@ def debug_func():
     # debug_check_effect_of_weight_w()
 
     # debug_check_effect_of_weight_w()
+
+    debug_create_sub_img(
+        hdr_fname="./debug/HDR_komorebi.png",
+        sdr_fname="./debug/SDR_komorebi.png"
+    )
+    # debug_create_sdr_img_using_3dlut(hdr_fname="./debug/HDR_komorebi.png")
 
 
 def plot_weighting_parameter_w():
@@ -681,9 +753,17 @@ def plot_weighting_parameter_w():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    debug_func()
+    # debug_func()
+
     # plot_weighting_parameter_w()
     # min = -2.33710495
     # max = 6.64384191
     # val = 0.26115816
     # print(val * (max - min) + min)
+
+    # linear = 0.927
+    # cv = tf.oetf_from_luminance(linear * 100, tf.ST2084)
+    # print(f"linear = {linear}, ST2084 = {cv * 1023}")
+    linear = 1.00
+    cv = tf.oetf_from_luminance(linear * 100, tf.ST2084)
+    print(f"linear = {linear}, ST2084 = {cv * 1023}")
