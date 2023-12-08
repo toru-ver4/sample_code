@@ -19,6 +19,7 @@ import transfer_functions as tf
 import color_space as cs
 import plot_utility as pu
 import font_control2 as fc2
+from tonemapping import create_ty_tonemap_v2_func
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -121,7 +122,14 @@ def create_log2_gain_map_image(sdr_linear, hdr_linear):
     gain_map = (gain_map - min_val) / (max_val - min_val)
 
     print(f"min_val, max_val = {min_val} {max_val}")
-    print(f"gain_map_before_normlize={gain_map[830, 62]}")
+
+    def save_diff(img_1, img_2, fname):
+        diff = (img_1 - img_2) * tf.REF_WHITE_LUMINANCE
+        img = tf.oetf_from_luminance(np.clip(diff, 0.0, 10000))
+        tpg.img_wirte_float_as_16bit_int(fname, img)
+
+    save_diff(hdr_linear, sdr_linear, "./debug/00_hdr_sdr.png")
+    save_diff(sdr_linear, hdr_linear, "./debug/00_sdr_hdr.png")
 
     return gain_map, min_val, max_val
 
@@ -301,10 +309,10 @@ def create_out_hdr_fname_one_file(
 
 
 def create_out_seq_hdr_fname(
-        hdr_fname, idx=0, prefix="SW-100_HW-10000",
+        sdr_fname, idx=0, prefix="SW-100_HW-10000",
         base_dir="/work/overuse/2023/10_Gain_Map_HDR"):
 
-    basename = Path(hdr_fname).stem
+    basename = Path(sdr_fname).stem
     dst_dir_path = Path(f"{base_dir}/{basename}")
     dst_dir_path.mkdir(parents=True, exist_ok=True)
     fname = f"{base_dir}/{basename}/{basename}_{prefix}_{idx:04d}.png"
@@ -446,7 +454,8 @@ def apply_gain_map_seq(
         idx, sdr_fname, hdr_fname, output_dir,
         sdr_cs_name, hdr_cs_name, sdr_tf_name, hdr_tf_name,
         src_sdr_white, src_hdr_white,
-        display_sdr_white_nit, display_hdr_white_nit):
+        display_sdr_white_nit, display_hdr_white_nit,
+        fixed_display_white=True):
     gain_map_img_fname = create_gain_map_fname(
         sdr_fname=sdr_fname, hdr_fname=hdr_fname)
     hdr_img_linear = apply_gain_map(
@@ -470,9 +479,13 @@ def apply_gain_map_seq(
 
     hdr_img_non_linear = non_linearize_output_image(
         img_linear=hdr_img_linear, tf_name=hdr_tf_name, cs_name=hdr_cs_name)
+    if fixed_display_white:
+        prefix = f"REF_WHITE_{display_sdr_white_nit}"
+    else:
+        prefix = f"PEAK_WHITE_{display_hdr_white_nit}"
     fname = create_out_seq_hdr_fname(
-        hdr_fname=hdr_fname, idx=idx, base_dir=output_dir,
-        prefix=f"REF_WHITE_{display_sdr_white_nit}")
+        sdr_fname=sdr_fname, idx=idx, base_dir=output_dir,
+        prefix=prefix)
     print(fname)
     tpg.img_wirte_float_as_16bit_int(fname, hdr_img_non_linear)
 
@@ -542,6 +555,126 @@ def debug_check_effect_of_weight_w(
                 src_sdr_white=src_sdr_white, src_hdr_white=src_hdr_white,
                 display_sdr_white_nit=display_sdr_white_nit,
                 display_hdr_white_nit=display_hdr_white_nit)
+            # apply_gain_map_seq(**d)
+            args.append(d)
+        #     break
+        # break
+        with Pool(block_process_num) as pool:
+            pool.map(thread_wrapper_apply_gain_map_seq, args)
+
+
+def create_hdr_img_seq_fix_display_white_vary_display_peak(
+    sdr_fname="./img/SDR_TyTP_P3D65.png",
+    hdr_fname="./img/HDR_tyTP_P3D65.png",
+    src_sdr_white=203,
+    src_hdr_white=None,
+    display_sdr_white_nit=203,
+    num_of_sample=8
+):
+    sdr_cs_name = cs.P3_D65
+    hdr_cs_name = cs.P3_D65
+    sdr_tf_name = tf.GAMMA24
+    hdr_tf_name = tf.ST2084
+    create_and_save_gain_map(
+        sdr_fname=sdr_fname, hdr_fname=hdr_fname,
+        sdr_white=src_sdr_white,
+        sdr_cs_name=sdr_cs_name, hdr_cs_name=hdr_cs_name,
+        sdr_tf_name=sdr_tf_name, hdr_tf_name=hdr_tf_name)
+
+    if src_hdr_white is None:
+        src_hdr_white = calc_peak_luminance_from_st2084_img(
+            fname=hdr_fname)
+
+    st_log = np.log2(display_sdr_white_nit)
+    ed_log = np.log2(10000)
+    log_scale = np.linspace(st_log, ed_log, num_of_sample)
+    display_hdr_white_nit_list = 2 ** log_scale
+
+    display_hdr_white_nit_list\
+        = np.round(display_hdr_white_nit_list).astype(np.uint16)
+
+    total_process_num = len(display_hdr_white_nit_list)
+    block_process_num = int(cpu_count() / 2 + 0.999)
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+    output_dir = "/work/overuse/2023/10_Gain_Map_HDR/"
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            l_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
+            if l_idx >= total_process_num:                         # User
+                break
+            display_hdr_white_nit = display_hdr_white_nit_list[l_idx]
+            d = dict(
+                idx=l_idx, sdr_fname=sdr_fname, hdr_fname=hdr_fname,
+                output_dir=output_dir,
+                sdr_cs_name=sdr_cs_name, hdr_cs_name=hdr_cs_name,
+                sdr_tf_name=sdr_tf_name, hdr_tf_name=hdr_tf_name,
+                src_sdr_white=src_sdr_white, src_hdr_white=src_hdr_white,
+                display_sdr_white_nit=display_sdr_white_nit,
+                display_hdr_white_nit=display_hdr_white_nit,
+                fixed_display_white=True)
+            # apply_gain_map_seq(**d)
+            args.append(d)
+        #     break
+        # break
+        with Pool(block_process_num) as pool:
+            pool.map(thread_wrapper_apply_gain_map_seq, args)
+
+
+def create_hdr_img_seq_fix_display_peak_vary_display_white(
+    sdr_fname="./img/SDR_TyTP_P3D65.png",
+    hdr_fname="./img/HDR_tyTP_P3D65.png",
+    src_sdr_white=203,
+    src_hdr_white=None,
+    display_peak_nit=1000,
+    num_of_sample=8
+):
+    sdr_cs_name = cs.P3_D65
+    hdr_cs_name = cs.P3_D65
+    sdr_tf_name = tf.GAMMA24
+    hdr_tf_name = tf.ST2084
+    create_and_save_gain_map(
+        sdr_fname=sdr_fname, hdr_fname=hdr_fname,
+        sdr_white=src_sdr_white,
+        sdr_cs_name=sdr_cs_name, hdr_cs_name=hdr_cs_name,
+        sdr_tf_name=sdr_tf_name, hdr_tf_name=hdr_tf_name)
+
+    if src_hdr_white is None:
+        src_hdr_white = calc_peak_luminance_from_st2084_img(
+            fname=hdr_fname)
+
+    st_log = np.log2(10)
+    ed_log = np.log2(display_peak_nit)
+    log_scale = np.linspace(st_log, ed_log, num_of_sample)
+    display_sdr_white_nit_list = 2 ** log_scale
+
+    display_sdr_white_nit_list\
+        = np.round(display_sdr_white_nit_list).astype(np.uint16)
+
+    total_process_num = len(display_sdr_white_nit_list)
+    block_process_num = int(cpu_count() / 2 + 0.999)
+    block_num = int(round(total_process_num / block_process_num + 0.5))
+    output_dir = "/work/overuse/2023/10_Gain_Map_HDR/"
+
+    for b_idx in range(block_num):
+        args = []
+        for p_idx in range(block_process_num):
+            l_idx = b_idx * block_process_num + p_idx              # User
+            print(f"b_idx={b_idx}, p_idx={p_idx}, l_idx={l_idx}")  # User
+            if l_idx >= total_process_num:                         # User
+                break
+            display_sdr_white_nit = display_sdr_white_nit_list[l_idx]
+            d = dict(
+                idx=l_idx, sdr_fname=sdr_fname, hdr_fname=hdr_fname,
+                output_dir=output_dir,
+                sdr_cs_name=sdr_cs_name, hdr_cs_name=hdr_cs_name,
+                sdr_tf_name=sdr_tf_name, hdr_tf_name=hdr_tf_name,
+                src_sdr_white=src_sdr_white, src_hdr_white=src_hdr_white,
+                display_sdr_white_nit=display_sdr_white_nit,
+                display_hdr_white_nit=display_peak_nit,
+                fixed_display_white=False)
             # apply_gain_map_seq(**d)
             args.append(d)
         #     break
@@ -621,25 +754,17 @@ def debug_create_sub_img(hdr_fname, sdr_fname):
     tpg.img_wirte_float_as_16bit_int("./debug/sdr-hdr.png", sdr_hdr_img)
 
 
-def debug_create_sdr_img_using_3dlut(hdr_fname):
+def debug_create_sdr_img_using_tonemapping(hdr_fname):
     sdr_fname = hdr_fname.replace("HDR", "SDR")
     hdr_img = tpg.img_read_as_float(hdr_fname)
-    hdr_liner = tf.eotf_to_luminance(hdr_img, tf.ST2084)
-    large_xyz = cs.rgb_to_large_xyz(hdr_liner, cs.P3_D65)
-    hdr_2020_linear = cs.large_xyz_to_rgb(large_xyz, cs.BT2020)
-    hdr_2020_img = tf.oetf_from_luminance(
-        np.clip(hdr_2020_linear, 0.0, 10000), tf.ST2084)
-    # tpg.img_wirte_float_as_16bit_int("./debug/2020.png", hdr_2020_img)
-    lut3d = read_LUT("./debug/BT2446_BT2407_modified_grid_65_gamma_2.4.cube")
-    sdr_709_img = lut3d.apply(hdr_2020_img)
-
-    sdr_709_linear = tf.eotf(sdr_709_img, tf.GAMMA24)
-    large_xyz = cs.rgb_to_large_xyz(sdr_709_linear, cs.BT709)
-    sdr_p3d65_linear = cs.large_xyz_to_rgb(large_xyz, cs.P3_D65)
-    sdr_p3d65_img = tf.oetf(np.clip(sdr_p3d65_linear, 0.0, 1.0), tf.GAMMA24)
+    tm_func = create_ty_tonemap_v2_func()
+    sdr_img_2084 = tm_func(hdr_img)
+    sdr_img_liner = tf.eotf_to_luminance(sdr_img_2084, tf.ST2084)
+    sdr_img_liner = sdr_img_liner / HDR_REF_WHITE * tf.REF_WHITE_LUMINANCE
+    sdr_img_gm24 = tf.oetf_from_luminance(sdr_img_liner, tf.GAMMA24)
 
     print(sdr_fname)
-    tpg.img_wirte_float_as_16bit_int(sdr_fname, sdr_p3d65_img)
+    tpg.img_wirte_float_as_16bit_int(sdr_fname, sdr_img_gm24)
 
 
 def debug_func():
@@ -684,13 +809,32 @@ def debug_func():
     #     display_sdr_white_nit=203,
     #     display_hdr_white_nit=10000)
 
-    # debug_check_effect_of_weight_w(
-    #     sdr_fname="./debug/HDR_komorebi.png",
-    #     hdr_fname="./debug/SDR_komorebi.png",
-    #     src_sdr_white=HDR_REF_WHITE,
-    #     src_hdr_white=None,
-    #     display_sdr_white_nit=203,
-    #     num_of_sample=8)
+    sdr_hdr_fname_list = [
+        ["./debug/SDR_komorebi_resolve.png", "./debug/HDR_komorebi.png"],
+        # ["./debug/SDR_ohori_resolve.png", "./debug/HDR_ohori.png"],
+        # ["./debug/SDR_kougen_resolve.png", "./debug/HDR_kougen.png"],
+        # ["./debug/SDR_komorebi.png", "./debug/HDR_komorebi.png"],
+        # ["./debug/SDR_ohori.png", "./debug/HDR_ohori.png"],
+        # ["./debug/SDR_kougen.png", "./debug/HDR_kougen.png"],
+    ]
+
+    for sdr_hdr_fname in sdr_hdr_fname_list:
+        sdr_fname = sdr_hdr_fname[0]
+        hdr_fname = sdr_hdr_fname[1]
+        create_hdr_img_seq_fix_display_white_vary_display_peak(
+            sdr_fname=sdr_fname,
+            hdr_fname=hdr_fname,
+            src_sdr_white=HDR_REF_WHITE,
+            src_hdr_white=None,
+            display_sdr_white_nit=400,
+            num_of_sample=16)
+        create_hdr_img_seq_fix_display_peak_vary_display_white(
+            sdr_fname=sdr_fname,
+            hdr_fname=hdr_fname,
+            src_sdr_white=HDR_REF_WHITE,
+            src_hdr_white=None,
+            display_peak_nit=1000,
+            num_of_sample=16)
 
     # create_random_img()
     # debug_new_w_method_with_random_img()
@@ -706,11 +850,12 @@ def debug_func():
 
     # debug_check_effect_of_weight_w()
 
-    debug_create_sub_img(
-        hdr_fname="./debug/HDR_komorebi.png",
-        sdr_fname="./debug/SDR_komorebi.png"
-    )
-    # debug_create_sdr_img_using_3dlut(hdr_fname="./debug/HDR_komorebi.png")
+    # debug_create_sub_img(
+    #     hdr_fname="./debug/HDR_komorebi.png",
+    #     sdr_fname="./debug/SDR_komorebi.png"
+    # )
+    # debug_create_sdr_img_using_tonemapping(hdr_fname="./debug/HDR_komorebi.png")
+    # debug_create_sdr_img_using_tonemapping(hdr_fname="./debug/HDR_tyTP_P3D65.png")
 
 
 def plot_weighting_parameter_w():
@@ -753,7 +898,7 @@ def plot_weighting_parameter_w():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # debug_func()
+    debug_func()
 
     # plot_weighting_parameter_w()
     # min = -2.33710495
@@ -764,6 +909,6 @@ if __name__ == '__main__':
     # linear = 0.927
     # cv = tf.oetf_from_luminance(linear * 100, tf.ST2084)
     # print(f"linear = {linear}, ST2084 = {cv * 1023}")
-    linear = 1.00
-    cv = tf.oetf_from_luminance(linear * 100, tf.ST2084)
-    print(f"linear = {linear}, ST2084 = {cv * 1023}")
+    # linear = 1.00
+    # cv = tf.oetf_from_luminance(linear * 100, tf.ST2084)
+    # print(f"linear = {linear}, ST2084 = {cv * 1023}")
