@@ -594,7 +594,7 @@ def create_hdr_img_seq_fix_display_white_vary_display_peak(
         = np.round(display_hdr_white_nit_list).astype(np.uint16)
 
     total_process_num = len(display_hdr_white_nit_list)
-    block_process_num = int(cpu_count() / 2 + 0.999)
+    block_process_num = int(cpu_count() / 3 + 0.999)
     block_num = int(round(total_process_num / block_process_num + 0.5))
     output_dir = "/work/overuse/2023/10_Gain_Map_HDR/"
 
@@ -810,31 +810,32 @@ def debug_func():
     #     display_hdr_white_nit=10000)
 
     sdr_hdr_fname_list = [
-        ["./debug/SDR_komorebi_resolve.png", "./debug/HDR_komorebi.png"],
+        # ["./debug/SDR_komorebi_resolve.png", "./debug/HDR_komorebi.png"],
         # ["./debug/SDR_ohori_resolve.png", "./debug/HDR_ohori.png"],
         # ["./debug/SDR_kougen_resolve.png", "./debug/HDR_kougen.png"],
+        ["./img/SDR_TyTP_P3D65.png", "./img/HDR_tyTP_P3D65.png"],
         # ["./debug/SDR_komorebi.png", "./debug/HDR_komorebi.png"],
         # ["./debug/SDR_ohori.png", "./debug/HDR_ohori.png"],
         # ["./debug/SDR_kougen.png", "./debug/HDR_kougen.png"],
     ]
 
-    for sdr_hdr_fname in sdr_hdr_fname_list:
-        sdr_fname = sdr_hdr_fname[0]
-        hdr_fname = sdr_hdr_fname[1]
-        create_hdr_img_seq_fix_display_white_vary_display_peak(
-            sdr_fname=sdr_fname,
-            hdr_fname=hdr_fname,
-            src_sdr_white=HDR_REF_WHITE,
-            src_hdr_white=None,
-            display_sdr_white_nit=400,
-            num_of_sample=16)
-        create_hdr_img_seq_fix_display_peak_vary_display_white(
-            sdr_fname=sdr_fname,
-            hdr_fname=hdr_fname,
-            src_sdr_white=HDR_REF_WHITE,
-            src_hdr_white=None,
-            display_peak_nit=1000,
-            num_of_sample=16)
+    # for sdr_hdr_fname in sdr_hdr_fname_list:
+    #     sdr_fname = sdr_hdr_fname[0]
+    #     hdr_fname = sdr_hdr_fname[1]
+    #     create_hdr_img_seq_fix_display_white_vary_display_peak(
+    #         sdr_fname=sdr_fname,
+    #         hdr_fname=hdr_fname,
+    #         src_sdr_white=HDR_REF_WHITE,
+    #         src_hdr_white=None,
+    #         display_sdr_white_nit=203,
+    #         num_of_sample=10)
+    #     create_hdr_img_seq_fix_display_peak_vary_display_white(
+    #         sdr_fname=sdr_fname,
+    #         hdr_fname=hdr_fname,
+    #         src_sdr_white=HDR_REF_WHITE,
+    #         src_hdr_white=None,
+    #         display_peak_nit=1000,
+    #         num_of_sample=10)
 
     # create_random_img()
     # debug_new_w_method_with_random_img()
