@@ -364,14 +364,13 @@ def draw_luminance_info(
     # create instance
     font_color = (0.5, 0.5, 0.5)
     stroke_color = (0.0, 0.0, 0.0)
-    text = f"S_SDR_W: {src_sdr_white:4} nits,  "
-    text += f"S_HDR_W: {int(round(src_hdr_white)):5} nits\n"
-    text += f"D_SDR_W: {display_sdr_white:4} nits,  "
-    text += f"D_HDR_W: {display_hdr_white:5} nits\n"
+    # text = f"S_SDR_W: {src_sdr_white:4} nits,  "
+    # text += f"S_HDR_W: {int(round(src_hdr_white)):5} nits\n"
+    text = f"SDR_white: {display_sdr_white:3} nits,  "
+    text += f"HDR_white: {display_hdr_white:5} nits\n"
     hdr_capacity = np.log2(display_hdr_white/display_sdr_white)
-    text += f"HDR_Capacity (Min, H, Max): {min_hdr_capacity:.3f}, "
-    text += f"{hdr_capacity:.3f}, {max_hdr_capacity:.3f}\n"
-    text += f"WEIGHT:  {weight:.3f}"
+    text += f"Current HDR_Capacity: H = {hdr_capacity:.3f}\n"
+    text += f"WEIGHT: W = {weight:.3f}"
     pos = [60, 30]
     text_draw_ctrl = fc2.TextDrawControl(
         text=text, font_color=font_color,
@@ -416,7 +415,7 @@ def apply_gain_map_seq(
     hdr_img_non_linear = non_linearize_output_image(
         img_linear=hdr_img_linear, tf_name=hdr_tf_name, cs_name=hdr_cs_name)
     if fixed_display_white:
-        prefix = f"REF_WHITE_{display_sdr_white_nit}"
+        prefix = f"Mhi_{max_hdr_capacity:.2f}_REF_WHITE_{display_sdr_white_nit}"
     else:
         prefix = f"PEAK_WHITE_{display_hdr_white_nit}"
     fname = create_out_seq_hdr_fname(
@@ -766,7 +765,8 @@ def debug_func():
         # ["./debug/SDR_kougen_resolve.png", "./debug/HDR_kougen.png"],
         ["./img/SDR_TyTP_P3D65.png", "./img/HDR_tyTP_P3D65.png"],
         # ["./debug/SDR_komorebi.png", "./debug/HDR_komorebi.png"],
-        # ["./debug/SDR_ohori.png", "./debug/HDR_ohori.png"],
+        # ["./debug/SDR_komorebi.png", "./debug/HDR_komorebi_10000_pixel.png"],
+        ["./debug/SDR_ohori.png", "./debug/HDR_ohori.png"],
         # ["./debug/SDR_kougen.png", "./debug/HDR_kougen.png"],
     ]
 
@@ -779,18 +779,18 @@ def debug_func():
             src_sdr_white=HDR_REF_WHITE,
             src_hdr_white=None,
             min_hdr_capacity=np.log2(203/HDR_REF_WHITE),
-            max_hdr_capacity=np.log2(1000/HDR_REF_WHITE),
+            max_hdr_capacity=np.log2(10000/HDR_REF_WHITE),
             display_sdr_white_nit=203,
             num_of_sample=10)
-        create_hdr_img_seq_fix_display_peak_vary_display_white(
-            sdr_fname=sdr_fname,
-            hdr_fname=hdr_fname,
-            src_sdr_white=HDR_REF_WHITE,
-            src_hdr_white=None,
-            min_hdr_capacity=np.log2(203/HDR_REF_WHITE),
-            max_hdr_capacity=np.log2(1000/HDR_REF_WHITE),
-            display_peak_nit=1000,
-            num_of_sample=10)
+        # create_hdr_img_seq_fix_display_peak_vary_display_white(
+        #     sdr_fname=sdr_fname,
+        #     hdr_fname=hdr_fname,
+        #     src_sdr_white=HDR_REF_WHITE,
+        #     src_hdr_white=None,
+        #     min_hdr_capacity=np.log2(203/HDR_REF_WHITE),
+        #     max_hdr_capacity=np.log2(1000/HDR_REF_WHITE),
+        #     display_peak_nit=1000,
+        #     num_of_sample=10)
 
     # create_random_img()
     # debug_new_w_method_with_random_img()
@@ -815,27 +815,34 @@ def debug_func():
 
 
 def plot_weighting_parameter_w():
-    sdr_white = np.linspace(100, 500, 1024)
-    hdr_white = 1000
-    gain_map_max_nits = 600
-    gain_map_max = np.log2(gain_map_max_nits/100)
-    gain_map_min = 0.0
+    sdr_white = 203
+    x = np.linspace(sdr_white, 10000, 1024)
+    capacity = np.log2(x / sdr_white)
 
-    hh = np.log2(hdr_white / sdr_white)
-    ww = (hh - gain_map_min) / gain_map_max - gain_map_min
-    ww = np.clip(ww, 0.0, 1.0)
+    min_capacity_1 = np.log2(203 / sdr_white)
+    max_capacity_1 = np.log2(1000 / sdr_white)
+    min_capacity_2 = np.log2(203 / sdr_white)
+    max_capacity_2 = np.log2(10000 / sdr_white)
+    # min_capacity_1 = 1
+    # max_capacity_1 = 4
+    # min_capacity_2 = 0
+    # max_capacity_2 = 5
 
-    title = f"HDR white = {hdr_white} nits, "
-    title += f"Gain map max = {gain_map_max_nits} nits"
+    w1 = (capacity - min_capacity_1) / (max_capacity_1 - min_capacity_1)
+    w1 = np.clip(w1, 0.0, 1.0)
+    w2 = (capacity - min_capacity_2) / (max_capacity_2 - min_capacity_2)
+    w2 = np.clip(w2, 0.0, 1.0)
+
+    title = "Relationship between $H$ and $W$"
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(10, 8),
+        figsize=(12, 7),
         bg_color=(0.96, 0.96, 0.96),
         graph_title=title,
         graph_title_size=None,
-        xlabel="SDR white [nits]",
-        ylabel='Weight parameter "W"',
+        xlabel="HDR Capacity $H$",
+        ylabel='Weight parameter $W$',
         axis_label_size=None,
         legend_size=17,
         xlim=None,
@@ -846,41 +853,44 @@ def plot_weighting_parameter_w():
         linewidth=3,
         minor_xtick_num=None,
         minor_ytick_num=None)
-    ax1.plot(sdr_white, ww, label="W")
+    label1 = f"$M_{{lo}}$={min_capacity_1:.2f}, $M_{{hi}}$={max_capacity_1:.2f}"
+    label2 = f"$M_{{lo}}$={min_capacity_2:.2f}, $M_{{hi}}$={max_capacity_2:.2f}"
+    ax1.plot(capacity, w1, label=label1)
+    ax1.plot(capacity, w2, label=label2)
     pu.show_and_save(
-        fig=fig, legend_loc='upper right', save_fname=None,
+        fig=fig, legend_loc='lower right',
+        save_fname="./img/blog_img/w_and_hdr_capcacity.png",
         show=True)
+
+
+def create_graph_for_blog():
+    plot_weighting_parameter_w()
+
+
+def add_10000nits_pixel():
+    src_img_file = "./debug/HDR_komorebi.png"
+    dst_img_file = "./debug/HDR_komorebi_10000_pixel.png"
+
+    img = tpg.img_read_as_float(src_img_file)
+    img[321, 1027] = np.array([1.0, 1.0, 1.0])
+
+    tpg.img_wirte_float_as_16bit_int(dst_img_file, img)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    debug_func()
+    # debug_func()
+    # create_graph_for_blog()
 
-    # m_hi = 8
-    # m_lo = 2
-
-    # x = np.linspace(0, 10, 1024)
-    # y = np.clip((x - m_lo) / (m_hi - m_lo), 0.0, 1.0)
-
-    # fig, ax1 = pu.plot_1_graph(
-    #     fontsize=20,
-    #     figsize=(10, 8),
-    #     bg_color=(0.96, 0.96, 0.96))
-    # ax1.plot(x, y, label="W")
-    # ax1.plot(x, x, label="Org")
-    # pu.show_and_save(
-    #     fig=fig, legend_loc='upper right', save_fname=None,
-    #     show=True)
-
-    # plot_weighting_parameter_w()
-    # min = -2.33710495
-    # max = 6.64384191
-    # val = 0.26115816
-    # print(val * (max - min) + min)
-
-    # linear = 0.927
-    # cv = tf.oetf_from_luminance(linear * 100, tf.ST2084)
-    # print(f"linear = {linear}, ST2084 = {cv * 1023}")
-    # linear = 1.00
-    # cv = tf.oetf_from_luminance(linear * 100, tf.ST2084)
-    # print(f"linear = {linear}, ST2084 = {cv * 1023}")
+    sdr_white = 203
+    hdr_white = 600
+    hdr_capacity = np.log2(hdr_white/sdr_white)
+    print(hdr_capacity)
+    sdr_white = 80
+    hdr_white = 600
+    hdr_capacity = np.log2(hdr_white/sdr_white)
+    print(hdr_capacity)
+    sdr_white = 400
+    hdr_white = 600
+    hdr_capacity = np.log2(hdr_white/sdr_white)
+    print(hdr_capacity)
