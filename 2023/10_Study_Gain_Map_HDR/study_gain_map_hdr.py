@@ -709,6 +709,16 @@ def debug_create_sdr_img_using_tonemapping(hdr_fname):
 
 
 def debug_func():
+    sdr_fname = "./debug/SDR_ohori.png"
+    hdr_fname = "./debug/HDR_ohori.png"
+    # debug_simple_implementation(
+    #     sdr_fname=sdr_fname,
+    #     hdr_fname=hdr_fname,
+    #     min_hdr_capacity=np.log2(203/HDR_REF_WHITE),
+    #     max_hdr_capacity=np.log2(1000/HDR_REF_WHITE),
+    #     display_sdr_white_nit=203,
+    #     display_hdr_white_nit=400)
+
     peak_luminance_list = [
         203, 400, 600, 1000, 4000, 10000
     ]
@@ -766,7 +776,7 @@ def debug_func():
         ["./img/SDR_TyTP_P3D65.png", "./img/HDR_tyTP_P3D65.png"],
         # ["./debug/SDR_komorebi.png", "./debug/HDR_komorebi.png"],
         # ["./debug/SDR_komorebi.png", "./debug/HDR_komorebi_10000_pixel.png"],
-        ["./debug/SDR_ohori.png", "./debug/HDR_ohori.png"],
+        # ["./debug/SDR_ohori.png", "./debug/HDR_ohori.png"],
         # ["./debug/SDR_kougen.png", "./debug/HDR_kougen.png"],
     ]
 
@@ -781,7 +791,7 @@ def debug_func():
             min_hdr_capacity=np.log2(203/HDR_REF_WHITE),
             max_hdr_capacity=np.log2(10000/HDR_REF_WHITE),
             display_sdr_white_nit=203,
-            num_of_sample=10)
+            num_of_sample=180)
         # create_hdr_img_seq_fix_display_peak_vary_display_white(
         #     sdr_fname=sdr_fname,
         #     hdr_fname=hdr_fname,
@@ -879,18 +889,18 @@ def add_10000nits_pixel():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # debug_func()
+    debug_func()
     # create_graph_for_blog()
 
-    sdr_white = 203
-    hdr_white = 600
-    hdr_capacity = np.log2(hdr_white/sdr_white)
-    print(hdr_capacity)
-    sdr_white = 80
-    hdr_white = 600
-    hdr_capacity = np.log2(hdr_white/sdr_white)
-    print(hdr_capacity)
-    sdr_white = 400
-    hdr_white = 600
-    hdr_capacity = np.log2(hdr_white/sdr_white)
-    print(hdr_capacity)
+    # sdr_white = 203
+    # hdr_white = 600
+    # hdr_capacity = np.log2(hdr_white/sdr_white)
+    # print(hdr_capacity)
+    # sdr_white = 80
+    # hdr_white = 600
+    # hdr_capacity = np.log2(hdr_white/sdr_white)
+    # print(hdr_capacity)
+    # sdr_white = 400
+    # hdr_white = 600
+    # hdr_capacity = np.log2(hdr_white/sdr_white)
+    # print(hdr_capacity)
