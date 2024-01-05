@@ -9,11 +9,11 @@ import os
 
 # import third-party libraries
 import numpy as np
-import matplotlib.pyplot as plt
 
 # import my libraries
 import test_pattern_generator2 as tpg
 import transfer_functions as tf
+import plot_utility as pu
 
 
 # information
@@ -82,6 +82,36 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     samples = np.linspace(0, 1, 100)
 
-    m_x0, m_y0, m_x1, m_y1 = 0.25, 0.15, 0.75, 0.85
-    plt.plot(samples, curve(samples, 1, m_x0, m_y0, m_x1, m_y1))
-    plt.show()
+    grad = 0.8
+    m_x0, m_y0 = 0.0, 0.0
+    m_x1 = tf.oetf_from_luminance(203)
+    m_y1 = tf.oetf_from_luminance(203 * grad)
+    m_overshoot_x = tf.oetf_from_luminance(2000)
+    m_overshoot_y = tf.oetf_from_luminance(203)
+    y = curve(
+        x=samples, g=1,
+        m_x0=m_x0, m_y0=m_y0,
+        m_x1=m_x1, m_y1=m_y1,
+        m_overshoot_x=m_overshoot_x, m_overshoot_y=m_overshoot_y)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Title",
+        graph_title_size=None,
+        xlabel="X Axis Label",
+        ylabel="Y Axis Label",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(samples, y, label=None)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', save_fname=None, show=True)

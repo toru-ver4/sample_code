@@ -15,16 +15,9 @@ from multiprocessing import Pool, cpu_count
 
 # REVISION = 3  # 右上に色々と小物を追加
 # REVISION = 4  # colour version 0.3.14
-REVISION = 5  # colour version 0.3.16
+# REVISION = 5  # colour version 0.3.16
+REVISION = 6  # colour version 0.4.3
 BIT_DEPTH = 10
-
-
-class DciP3ColorSpace:
-    """
-    DCI-P3 D65 の定義
-    """
-    def __init__(self):
-        self.name = "DCI-P3"
 
 
 BT709_CS = colour.models.RGB_COLOURSPACE_BT709
@@ -56,7 +49,15 @@ ACES_AP0_CS = colour.models.RGB_COLOURSPACE_ACES2065_1
 #               {'tf': tf.LOG3G12, 'cs': BT2020_CS, 'wp': 'D65'},
 #               {'tf': tf.ST2084, 'cs': ACES_AP1_CS, 'wp': 'D60'},
 #               {'tf': tf.ST2084, 'cs': ACES_AP0_CS, 'wp': 'D60'}]
-PARAM_LIST = [{'tf': tf.LINEAR, 'cs': ACES_AP0_CS, 'wp': 'D60'}]
+# PARAM_LIST = [{'tf': tf.LINEAR, 'cs': ACES_AP0_CS, 'wp': 'D60'}]
+PARAM_LIST = [
+    {'tf': tf.GAMMA24, 'cs': BT709_CS, 'wp': 'D65'},
+    {'tf': tf.GAMMA24, 'cs': DCI_P3_CS, 'wp': 'D65'},
+    {'tf': tf.GAMMA24, 'cs': BT2020_CS, 'wp': 'D65'},
+    {'tf': tf.ST2084, 'cs': BT709_CS, 'wp': 'D65'},
+    {'tf': tf.ST2084, 'cs': DCI_P3_CS, 'wp': 'D65'},
+    {'tf': tf.ST2084, 'cs': BT2020_CS, 'wp': 'D65'}
+]
 
 
 class TpgControl:
