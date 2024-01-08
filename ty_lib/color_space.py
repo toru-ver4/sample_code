@@ -316,62 +316,73 @@ def get_primaries(color_space_name=BT709):
     return RGB_COLOURSPACES[color_space_name].primaries
 
 
-def lab_to_rgb(lab, color_space_name, xyz_white=D65, rgb_white=D65):
+def lab_to_rgb(lab, color_space_name, xyz_white=D65):
     rgb_linear = large_xyz_to_rgb(
         xyz=Lab_to_XYZ(lab), color_space_name=color_space_name,
-        xyz_white=xyz_white, rgb_white=rgb_white)
+        xyz_white=xyz_white)
 
     return rgb_linear
 
 
-def oklab_to_rgb(oklab, color_space_name, xyz_white=D65, rgb_white=D65):
+def oklab_to_rgb(oklab, color_space_name, xyz_white=D65):
     rgb_linear = large_xyz_to_rgb(
         xyz=Oklab_to_XYZ(oklab), color_space_name=color_space_name,
-        xyz_white=xyz_white, rgb_white=rgb_white)
+        xyz_white=xyz_white)
 
     return rgb_linear
 
 
-def rgb_to_oklab(rgb_linear, color_space_name, xyz_white=D65, rgb_white=D65):
+def rgb_to_oklab(rgb_linear, color_space_name, xyz_white=D65):
     oklab = XYZ_to_Oklab(
         rgb_to_large_xyz(
             rgb=rgb_linear, color_space_name=color_space_name,
-            rgb_white=rgb_white, xyz_white=xyz_white))
+            xyz_white=xyz_white))
 
     return oklab
 
 
 def large_xyz_to_rgb(
-        xyz, color_space_name, rgb_white=D65):
+        xyz, color_space_name, xyz_white=D65):
+    colourspace = RGB_COLOURSPACES[color_space_name]
+    if np.array_equal(xyz_white, colourspace.whitepoint):
+        chromatic_adaptation_transform = None
+    else:
+        chromatic_adaptation_transform = "CAT02"
     rgb_linear = XYZ_to_RGB(
-        XYZ=xyz, colourspace=RGB_COLOURSPACES[color_space_name],
-        illuminant=rgb_white, chromatic_adaptation_transform=None)
+        XYZ=xyz, colourspace=colourspace,
+        illuminant=xyz_white,
+        chromatic_adaptation_transform=chromatic_adaptation_transform)
 
     return rgb_linear
 
 
 def rgb_to_large_xyz(
         rgb, color_space_name, xyz_white=D65):
+    colourspace = RGB_COLOURSPACES[color_space_name]
+    if np.array_equal(xyz_white, colourspace.whitepoint):
+        chromatic_adaptation_transform = None
+    else:
+        chromatic_adaptation_transform = "CAT02"
     large_xyz = RGB_to_XYZ(
-        RGB=rgb, colourspace=RGB_COLOURSPACES[color_space_name],
-        rgb_white=xyz_white, chromatic_adaptation_transform=None)
+        RGB=rgb, colourspace=colourspace,
+        illuminant=xyz_white,
+        chromatic_adaptation_transform=chromatic_adaptation_transform)
 
     return large_xyz
 
 
 def rgb_to_lab(
-        rgb, color_space_name, rgb_white=D65, xyz_white=D65):
+        rgb, color_space_name, xyz_white=D65):
     large_xyz = rgb_to_large_xyz(
         rgb=rgb, color_space_name=color_space_name,
-        rgb_white=rgb_white, xyz_white=xyz_white)
+        xyz_white=xyz_white)
     lab = XYZ_to_Lab(large_xyz)
 
     return lab
 
 
 def jzazbz_to_rgb(
-        jzazbz, color_space_name, xyz_white=D65, rgb_white=D65,
-        luminance=10000):
+        jzazbz, color_space_name, xyz_white=D65, luminance=10000):
     """
     Examples
     --------
@@ -398,14 +409,13 @@ def jzazbz_to_rgb(
     large_xyz = jzazbz_to_large_xyz(jzazbz=jzazbz) / luminance
     rgb_linear = large_xyz_to_rgb(
         xyz=large_xyz, color_space_name=color_space_name,
-        xyz_white=xyz_white, rgb_white=rgb_white)
+        xyz_white=xyz_white)
     # print(rgb_linear[-4:])
     return rgb_linear
 
 
 def rgb_to_jzazbz(
-        rgb, color_space_name, xyz_white=D65, rgb_white=D65,
-        luminance=10000):
+        rgb, color_space_name, xyz_white=D65, luminance=10000):
     """
     Parameters
     ----------
@@ -432,7 +442,7 @@ def rgb_to_jzazbz(
     """
     large_xyz = rgb_to_large_xyz(
         rgb=rgb, color_space_name=color_space_name,
-        rgb_white=rgb_white, xyz_white=xyz_white) * luminance
+        xyz_white=xyz_white) * luminance
     jzazbz = large_xyz_to_jzazbz(xyz=large_xyz)
 
     return jzazbz

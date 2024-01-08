@@ -16,7 +16,8 @@ from multiprocessing import Pool, cpu_count
 # REVISION = 3  # 右上に色々と小物を追加
 # REVISION = 4  # colour version 0.3.14
 # REVISION = 5  # colour version 0.3.16
-REVISION = 6  # colour version 0.4.3
+# REVISION = 6  # colour version 0.4.3
+REVISION = 7  # update argument of `XYZ_to_RGB`
 BIT_DEPTH = 10
 
 
@@ -56,7 +57,8 @@ PARAM_LIST = [
     {'tf': tf.GAMMA24, 'cs': BT2020_CS, 'wp': 'D65'},
     {'tf': tf.ST2084, 'cs': BT709_CS, 'wp': 'D65'},
     {'tf': tf.ST2084, 'cs': DCI_P3_CS, 'wp': 'D65'},
-    {'tf': tf.ST2084, 'cs': BT2020_CS, 'wp': 'D65'}
+    {'tf': tf.ST2084, 'cs': BT2020_CS, 'wp': 'D65'},
+    {'tf': tf.LOGC, 'cs': ALEXA_WIDE_GAMUT_CS, 'wp': 'D65'}
 ]
 
 

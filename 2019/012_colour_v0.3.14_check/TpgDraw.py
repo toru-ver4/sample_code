@@ -430,19 +430,22 @@ class TpgDraw:
         temp_xyY = np.array(temp_xyY)
         large_xyz = colour.models.xyY_to_XYZ(temp_xyY)
 
-        rgb_white_point\
-            = colour.colorimetry.CCS_ILLUMINANTS['cie_2_1931'][self.white_point]
+        # rgb_white_point\
+        #     = colour.colorimetry.CCS_ILLUMINANTS['cie_2_1931'][self.white_point]
 
-        illuminant_XYZ = whitepoint   # ColorCheckerのオリジナルデータの白色点
-        illuminant_RGB = rgb_white_point  # RGBの白色点を設定
-        chromatic_adaptation_transform = 'CAT02'
-        large_xyz_to_rgb_matrix\
-            = cs.get_xyz_to_rgb_matrix(self.color_space.name)
+        # illuminant_XYZ = whitepoint   # ColorCheckerのオリジナルデータの白色点
+        # illuminant_RGB = rgb_white_point  # RGBの白色点を設定
+        # chromatic_adaptation_transform = 'CAT02'
+        # large_xyz_to_rgb_matrix\
+        #     = cs.get_xyz_to_rgb_matrix(self.color_space.name)
         # large_xyz_to_rgb_matrix = self.color_space.XYZ_to_RGB_matrix
-        rgb = colour.models.XYZ_to_RGB(large_xyz, illuminant_XYZ,
-                                       illuminant_RGB,
-                                       large_xyz_to_rgb_matrix,
-                                       chromatic_adaptation_transform)
+        # rgb = colour.models.XYZ_to_RGB(large_xyz, illuminant_XYZ,
+        #                                illuminant_RGB,
+        #                                large_xyz_to_rgb_matrix,
+        #                                chromatic_adaptation_transform)
+        rgb = cs.large_xyz_to_rgb(
+            xyz=large_xyz, color_space_name=self.color_space.name,
+            xyz_white=whitepoint)
 
         # overflow, underflow check
         # -----------------------------
