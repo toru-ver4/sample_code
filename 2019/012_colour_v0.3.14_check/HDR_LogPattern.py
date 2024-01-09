@@ -24,7 +24,8 @@ BIT_DEPTH = 10
 BT709_CS = colour.models.RGB_COLOURSPACE_BT709
 BT2020_CS = colour.models.RGB_COLOURSPACE_BT2020
 V_GAMUT_CS = colour.models.RGB_COLOURSPACE_V_GAMUT
-ALEXA_WIDE_GAMUT_CS = colour.models.RGB_COLOURSPACE_ARRI_WIDE_GAMUT_3
+ALEXA_WIDE_GAMUT_CS3 = colour.models.RGB_COLOURSPACE_ARRI_WIDE_GAMUT_3
+ALEXA_WIDE_GAMUT_CS4 = colour.models.RGB_COLOURSPACE_ARRI_WIDE_GAMUT_4
 S_GAMUT3_CINE_CS = colour.models.RGB_COLOURSPACE_S_GAMUT3_CINE
 S_GAMUT3_CS = colour.models.RGB_COLOURSPACE_S_GAMUT3
 V_LOG_CS = colour.models.RGB_COLOURSPACE_V_GAMUT
@@ -58,7 +59,8 @@ PARAM_LIST = [
     {'tf': tf.ST2084, 'cs': BT709_CS, 'wp': 'D65'},
     {'tf': tf.ST2084, 'cs': DCI_P3_CS, 'wp': 'D65'},
     {'tf': tf.ST2084, 'cs': BT2020_CS, 'wp': 'D65'},
-    {'tf': tf.LOGC, 'cs': ALEXA_WIDE_GAMUT_CS, 'wp': 'D65'}
+    {'tf': tf.LOGC, 'cs': ALEXA_WIDE_GAMUT_CS3, 'wp': 'D65'},
+    {'tf': tf.LOGC4, 'cs': ALEXA_WIDE_GAMUT_CS4, 'wp': 'D65'}
 ]
 
 

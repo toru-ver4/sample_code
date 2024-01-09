@@ -9,6 +9,7 @@ import os
 # import third-party libraries
 import numpy as np
 from colour import xy_to_XYZ
+from colour import RGB_COLOURSPACES
 
 # import my libraries
 import test_pattern_generator2 as tpg
@@ -52,11 +53,11 @@ def evaluate_quantization_error():
 
 
 def create_expected_linear_value():
-    img = tpg.img_read_as_float("./img/SMPTE ST2084_P3-D65.png")
+    img = tpg.img_read_as_float("./img/ARRI_LOG_C_ARRI_Wide_Gamut_4.png")
     # pos_list = [[1403, 402], [1308, 402], [1187, 402]]
     rgb_patch = np.array([img[402, 1403], img[402, 1308], img[402, 1187]])
-    rgb_linear = tf.eotf_to_luminance(rgb_patch, tf.ST2084) / 100
-    large_xyz = cs.rgb_to_large_xyz(rgb_linear, cs.P3_D65, cs.D65)
+    rgb_linear = tf.eotf_to_luminance(rgb_patch, tf.LOGC4) / 100
+    large_xyz = cs.rgb_to_large_xyz(rgb_linear, cs.ALEXA_WIDE_GAMUT_4, cs.D65)
     rgb_p3d65 = cs.large_xyz_to_rgb(large_xyz, cs.P3_D65)
     rgb_bt2020 = cs.large_xyz_to_rgb(large_xyz, cs.BT2020)
     rgb_ap0 = cs.large_xyz_to_rgb(large_xyz, cs.ACES_AP0, xyz_white=cs.D65)

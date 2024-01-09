@@ -28,6 +28,7 @@ GAMMA35 = 'Gamma 3.5'
 ST2084 = 'SMPTE ST2084'
 HLG = 'BT.2100 HLG'
 LOGC = 'ARRI LOG_C'
+LOGC4 = 'ARRI LOG_C4'
 VLOG_IRE = 'Panasonic VLog (IRE Base)'
 VLOG = 'Panasonic VLog'
 SLOG3 = "SONY S-Log3 (IRE Base)"
@@ -47,6 +48,7 @@ slog_max = colour.models.log_decoding_SLog3((1023 / 1023),
 slog_ref_max = colour.models.log_decoding_SLog3((1023 / 1023),
                                                 out_reflection=True)
 logc_max = colour.models.log_decoding_ARRILogC3(1.0)
+logc4_max = colour.models.log_decoding_ARRILogC4(1.0)
 vlog_ire_max = colour.models.log_decoding_VLog(1.0, out_reflection=False)
 vlog_ref_max = colour.models.log_decoding_VLog(1.0, out_reflection=True)
 red_max = colour.models.log_decoding_REDLog(1.0)
@@ -64,7 +66,7 @@ REF_WHITE_LUMINANCE = 100
 MAX_VALUE = {GAMMA24: 1.0, GAMMA35: 1.0, SRGB: 1.0, BT709: 1.0,
              ST2084: 10000, HLG: 1000,
              VLOG_IRE: vlog_ire_max, VLOG: vlog_ref_max,
-             LOGC: logc_max,
+             LOGC: logc_max, LOGC4: logc4_max,
              SLOG3: slog_max, SLOG3_REF: slog_ref_max,
              REDLOG: red_max,
              LOG3G10: log3g10_max, LOG3G12: log3g12_max,
@@ -79,6 +81,7 @@ PEAK_LUMINANCE = {GAMMA24: REF_WHITE_LUMINANCE,
                   VLOG_IRE: vlog_ire_max * REF_WHITE_LUMINANCE,
                   VLOG: vlog_ref_max * REF_WHITE_LUMINANCE,
                   LOGC: logc_max * REF_WHITE_LUMINANCE,
+                  LOGC4: logc4_max * REF_WHITE_LUMINANCE,
                   SLOG3: slog_max * REF_WHITE_LUMINANCE,
                   SLOG3_REF: slog_ref_max * REF_WHITE_LUMINANCE,
                   REDLOG: red_max * REF_WHITE_LUMINANCE,
@@ -143,6 +146,8 @@ def oetf(x, name=GAMMA24):
                                             in_reflection=True)
     elif name == LOGC:
         y = colour.models.log_encoding_ARRILogC3(x * MAX_VALUE[name])
+    elif name == LOGC4:
+        y = colour.models.log_encoding_ARRILogC4(x * MAX_VALUE[name])
     elif name == REDLOG:
         y = colour.models.log_encoding_REDLog(x * MAX_VALUE[name])
     elif name == LOG3G10:
@@ -244,6 +249,8 @@ def eotf(x, name=GAMMA24):
             / MAX_VALUE[name]
     elif name == LOGC:
         y = colour.models.log_decoding_ARRILogC3(x) / MAX_VALUE[name]
+    elif name == LOGC4:
+        y = colour.models.log_decoding_ARRILogC4(x) / MAX_VALUE[name]
     elif name == REDLOG:
         y = colour.models.log_decoding_REDLog(x) / MAX_VALUE[name]
     elif name == LOG3G10:
