@@ -54,6 +54,7 @@ CINEMA_GAMUT = 'Cinema Gamut'
 RED_WIDE_GAMUT_RGB = 'REDWideGamutRGB'
 DCI_P3 = 'DCI-P3'
 SRTB = 'sRGB'
+sRGB = "sRGB"
 P3_D65 = 'P3-D65'
 ADOBE_RGB = 'Adobe RGB (1998)'
 

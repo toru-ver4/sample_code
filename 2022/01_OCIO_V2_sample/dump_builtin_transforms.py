@@ -30,3 +30,5 @@ if __name__ == '__main__':
         name = builtin_transform[0]
         description = builtin_transform[1]
         print(f'name: "{name}", description: "{description}"')
+
+    print(dir(ocio.BuiltinConfigRegistry))
