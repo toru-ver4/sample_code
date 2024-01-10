@@ -84,8 +84,22 @@ def create_expected_sRGB_value():
     )
 
 
+def conv_to_sRGB_value():
+    img = tpg.img_read_as_float("./img/ARRI_LOG_C_ARRI_Wide_Gamut_4.png")
+    # pos_list = [[1403, 402], [1308, 402], [1187, 402]]
+    rgb_patch = img
+    rgb_linear = tf.eotf_to_luminance(rgb_patch, tf.LOGC4) / 100
+    large_xyz = cs.rgb_to_large_xyz(rgb_linear, cs.ALEXA_WIDE_GAMUT_4, cs.D65)
+    srgb_linear = cs.large_xyz_to_rgb(large_xyz, cs.sRGB)
+    srgb_non_linear = tf.oetf(srgb_linear, tf.SRGB)
+
+    tpg.img_wirte_float_as_16bit_int(
+        "./img/ARRI_LOG_C_ARRI_Wide_Gamut_4_to_sRGB.png", srgb_non_linear)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    create_expected_linear_value()
-    create_expected_sRGB_value()
+    # create_expected_linear_value()
+    # create_expected_sRGB_value()
+    conv_to_sRGB_value()
     # evaluate_quantization_error()
