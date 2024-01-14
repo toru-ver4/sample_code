@@ -26,9 +26,10 @@ if __name__ == '__main__':
     builtin_transform_registry = ocio.BuiltinTransformRegistry()
     builtin_transforms = builtin_transform_registry.getBuiltins()
     print(type(builtin_transforms))
+    print("| 名前 | 説明 |")
+    print("|:------|:-----|")
     for builtin_transform in builtin_transforms:
         name = builtin_transform[0]
         description = builtin_transform[1]
-        print(f'name: "{name}", description: "{description}"')
-
-    print(dir(ocio.BuiltinConfigRegistry))
+        # print(f'name: "{name}", description: "{description}"')
+        print(f'| "{name}" | {description}|')
