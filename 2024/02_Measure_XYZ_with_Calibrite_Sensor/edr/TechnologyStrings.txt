@@ -1,0 +1,22 @@
+1,Custom
+2,CRT
+3,CCFL
+4,CCFL
+5,CCFL
+6,Wide Gamut CCFL
+7,Wide Gamut CCFL
+8,Wide Gamut CCFL
+9,White LED
+10,White LED
+11,White LED
+12,RGB LED
+13,RGB LED
+14,RGB LED
+15,OLED
+16,AMOLED
+17,Plasma
+18,RG Phosphor
+19,Projector (RGB Filter Wheel)
+20,Projector (RGBW Filter Wheel)
+21,Projector (RGBCMY Filter Wheel)
+22,Projector
