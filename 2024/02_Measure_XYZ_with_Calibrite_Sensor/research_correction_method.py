@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 # import my libraries
 from ty_utility import search_specific_extension_files
 import plot_utility as pu
+import test_pattern_generator2 as tpg2
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -176,11 +177,12 @@ def plot_spectrum_sample_each(wl, spd_id, spd, ccss_name):
     y_max = np.max(spd) * 1.005
     y_min = -y_max * 0.02
     fig, axes = plt.subplots(
-        nrows=len(spd), ncols=1, figsize=(6, 24))
+        nrows=len(spd), ncols=1, figsize=(5, 24))
 
     for idx, y in enumerate(spd):
         ax = axes[idx]
-        ax.plot(wl, y, label=spd_id[idx])
+        label_text = f"{ccss_name}-{spd_id[idx]}"
+        ax.plot(wl, y, label=label_text)
         # ax.set_title(ccss_name)
         ax.set_ylim(y_min, y_max)
         ax.set_xlabel("Wavelength [nm]")
@@ -188,7 +190,45 @@ def plot_spectrum_sample_each(wl, spd_id, spd, ccss_name):
         ax.legend(loc='upper right')
 
     plt.tight_layout()
-    plt.savefig("./hoge.png")
+    fname = f"./img/{ccss_name}_all.png"
+    print(fname)
+    plt.savefig(fname)
+    # plt.show()
+
+
+def plot_spectrum_sample_each_with_peak(wl, spd_id, spd, ccss_name):
+    y_max = np.max(spd) * 1.005
+    y_min = -y_max * 0.02
+
+    peak_idx = [np.argmax(spd[ii + 1]) for ii in range(3)]
+    peak_xy = [
+        np.array([[wl[peak_idx[ii]], y_min], [wl[peak_idx[ii]], y_max]])
+        for ii in range(3)]
+    color_list = [pu.RED, pu.GREEN, pu.BLUE]
+    print(peak_xy)
+
+    fig, axes = plt.subplots(
+        nrows=3, ncols=1, figsize=(8, 10))
+
+    for idx in range(3):
+        y = spd[idx * 4]
+        ax = axes[idx]
+        label_text = f"{ccss_name}-{spd_id[idx]}"
+        ax.plot(wl, y, '-k', label=label_text)
+        for ii in range(3):
+            ax.plot(
+                peak_xy[ii][..., 0], peak_xy[ii][..., 1], '-',
+                color=color_list[ii], label=None)
+        # ax.set_title(ccss_name)
+        ax.set_ylim(y_min, y_max)
+        ax.set_xlabel("Wavelength [nm]")
+        ax.set_ylabel("Power??")
+        ax.legend(loc='upper right')
+
+    plt.tight_layout()
+    fname = f"./img/{ccss_name}_all_with_peak.png"
+    print(fname)
+    plt.savefig(fname)
     plt.show()
 
 
@@ -202,18 +242,31 @@ def analyze_ccss_file_all():
         plot_spectrum_sample_each(
             wl=wl, spd_id=spd_id, spd=spd, ccss_name=ccss_name)
         print(spd.shape)
-        break
+
+
+def concat_all_img():
+    file_list = search_specific_extension_files(dir="./img", ext=".png")
+    img_buf = []
+
+    for file_name in file_list:
+        img_temp = tpg2.img_read_as_float(str(file_name.resolve()))
+        img_buf.append(img_temp)
+
+    img_out = np.hstack(img_buf)
+
+    tpg2.img_wirte_float_as_16bit_int("./concat_img.png", img_out)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_ccss_files()
     # analyze_ccss_file_all()
+    # concat_all_img()
 
-    ccss_file = "./ccss/CRT.ccss"
+    ccss_file = "./ccss/WLEDFamily_07Feb11.ccss"
     wl, spd_id, spd = parse_ccss_file(file_path=ccss_file)
     # print(wl)
     ccss_name = Path(ccss_file).stem
-    plot_spectrum_sample_each(
+    plot_spectrum_sample_each_with_peak(
         wl=wl, spd_id=spd_id, spd=spd, ccss_name=ccss_name)
     print(spd.shape)
