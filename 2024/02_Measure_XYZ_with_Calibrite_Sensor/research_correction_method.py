@@ -12,11 +12,15 @@ from pathlib import Path
 # import third-party libraries
 import numpy as np
 import matplotlib.pyplot as plt
+from colour import XYZ_to_Lab, xyY_to_XYZ
+from colour.difference import delta_E_CIE2000
 
 # import my libraries
 from ty_utility import search_specific_extension_files
 import plot_utility as pu
-import test_pattern_generator2 as tpg2
+import test_pattern_generator2 as tpg
+from display_pro_hl import read_measure_result
+import transfer_functions as tf
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -249,12 +253,89 @@ def concat_all_img():
     img_buf = []
 
     for file_name in file_list:
-        img_temp = tpg2.img_read_as_float(str(file_name.resolve()))
+        img_temp = tpg.img_read_as_float(str(file_name.resolve()))
         img_buf.append(img_temp)
 
     img_out = np.hstack(img_buf)
 
-    tpg2.img_wirte_float_as_16bit_int("./concat_img.png", img_out)
+    tpg.img_wirte_float_as_16bit_int("./concat_img.png", img_out)
+
+
+def calc_colorchecker_de2000(measured_xyz, ref_luminance):
+    measured_lab = XYZ_to_Lab(measured_xyz / 100)
+    target_xyz = xyY_to_XYZ(tpg.generate_color_checker_xyY_value())
+    target_xyz *= ref_luminance
+    target_lab = XYZ_to_Lab(target_xyz)
+
+    de2000 = delta_E_CIE2000(target_lab, measured_lab)
+
+    return de2000
+
+
+def plot_colorchecker_de2000(de2k: np.ndarray, title_suffix=""):
+    x = np.arange(len(de2k)) + 1
+    bar_color = np.clip(tpg.generate_color_checker_rgb_value(), 0, 1)
+    bar_color = tf.oetf(bar_color, tf.SRGB)
+    title = "Color Difference" + " " + title_suffix
+    fname = f"./img/{title}.png"
+    average = np.mean(de2k)
+    min_val = np.min(de2k)
+    max_val = np.max(de2k)
+    info_text = f'Average: {average:.2f}, min: {min_val:.2f}, max: {max_val:.2f}'
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(14, 6),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=title,
+        graph_title_size=None,
+        xlabel="Index",
+        ylabel="ΔE2000",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[0, 25],
+        ylim=None,
+        xtick=np.arange(24) + 1,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.bar(x, de2k, color=bar_color, edgecolor='k', width=0.6, label=None)
+    ax1.grid(False, axis='x')
+
+    # add info text
+    xmin, xmax = ax1.get_xlim()
+    ymin, ymax = ax1.get_ylim()
+    text_pos_x = xmin + (xmax - xmin) * 0.02
+    text_pos_y = ymax - (ymax - ymin) * 0.05
+    bbox_ops = dict(
+        facecolor='white', edgecolor='black', boxstyle='square,pad=0.5')
+    ax1.text(
+        text_pos_x, text_pos_y, info_text, fontsize=20, va='top', ha='left',
+        bbox=bbox_ops)
+
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc=None, save_fname=fname, show=True)
+
+
+def check_diff_ccss_with_colorchecker():
+    data_ccss = read_measure_result(
+        csv_name="./measure_result/result_colorchecker_WLEDFamily-ccss.csv")
+    data_no_ccss = read_measure_result(
+        csv_name="./measure_result/result_colorchecker_no-ccss.csv")
+    ref_luminance = 63 / 100
+
+    data_ccss_xyz = data_ccss[..., :3]
+    data_no_ccss_xyz = data_no_ccss[..., :3]
+
+    de2000_ccss = calc_colorchecker_de2000(
+        measured_xyz=data_ccss_xyz, ref_luminance=ref_luminance)
+    de2000_no_ccss = calc_colorchecker_de2000(
+        measured_xyz=data_no_ccss_xyz, ref_luminance=ref_luminance)
+
+    plot_colorchecker_de2000(de2k=de2000_ccss, title_suffix="with CCSS")
+    plot_colorchecker_de2000(de2k=de2000_no_ccss, title_suffix="without CCSS")
 
 
 if __name__ == '__main__':
@@ -262,11 +343,12 @@ if __name__ == '__main__':
     # create_ccss_files()
     # analyze_ccss_file_all()
     # concat_all_img()
+    check_diff_ccss_with_colorchecker()
 
-    ccss_file = "./ccss/WLEDFamily_07Feb11.ccss"
-    wl, spd_id, spd = parse_ccss_file(file_path=ccss_file)
-    # print(wl)
-    ccss_name = Path(ccss_file).stem
-    plot_spectrum_sample_each_with_peak(
-        wl=wl, spd_id=spd_id, spd=spd, ccss_name=ccss_name)
-    print(spd.shape)
+    # ccss_file = "./ccss/WLEDFamily_07Feb11.ccss"
+    # wl, spd_id, spd = parse_ccss_file(file_path=ccss_file)
+    # # print(wl)
+    # ccss_name = Path(ccss_file).stem
+    # plot_spectrum_sample_each_with_peak(
+    #     wl=wl, spd_id=spd_id, spd=spd, ccss_name=ccss_name)
+    # print(spd.shape)

@@ -1584,29 +1584,26 @@ def get_accelerated_x_8x(sample_num=64):
 
 
 def generate_color_checker_xyY_value():
-        colour_checker_param = CCS_COLOURCHECKERS.get('ColorChecker 2005')
+    colour_checker_param = CCS_COLOURCHECKERS.get('ColorChecker 2005')
+    colour_checker_param\
+        = CCS_COLOURCHECKERS.get('ColorChecker 2005')
 
-        colour_checker_param\
-            = CCS_COLOURCHECKERS.get('ColorChecker 2005')
+    data = colour_checker_param.data
+    whitepoint = colour_checker_param.illuminant
+    temp_xyY = []
+    for key in data.keys():
+        temp_xyY.append(data[key])
+    temp_xyY = np.array(temp_xyY)
+    large_xyz = xyY_to_XYZ(temp_xyY)
+    M_CAT = matrix_chromatic_adaptation_VonKries(
+        xyY_to_XYZ(xy_to_xyY(whitepoint)),
+        xyY_to_XYZ(xy_to_xyY(cs.D65)),
+        transform="CAT02",
+    )
+    large_xyz = vector_dot(M_CAT, large_xyz)
+    xyY = XYZ_to_xyY(large_xyz)
 
-        data = colour_checker_param.data
-        whitepoint = colour_checker_param.illuminant
-        temp_xyY = []
-        for key in data.keys():
-            temp_xyY.append(data[key])
-        temp_xyY = np.array(temp_xyY)
-        large_xyz = xyY_to_XYZ(temp_xyY)
-
-        M_CAT = matrix_chromatic_adaptation_VonKries(
-            xyY_to_XYZ(xy_to_xyY(whitepoint)),
-            xyY_to_XYZ(xy_to_xyY(cs.D65)),
-            transform="CAT02",
-        )
-
-        large_xyz = vector_dot(M_CAT, large_xyz)
-        xyY = XYZ_to_xyY(large_xyz)
-
-        return xyY
+    return xyY
 
 
 def generate_color_checker_rgb_value(
@@ -1658,23 +1655,25 @@ def generate_color_checker_rgb_value(
     >>>  [ 0.03038879  0.03118623  0.03279615]]
     """
     colour_checker_param = CCS_COLOURCHECKERS.get('ColorChecker 2005')
-    # 今回の処理では必要ないデータもあるので xyY と whitepoint だけ抽出
-    # -------------------------------------------------------------
-    _name, data, whitepoint = colour_checker_param
+    colour_checker_param\
+        = CCS_COLOURCHECKERS.get('ColorChecker 2005')
+
+    data = colour_checker_param.data
+    whitepoint = colour_checker_param.illuminant
     temp_xyY = []
     for key in data.keys():
         temp_xyY.append(data[key])
     temp_xyY = np.array(temp_xyY)
     large_xyz = xyY_to_XYZ(temp_xyY)
-    rgb_white_point = D65_WHITE
-    illuminant_XYZ = whitepoint   # ColorCheckerのオリジナルデータの白色点
-    illuminant_RGB = rgb_white_point  # XYZ to RGB 変換後の白色点を設定
-    chromatic_adaptation_transform = 'CAT02'
-    large_xyz_to_rgb_matrix = color_space.matrix_XYZ_to_RGB
+    M_CAT = matrix_chromatic_adaptation_VonKries(
+        xyY_to_XYZ(xy_to_xyY(whitepoint)),
+        xyY_to_XYZ(xy_to_xyY(cs.D65)),
+        transform="CAT02",
+    )
+    large_xyz = vector_dot(M_CAT, large_xyz)
 
     rgb = XYZ_to_RGB(
-        large_xyz, illuminant_XYZ, illuminant_RGB,
-        large_xyz_to_rgb_matrix, chromatic_adaptation_transform)
+        XYZ=large_xyz, colourspace=color_space, illuminant=cs.D65)
 
     return rgb
 

@@ -153,7 +153,7 @@ def read_xyz(ccss_file=None):
     if shutil.which(cmd) is None:
         raise FileNotFoundError(f"{cmd} not found in system PATH.")
 
-    if ccss_file:
+    if ccss_file is not None:
         args = [cmd, "-x", "-X", ccss_file, "-O"]
     else:
         args = [cmd, "-x", "-O"]
@@ -162,6 +162,8 @@ def read_xyz(ccss_file=None):
     result = subprocess.run(args, stdout=subprocess.PIPE, text=True)
     print(" completed!!")
     large_xyz, Yxy = parse_measure_result(text=result.stdout)
+
+    print(f"XYZ = {large_xyz}, Yxy = {Yxy}")
 
     return large_xyz, Yxy
 
@@ -201,7 +203,7 @@ def read_xyz_and_save_to_csv_file(
     The 'save_measure_result' function is used to save the data
     in the specified CSV file format.
     """
-    large_xyz, Yxy = read_xyz(ccss_file=None, ccss_file=ccss_file)
+    large_xyz, Yxy = read_xyz(ccss_file=None)
 
     ccss_base_name = Path(ccss_file).stem if ccss_file is not None else '-'
     save_measure_result(
@@ -211,7 +213,11 @@ def read_xyz_and_save_to_csv_file(
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # read_xyz()
-    # read_xyz(ccss_file="./ccss/WLEDFamily_07Feb11.ccss")
+    read_xyz()
+    read_xyz(ccss_file="./ccss/WLEDFamily_07Feb11.ccss")
     # read_xyz(ccss_file="./ccss/OLEDFamily_20Jul12.ccss")
-    read_measure_result()
+    # read_measure_result()
+
+    # read_xyz_and_save_to_csv_file(
+    #     result_fname="./result_colorchecker_WLEDFamily-ccss.csv",
+    #     ccss_file="./ccss/WLEDFamily_07Feb11.ccss")

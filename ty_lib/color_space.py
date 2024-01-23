@@ -22,7 +22,7 @@ import numpy as np
 from colour.colorimetry import CCS_ILLUMINANTS as ILLUMINANTS
 from colour import RGB_COLOURSPACES
 from colour.models import xy_to_XYZ, Jab_to_JCh, JCh_to_Jab
-from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab,\
+from colour import xy_to_xyY, xyY_to_XYZ, XYZ_to_RGB, RGB_to_XYZ, XYZ_to_Lab, \
     Lab_to_XYZ, Oklab_to_XYZ, XYZ_to_Oklab
 from colour.adaptation import matrix_chromatic_adaptation_VonKries as cat02_mtx
 from colour.utilities import tstack
