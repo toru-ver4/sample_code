@@ -12,7 +12,7 @@ from pathlib import Path
 # import third-party libraries
 import numpy as np
 import matplotlib.pyplot as plt
-from colour import XYZ_to_Lab, xyY_to_XYZ
+from colour import XYZ_to_Lab, xyY_to_XYZ, XYZ_to_xyY
 from colour.difference import delta_E_CIE2000
 
 # import my libraries
@@ -21,6 +21,7 @@ import plot_utility as pu
 import test_pattern_generator2 as tpg
 from display_pro_hl import read_measure_result
 import transfer_functions as tf
+import color_space as cs
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -200,6 +201,34 @@ def plot_spectrum_sample_each(wl, spd_id, spd, ccss_name):
     # plt.show()
 
 
+def plot_spectrum_sample_each_with_dell_spd(wl, spd_id, spd, ccss_name):
+    y_max = np.max(spd) * 1.005
+    y_min = -y_max * 0.02
+    dell_spd = np.loadtxt(
+        "./DELL_LCD_Spectrum.csv", skiprows=5, usecols=(0, 1), delimiter=',')
+    x_dell = dell_spd[..., 0]
+    y_dell = (dell_spd[..., 1] / np.max(dell_spd[..., 1])) * y_max
+    fig, axes = plt.subplots(
+        nrows=len(spd), ncols=1, figsize=(5, 24))
+
+    for idx, y in enumerate(spd):
+        ax = axes[idx]
+        label_text = f"{ccss_name}-{spd_id[idx]}"
+        ax.plot(wl, y, '-k', label=label_text)
+        ax.plot(x_dell, y_dell, '--k', label="DELL G3223Q")
+        # ax.set_title(ccss_name)
+        ax.set_ylim(y_min, y_max)
+        ax.set_xlabel("Wavelength [nm]")
+        ax.set_ylabel("Power??")
+        ax.legend(loc='upper right')
+
+    plt.tight_layout()
+    fname = f"./img/{ccss_name}_all_with_G3223Q.png"
+    print(fname)
+    plt.savefig(fname)
+    # plt.show()
+
+
 def plot_spectrum_sample_each_with_peak(wl, spd_id, spd, ccss_name):
     y_max = np.max(spd) * 1.005
     y_min = -y_max * 0.02
@@ -245,7 +274,8 @@ def analyze_ccss_file_all():
         ccss_name = Path(ccss_file).stem
         plot_spectrum_sample_each(
             wl=wl, spd_id=spd_id, spd=spd, ccss_name=ccss_name)
-        print(spd.shape)
+        plot_spectrum_sample_each_with_dell_spd(
+            wl=wl, spd_id=spd_id, spd=spd, ccss_name=ccss_name)
 
 
 def concat_all_img():
@@ -261,10 +291,76 @@ def concat_all_img():
     tpg.img_wirte_float_as_16bit_int("./concat_img.png", img_out)
 
 
+def concat_all_img_with_G3223Q():
+    file_list = search_specific_extension_files(dir="./img", ext="G3223Q.png")
+    img_buf = []
+
+    for file_name in file_list:
+        img_temp = tpg.img_read_as_float(str(file_name.resolve()))
+        img_buf.append(img_temp)
+
+    img_out = np.hstack(img_buf)
+
+    tpg.img_wirte_float_as_16bit_int("./concat_img_with_G3223Q.png", img_out)
+
+
+def calc_color_checker_xyz_value_from_tp(fname):
+    st_pos_h = 350
+    ed_pos_h = 1600
+    st_pos_v = 170
+    ed_pos_v = 926
+    h_len = 6
+    v_len = 4
+    h_step = int((ed_pos_h - st_pos_h) / (h_len - 1))
+    v_step = int((ed_pos_v - st_pos_v) / (v_len - 1))
+
+    pos_info = []
+    for v_idx in range(v_len):
+        pos_v = st_pos_v + v_idx * v_step
+        for h_idx in range(h_len):
+            pos_h = st_pos_h + h_idx * h_step
+            pos_info.append([pos_h, pos_v])
+
+    img = tpg.img_read_as_float(fname)
+    img = tf.eotf(img, tf.GAMMA24)
+    cc_rgb = np.array([img[pos[1], pos[0]] for pos in pos_info])
+    cc_xyz = cs.rgb_to_large_xyz(
+        rgb=cc_rgb, color_space_name=cs.BT709, xyz_white=cs.D65)
+
+    return cc_xyz
+
+
+def calc_delta_xyY(
+        ref_xyz: np.ndarray, measured_xyz: np.ndarray,
+        csv_name: str):
+    ref_xyY = XYZ_to_xyY(ref_xyz)
+    measured_xyY = XYZ_to_xyY(measured_xyz)
+    diff_xyY = ref_xyY - measured_xyY
+
+    with open(csv_name, 'wt') as f:
+        buf = ""
+        buf += "No,ref_x,ref_y,ref_Y,x,y,Y,diff_x,diff_y,diff_Y\n"
+        for ii in range(len(ref_xyY)):
+            rr_xyY = ref_xyY[ii]
+            mm_xyY = measured_xyY[ii]
+            dd_xyY = diff_xyY[ii]
+
+            buf += f"{ii},"
+            buf += f"{rr_xyY[0]},{rr_xyY[1]},{rr_xyY[2]},"
+            buf += f"{mm_xyY[0]},{mm_xyY[1]},{mm_xyY[2]},"
+            buf += f"{dd_xyY[0]},{dd_xyY[1]},{dd_xyY[2]}\n"
+
+        f.write(buf)
+
+
 def calc_colorchecker_de2000(measured_xyz, ref_luminance):
-    measured_lab = XYZ_to_Lab(measured_xyz / 100)
-    target_xyz = xyY_to_XYZ(tpg.generate_color_checker_xyY_value())
-    target_xyz *= ref_luminance
+    measured_lab = XYZ_to_Lab(measured_xyz / ref_luminance)
+
+    target_xyz = calc_color_checker_xyz_value_from_tp(
+        fname="../../2020/026_create_icc_profiles/img/bt709_img_with_icc.png")
+    # target_xyz = xyY_to_XYZ(tpg.generate_color_checker_xyY_value())
+    # target_xyz *= ref_luminance
+    # print(target_xyz)
     target_lab = XYZ_to_Lab(target_xyz)
 
     de2000 = delta_E_CIE2000(target_lab, measured_lab)
@@ -272,7 +368,8 @@ def calc_colorchecker_de2000(measured_xyz, ref_luminance):
     return de2000
 
 
-def plot_colorchecker_de2000(de2k: np.ndarray, title_suffix=""):
+def plot_colorchecker_de2000(
+        de2k: np.ndarray, max_diff: float, title_suffix=""):
     x = np.arange(len(de2k)) + 1
     bar_color = np.clip(tpg.generate_color_checker_rgb_value(), 0, 1)
     bar_color = tf.oetf(bar_color, tf.SRGB)
@@ -293,7 +390,7 @@ def plot_colorchecker_de2000(de2k: np.ndarray, title_suffix=""):
         axis_label_size=None,
         legend_size=17,
         xlim=[0, 25],
-        ylim=None,
+        ylim=[0, max_diff * 1.05],
         xtick=np.arange(24) + 1,
         ytick=None,
         xtick_size=None, ytick_size=None,
@@ -316,15 +413,68 @@ def plot_colorchecker_de2000(de2k: np.ndarray, title_suffix=""):
 
     print(fname)
     pu.show_and_save(
+        fig=fig, legend_loc=None, save_fname=fname, show=False)
+
+
+def plot_colorchecker_de2000_with_PROFILER(
+        de2k: np.ndarray, title_suffix=""):
+    x = np.arange(len(de2k)) + 1
+    y_ref = np.array(
+        [0.71, 0.49, 0.15, 0.49, 0.26, 0.25,
+         0.28, 0.21, 0.32, 0.32, 0.07, 0.13,
+         0.05, 0.23, 0.12, 0.31, 0.34, 0.23,
+         0.78, 0.5, 1.18, 0.2, 0.94, 0.36])
+    bar_color = np.clip(tpg.generate_color_checker_rgb_value(), 0, 1)
+    bar_color = tf.oetf(bar_color, tf.SRGB)
+    title = "Color Difference" + " " + title_suffix
+    fname = f"./img/{title}_with_PROFILER.png"
+    average = np.mean(de2k)
+    min_val = np.min(de2k)
+    max_val = np.max(de2k)
+    info_text = f'Average: {average:.2f}, min: {min_val:.2f}, max: {max_val:.2f}'
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(14, 6),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=title,
+        graph_title_size=None,
+        xlabel="Index",
+        ylabel="ΔE2000",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[0, 25],
+        ylim=None,
+        xtick=np.arange(24) + 1,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.bar(x-0.15, de2k, color=bar_color, edgecolor='k', width=0.3, label=None)
+    ax1.bar(x+0.15, y_ref, color=pu.GRAY90, edgecolor='k', width=0.3, label=None)
+    ax1.grid(False, axis='x')
+
+    # add info text
+    xmin, xmax = ax1.get_xlim()
+    ymin, ymax = ax1.get_ylim()
+    text_pos_x = xmin + (xmax - xmin) * 0.02
+    text_pos_y = ymax - (ymax - ymin) * 0.05
+    bbox_ops = dict(
+        facecolor='white', edgecolor='black', boxstyle='square,pad=0.5')
+    ax1.text(
+        text_pos_x, text_pos_y, info_text, fontsize=20, va='top', ha='left',
+        bbox=bbox_ops)
+
+    print(fname)
+    pu.show_and_save(
         fig=fig, legend_loc=None, save_fname=fname, show=True)
 
 
-def check_diff_ccss_with_colorchecker():
-    data_ccss = read_measure_result(
-        csv_name="./measure_result/result_colorchecker_WLEDFamily-ccss.csv")
-    data_no_ccss = read_measure_result(
-        csv_name="./measure_result/result_colorchecker_no-ccss.csv")
-    ref_luminance = 63 / 100
+def check_diff_ccss_with_colorchecker(
+        result_with_ccss, result_without_ccss, ccss_suffix=""):
+    data_ccss = read_measure_result(csv_name=result_with_ccss)
+    data_no_ccss = read_measure_result(csv_name=result_without_ccss)
+    ref_luminance = 61
 
     data_ccss_xyz = data_ccss[..., :3]
     data_no_ccss_xyz = data_no_ccss[..., :3]
@@ -333,9 +483,40 @@ def check_diff_ccss_with_colorchecker():
         measured_xyz=data_ccss_xyz, ref_luminance=ref_luminance)
     de2000_no_ccss = calc_colorchecker_de2000(
         measured_xyz=data_no_ccss_xyz, ref_luminance=ref_luminance)
+    max_diff = np.max(de2000_no_ccss)
 
-    plot_colorchecker_de2000(de2k=de2000_ccss, title_suffix="with CCSS")
-    plot_colorchecker_de2000(de2k=de2000_no_ccss, title_suffix="without CCSS")
+    plot_colorchecker_de2000(
+        de2k=de2000_ccss, max_diff=max_diff,
+        title_suffix=f"with {ccss_suffix}")
+    plot_colorchecker_de2000(
+        de2k=de2000_no_ccss, max_diff=max_diff,
+        title_suffix=f"without {ccss_suffix}")
+    plot_colorchecker_de2000_with_PROFILER(
+        de2k=de2000_ccss, title_suffix=f"with {ccss_suffix}")
+
+    ref_xyz = calc_color_checker_xyz_value_from_tp(
+        fname="../../2020/026_create_icc_profiles/img/bt709_img_with_icc.png")
+    calc_delta_xyY(
+        ref_xyz=ref_xyz,
+        measured_xyz=data_no_ccss_xyz/ref_luminance,
+        csv_name=f"./{ccss_suffix}.csv")
+
+
+def debug_check_de2000():
+    xyY_no_ccss = np.array([0.63424544, 0.309768, 0.333399])
+    xyY_ccss = np.array([0.62852337, 0.312340, 0.329347])
+    xyY_ref = np.array([0.63, 0.3127, 0.3290])
+
+    xyY_list = [xyY_ref, xyY_no_ccss, xyY_ccss]
+    xyz_list = [xyY_to_XYZ(xyY) for xyY in xyY_list]
+    lab_list = [XYZ_to_Lab(xyz) for xyz in xyz_list]
+
+    lab_ref = lab_list[0]
+    lab_no_ccss = lab_list[1]
+    lab_ccss = lab_list[2]
+
+    print(delta_E_CIE2000(lab_ref, lab_no_ccss))
+    print(delta_E_CIE2000(lab_ref, lab_ccss))
 
 
 if __name__ == '__main__':
@@ -343,7 +524,12 @@ if __name__ == '__main__':
     # create_ccss_files()
     # analyze_ccss_file_all()
     # concat_all_img()
-    check_diff_ccss_with_colorchecker()
+    # concat_all_img_with_G3223Q()
+    check_diff_ccss_with_colorchecker(
+        result_with_ccss="./measure_result/Calibration-RGBLED_with_ccss.py",
+        result_without_ccss="./measure_result/Calibration-RGBLED_no_ccss.py",
+        ccss_suffix="RGBLED_CCSS"
+    )
 
     # ccss_file = "./ccss/WLEDFamily_07Feb11.ccss"
     # wl, spd_id, spd = parse_ccss_file(file_path=ccss_file)
@@ -352,3 +538,5 @@ if __name__ == '__main__':
     # plot_spectrum_sample_each_with_peak(
     #     wl=wl, spd_id=spd_id, spd=spd, ccss_name=ccss_name)
     # print(spd.shape)
+
+    # debug_check_de2000()

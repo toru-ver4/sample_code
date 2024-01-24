@@ -158,6 +158,7 @@ def read_xyz(ccss_file=None):
     else:
         args = [cmd, "-x", "-O"]
 
+    print(" ".join(args))
     print("Measurering...", end="", flush=True)
     result = subprocess.run(args, stdout=subprocess.PIPE, text=True)
     print(" completed!!")
@@ -203,7 +204,7 @@ def read_xyz_and_save_to_csv_file(
     The 'save_measure_result' function is used to save the data
     in the specified CSV file format.
     """
-    large_xyz, Yxy = read_xyz(ccss_file=None)
+    large_xyz, Yxy = read_xyz(ccss_file=ccss_file)
 
     ccss_base_name = Path(ccss_file).stem if ccss_file is not None else '-'
     save_measure_result(
@@ -213,11 +214,11 @@ def read_xyz_and_save_to_csv_file(
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    read_xyz()
-    read_xyz(ccss_file="./ccss/WLEDFamily_07Feb11.ccss")
-    # read_xyz(ccss_file="./ccss/OLEDFamily_20Jul12.ccss")
+    # read_xyz()
+    # read_xyz(ccss_file="./ccss/RGBLEDFamily_07Feb11.ccss")
+    # read_xyz(ccss_file="./ccss/WLEDFamily_07Feb11.ccss")
     # read_measure_result()
 
-    # read_xyz_and_save_to_csv_file(
-    #     result_fname="./result_colorchecker_WLEDFamily-ccss.csv",
-    #     ccss_file="./ccss/WLEDFamily_07Feb11.ccss")
+    read_xyz_and_save_to_csv_file(
+        result_fname="./measure_result/Calibration-RGBLED_no_ccss.py",
+        ccss_file=None)
