@@ -214,11 +214,17 @@ def read_xyz_and_save_to_csv_file(
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+    # single read
     # read_xyz()
     # read_xyz(ccss_file="./ccss/RGBLEDFamily_07Feb11.ccss")
     # read_xyz(ccss_file="./ccss/WLEDFamily_07Feb11.ccss")
-    # read_measure_result()
 
+    # sequential read
     read_xyz_and_save_to_csv_file(
-        result_fname="./measure_result/Calibration-RGBLED_no_ccss.py",
-        ccss_file=None)
+        result_fname="./measure_result/sample.csv",
+        ccss_file='./ccss/WLEDFamily_07Feb11.ccss')
+
+    # # read result
+    # read_measure_result(
+    #     csv_name="./measure_result/result_colorchecker_no-ccss_for_RGBLED_v2.csv")

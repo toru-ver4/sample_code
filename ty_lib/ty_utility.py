@@ -51,7 +51,7 @@ def search_specific_extension_files(dir, ext=".edr"):
     [WindowsPath('data/document1.txt'), WindowsPath('data/document2.txt'), ...]
     """
     path = Path(dir)
-    file_list = list(path.glob("*" + ext))
+    file_list = list(map(str, list(path.glob("*" + ext))))
     return file_list
 
 

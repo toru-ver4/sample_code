@@ -8,6 +8,7 @@ import os
 import subprocess
 import shutil
 from pathlib import Path
+import re
 
 # import third-party libraries
 import numpy as np
@@ -19,7 +20,7 @@ from colour.difference import delta_E_CIE2000
 from ty_utility import search_specific_extension_files
 import plot_utility as pu
 import test_pattern_generator2 as tpg
-from display_pro_hl import read_measure_result
+from display_pro_hl import read_measure_result, read_xyz_and_save_to_csv_file
 import transfer_functions as tf
 import color_space as cs
 
@@ -63,6 +64,7 @@ def convert_from_edr_to_ccss(fname):
     if shutil.which("oeminst.exe") is None:
         raise FileNotFoundError("oeminst.exe not found in system PATH.")
 
+    print(f"oeminst.exe -c {fname}")
     cmd_plus_ops = ["oeminst.exe", '-c', fname]
     subprocess.run(cmd_plus_ops)
 
@@ -186,13 +188,13 @@ def plot_spectrum_sample_each(wl, spd_id, spd, ccss_name):
 
     for idx, y in enumerate(spd):
         ax = axes[idx]
-        label_text = f"{ccss_name}-{spd_id[idx]}"
-        ax.plot(wl, y, label=label_text)
+        label_text = f"{ccss_name}-No.{spd_id[idx]}"
+        ax.plot(wl, y, '-k', label=label_text)
         # ax.set_title(ccss_name)
         ax.set_ylim(y_min, y_max)
         ax.set_xlabel("Wavelength [nm]")
         ax.set_ylabel("Power??")
-        ax.legend(loc='upper right')
+        ax.legend(loc='upper right', fontsize=12)
 
     plt.tight_layout()
     fname = f"./img/{ccss_name}_all.png"
@@ -274,8 +276,8 @@ def analyze_ccss_file_all():
         ccss_name = Path(ccss_file).stem
         plot_spectrum_sample_each(
             wl=wl, spd_id=spd_id, spd=spd, ccss_name=ccss_name)
-        plot_spectrum_sample_each_with_dell_spd(
-            wl=wl, spd_id=spd_id, spd=spd, ccss_name=ccss_name)
+        # plot_spectrum_sample_each_with_dell_spd(
+        #     wl=wl, spd_id=spd_id, spd=spd, ccss_name=ccss_name)
 
 
 def concat_all_img():
@@ -283,7 +285,7 @@ def concat_all_img():
     img_buf = []
 
     for file_name in file_list:
-        img_temp = tpg.img_read_as_float(str(file_name.resolve()))
+        img_temp = tpg.img_read_as_float(str(file_name))
         img_buf.append(img_temp)
 
     img_out = np.hstack(img_buf)
@@ -378,14 +380,15 @@ def plot_colorchecker_de2000(
     average = np.mean(de2k)
     min_val = np.min(de2k)
     max_val = np.max(de2k)
-    info_text = f'Average: {average:.2f}, min: {min_val:.2f}, max: {max_val:.2f}'
+    info_text = f'Average: {average:.2f}, '
+    info_text += f'Min: {min_val:.2f}, Max: {max_val:.2f}'
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(14, 6),
         bg_color=(0.96, 0.96, 0.96),
         graph_title=title,
         graph_title_size=None,
-        xlabel="Index",
+        xlabel="ColorChecker Index",
         ylabel="ΔE2000",
         axis_label_size=None,
         legend_size=17,
@@ -491,15 +494,25 @@ def check_diff_ccss_with_colorchecker(
     plot_colorchecker_de2000(
         de2k=de2000_no_ccss, max_diff=max_diff,
         title_suffix=f"without {ccss_suffix}")
-    plot_colorchecker_de2000_with_PROFILER(
-        de2k=de2000_ccss, title_suffix=f"with {ccss_suffix}")
 
-    ref_xyz = calc_color_checker_xyz_value_from_tp(
-        fname="../../2020/026_create_icc_profiles/img/bt709_img_with_icc.png")
-    calc_delta_xyY(
-        ref_xyz=ref_xyz,
-        measured_xyz=data_no_ccss_xyz/ref_luminance,
-        csv_name=f"./{ccss_suffix}.csv")
+    de2k_report = np.array([
+        0.53, 0.2, 0.57, 0.25, 0.19, 0.27,
+        0.22, 0.29, 0.12, 0.33, 0.57, 0.17,
+        0.37, 0.09, 0.23, 0.21, 0.26, 0.48,
+        0.75, 0.93, 0.7, 0.71, 1.1, 1.29
+    ])
+    plot_colorchecker_de2000(
+        de2k=de2k_report, max_diff=max_diff,
+        title_suffix="PROFILER Report")
+    # plot_colorchecker_de2000_with_PROFILER(
+    #     de2k=de2000_ccss, title_suffix=f"with {ccss_suffix}")
+
+    # ref_xyz = calc_color_checker_xyz_value_from_tp(
+    #     fname="../../2020/026_create_icc_profiles/img/bt709_img_with_icc.png")
+    # calc_delta_xyY(
+    #     ref_xyz=ref_xyz,
+    #     measured_xyz=data_no_ccss_xyz/ref_luminance,
+    #     csv_name=f"./{ccss_suffix}.csv")
 
 
 def debug_check_de2000():
@@ -519,24 +532,188 @@ def debug_check_de2000():
     print(delta_E_CIE2000(lab_ref, lab_ccss))
 
 
+def make_blog_ccss_file_name(idx, ccss_name):
+    return f"./blog_img/{idx}_{ccss_name}_all.png"
+
+
+def plot_blog_ccss_file(file_idx, wl, spd_id, spd, ccss_name):
+    color_list = [pu.GRAY10, pu.RED, pu.GREEN, pu.BLUE]
+    ccss_name_base = ccss_name.split("_")[0]
+    y_max = np.max(spd) * 1.005
+    y_min = -y_max * 0.02
+    fig, axes = plt.subplots(
+        nrows=len(spd), ncols=1, figsize=(4, 20))
+
+    for idx, y in enumerate(spd):
+        ax = axes[idx]
+        label_text = f"{ccss_name_base}-No.{spd_id[idx]}"
+        ax.plot(wl, y, color=color_list[idx % 4], label=label_text)
+        # ax.set_title(ccss_name)
+        ax.set_ylim(y_min, y_max)
+        ax.set_xlabel("Wavelength [nm]")
+        ax.set_ylabel("Power?")
+        ax.legend(loc='upper right', fontsize=12)
+
+    plt.tight_layout()
+    fname = make_blog_ccss_file_name(file_idx, ccss_name)
+    print(fname)
+    plt.savefig(fname)
+
+
+def plot_blog_ccss_files_all():
+    ccss_file_list = [
+        "./ccss/RGBLEDFamily_07Feb11.ccss", "./ccss/WGCCFLFamily_07Feb11.ccss",
+        "./ccss/CCFLFamily_07Feb11.ccss", "./ccss/WLEDFamily_07Feb11.ccss"
+    ]
+
+    img_buf = []
+    for idx, ccss_file in enumerate(ccss_file_list):
+        wl, spd_id, spd = parse_ccss_file(file_path=ccss_file)
+        # print(wl)
+        ccss_name = Path(ccss_file).stem
+        plot_blog_ccss_file(
+            file_idx=idx, wl=wl, spd_id=spd_id, spd=spd, ccss_name=ccss_name)
+        graph_img_name = make_blog_ccss_file_name(idx, ccss_name)
+        print(graph_img_name)
+        graph_img = tpg.img_read_as_float(graph_img_name)
+        img_buf.append(graph_img)
+
+    out_img = np.hstack(img_buf)
+    out_fname = "./blog_img/concat_ccss_graph.png"
+    print(out_fname)
+    tpg.img_wirte_float_as_16bit_int(out_fname, out_img)
+
+
+def check_ccss_difference_with_white_patch():
+    measure_file_name = "./measure_result/ccss_difference.csv"
+    ccss_file_list = search_specific_extension_files(
+        dir="./ccss", ext=".ccss")
+    marker_size = 12
+    pattern = r"ccss\\|_[0-9]+[a-zA-Z]+[0-9]+\.ccss"
+    print(ccss_file_list)
+
+    # # remove .csv file before measurement start
+    # file_path = Path(measure_file_name)
+    # file_path.unlink(missing_ok=True)
+
+    # for ccss_file in ccss_file_list:
+    #     read_xyz_and_save_to_csv_file(
+    #         result_fname=measure_file_name, ccss_file=ccss_file)
+
+    data_list = read_measure_result(csv_name=measure_file_name)
+
+    x_min = np.min(data_list[..., 4])
+    x_max = np.max(data_list[..., 4])
+    y_min = np.min(data_list[..., 5])
+    y_max = np.max(data_list[..., 5])
+
+    rad = np.linspace(0, 1, 1024) * 2 * np.pi
+    x_01 = np.cos(rad) * 0.001 + cs.D65[0]
+    x_02 = np.cos(rad) * 0.002 + cs.D65[0]
+    y_01 = np.sin(rad) * 0.001 + cs.D65[1]
+    y_02 = np.sin(rad) * 0.002 + cs.D65[1]
+
+    x_diff = max(abs(cs.D65[0]-x_min), abs(cs.D65[0]-x_max)) * 1.2
+    y_diff = max(abs(cs.D65[1]-y_min), abs(cs.D65[1]-y_max)) * 1.2
+    diff_d65 = max(x_diff, y_diff)
+
+    print(x_diff, y_diff)
+
+    title = "The Relationship Between the CCSS File "
+    title += "and the D65 Measurement Values"
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=12,
+        figsize=(9, 9),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=title,
+        graph_title_size=None,
+        xlabel="x",
+        ylabel="y",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[cs.D65[0]-diff_d65, cs.D65[0]+diff_d65],
+        ylim=[cs.D65[1]-diff_d65, cs.D65[1]+diff_d65],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    for data, ccss_file in zip(data_list, ccss_file_list):
+        x = data[..., 4]
+        y = data[..., 5]
+        label = re.sub(pattern, '', ccss_file)
+        ax1.plot(x, y, 'o', ms=marker_size, label=label)
+    ax1.plot(
+        cs.D65[0], cs.D65[1], 'x', color='k', label="D65",
+        ms=marker_size, mew=4)
+    ax1.plot(x_01, y_01, '--k', label="Δ0.001", lw=2, alpha=0.66)
+    ax1.plot(x_02, y_02, '-.k', label="Δ0.002", lw=2, alpha=0.66)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', fontsize=12,
+        save_fname="./blog_img/d65_with_all_ccss.png", show=True)
+
+
+def plot_wled_ccss_3graph():
+    ccss_file = "./ccss/WLEDFamily_07Feb11.ccss"
+    wl, spd_id, spd = parse_ccss_file(file_path=ccss_file)
+    color_list = [pu.GRAY10, pu.RED, pu.GREEN, pu.BLUE]
+    ccss_name_base = "WLEDFamily"
+    y_max = np.max(spd) * 1.02
+    y_min = -y_max * 0.02
+
+    fig, axes = plt.subplots(
+        nrows=4, ncols=3, figsize=(16, 10))
+
+    for h_idx in range(3):
+        for v_idx in range(4):
+            idx = 4 * h_idx + v_idx
+            y = spd[idx]
+            ax = axes[v_idx, h_idx]
+            label_text = f"{ccss_name_base}-No.{spd_id[idx]}"
+            ax.plot(wl, y, color=color_list[idx % 4], label=label_text)
+            # ax.set_title(ccss_name)
+            ax.set_ylim(y_min, y_max)
+            ax.set_xlabel("Wavelength [nm]")
+            ax.set_ylabel("Power?")
+            ax.legend(loc='upper right', fontsize=12)
+            ax.grid(True, linestyle='--', color='gray', linewidth=0.5)
+
+    plt.tight_layout()
+    fname = "./blog_img/WLED_CCSS_BLOG.png"
+    print(fname)
+    plt.savefig(fname)
+    plt.show()
+
+
+def output_colorchecker_ref_value():
+    target_xyz = calc_color_checker_xyz_value_from_tp(
+        fname="../../2020/026_create_icc_profiles/img/bt709_img_with_icc.png")
+    with open("./measure_result/colorchecker_ref_value.csv", 'wt') as f:
+        buf = ""
+        buf += "idx,X,Y,Z\n"
+        for idx, xyz in enumerate(target_xyz):
+            buf += f"{idx+1},{xyz[0]:.7e},{xyz[1]:.7e},{xyz[2]:.7e}\n"
+
+        f.write(buf)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_ccss_files()
     # analyze_ccss_file_all()
     # concat_all_img()
     # concat_all_img_with_G3223Q()
-    check_diff_ccss_with_colorchecker(
-        result_with_ccss="./measure_result/Calibration-RGBLED_with_ccss.py",
-        result_without_ccss="./measure_result/Calibration-RGBLED_no_ccss.py",
-        ccss_suffix="RGBLED_CCSS"
-    )
+    # check_diff_ccss_with_colorchecker(
+    #     result_with_ccss="./measure_result/Calibration-WLED_with_ccss.py",
+    #     result_without_ccss="./measure_result/Calibration-WLED_no_ccss.py",
+    #     ccss_suffix="WLEDFamily.ccss"
+    # )
 
-    # ccss_file = "./ccss/WLEDFamily_07Feb11.ccss"
-    # wl, spd_id, spd = parse_ccss_file(file_path=ccss_file)
-    # # print(wl)
-    # ccss_name = Path(ccss_file).stem
-    # plot_spectrum_sample_each_with_peak(
-    #     wl=wl, spd_id=spd_id, spd=spd, ccss_name=ccss_name)
-    # print(spd.shape)
+    # plot_blog_ccss_files_all()
 
-    # debug_check_de2000()
+    # check_ccss_difference_with_white_patch()
+
+    # plot_wled_ccss_3graph()
+
+    output_colorchecker_ref_value()
