@@ -15,6 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from colour import XYZ_to_Lab, xyY_to_XYZ, XYZ_to_xyY
 from colour.difference import delta_E_CIE2000
+from colour import MSDS_CMFS
 
 # import my libraries
 from ty_utility import search_specific_extension_files
@@ -131,6 +132,56 @@ def parse_ccss_file(file_path):
     spectrum_id, spectrum_data = get_spectrum_data(file_path)
 
     return wavelength, spectrum_id, spectrum_data
+
+
+def parse_cmf_file(file_path):
+    def get_wavelength(file_path):
+        with open(file_path, 'r') as file:
+            data_lines = False
+            wavelengths = []
+            for line in file:
+                line = line.strip()
+                # BEGIN_DATA_FORMAT セクションの開始を検出
+                if line == "BEGIN_DATA_FORMAT":
+                    data_lines = True
+                    continue
+                # END_DATA_FORMAT セクションの終了を検出
+                if line == "END_DATA_FORMAT":
+                    data_lines = False
+                    continue
+                # データセクション内の行を処理
+                if data_lines:
+                    # SAMPLE_ID を除外し、SPEC_XXX を XXX に変換
+                    parts = line.split()
+                    wavelengths = [int(p.split('_')[1]) for p in parts]
+                    wavelengths = np.array(wavelengths, dtype=np.uint16)
+        return wavelengths
+
+    def get_spectrum_data(file_path):
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+
+        data_start = lines.index("BEGIN_DATA\n") + 1
+        data_end = lines.index("END_DATA\n")
+
+        # 数値データとIDを格納するためのリスト
+        data = []
+
+        for line in lines[data_start:data_end]:
+            parts = line.split()
+            if len(parts) < 2:  # 少なくともIDと1つのデータが必要
+                continue
+
+            # IDとデータを分離
+            data_values = np.array(parts, dtype=float)
+            data.append(data_values)
+
+        return np.array(data)
+
+    wavelength = get_wavelength(file_path)
+    spectrum_data = get_spectrum_data(file_path)
+
+    return wavelength, spectrum_data
 
 
 def parse_ccss_data(file_content):
@@ -698,6 +749,85 @@ def output_colorchecker_ref_value():
         f.write(buf)
 
 
+def plot_sensor_sensitivity():
+    wl, spd = parse_cmf_file(file_path="./i1d3_sensitivity/sensors.cmf")
+    plot_sensor_rgb_sensitivity(
+        wl=wl, spd=spd, device_name="Display Pro HL RGB Sensitivity")
+
+    wl, spd = parse_cmf_file(file_path="./i1d3_sensitivity/sensorsxyx_1.cmf")
+    plot_sensor_xyz_sensitivity(
+        wl=wl, spd=spd, device_name="Display Pro HL XYZ Sensitivity Without CCSS")
+
+    wl, spd = parse_cmf_file(file_path="./i1d3_sensitivity/sensorsxyx_5.cmf")
+    plot_sensor_xyz_sensitivity(
+        wl=wl, spd=spd, device_name="Display Pro HL XYZ Sensitivity With WLED CCSS")
+
+
+def plot_sensor_rgb_sensitivity(wl, spd, device_name):
+    y_max = np.max(spd) * 1.005
+    y_min = -y_max * 0.02
+    color_list = [pu.RED, pu.GREEN, pu.BLUE]
+    label_list = [r"$\bar{r}$", r"$\bar{g}$", r"$\bar{b}$"]
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=device_name,
+        graph_title_size=None,
+        xlabel="Wavelength [nm]",
+        ylabel="Tristimulus Values",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=[-0.5, 18.5],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    for idx, y in enumerate(spd):
+        ax1.plot(wl, y, label=label_list[idx], color=color_list[idx])
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right', show=True,
+        save_fname=f'./img/{device_name}.png')
+
+
+def plot_sensor_xyz_sensitivity(wl, spd, device_name):
+    y_max = np.max(spd) * 1.005
+    y_min = -y_max * 0.02
+    color_list = [pu.RED, pu.GREEN, pu.BLUE]
+    label_list = [r"$\bar{x}$", r"$\bar{y}$", r"$\bar{z}$"]
+    cmfs_1931 = MSDS_CMFS["cie_2_1931"]
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=device_name,
+        graph_title_size=None,
+        xlabel="Wavelength [nm]",
+        ylabel="Tristimulus Values",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[360, 740],
+        ylim=[-0.05, 1.85],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    for idx, y in enumerate(spd):
+        ax1.plot(
+            wl, y, label=label_list[idx] + " Display Pro HL",
+            color=color_list[idx])
+    for idx in range(3):
+        x = cmfs_1931.wavelengths
+        y = cmfs_1931.values[..., idx]
+        ax1.plot(
+            x, y, '--', lw=1,
+            label=label_list[idx] + " CIE1931", color='k')
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right', show=True,
+        save_fname=f'./img/{device_name}.png')
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_ccss_files()
@@ -716,4 +846,8 @@ if __name__ == '__main__':
 
     # plot_wled_ccss_3graph()
 
-    output_colorchecker_ref_value()
+    # output_colorchecker_ref_value()
+
+    plot_sensor_sensitivity()
+    # y = MSDS_CMFS["cie_2_1931"]
+    # print(y.wavelengths)
