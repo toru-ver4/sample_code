@@ -18,6 +18,7 @@ import test_pattern_generator2 as tpg
 import font_control2 as fc2
 import transfer_functions as tf
 import plot_utility as pu
+from ty_display_pro_hl import read_xyz
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -162,7 +163,13 @@ def plot_aw3225qf_spectrum():
         save_fname="./img/AW3225QF_Spectrum.png")
 
 
+def measure_using_resolve():
+    read_data = read_xyz()
+    print(read_data)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # analyze_ccss_file_all()
-    plot_aw3225qf_spectrum()
+    # plot_aw3225qf_spectrum()
+
