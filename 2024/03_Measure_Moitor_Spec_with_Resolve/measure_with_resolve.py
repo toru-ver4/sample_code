@@ -5,16 +5,25 @@
 
 # import standard libraries
 import os
+import re
 import shutil
 import subprocess
-import re
 from pathlib import Path
 from datetime import datetime
 
 # import third-party libraries
-import numpy as np
 
 # import my libraries
+
+
+"""
+import sys
+folder_path = 'C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve'
+sys.path.append(folder_path)
+import measure_with_resolve as mwr
+mwr.simple_measure()
+"""
+
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -26,20 +35,7 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-def parse_measure_result(text):
-    xyz_pattern = r"XYZ: ([\d.]+) ([\d.]+) ([\d.]+)"
-    xyz_match = re.search(xyz_pattern, text)
-
-    yxy_pattern = r"Yxy: ([\d.]+) ([\d.]+) ([\d.]+)"
-    yxy_match = re.search(yxy_pattern, text)
-
-    if not xyz_match or not yxy_match:
-        raise ValueError("XYZ or Yxy values not found in the output")
-
-    xyz_values = np.array(list(map(float, xyz_match.groups())))
-    yxy_values = np.array(list(map(float, yxy_match.groups())))
-
-    return xyz_values, yxy_values
+CCSS_RGBLED = "C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/ccss/RGBLEDFamily_07Feb11.ccss"
 
 
 def save_measure_result(
@@ -99,20 +95,22 @@ def save_measure_result(
         file.write(f"{ccss_name},{current_time}\n")
 
 
-def read_measure_result(csv_name="./measure_result.csv"):
-    """
-    Returns
-    -------
-    [[47.694013 50.922974 57.957539 50.922974  0.304609  0.325232]
-     [47.943958 50.867195 58.210997 50.867195  0.305332  0.323949]
-     [48.407519 50.638748 59.038504 50.638748  0.306212  0.320327]
-     [ 1.471373  1.486711  2.34785   1.486711  0.277307  0.280198]
-     [ 1.478472  1.484952  2.355368  1.484952  0.277971  0.27919 ]
-     [ 1.495874  1.479372  2.389671  1.479372  0.278825  0.275749]
-    """
-    data = np.loadtxt(
-        fname=csv_name, delimiter=',', skiprows=1, usecols=range(6))
-    return data
+def parse_measure_result(text):
+    xyz_pattern = r"XYZ: ([\d.]+) ([\d.]+) ([\d.]+)"
+    xyz_match = re.search(xyz_pattern, text)
+
+    yxy_pattern = r"Yxy: ([\d.]+) ([\d.]+) ([\d.]+)"
+    yxy_match = re.search(yxy_pattern, text)
+
+    if not xyz_match or not yxy_match:
+        raise ValueError("XYZ or Yxy values not found in the output")
+
+    # xyz_values = np.array(list(map(float, xyz_match.groups())))
+    # yxy_values = np.array(list(map(float, yxy_match.groups())))
+    xyz_values = list(map(float, xyz_match.groups()))
+    yxy_values = list(map(float, yxy_match.groups()))
+
+    return xyz_values, yxy_values
 
 
 def read_xyz(ccss_file=None, flush=True):
@@ -177,62 +175,15 @@ def read_xyz(ccss_file=None, flush=True):
     return large_xyz, Yxy
 
 
-def read_xyz_and_save_to_csv_file(
-        result_fname="./measure_result.csv", ccss_file=None):
-    """
-    Measures XYZ and Yxy values using 'spotread.exe' and
-    saves the results to a CSV file.
-
-    This function first performs a color measurement using the 'read_xyz'
-    function.
-    If a CCSS file is specified, it is used for the measurement;
-    otherwise, the default measurement mode is utilized.
-    The measured values are then saved to a specified CSV file
-    using 'save_measure_result'.
-    The CSV file includes the large XYZ values, Yxy values,
-
-    Parameters
-    ----------
-    result_fname : str, optional
-        The name (or path) of the CSV file to save the measurement results.
-        Default is "./measure_result.csv".
-    ccss_file : str, optional
-        The path to the CCSS file to be used for the measurement.
-        If None, the default measurement mode is used.
-
-    Examples
-    --------
-    >>> read_xyz_and_save_to_csv_file("output.csv", "example.ccss")
-    # Measures using 'example.ccss', saving results to 'output.csv'.
-
-    Notes
-    -----
-    Ensure that 'spotread.exe' is installed and accessible in your system's
-    PATH.
-    The 'save_measure_result' function is used to save the data
-    in the specified CSV file format.
-    """
-    large_xyz, Yxy = read_xyz(ccss_file=ccss_file)
-
-    ccss_base_name = Path(ccss_file).stem if ccss_file is not None else '-'
+def simple_measure(
+        csv_name="./measure_result.csv", ccss_file=None):
+    large_xyz, Yxy = read_xyz(flush=False, ccss_file=ccss_file)
+    ccss_name = Path(ccss_file).stem if ccss_file else "-"
     save_measure_result(
         large_xyz=large_xyz, Yxy=Yxy,
-        csv_name=result_fname, ccss_name=ccss_base_name)
+        csv_name=csv_name, ccss_name=ccss_name)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-    # single read
-    read_xyz()
-    # read_xyz(ccss_file="./ccss/RGBLEDFamily_07Feb11.ccss")
-    # read_xyz(ccss_file="./ccss/WLEDFamily_07Feb11.ccss")
-
-    # sequential read
-    # read_xyz_and_save_to_csv_file(
-    #     result_fname="./measure_result/sample.csv",
-    #     ccss_file='./ccss/WLEDFamily_07Feb11.ccss')
-
-    # # read result
-    # read_measure_result(
-    #     csv_name="./measure_result/result_colorchecker_no-ccss_for_RGBLED_v2.csv")
+    simple_measure(csv_name="./measure_result.csv", ccss_file=CCSS_RGBLED)
