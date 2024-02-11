@@ -6,7 +6,9 @@
 # import standard libraries
 import os
 import re
+import sys
 import shutil
+import importlib
 import subprocess
 from pathlib import Path
 from datetime import datetime
@@ -14,13 +16,26 @@ from datetime import datetime
 # import third-party libraries
 
 # import my libraries
-
+try:
+    import ty_davinci_control_lib as dcl
+except ImportError:
+    try:
+        sys.path.append('C:/Users/toruv/OneDrive/work/sample_code/ty_lib')
+        print("ty_davinci_control_lib is not found - trying another locations")
+        import ty_davinci_control_lib as dcl
+    except ImportError:
+        msg = "Failed to import 'ty_davinci_control_lib'. "
+        msg += "Please check the installation and PYTHONPATH."
+        print(msg)
+importlib.reload(dcl)
 
 """
 import sys
+import importlib
 folder_path = 'C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve'
 sys.path.append(folder_path)
 import measure_with_resolve as mwr
+importlib.reload(mwr)
 mwr.simple_measure()
 """
 
@@ -175,13 +190,67 @@ def read_xyz(ccss_file=None, flush=True):
     return large_xyz, Yxy
 
 
+def create_project(project_name="Dummy Project"):
+    project_manager = dcl.init_resolve()
+    project = dcl.initialize_project(
+        project_manager=project_manager, project_name=project_name)
+    return project
+
+
+def remove_all_timeline(project):
+    num_of_timeline = project.GetTimelineCount()
+    print(f"num_of_timeline = {num_of_timeline}")
+    media_pool = project.GetMediaPool()
+
+    timelines = []
+
+    for idx in range(num_of_timeline):
+        timeline = project.GetTimelineByIndex(idx + 1)
+        timelines.append(timeline)
+
+    if timelines != []:
+        media_pool.DeleteTimelines(timelines)
+
+
+def set_project_settings_bt2100(project):
+    project_params = dict(
+        timelineResolutionHeight="1080",
+        timelineResolutionWidth="1920",
+        videoMonitorFormat="HD 1080p 24",
+        timelineFrameRate="24.000",
+        timelinePlaybackFrameRate="24",
+        videoDataLevels="Video",
+        videoMonitorUseHDROverHDMI="1",
+        colorScienceMode="davinciYRGBColorManagedv2",
+        rcmPresetMode="Custom",
+        separateColorSpaceAndGamma="1",
+        colorSpaceInput="Rec.2020",
+        colorSpaceInputGamma="Gamma 2.4",
+        colorSpaceTimeline="Rec.2020",
+        colorSpaceTimelineGamma="Gamma 2.4",
+        colorSpaceOutput="Rec.2020",
+        colorSpaceOutputGamma="Gamma 2.4",
+        inputDRT="None",
+        outputDRT="None",
+    )
+    dcl.set_project_settings_from_dict(project=project, params=project_params)
+
+
 def simple_measure(
         csv_name="./measure_result.csv", ccss_file=None):
-    large_xyz, Yxy = read_xyz(flush=False, ccss_file=ccss_file)
-    ccss_name = Path(ccss_file).stem if ccss_file else "-"
-    save_measure_result(
-        large_xyz=large_xyz, Yxy=Yxy,
-        csv_name=csv_name, ccss_name=ccss_name)
+    # open dummy project for debug
+    create_project(project_name="Dummy Project")
+
+    project_name = "Measure_AW3225QF"
+    project = create_project(project_name=project_name)
+    dcl.open_page(dcl.EDIT_PAGE_STR)
+    remove_all_timeline(project=project)
+
+    # large_xyz, Yxy = read_xyz(flush=False, ccss_file=ccss_file)
+    # ccss_name = Path(ccss_file).stem if ccss_file else "-"
+    # save_measure_result(
+    #     large_xyz=large_xyz, Yxy=Yxy,
+    #     csv_name=csv_name, ccss_name=ccss_name)
 
 
 if __name__ == '__main__':

@@ -1,20 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Library for DaVinci17 control
-=============================
+A library for DaVinci Resolve control
+=====================================
 
 """
 
 # import standard libraries
 import os
-import sys
 import time
 import pprint
 from pathlib import Path
 import re
 
 # import third-party libraries
-import DaVinciResolveScript as dvr_script
+from python_get_resolve import GetResolve
 
 # import my libraries
 
@@ -26,6 +25,8 @@ __maintainer__ = 'Toru Yoshihara'
 __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
+
+resolve = GetResolve()
 
 
 """
@@ -54,6 +55,59 @@ imp.reload(dv_lib)
 dv_lib.get_avilable_parameters()
 """
 
+# Page
+MEDIA_PAGE_STR = "media"
+CUT_PAGE_STR = "cut"
+EDIT_PAGE_STR = "edit"
+FUSION_PAGE_STR = 'fusion'
+COLOR_PAGE_STR = "color"
+DELIVER_PAGE_STR = "deliver"
+
+# Project Settings
+PRJ_GAMMA_STR_ST2084 = "ST2084"
+PRJ_GAMMA_STR_GAMMA24 = "Gamma 2.4"
+PRJ_COLOR_SPACE_REC2020 = "Rec.2020"
+PRJ_COLOR_SPACE_REC709 = "Rec.709"
+PRJ_PARAM_NONE = "None"
+PRJ_PARAM_ENABLE = "1"
+PRJ_PARAM_DISABLE = "1"
+
+PRJ_VIDEO_MONITOR_FORMAT_HD_1080P23FPS = "HD 1080p 23.976"
+PRJ_VIDEO_MONITOR_FORMAT_HD_1080P24FPS = "HD 1080p 24"
+PRJ_VIDEO_MONITOR_FORMAT_HD_1080P29FPS = "HD 1080p 29.97"
+PRJ_VIDEO_MONITOR_FORMAT_HD_1080P25FPS = "HD 1080p 25"
+PRJ_VIDEO_MONITOR_FORMAT_HD_1080P30FPS = "HD 1080p 30"
+PRJ_VIDEO_MONITOR_FORMAT_HD_1080P50FPS = "HD 1080p 50"
+PRJ_VIDEO_MONITOR_FORMAT_HD_1080P59FPS = "HD 1080p 59.94"
+PRJ_VIDEO_MONITOR_FORMAT_HD_1080P60FPS = "HD 1080p 60"
+
+PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P23FPS = "UHD 2160p 23.976"
+PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P24FPS = "UHD 2160p 24"
+PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P25FPS = "UHD 2160p 25"
+PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P29FPS = "UHD 2160p 29.97"
+PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P30FPS = "UHD 2160p 30"
+PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P50FPS = "UHD 2160p 50"
+PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P59FPS = "UHD 2160p 59.94"
+PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P60FPS = "UHD 2160p 60"
+
+PRJ_TIMELINE_FRAMERATE_24 = 23.976
+PRJ_TIMELINE_FRAMERATE_24 = 24.0
+PRJ_TIMELINE_FRAMERATE_25 = 25.0
+PRJ_TIMELINE_FRAMERATE_29 = 29.97
+PRJ_TIMELINE_FRAMERATE_30 = 30.0
+PRJ_TIMELINE_FRAMERATE_50 = 50.0
+PRJ_TIMELINE_FRAMERATE_59 = 59.94
+PRJ_TIMELINE_FRAMERATE_59 = 60.0
+
+PRJ_TIMELINE_PLAYBACK_FRAMERATE_23 = "23.976"
+PRJ_TIMELINE_PLAYBACK_FRAMERATE_24 = "24"
+PRJ_TIMELINE_PLAYBACK_FRAMERATE_25 = "25"
+PRJ_TIMELINE_PLAYBACK_FRAMERATE_29 = "29.97"
+PRJ_TIMELINE_PLAYBACK_FRAMERATE_30 = "30"
+PRJ_TIMELINE_PLAYBACK_FRAMERATE_50 = "50"
+PRJ_TIMELINE_PLAYBACK_FRAMERATE_59 = "59.94"
+PRJ_TIMELINE_PLAYBACK_FRAMERATE_59 = "60"
+
 
 def wait_for_rendering_completion(project):
     while project.IsRenderingInProgress():
@@ -61,11 +115,10 @@ def wait_for_rendering_completion(project):
     return
 
 
-def init_davinci17(close_current_project=True):
+def init_resolve(close_current_project=True):
     """
     Initialize davinci17 python environment.
 
-    * create Resolve instance
     * create ProjectManager instance
     * close current project for initialize if needed.
 
@@ -76,18 +129,16 @@ def init_davinci17(close_current_project=True):
     project_namager
         ProjectManager instance
     """
-    resolve = dvr_script.scriptapp("Resolve")
-    # fusion = resolve.Fusion()
     project_manager = resolve.GetProjectManager()
 
     if close_current_project:
         current_project = project_manager.GetCurrentProject()
         project_manager.CloseProject(current_project)
 
-    return resolve, project_manager
+    return project_manager
 
 
-def prepare_project(project_manager, project_name="working_project"):
+def initialize_project(project_manager, project_name="working_project"):
     """
     * load working project if the project is exist.
     * create working project if the project is not exist.
@@ -114,6 +165,11 @@ def prepare_project(project_manager, project_name="working_project"):
         print(f'"{project_name}" is loaded')
 
     return project
+
+
+def open_page(page_name: str) -> bool:
+    result = resolve.OpenPage(page_name)
+    return result
 
 
 def set_project_settings_from_dict(project, params):
@@ -158,9 +214,9 @@ def add_clips_to_media_pool(resolve, project, media_path):
 
     Examples
     --------
-    >>> resolve, project_manager = init_davinci17(
+    >>> resolve, project_manager = init_resolve(
     ...     close_current_project=close_current_project)
-    >>> project = prepare_project(project_manager)
+    >>> project = initialize_project(project_manager)
     >>> media_path = Path('D:/abuse/2020/031_cms_for_video_playback/img_seq')
     >>> add_clips_to_media_pool(resolve, project, media_path)
     """
@@ -186,7 +242,7 @@ def get_media_pool_clip_list_and_clip_name_list(project):
 
     Examples
     --------
-    >>> resolve, project_manager = init_davinci17(
+    >>> resolve, project_manager = init_resolve(
     ...     close_current_project=close_current_project)
     >>> get_media_pool_clip_dict_list(project)
     [<PyRemoteObject object at 0x000001BB29001630>,
@@ -383,8 +439,17 @@ def _debug_print_and_save_encode_settings(project):
 def _debug_print_and_save_project_settings(project):
     project_settings = project.GetSetting()
     pprint.pprint(project_settings)
-    current_directory = os.getcwd()
     _debug_save_dict_as_txt("./project_settings_list.txt", project_settings)
+
+
+def _debug_print_project_settings(project, key_list=None):
+    project_settings = project.GetSetting()
+
+    if key_list is None:
+        pprint.pprint(project_settings)
+    else:
+        for key in key_list:
+            pprint.pprint(project_settings[key])
 
 
 def test_func(close_current_project=True):
@@ -417,9 +482,9 @@ def test_func(close_current_project=True):
     )
 
     # set
-    resolve, project_manager = init_davinci17(
+    project_manager = init_resolve(
         close_current_project=close_current_project)
-    project = prepare_project(project_manager)
+    project = initialize_project(project_manager)
 
     set_project_settings_from_dict(project, project_params)
 
@@ -436,13 +501,22 @@ def test_func(close_current_project=True):
     return project
 
 
-def get_avilable_parameters():
-    _, project_manager = init_davinci17(
+def get_avilable_parameters(project_name="working_project"):
+    project_manager = init_resolve(
         close_current_project=True)
-    project = prepare_project(project_manager)
+    project = initialize_project(
+        project_manager=project_manager, project_name=project_name)
     _debug_print_and_save_project_settings(project)
     _debug_print_and_save_encode_settings(project)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # get_avilable_parameters(project_name="aaa")
+
+    project_manager = init_resolve(close_current_project=False)
+    project = project_manager.GetCurrentProject()
+    key_list = [
+        "videoMonitorFormat", "timelineFrameRate", "timelinePlaybackFrameRate"
+    ]
+    _debug_print_project_settings(project, key_list=key_list)
