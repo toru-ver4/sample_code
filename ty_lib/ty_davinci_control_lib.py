@@ -64,13 +64,14 @@ COLOR_PAGE_STR = "color"
 DELIVER_PAGE_STR = "deliver"
 
 # Project Settings
-PRJ_GAMMA_STR_ST2084 = "ST2084"
-PRJ_GAMMA_STR_GAMMA24 = "Gamma 2.4"
-PRJ_COLOR_SPACE_REC2020 = "Rec.2020"
-PRJ_COLOR_SPACE_REC709 = "Rec.709"
 PRJ_PARAM_NONE = "None"
 PRJ_PARAM_ENABLE = "1"
 PRJ_PARAM_DISABLE = "1"
+
+PRJ_TIMELINE_RESOLUTION_1920 = "1920"
+PRJ_TIMELINE_RESOLUTION_1080 = "1080"
+PRJ_TIMELINE_RESOLUTION_3840 = "3840"
+PRJ_TIMELINE_RESOLUTION_2160 = "2160"
 
 PRJ_VIDEO_MONITOR_FORMAT_HD_1080P23FPS = "HD 1080p 23.976"
 PRJ_VIDEO_MONITOR_FORMAT_HD_1080P24FPS = "HD 1080p 24"
@@ -90,14 +91,14 @@ PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P50FPS = "UHD 2160p 50"
 PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P59FPS = "UHD 2160p 59.94"
 PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P60FPS = "UHD 2160p 60"
 
-PRJ_TIMELINE_FRAMERATE_24 = 23.976
-PRJ_TIMELINE_FRAMERATE_24 = 24.0
-PRJ_TIMELINE_FRAMERATE_25 = 25.0
-PRJ_TIMELINE_FRAMERATE_29 = 29.97
-PRJ_TIMELINE_FRAMERATE_30 = 30.0
-PRJ_TIMELINE_FRAMERATE_50 = 50.0
-PRJ_TIMELINE_FRAMERATE_59 = 59.94
-PRJ_TIMELINE_FRAMERATE_59 = 60.0
+PRJ_TIMELINE_FRAMERATE_23 = "23.976"
+PRJ_TIMELINE_FRAMERATE_24 = "24.0"
+PRJ_TIMELINE_FRAMERATE_25 = "25.0"
+PRJ_TIMELINE_FRAMERATE_29 = "29.97"
+PRJ_TIMELINE_FRAMERATE_30 = "30.0"
+PRJ_TIMELINE_FRAMERATE_50 = "50.0"
+PRJ_TIMELINE_FRAMERATE_59 = "59.94"
+PRJ_TIMELINE_FRAMERATE_60 = "60.0"
 
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_23 = "23.976"
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_24 = "24"
@@ -106,13 +107,45 @@ PRJ_TIMELINE_PLAYBACK_FRAMERATE_29 = "29.97"
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_30 = "30"
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_50 = "50"
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_59 = "59.94"
-PRJ_TIMELINE_PLAYBACK_FRAMERATE_59 = "60"
+PRJ_TIMELINE_PLAYBACK_FRAMERATE_60 = "60"
+
+PRJ_VIDEO_DATA_LEVEL_LIMITED = "Video"
+PRJ_VIDEO_DATA_LEVEL_FULL = "Full"
+
+PRJ_COLOR_SCIENCE_MODE_RCM_OFF = "davinciYRGB"
+PRJ_COLOR_SCIENCE_MODE_RCM_ON = "davinciYRGBColorManagedv2"
+PRJ_COLOR_SCIENCE_MODE_ACES_CC = "acescc"
+PRJ_COLOR_SCIENCE_MODE_ACES_CCT = "acescct"
+
+PRJ_PRESET_MODE_CUSTOM = "Custom"
+
+PRJ_GAMMA_STR_ST2084 = "ST2084"
+PRJ_GAMMA_STR_GAMMA24 = "Gamma 2.4"
+
+PRJ_COLOR_SPACE_REC2020 = "Rec.2020"
+PRJ_COLOR_SPACE_REC709 = "Rec.709"
+
+PRJ_ACES_ODT_P3D65_PQ_108 = "P3-D65 ST2084 (108 nits)"
+PRJ_ACES_ODT_P3D65_PQ_1000 = "P3-D65 ST2084 (1000 nits)"
+PRJ_ACES_ODT_P3D65_PQ_4000 = "P3-D65 ST2084 (4000 nits)"
+
+PRJ_ACES_ODT_REC2020_PQ_1000 = "Rec.2020 ST2084 (1000 nits)"
 
 
 def wait_for_rendering_completion(project):
     while project.IsRenderingInProgress():
         time.sleep(1)
     return
+
+
+def get_resolve():
+    return resolve
+
+
+def close_and_remove_project(project_name):
+    project_manager = resolve.GetProjectManager()
+    project_manager.CloseProject(project_manager.GetCurrentProject())
+    project_manager.DeleteProject(project_name)
 
 
 def init_resolve(close_current_project=True):
@@ -172,6 +205,14 @@ def open_page(page_name: str) -> bool:
     return result
 
 
+def save_project(project_manager):
+    ret_val = project_manager.SaveProject()
+    if ret_val is not True:
+        print("Failed to save project...")
+    else:
+        print("Project is saved")
+
+
 def set_project_settings_from_dict(project, params):
     """
     set project settings from the dictionary type parameters.
@@ -191,15 +232,17 @@ def set_project_settings_from_dict(project, params):
         else:
             print(f'    "{name}" = "{value}" is NGGGGGGGGGGGGGGGGGG.')
         if name == "timelineFrameRate":
+            current_page = resolve.GetCurrentPage() 
             result = project.SetRenderSettings({'FrameRate': float(value)})
             if result:
                 print(f'    "{name}" = "{value}" is OK in RenderSettings.')
             else:
                 print(f'    "{name}" = "{value}" is NGGGGGG in RenderSettings')
+            resolve.OpenPage(current_page)
     print("project settings has done")
 
 
-def add_clips_to_media_pool(resolve, project, media_path):
+def add_clips_to_media_pool(project, media_path):
     """
     add clips to the media pool.
 
@@ -256,21 +299,19 @@ def get_media_pool_clip_list_and_clip_name_list(project):
     root_folder = media_pool.GetRootFolder()
     clip_list = root_folder.GetClipList()
     clip_name_list = []
-    clip_return_list = []
+    clip_list_for_return = []
     for clip in clip_list:
         clip_name_list.append(clip.GetName())
-        clip_return_list.append(clip)
+        clip_list_for_return.append(clip)
 
-    return clip_return_list, clip_name_list
+    return clip_list_for_return, clip_name_list
 
 
 def create_timeline_from_clip(
-        resolve, project, clip_list, timeline_name="dummy"):
+        project, clip_list, timeline_name="dummy"):
     """
     Parametes
     ---------
-    resolve : Resolve
-        a Resolve iinstance
     project : Project
         a Project instance
     clip_list : list
@@ -449,6 +490,7 @@ def _debug_print_project_settings(project, key_list=None):
         pprint.pprint(project_settings)
     else:
         for key in key_list:
+            print(f"{key} = ", end="")
             pprint.pprint(project_settings[key])
 
 
@@ -516,7 +558,11 @@ if __name__ == '__main__':
 
     project_manager = init_resolve(close_current_project=False)
     project = project_manager.GetCurrentProject()
+    # key_list = [
+    #     "separateColorSpaceAndGamma", "colorScienceMode",
+    #     "colorSpaceOutput", "colorSpaceOutputGamma", "colorAcesODT"
+    # ]
     key_list = [
-        "videoMonitorFormat", "timelineFrameRate", "timelinePlaybackFrameRate"
+        "timelineFrameRate", 'timelinePlaybackFrameRate'
     ]
     _debug_print_project_settings(project, key_list=key_list)
