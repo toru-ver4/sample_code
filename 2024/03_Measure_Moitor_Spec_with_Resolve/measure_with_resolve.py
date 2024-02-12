@@ -7,14 +7,14 @@
 import os
 import re
 import sys
-import shutil
-import importlib
-import subprocess
+import time
+from pathlib import Path
 from pathlib import Path
 from datetime import datetime
 
 # import third-party libraries
-from ty_display_pro_hl import read_xyz, save_measure_result
+from ty_display_pro_hl import read_xyz, save_measure_result,\
+    calculate_elapsed_seconds
 
 # import my libraries
 import ty_davinci_control_lib as dcl
@@ -66,6 +66,40 @@ def remove_all_timeline(project):
         media_pool.DeleteTimelines(timelines)
 
 
+def remove_csv(file_path):
+    # Pathオブジェクトを作成
+    path = Path(file_path)
+
+    if path.is_file() and path.suffix == '.csv':
+        path.unlink()
+        print(f"{file_path} has been deleted.")
+    elif not path.is_file():
+        print(f"{file_path} does not exist.")
+    else:
+        print(f"{file_path} is not a CSV file.")
+
+
+def frame_number_to_timecode(frame_number, fps, timecode_offset="01:00:00:00"):
+    # timecode_offsetを時間、分、秒、フレームに分解
+    hours, minutes, seconds, frames = map(int, timecode_offset.split(':'))
+
+    # 総フレーム数を追加
+    total_frames = frames + frame_number
+
+    # 総フレーム数を秒、分、時間に変換
+    added_seconds = total_frames // fps
+    frames = total_frames % fps
+    seconds += added_seconds
+    minutes += seconds // 60
+    seconds %= 60
+    hours += minutes // 60
+    minutes %= 60
+
+    # 新しいTimecodeをフォーマット
+    new_timecode = f"{hours:02d}:{minutes:02d}:{seconds:02d}:{frames:02d}"
+    return new_timecode
+
+
 def set_project_settings_bt2100(project):
     project_params = dict(
         timelineResolutionWidth=dcl.PRJ_TIMELINE_RESOLUTION_3840,
@@ -86,13 +120,15 @@ def set_project_settings_bt2100(project):
         colorSpaceOutputGamma=dcl.PRJ_GAMMA_STR_ST2084,
         inputDRT=dcl.PRJ_PARAM_NONE,
         outputDRT=dcl.PRJ_PARAM_NONE,
+        hdrMasteringLuminanceMax="1000",
+        hdrMasteringOn=dcl.PRJ_PARAM_ENABLE
     )
     dcl.set_project_settings_from_dict(project=project, params=project_params)
 
 
 def simple_measure(
         csv_name="./measure_result.csv", ccss_file=None):
-    # open dummy project for debug
+    remove_csv(file_path=csv_name)
 
     project_name = "Measure_AW3225QF"
     dcl.close_and_remove_project(project_name=project_name)
@@ -107,6 +143,7 @@ def simple_measure(
     #     = dcl.get_media_pool_clip_list_and_clip_name_list(project)
     # print(clip_name_list)
 
+    # add test pattern for measure
     cv_list = create_cv_list(num_of_block=64)
     color_mask = [1, 1, 1]
     patch_area_ratio = 0.03
@@ -119,14 +156,35 @@ def simple_measure(
 
     media_storage = dcl.get_resolve().GetMediaStorage()
     clip_list = media_storage.AddItemListToMediaPool(fname_list)
-    for clip in clip_list:
-        result = clip.SetClipProperty("Input Color Space", "Rec.2100 ST2084")
-        print(f"input color space result = {result}")
-
     media_pool = project.GetMediaPool()
     tp_timeline = media_pool.CreateTimelineFromClips("TP_Timeline", clip_list)
 
-    print(clip_list[0].GetClipProperty())
+    # add test pattern for rest in peace
+    fname_black = "C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img/black.png"
+    clip_list = media_storage.AddItemListToMediaPool(fname_black)
+    black_timeline = media_pool.CreateTimelineFromClips(
+        "Black_Timeline", clip_list)
+
+    # initialize with black
+    project.SetCurrentTimeline(black_timeline)
+    time.sleep(1)
+
+    # set 1000 nits
+    project.SetCurrentTimeline(tp_timeline)
+    frame_number = 48
+    timecode_str = frame_number_to_timecode(frame_number=frame_number, fps=24)
+    tp_timeline.SetCurrentTimecode(timecode_str)
+
+    measure_period_second = 60
+    measure_step_second = 5
+    num_of_measure = measure_period_second // measure_step_second
+    for _ in range(num_of_measure):
+        large_xyz, Yxy = read_xyz(flush=False, ccss_file=ccss_file)
+        ccss_name = Path(ccss_file).stem if ccss_file else "-"
+        save_measure_result(
+            large_xyz=large_xyz, Yxy=Yxy,
+            csv_name=csv_name, ccss_name=ccss_name)
+        time.sleep(measure_step_second)
 
     # clips = AddItemListToMediaPool()
     # print(file_list)
@@ -142,9 +200,14 @@ def simple_measure(
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # simple_measure(csv_name="./measure_result.csv", ccss_file=CCSS_RGBLED)
-    project = dcl.get_resolve().GetProjectManager().GetCurrentProject()
-    clip_list = project.GetMediaPool().GetRootFolder().GetClipList()
-    properties = clip_list[0].GetClipProperty()
-    timeline = project.GetCurrentTimeline()
-    timeline.SetCurrentTimecode("01:01:00:00")
+    csv_name = "./measure_result/aw3225qf_1000nits_60s.csv"
+    simple_measure(csv_name="./measure_result.csv", ccss_file=CCSS_RGBLED)
+
+    # diff = calculate_elapsed_seconds(file_path=csv_name)
+    # print(diff)
+
+    # project = dcl.get_resolve().GetProjectManager().GetCurrentProject()
+    # clip_list = project.GetMediaPool().GetRootFolder().GetClipList()
+    # properties = clip_list[0].GetClipProperty()
+    # timeline = project.GetCurrentTimeline()
+    # timeline.SetCurrentTimecode("01:01:00:00")

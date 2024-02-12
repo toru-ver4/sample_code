@@ -13,6 +13,7 @@ from datetime import datetime
 
 # import third-party libraries
 import numpy as np
+import pandas as pd
 
 # import my libraries
 
@@ -113,6 +114,20 @@ def read_measure_result(csv_name="./measure_result.csv"):
     data = np.loadtxt(
         fname=csv_name, delimiter=',', skiprows=1, usecols=range(6))
     return data
+
+
+def calculate_elapsed_seconds(file_path):
+    # CSVファイルを読み込む
+    df = pd.read_csv(file_path)
+
+    # Date列をdatetimeオブジェクトに変換
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    # 最初の行の日付を基準として経過時間（秒）を計算
+    elapsed_seconds = (df['Date'] - df['Date'][0]).dt.total_seconds()
+
+    # 結果をnp.ndarrayとして返す
+    return elapsed_seconds.values
 
 
 def read_xyz(ccss_file=None, flush=True):
