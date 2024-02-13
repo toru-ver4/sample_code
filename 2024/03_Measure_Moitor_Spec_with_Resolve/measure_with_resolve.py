@@ -138,10 +138,6 @@ def simple_measure(
     set_project_settings_bt2100(project=project)
 
     media_path = Path('C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img')
-    # dcl.add_clips_to_media_pool(project, media_path)
-    # clip_list, clip_name_list\
-    #     = dcl.get_media_pool_clip_list_and_clip_name_list(project)
-    # print(clip_name_list)
 
     # add test pattern for measure
     cv_list = create_cv_list(num_of_block=64)
@@ -154,16 +150,15 @@ def simple_measure(
         for cv in cv_list]
     fname_list = [str(media_path / Path(fname)) for fname in fname_list]
 
-    media_storage = dcl.get_resolve().GetMediaStorage()
-    clip_list = media_storage.AddItemListToMediaPool(fname_list)
-    media_pool = project.GetMediaPool()
-    tp_timeline = media_pool.CreateTimelineFromClips("TP_Timeline", clip_list)
+    clip_list = dcl.add_files_to_media_pool(media_path=fname_list)
+    tp_timeline = dcl.create_timeline_from_clip(
+        clip_list=clip_list, timeline_name="TP_Timeline")
 
     # add test pattern for rest in peace
     fname_black = "C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img/black.png"
-    clip_list = media_storage.AddItemListToMediaPool(fname_black)
-    black_timeline = media_pool.CreateTimelineFromClips(
-        "Black_Timeline", clip_list)
+    clip_list = dcl.add_files_to_media_pool(media_path=fname_black)
+    black_timeline = dcl.create_timeline_from_clip(
+        clip_list=clip_list, timeline_name="Black_Timeline")
 
     # initialize with black
     project.SetCurrentTimeline(black_timeline)
@@ -175,32 +170,23 @@ def simple_measure(
     timecode_str = frame_number_to_timecode(frame_number=frame_number, fps=24)
     tp_timeline.SetCurrentTimecode(timecode_str)
 
-    measure_period_second = 60
-    measure_step_second = 5
-    num_of_measure = measure_period_second // measure_step_second
-    for _ in range(num_of_measure):
-        large_xyz, Yxy = read_xyz(flush=False, ccss_file=ccss_file)
-        ccss_name = Path(ccss_file).stem if ccss_file else "-"
-        save_measure_result(
-            large_xyz=large_xyz, Yxy=Yxy,
-            csv_name=csv_name, ccss_name=ccss_name)
-        time.sleep(measure_step_second)
-
-    # clips = AddItemListToMediaPool()
-    # print(file_list)
-
-    # large_xyz, Yxy = read_xyz(flush=False, ccss_file=ccss_file)
-    # ccss_name = Path(ccss_file).stem if ccss_file else "-"
-    # save_measure_result(
-    #     large_xyz=large_xyz, Yxy=Yxy,
-    #     csv_name=csv_name, ccss_name=ccss_name)
+    # measure_period_second = 60
+    # measure_step_second = 5
+    # num_of_measure = measure_period_second // measure_step_second
+    # for _ in range(num_of_measure):
+    #     large_xyz, Yxy = read_xyz(flush=False, ccss_file=ccss_file)
+    #     ccss_name = Path(ccss_file).stem if ccss_file else "-"
+    #     save_measure_result(
+    #         large_xyz=large_xyz, Yxy=Yxy,
+    #         csv_name=csv_name, ccss_name=ccss_name)
+    #     time.sleep(measure_step_second)
 
     dcl.save_project(project_manager=project_manager)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    csv_name = "./measure_result/aw3225qf_1000nits_60s.csv"
+    # csv_name = "./measure_result/aw3225qf_1000nits_60s.csv"
     simple_measure(csv_name="./measure_result.csv", ccss_file=CCSS_RGBLED)
 
     # diff = calculate_elapsed_seconds(file_path=csv_name)
@@ -211,3 +197,11 @@ if __name__ == '__main__':
     # properties = clip_list[0].GetClipProperty()
     # timeline = project.GetCurrentTimeline()
     # timeline.SetCurrentTimecode("01:01:00:00")
+
+    # dir_path = Path('C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img/black.png')
+    # clip_list = dcl.add_files_to_media_pool(media_path=dir_path)
+    # timeline = dcl.create_timeline(timeline_name="hogefuga")
+    # dcl.set_current_timeline(timeline=timeline)
+
+    # dcl.add_clips_to_the_current_timeline(clip_list=clip_list)
+    # print(clip_list)

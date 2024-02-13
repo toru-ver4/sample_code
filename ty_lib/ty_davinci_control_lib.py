@@ -242,31 +242,42 @@ def set_project_settings_from_dict(project, params):
     print("project settings has done")
 
 
-def add_clips_to_media_pool(project, media_path):
+def create_timeline(timeline_name):
+    project = resolve.GetProjectManager().GetCurrentProject()
+    media_pool = project.GetMediaPool()
+    timeline = media_pool.CreateEmptyTimeline(timeline_name)
+
+    return timeline
+
+
+def set_current_timeline(timeline):
+    project = resolve.GetProjectManager().GetCurrentProject()
+    project.SetCurrentTimeline(timeline)
+
+
+def add_files_to_media_pool(media_path):
     """
     add clips to the media pool.
 
     Parameters
     ----------
-    resolve : Resolve
-        a Resolve instance
-    project : Project
-        a Project instance
-    media_path : Path
-        a Pathlib instance
+    media_path : str
+        A path.
+        Both directory and file are permitted (see the examples).
 
     Examples
     --------
-    >>> resolve, project_manager = init_resolve(
-    ...     close_current_project=close_current_project)
-    >>> project = initialize_project(project_manager)
     >>> media_path = Path('D:/abuse/2020/031_cms_for_video_playback/img_seq')
-    >>> add_clips_to_media_pool(resolve, project, media_path)
+    >>> add_clips_to_media_pool(media_path)
+
+    >>> media_path = Path('D:/abuse/2020/031_cms_for_video_playback/img_seq/hoge.png')
+    >>> add_clips_to_media_pool(media_path)
     """
     resolve.OpenPage("media")
     media_storage = resolve.GetMediaStorage()
-    media_pool = project.GetMediaPool()
-    media_storage.AddItemListToMediaPool(str(media_path))
+    clip_list = media_storage.AddItemListToMediaPool(media_path)
+
+    return clip_list
 
 
 def get_media_pool_clip_list_and_clip_name_list(project):
@@ -308,40 +319,35 @@ def get_media_pool_clip_list_and_clip_name_list(project):
 
 
 def create_timeline_from_clip(
-        project, clip_list, timeline_name="dummy"):
+        clip_list, timeline_name="dummy"):
     """
     Parametes
     ---------
-    project : Project
-        a Project instance
     clip_list : list
         list of clip
     timeline_name : str
         timeline name
     """
     resolve.OpenPage("edit")
-    media_pool = project.GetMediaPool()
+    media_pool = resolve.GetProjectManager().GetCurrentProject().GetMediaPool()
     timeline = media_pool.CreateTimelineFromClips(timeline_name, clip_list)
 
     return timeline
 
 
-def add_clips_to_the_current_timeline(resolve, project, clip_list):
+def add_clips_to_the_current_timeline(clip_list):
     """
     Parametes
     ---------
-    resolve : Resolve
-        a Resolve iinstance
-    project : Project
-        a Project instance
     clip_list : list
         list of clip
     """
     resolve.OpenPage("edit")
+    project = resolve.GetProjectManager().GetCurrentProject()
     media_pool = project.GetMediaPool()
-    timeline = media_pool.AppendToTimeline(clip_list)
+    timeline_item = media_pool.AppendToTimeline(clip_list)
 
-    return timeline
+    return timeline_item
 
 
 def eliminate_frame_idx_from_clip_name(clip_name):
@@ -531,12 +537,10 @@ def test_func(close_current_project=True):
     set_project_settings_from_dict(project, project_params)
 
     media_path = Path('D:/abuse/2020/031_cms_for_video_playback/img_seq')
-    add_clips_to_media_pool(resolve, project, media_path)
-    clip_list, clip_name_list\
-        = get_media_pool_clip_list_and_clip_name_list(project)
-
-    timeline = create_timeline_from_clip(
-        resolve, project, clip_list, timeline_name="dummy")
+    clip_list = add_files_to_media_pool(media_path=media_path)
+    timeline = create_timeline(timeline_name="hogefuga")
+    set_current_timeline(timeline=timeline)
+    add_clips_to_the_current_timeline(clip_list=clip_list)
 
     encode(resolve, project, out_path, format_str, codec, preset_name)
 
