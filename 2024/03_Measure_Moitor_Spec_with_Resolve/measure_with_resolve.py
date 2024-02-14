@@ -27,7 +27,7 @@ folder_path = 'C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_S
 sys.path.append(folder_path)
 import measure_with_resolve as mwr
 importlib.reload(mwr)
-mwr.simple_measure()
+mwr.duration_measure()
 """
 
 
@@ -107,7 +107,8 @@ def set_project_settings_bt2100(project):
         timelinePlaybackFrameRate=dcl.PRJ_TIMELINE_PLAYBACK_FRAMERATE_24,
         videoMonitorFormat=dcl.PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P24FPS,
         timelineFrameRate=dcl.PRJ_TIMELINE_FRAMERATE_24,
-        videoDataLevels=dcl.PRJ_VIDEO_DATA_LEVEL_LIMITED,
+        videoMonitorUse444SDI=dcl.PRJ_PARAM_ENABLE,
+        videoDataLevels=dcl.PRJ_VIDEO_DATA_LEVEL_FULL,
         videoMonitorUseHDROverHDMI=dcl.PRJ_PARAM_ENABLE,
         colorScienceMode=dcl.PRJ_COLOR_SCIENCE_MODE_RCM_ON,
         rcmPresetMode=dcl.PRJ_PRESET_MODE_CUSTOM,
@@ -126,8 +127,9 @@ def set_project_settings_bt2100(project):
     dcl.set_project_settings_from_dict(project=project, params=project_params)
 
 
-def simple_measure(
-        csv_name="./measure_result.csv", ccss_file=None):
+def duration_measure(
+        csv_name="./measure_result.csv", ccss_file=None,
+        color_mask=[1, 1, 1], patch_area_ratio=0.03):
     remove_csv(file_path=csv_name)
 
     project_name = "Measure_AW3225QF"
@@ -141,8 +143,6 @@ def simple_measure(
 
     # add test pattern for measure
     cv_list = create_cv_list(num_of_block=64)
-    color_mask = [1, 1, 1]
-    patch_area_ratio = 0.03
     fname_list = [
         create_tp_base_name(
             color_mask=color_mask, cv=cv/1023,
@@ -170,16 +170,73 @@ def simple_measure(
     timecode_str = frame_number_to_timecode(frame_number=frame_number, fps=24)
     tp_timeline.SetCurrentTimecode(timecode_str)
 
-    # measure_period_second = 60
-    # measure_step_second = 5
-    # num_of_measure = measure_period_second // measure_step_second
-    # for _ in range(num_of_measure):
-    #     large_xyz, Yxy = read_xyz(flush=False, ccss_file=ccss_file)
-    #     ccss_name = Path(ccss_file).stem if ccss_file else "-"
-    #     save_measure_result(
-    #         large_xyz=large_xyz, Yxy=Yxy,
-    #         csv_name=csv_name, ccss_name=ccss_name)
-    #     time.sleep(measure_step_second)
+    measure_period_second = 60
+    measure_step_second = 5
+    num_of_measure = measure_period_second // measure_step_second
+    for _ in range(num_of_measure):
+        large_xyz, Yxy = read_xyz(flush=False, ccss_file=ccss_file)
+        ccss_name = Path(ccss_file).stem if ccss_file else "-"
+        save_measure_result(
+            large_xyz=large_xyz, Yxy=Yxy,
+            csv_name=csv_name, ccss_name=ccss_name)
+        time.sleep(measure_step_second)
+
+    project.SetCurrentTimeline(black_timeline)
+    time.sleep(10)
+
+    dcl.save_project(project_manager=project_manager)
+
+
+def increase_cv_measure(
+        csv_name="./measure_result.csv", ccss_file=None,
+        color_mask=[1, 1, 1], patch_area_ratio=0.03):
+    remove_csv(file_path=csv_name)
+
+    project_name = "Measure_AW3225QF"
+    dcl.close_and_remove_project(project_name=project_name)
+    project, project_manager = create_project(project_name=project_name)
+    dcl.open_page(dcl.EDIT_PAGE_STR)
+    remove_all_timeline(project=project)
+    set_project_settings_bt2100(project=project)
+
+    media_path = Path('C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img')
+
+    # add test pattern for measure
+    cv_list = create_cv_list(num_of_block=64)
+    fname_list = [
+        create_tp_base_name(
+            color_mask=color_mask, cv=cv/1023,
+            patch_area_ratio=patch_area_ratio) + ".png"
+        for cv in cv_list]
+    fname_list = [str(media_path / Path(fname)) for fname in fname_list]
+
+    clip_list = dcl.add_files_to_media_pool(media_path=fname_list)
+    tp_timeline = dcl.create_timeline_from_clip(
+        clip_list=clip_list, timeline_name="TP_Timeline")
+
+    # add test pattern for rest in peace
+    fname_black = "C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img/black.png"
+    clip_list = dcl.add_files_to_media_pool(media_path=fname_black)
+    black_timeline = dcl.create_timeline_from_clip(
+        clip_list=clip_list, timeline_name="Black_Timeline")
+
+    # initialize with black
+    project.SetCurrentTimeline(black_timeline)
+    time.sleep(1)
+
+    cv_list = create_cv_list(num_of_block=64)
+    for frame_idx in range(len(cv_list)):
+        project.SetCurrentTimeline(tp_timeline)
+        timecode_str = frame_number_to_timecode(frame_number=frame_idx, fps=24)
+        tp_timeline.SetCurrentTimecode(timecode_str)
+        time.sleep(0.5)
+        large_xyz, Yxy = read_xyz(flush=False, ccss_file=ccss_file)
+        ccss_name = Path(ccss_file).stem if ccss_file else "-"
+        save_measure_result(
+            large_xyz=large_xyz, Yxy=Yxy,
+            csv_name=csv_name, ccss_name=ccss_name)
+        project.SetCurrentTimeline(black_timeline)
+        time.sleep(1)
 
     dcl.save_project(project_manager=project_manager)
 
@@ -187,7 +244,35 @@ def simple_measure(
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # csv_name = "./measure_result/aw3225qf_1000nits_60s.csv"
-    simple_measure(csv_name="./measure_result.csv", ccss_file=CCSS_RGBLED)
+
+    # # Duration measure
+    # color_mask = [1, 1, 1]
+    # percent_list = [
+    #     0.03, 0.05, 0.10, 0.20, 0.30, 0.40,
+    #     0.50, 0.60, 0.70, 0.80, 0.90, 1.00]
+    # for percent in percent_list:
+    #     percent_str = f"{int(percent * 100):03d}"
+    #     duration_measure(
+    #         csv_name=f"./AW3225QF/measure_duration_{percent_str}.csv",
+    #         ccss_file=CCSS_RGBLED, color_mask=color_mask,
+    #         patch_area_ratio=percent)
+
+    # # Normal patch measure
+    # condition = "Desktop"
+    # condition = "Movie_HDR"
+    # condition = "Game_HDR"
+    condition = "Custom_Color_HDR"
+    # condition = "DisplayHDR_True_Black"
+    # condition = "HDR_Peak_1000"
+    percent_list = [0.03, 0.10, 0.20, 0.50, 1.00]
+
+    for percent in percent_list:
+        percent_str = f"{int(percent * 100):03d}"
+        csv_name = f"./AW3225QF/measure_{condition}_{percent_str}_patch.csv"
+        print(csv_name)
+        increase_cv_measure(
+            csv_name=csv_name, ccss_file=CCSS_RGBLED,
+            color_mask=[1, 1, 1], patch_area_ratio=percent)
 
     # diff = calculate_elapsed_seconds(file_path=csv_name)
     # print(diff)

@@ -319,6 +319,7 @@ def _set_common_parameters(fontsize, **kwargs):
     fonts = fm.findSystemFonts()
     for font in fonts:
         font_name = fm.FontProperties(fname=font).get_name()
+        print(f"font_name = {font_name}")
         if font_name == target_font_name:
             plt.rcParams['font.family'] = font_name
             plt.rcParams["font.weight"] = 'regular'
