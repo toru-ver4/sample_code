@@ -177,8 +177,22 @@ def create_color_checker_measure_pattern():
                 tpg.img_wirte_float_as_16bit_int(fname, img_non_linear)
 
 
+def verify_patch():
+    fname = "./img_cctp/idx-17_lumi-1000_win-003.png"
+    img = tpg.img_read_as_float(fname)
+    rgb = img[1080//2, 1920//2]
+
+    rgb_linear = tf.eotf_to_luminance(rgb, tf.ST2084)
+    large_xyz = cs.rgb_to_large_xyz(
+        rgb=rgb_linear, color_space_name=cs.BT2020)
+    print(large_xyz)
+    from colour import XYZ_to_xyY
+    print(XYZ_to_xyY(large_xyz))
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_black()
     # create_white_patch_all()
     # create_color_checker_measure_pattern()
+    verify_patch()

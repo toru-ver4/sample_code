@@ -7,12 +7,16 @@
 import os
 
 # import third-party libraries
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 # import my libraries
 import plot_utility as pu
 from ty_display_pro_hl import read_measure_result, calculate_elapsed_seconds
 from create_tp_for_measure import create_cv_list
 import transfer_functions as tf
+import test_pattern_generator2 as tpg
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -56,7 +60,7 @@ def plot_peak_60s_data():
         fig=fig, legend_loc='lower right', save_fname=fname)
 
 
-def plot_increment_result(condition: str):
+def plot_each_hdr_mode_result(condition: str):
     percent_list = [1.00, 0.50, 0.20, 0.10, 0.03]
     color_list = [pu.GRAY50, pu.BLUE, pu.GREEN, pu.RED, pu.MAJENTA]
     fname = f"./img/increment_patch_{condition}.png"
@@ -98,17 +102,135 @@ def plot_increment_result(condition: str):
     print(fname)
     pu.show_and_save(
         fig=fig, legend_loc='upper left', save_fname=fname, show=True)
+    
 
+def scatter_plot_for_single_patch(
+        data, patch_idx, ref_xy, patch_color,
+        luminance_list, window_size_list):
+    diff_data = np.zeros_like(data)
+    diff_ref = np.zeros_like(ref_xy)
+    idx_1k_3p_win = 20
+    print(data[..., 0])
+    print(data[..., 1])
+    # diff_data[..., 0] = ref_xy[0] - data[..., 0]
+    # diff_data[..., 1] = ref_xy[1] - data[..., 1]
+    diff_data[..., 0] = data[..., 0] - data[idx_1k_3p_win, 0]
+    diff_data[..., 1] = data[..., 1] - data[idx_1k_3p_win, 1]
+    diff_ref[0] = ref_xy[..., 0] - data[idx_1k_3p_win, 0]
+    diff_ref[1] = ref_xy[..., 1] - data[idx_1k_3p_win, 1]
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=f"Single Patch Scatter Plot - {patch_idx:02d}",
+        graph_title_size=None,
+        xlabel="x (Difference from 3%, 1000 nits Patch)",
+        ylabel="y (Difference from 3%, 1000 nits Patch)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[-0.015, 0.015],
+        ylim=[-0.015, 0.015],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=2,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    lumi_rate = [0.2, 0.4, 0.6, 0.8, 1.0]
+    size_list = np.array([14, 19, 23, 26, 29]) * 1.6
+    # size_list = [28, 38, 46, 52, 58]
+    base_cnt = 0
+    for l_idx, luminance in enumerate(luminance_list):
+        # for w_idx, window_size in enumerate(window_size_list):
+        for w_idx in range(4, -1, -1):
+            cnt = base_cnt + w_idx
+            window_size = window_size_list[w_idx]
+            label = f"{luminance}-nits, {window_size}% window"
+            plot_color = np.array(patch_color) * lumi_rate[l_idx]
+            edge_color = (0.7, 0.7, 0.7) if np.max(plot_color) < 0.4 else 'k'
+            ax1.plot(
+                diff_data[cnt, 0], diff_data[cnt, 1], 's', label=None,
+                ms=size_list[w_idx], mec=edge_color, mfc=plot_color, mew=1.6)
+            # print(f"cnt = {cnt}, w_idx = {w_idx}, w_size = {size_list[w_idx]}")
+        base_cnt += 5
+
+    ax1.plot(
+        diff_ref[0], diff_ref[1], "x", label="Reference",
+        ms=30, mec=patch_color, mew=6)
+
+    ax1.minorticks_on()
+    ax1.grid(which='minor', linestyle='--', linewidth=0.5, color='gray', alpha=0.7)
+    ax1.xaxis.set_minor_locator(ticker.MultipleLocator(0.001))
+    ax1.yaxis.set_minor_locator(ticker.MultipleLocator(0.001))
+
+    fname = f"./img/scatter_single_patch_{patch_idx:02d}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', save_fname=fname, show=False,
+        fontsize=20)
+    
+
+def create_cc_patch_measure_result_fname(luminance, window_size):
+    window_size_int = int(window_size * 100)
+    fname = f"./AW3225QF/cc_measure_lumi-{luminance:04d}_"
+    fname += f"win-{window_size_int:03d}.csv"
+
+    return fname
+    
+
+def plot_color_checker_multi_size_and_cv():
+    luminance_list = [100, 200, 400, 600, 1000]
+    window_size_list = [0.03, 0.10, 0.20, 0.50, 1.00]
+    num_of_cc_patch = 18
+
+    cc_xyY = tpg.generate_color_checker_xyY_value()
+    cc_rgb = tpg.generate_color_checker_rgb_value()
+    cc_rgb = tf.oetf(np.clip(cc_rgb, 0, 1), tf.SRGB)
+    for idx in range(num_of_cc_patch):
+        buf = []
+        for luminance in luminance_list:
+            for window_size in window_size_list:
+                csv_name = create_cc_patch_measure_result_fname(
+                    luminance=luminance, window_size=window_size)
+                data = read_measure_result(csv_name=csv_name)
+                # add xyY
+                temp_buf = [data[idx, 4], data[idx, 5], data[idx, 3]]
+                buf.append(temp_buf)
+        measured_xyY = np.array(buf)
+        # for y_idx, xyY in enumerate(measured_xyY):
+        #     print(f"{y_idx}, {xyY}")
+        scatter_plot_for_single_patch(
+            data=measured_xyY, patch_idx=idx, ref_xy=cc_xyY[idx, :2],
+            patch_color=cc_rgb[idx],
+            luminance_list=luminance_list, window_size_list=window_size_list)
+        # break
+
+
+def concat_cc_plot_data():
+    v_buf = []
+    for v_idx in range(3):
+        h_buf = []
+        for h_idx in range(6):
+            idx = v_idx * 6 + h_idx
+            fname = f"./img/scatter_single_patch_{idx:02d}.png"
+            img = tpg.img_read_as_float(fname)
+            h_buf.append(img)
+        v_buf.append(np.hstack(h_buf))
+    out_img = np.vstack(v_buf)
+
+    tpg.img_wirte_float_as_16bit_int(
+        "./img/scatter_single_patch_all.png", out_img)
+        
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # plot_peak_60s_data()
 
-    condition_list = [
-        "Desktop", "Movie_HDR", "Game_HDR", "Custom_Color_HDR",
-        "DisplayHDR_True_Black", "HDR_Peak_1000"]
     # condition_list = [
-    #     "HDR_Peak_1000"]
+    #     "Desktop", "Movie_HDR", "Game_HDR", "Custom_Color_HDR",
+    #     "DisplayHDR_True_Black", "HDR_Peak_1000"]
+    # for condition in condition_list:
+    #     plot_each_hdr_mode_result(condition=condition)
 
-    for condition in condition_list:
-        plot_increment_result(condition=condition)
+    plot_color_checker_multi_size_and_cv()
+    concat_cc_plot_data()

@@ -13,12 +13,13 @@ from pathlib import Path
 from datetime import datetime
 
 # import third-party libraries
-from ty_display_pro_hl import read_xyz, save_measure_result,\
+from ty_display_pro_hl import read_xyz, save_measure_result, \
     calculate_elapsed_seconds
 
 # import my libraries
 import ty_davinci_control_lib as dcl
-from create_tp_for_measure import create_tp_base_name, create_cv_list
+from create_tp_for_measure import create_tp_base_name, create_cv_list, \
+    create_cc_tp_fname
 
 """
 import sys
@@ -102,13 +103,14 @@ def frame_number_to_timecode(frame_number, fps, timecode_offset="01:00:00:00"):
 
 def set_project_settings_bt2100(project):
     project_params = dict(
-        timelineResolutionWidth=dcl.PRJ_TIMELINE_RESOLUTION_3840,
-        timelineResolutionHeight=dcl.PRJ_TIMELINE_RESOLUTION_2160,
+        timelineResolutionWidth=dcl.PRJ_TIMELINE_RESOLUTION_1920,
+        timelineResolutionHeight=dcl.PRJ_TIMELINE_RESOLUTION_1080,
         timelinePlaybackFrameRate=dcl.PRJ_TIMELINE_PLAYBACK_FRAMERATE_24,
-        videoMonitorFormat=dcl.PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P24FPS,
+        videoMonitorFormat=dcl.PRJ_VIDEO_MONITOR_FORMAT_HD_1080P24FPS,
         timelineFrameRate=dcl.PRJ_TIMELINE_FRAMERATE_24,
-        videoMonitorUse444SDI=dcl.PRJ_PARAM_ENABLE,
-        videoDataLevels=dcl.PRJ_VIDEO_DATA_LEVEL_FULL,
+        videoMonitorUse444SDI=dcl.PRJ_PARAM_DISABLE,
+        videoMonitorSDIConfiguration=dcl.PRJ_SDI_SINGLE_LINK,
+        videoDataLevels=dcl.PRJ_VIDEO_DATA_LEVEL_LIMITED,
         videoMonitorUseHDROverHDMI=dcl.PRJ_PARAM_ENABLE,
         colorScienceMode=dcl.PRJ_COLOR_SCIENCE_MODE_RCM_ON,
         rcmPresetMode=dcl.PRJ_PRESET_MODE_CUSTOM,
@@ -119,6 +121,8 @@ def set_project_settings_bt2100(project):
         colorSpaceTimelineGamma=dcl.PRJ_GAMMA_STR_ST2084,
         colorSpaceOutput=dcl.PRJ_COLOR_SPACE_REC2020,
         colorSpaceOutputGamma=dcl.PRJ_GAMMA_STR_ST2084,
+        timelineWorkingLuminance=dcl.PRJ_WORKING_LUMINANCE_MAX,
+        timelineWorkingLuminanceMode=dcl.PRJ_LUMINANCE_MODE_CUSTOM,
         inputDRT=dcl.PRJ_PARAM_NONE,
         outputDRT=dcl.PRJ_PARAM_NONE,
         hdrMasteringLuminanceMax="1000",
@@ -241,11 +245,76 @@ def increase_cv_measure(
     dcl.save_project(project_manager=project_manager)
 
 
+def create_cc_patch_measure_result_fname(luminance, window_size):
+    window_size_int = int(window_size * 100)
+    fname = f"./AW3225QF/cc_measure_lumi-{luminance:04d}_"
+    fname += f"win-{window_size_int:03d}.csv"
+
+    return fname
+
+
+def cc_patch_measure(luminance, window_size, ccss_file):
+    csv_name = create_cc_patch_measure_result_fname(
+        luminance=luminance, window_size=window_size)
+    remove_csv(file_path=csv_name)
+
+    project_name = "Measure_AW3225QF"
+    dcl.close_and_remove_project(project_name=project_name)
+    project, project_manager = create_project(project_name=project_name)
+    dcl.open_page(dcl.EDIT_PAGE_STR)
+    remove_all_timeline(project=project)
+    set_project_settings_bt2100(project=project)
+
+    media_path = Path('C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/img_cctp')
+
+    # add test pattern for measure
+    num_of_cc_patch = 18
+    fname_list = [
+        str(Path(create_cc_tp_fname(
+            cc_idx=idx, luminance=luminance, window_size=window_size)
+        ).resolve())
+        for idx in range(num_of_cc_patch)]
+    clip_list = dcl.add_files_to_media_pool(media_path=fname_list)
+    tp_timeline = dcl.create_timeline_from_clip(
+        clip_list=clip_list, timeline_name="TP_Timeline")
+
+    # add test pattern for rest in peace
+    fname_black = "C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img/black.png"
+    clip_list = dcl.add_files_to_media_pool(media_path=fname_black)
+    black_timeline = dcl.create_timeline_from_clip(
+        clip_list=clip_list, timeline_name="Black_Timeline")
+
+    # initialize with black
+    project.SetCurrentTimeline(black_timeline)
+    time.sleep(1)
+
+    #################
+    # Measure
+    #################
+    for frame_idx in range(num_of_cc_patch):
+        print(f"Measure sequence [{frame_idx + 1} / {num_of_cc_patch}]")
+        project.SetCurrentTimeline(tp_timeline)
+        timecode_str = frame_number_to_timecode(frame_number=frame_idx, fps=24)
+        tp_timeline.SetCurrentTimecode(timecode_str)
+        time.sleep(0.5)
+        large_xyz, Yxy = read_xyz(flush=False, ccss_file=ccss_file)
+        ccss_name = Path(ccss_file).stem if ccss_file else "-"
+        save_measure_result(
+            large_xyz=large_xyz, Yxy=Yxy,
+            csv_name=csv_name, ccss_name=ccss_name)
+        project.SetCurrentTimeline(black_timeline)
+        time.sleep(1)
+
+    dcl.save_project(project_manager=project_manager)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # csv_name = "./measure_result/aw3225qf_1000nits_60s.csv"
 
-    # # Duration measure
+    ###########################
+    # Duration measure
+    ###########################
     # color_mask = [1, 1, 1]
     # percent_list = [
     #     0.03, 0.05, 0.10, 0.20, 0.30, 0.40,
@@ -257,36 +326,37 @@ if __name__ == '__main__':
     #         ccss_file=CCSS_RGBLED, color_mask=color_mask,
     #         patch_area_ratio=percent)
 
-    # # Normal patch measure
+    ###########################
+    # White patch measure
+    ###########################
     # condition = "Desktop"
     # condition = "Movie_HDR"
     # condition = "Game_HDR"
-    condition = "Custom_Color_HDR"
+    # condition = "Custom_Color_HDR"
     # condition = "DisplayHDR_True_Black"
     # condition = "HDR_Peak_1000"
-    percent_list = [0.03, 0.10, 0.20, 0.50, 1.00]
+    # percent_list = [0.03, 0.10, 0.20, 0.50, 1.00]
 
-    for percent in percent_list:
-        percent_str = f"{int(percent * 100):03d}"
-        csv_name = f"./AW3225QF/measure_{condition}_{percent_str}_patch.csv"
-        print(csv_name)
-        increase_cv_measure(
-            csv_name=csv_name, ccss_file=CCSS_RGBLED,
-            color_mask=[1, 1, 1], patch_area_ratio=percent)
+    # for percent in percent_list:
+    #     percent_str = f"{int(percent * 100):03d}"
+    #     csv_name = f"./AW3225QF/measure_{condition}_{percent_str}_patch.csv"
+    #     # csv_name = f"./AW3225QF/measure_{condition}_{percent_str}_patch2.csv"
+    #     print(csv_name)
+    #     increase_cv_measure(
+    #         csv_name=csv_name, ccss_file=CCSS_RGBLED,
+    #         color_mask=[1, 1, 1], patch_area_ratio=percent)
 
-    # diff = calculate_elapsed_seconds(file_path=csv_name)
-    # print(diff)
+    ###########################
+    # Color Checker measure
+    ###########################
+    # lumiannce_list = [100, 200, 400, 600, 1000]
+    # window_size_list = [0.03, 0.10, 0.20, 0.50, 1.00]
 
-    # project = dcl.get_resolve().GetProjectManager().GetCurrentProject()
-    # clip_list = project.GetMediaPool().GetRootFolder().GetClipList()
-    # properties = clip_list[0].GetClipProperty()
-    # timeline = project.GetCurrentTimeline()
-    # timeline.SetCurrentTimecode("01:01:00:00")
-
-    # dir_path = Path('C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img/black.png')
-    # clip_list = dcl.add_files_to_media_pool(media_path=dir_path)
-    # timeline = dcl.create_timeline(timeline_name="hogefuga")
-    # dcl.set_current_timeline(timeline=timeline)
-
-    # dcl.add_clips_to_the_current_timeline(clip_list=clip_list)
-    # print(clip_list)
+    # for luminance in lumiannce_list:
+    #     for window_size in window_size_list:
+    #         print("="*80)
+    #         print(f"luminance = {luminance}, window_size = {window_size}")
+    #         print("="*80)
+    #         cc_patch_measure(
+    #             luminance=luminance, window_size=window_size,
+    #             ccss_file=CCSS_RGBLED)
