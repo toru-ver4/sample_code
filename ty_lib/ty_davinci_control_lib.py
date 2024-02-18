@@ -2,30 +2,6 @@
 """
 A library for DaVinci Resolve control
 =====================================
-
-Example 1
----------
-import imp
-import ty_davinci_control_lib as dv_lib
-imp.reload(dv_lib)
-dv_lib.test_func(close_current_project=True)
-
-Example 2
----------
-import imp
-import ty_davinci_control_lib as dv_lib
-imp.reload(dv_lib)
-project = dv_lib.test_func()
-...
-dv_lib._debug_print_and_save_project_settings(project)
-
-Example 3
-import sys
-sys.path.append("C:/Users/toruv/OneDrive/work/sample_code/ty_lib")
-import imp
-import ty_davinci_control_lib as dv_lib
-imp.reload(dv_lib)
-dv_lib.get_avilable_parameters()
 """
 
 # import standard libraries
@@ -34,7 +10,6 @@ import sys
 import time
 import pprint
 from pathlib import Path
-import re
 
 # import third-party libraries
 from python_get_resolve import GetResolve
@@ -52,8 +27,9 @@ __all__ = []
 
 resolve = GetResolve()
 
-
+###################################
 # Page
+###################################
 MEDIA_PAGE_STR = "media"
 CUT_PAGE_STR = "cut"
 EDIT_PAGE_STR = "edit"
@@ -61,7 +37,9 @@ FUSION_PAGE_STR = 'fusion'
 COLOR_PAGE_STR = "color"
 DELIVER_PAGE_STR = "deliver"
 
+###################################
 # Project Settings
+###################################
 PRJ_PARAM_NONE = "None"
 PRJ_PARAM_ENABLE = "1"
 PRJ_PARAM_DISABLE = "1"
@@ -121,9 +99,11 @@ PRJ_PRESET_MODE_CUSTOM = "Custom"
 
 PRJ_GAMMA_STR_ST2084 = "ST2084"
 PRJ_GAMMA_STR_GAMMA24 = "Gamma 2.4"
+PRJ_GAMMA_STR_GAMMA26 = "Gamma 2.6"
 
 PRJ_COLOR_SPACE_REC2020 = "Rec.2020"
 PRJ_COLOR_SPACE_REC709 = "Rec.709"
+PRJ_COLOR_SPACE_P3D65 = "P3-D65"
 
 PRJ_ACES_ODT_P3D65_PQ_108 = "P3-D65 ST2084 (108 nits)"
 PRJ_ACES_ODT_P3D65_PQ_1000 = "P3-D65 ST2084 (1000 nits)"
@@ -133,6 +113,60 @@ PRJ_ACES_ODT_REC2020_PQ_1000 = "Rec.2020 ST2084 (1000 nits)"
 
 PRJ_LUMINANCE_MODE_CUSTOM = "Custom"
 PRJ_WORKING_LUMINANCE_MAX = "10000"
+
+###################################
+# File Extenstion
+###################################
+OUT_FILE_EXTENSTION_MP4 = "mp4"
+OUT_FILE_EXTENSTION_MOV = "mov"
+OUT_FILE_EXTENSTION_EXR = "exr"
+OUT_FILE_EXTENSTION_DPX = "dpx"
+OUT_FILE_EXTENSTION_DPX = "tif"
+
+###################################
+# Codec + Encoder
+###################################
+CODEC_APPLE_PRORES_422 = "ProRes422"
+CODEC_APPLE_PRORES_422_HQ = "ProRes422HQ"
+CODEC_APPLE_PRORES_422_LT = "ProRes422LT"
+CODEC_APPLE_PRORES_422_PROXY = "ProRes422P"
+CODEC_APPLE_PRORES_4444 = "ProRes4444"
+CODEC_APPLE_PRORES_4444_XQ = "ProRes4444XQ"
+
+CODEC_DN_X_HR_444_10_BIT = "DNxHR444_10"
+CODEC_DN_X_HR_444_12_BIT = "DNxHR444_12"
+CODEC_DN_X_HR_HQ = "DNxHRHQ"
+CODEC_DN_X_HR_HQX_10_BIT = "DNxHRHQX_10"
+CODEC_DN_X_HR_HQX_12_BIT = "DNxHRHQX_12"
+
+CODEC_H264 = "H264"
+CODEC_H264_NVIDIA = "H264_NVIDIA"
+CODEC_H265 = "H265"
+CODEC_H265_NVIDIA = "H265_NVIDIA"
+
+CODEC_TIF_RGB_16_BITS = "RGB16"
+CODEC_TIF_RGB_16_BITS_LZW = "RGB16LZW"
+CODEC_TIF_RGB_8_BITS = "RGB8"
+CODEC_TIF_RGB_8_BITS_LZW = "RGB8LZW"
+CODEC_TIF_XYZ_16_BITS = "XYZ16"
+CODEC_TIF_XYZ_16_BITS_LZW = "XYZ16LZW"
+
+CODEC_DPX_RGB_10_BITS = "RGB10"
+CODEC_DPX_RGB_12_BITS = "RGB12"
+CODEC_DPX_RGB_16_BITS = "RGB16"
+
+CODEC_EXR_RGB_FLOAT = "RGBFloat"
+CODEC_EXR_RGB_FLOAT_DWAA = "RGBFloatDWAA"
+CODEC_EXR_RGB_FLOAT_DWAB = "RGBFloatDWAB"
+CODEC_EXR_RGB_FLOAT_PIZ = "RGBFloatPIZ"
+CODEC_EXR_RGB_FLOAT_RLE = "RGBFloatRLE"
+CODEC_EXR_RGB_FLOAT_ZIP = "RGBFloatZIP"
+CODEC_EXR_RGB_HALF = "RGBHalf"
+CODEC_EXR_RGB_HALF_DWAA = "RGBHalfDWAA"
+CODEC_EXR_RGB_HALF_DWAB = "RGBHalfDWAB"
+CODEC_EXR_RGB_HALF_PIZ = "RGBHalfPIZ"
+CODEC_EXR_RGB_HALF_RLE = "RGBHalfRLE"
+CODEC_EXR_RGB_HALF_ZIP = "RGBHalfZIP"
 
 PRJECT_SETTINGS_SAMPLE_BT2100 = dict(
     timelineResolutionWidth=PRJ_TIMELINE_RESOLUTION_1920,
@@ -171,24 +205,19 @@ def wait_for_rendering_completion(project):
 def close_and_remove_project(project_name):
     """
     Delete the project.
-    It is intended for use during initialization to ensure reproducibility
     """
     project_manager = resolve.GetProjectManager()
     project_manager.CloseProject(project_manager.GetCurrentProject())
     project_manager.DeleteProject(project_name)
 
 
-def init_resolve(close_current_project=True):
+def get_project_manager(close_current_project=False):
     """
-    Initialize davinci17 python environment.
-
-    * create ProjectManager instance
-    * close current project for initialize if needed.
+    * Create ProjectManager instance
+    * Close current project for initialize if needed.
 
     Returns
     -------
-    resolve
-        Resolve instance
     project_namager
         ProjectManager instance
     """
@@ -203,8 +232,8 @@ def init_resolve(close_current_project=True):
 
 def initialize_project(project_manager, project_name="working_project"):
     """
-    * load working project if the project is exist.
-    * create working project if the project is not exist.
+    * Load working project if the project is exist.
+    * Create working project if the project is not exist.
 
     Parameters
     ----------
@@ -284,6 +313,9 @@ def set_cuurent_timecode(timeline, timecode):
 
 
 def create_timeline(timeline_name):
+    """
+    Create empty timeline
+    """
     project = resolve.GetProjectManager().GetCurrentProject()
     media_pool = project.GetMediaPool()
     timeline = media_pool.CreateEmptyTimeline(timeline_name)
@@ -332,13 +364,23 @@ def add_files_to_media_pool(media_path):
         A path.
         Both directory and file are permitted (see the examples).
 
+    Returns
+    -------
+    Array
+        An array of the Meida Clip
+
     Examples
     --------
     >>> media_path = str(Path('D:/abuse/2020/031_cms_for_video_playback/img_seq'))
-    >>> add_clips_to_media_pool(media_path)
-
-    >>> media_path = str(Path('D:/abuse/2020/031_cms_for_video_playback/img_seq/hoge.png'))
-    >>> add_clips_to_media_pool(media_path)
+    >>> add_files_to_media_pool(media_path)
+    [<BlackmagicFusion.PyRemoteObject object at 0x000002A68DC66130>,
+     <BlackmagicFusion.PyRemoteObject object at 0x000002A68DC66110>,
+     <BlackmagicFusion.PyRemoteObject object at 0x000002A68DC660F0>,
+     <BlackmagicFusion.PyRemoteObject object at 0x000002A68DC654D0>,
+     <BlackmagicFusion.PyRemoteObject object at 0x000002A68DC654B0>,
+     <BlackmagicFusion.PyRemoteObject object at 0x000002A68DC660D0>,
+     <BlackmagicFusion.PyRemoteObject object at 0x000002A68DC660B0>,
+     <BlackmagicFusion.PyRemoteObject object at 0x000002A68DC65490>]
     """
     resolve.OpenPage("media")
     media_storage = resolve.GetMediaStorage()
@@ -356,22 +398,26 @@ def get_media_pool_clip_list_and_clip_name_list(project):
 
     Returns
     -------
-    clip_return_list : list
+    clip_list : list
         clip list
     clip_name_list : list
         clip name list
 
     Examples
     --------
-    >>> resolve, project_manager = init_resolve(
-    ...     close_current_project=close_current_project)
-    >>> get_media_pool_clip_dict_list(project)
-    [<PyRemoteObject object at 0x000001BB29001630>,
-     <PyRemoteObject object at 0x000001BB290016D8>,
-     <PyRemoteObject object at 0x000001BB29001720>]
-    ['dst_grad_tp_1920x1080_b-size_64_[0001-0024].png',
-     'src_grad_tp_1920x1080_b-size_64_[0000-0023].png',
-     'dst_grad_tp_1920x1080_b-size_64_resolve_[0000-0023].tif']
+    >>> project = resolve.GetProjectManager().GetCurrentProject()
+    >>> clip_list, clip_name_list\
+    ...     = get_media_pool_clip_list_and_clip_name_list(project)
+    >>> print(clip_list)
+    [<BlackmagicFusion.PyRemoteObject object at 0x000001DD451F54D0>,
+     <BlackmagicFusion.PyRemoteObject object at 0x000001DD451F54B0>,
+     <BlackmagicFusion.PyRemoteObject object at 0x000001DD451F60D0>,
+     <BlackmagicFusion.PyRemoteObject object at 0x000001DD451F60B0>]
+    >>> print(clip_name_list)
+    ['countdown_SDR_1920x1080_24fps_Rev9_hevc_yuv420p10le_qp-0.mov',
+     'countdown_HDR_1920x1080_24fps_Rev9_hevc_yuv420p10le_qp-0.mov',
+     'Sample Timeline',
+     'SDR_TyTP_P3D65_Mhi_5.62_REF_WHITE_203_[0000-0179].png']
     """
     media_pool = project.GetMediaPool()
     root_folder = media_pool.GetRootFolder()
@@ -415,32 +461,6 @@ def add_clips_to_the_current_timeline(clip_list):
     timeline_item = media_pool.AppendToTimeline(clip_list)
 
     return timeline_item
-
-
-def eliminate_frame_idx_from_clip_name(clip_name):
-    """
-    Examples
-    --------
-    >>> clip_name = 'dst_grad_tp_1920x1080_b-size_64_[0001-0024].png'
-    >>> eliminate_frame_idx_from_clip_name(clip_name)
-    eliminate_frame_idx_from_clip_name(clip_name)
-    """
-    eliminated_name = re.sub('_\[\d+-\d+\]', '', clip_name)
-
-    return eliminated_name
-
-
-def eliminate_frame_idx_and_ext_from_clip_name(clip_name):
-    """
-    Examples
-    --------
-    >>> clip_name = 'dst_grad_tp_1920x1080_b-size_64_[0001-0024].png'
-    >>> eliminate_frame_idx_from_clip_name(clip_name)
-    eliminate_frame_idx_from_clip_name(clip_name)
-    """
-    eliminated_name = re.sub('_\[\d+-\d+\]\..+$', '', clip_name)
-
-    return eliminated_name
 
 
 def load_encode_preset(project, preset_name):
@@ -584,7 +604,7 @@ def sample_func():
     # Create Project
     #################################################
     close_and_remove_project(project_name=project_name)
-    project_manager = init_resolve()
+    project_manager = get_project_manager()
     project = initialize_project(
         project_manager=project_manager, project_name=project_name
     )
@@ -621,14 +641,14 @@ def sample_func():
     # Encode
     #################################################
     out_path = str(Path("./videos/sample_out.mp4").resolve())
-    format_str = "mp4"
-    codec = "H264"
+    format_str = OUT_FILE_EXTENSTION_MP4
+    codec = CODEC_H264
     preset_name = None
     encode(project, out_path, format_str, codec, preset_name=preset_name)
 
     out_path = str(Path("./videos/h265_main10_444_qp0.mp4").resolve())
-    format_str = "mp4"
-    codec = "H265_NVIDIA"
+    format_str = None
+    codec = None
     preset_name = "H265_main10_444_qp0_preset"
     encode(project, out_path, format_str, codec, preset_name=preset_name)
 
@@ -643,7 +663,7 @@ def get_avilable_parameters(project_name="sample_project"):
     Dump all parameters for "Project:SetSetting", "Timeline:SetSetting" and
     "Project:SetCurrentRenderFormatAndCodec".
     """
-    project_manager = init_resolve(
+    project_manager = get_project_manager(
         close_current_project=True)
     project = initialize_project(
         project_manager=project_manager, project_name=project_name)
