@@ -3,33 +3,6 @@
 A library for DaVinci Resolve control
 =====================================
 
-"""
-
-# import standard libraries
-import os
-import time
-import pprint
-from pathlib import Path
-import re
-
-# import third-party libraries
-from python_get_resolve import GetResolve
-
-# import my libraries
-
-# information
-__author__ = 'Toru Yoshihara'
-__copyright__ = 'Copyright (C) 2020 - Toru Yoshihara'
-__license__ = 'New BSD License - https://opensource.org/licenses/BSD-3-Clause'
-__maintainer__ = 'Toru Yoshihara'
-__email__ = 'toru.ver.11 at-sign gmail.com'
-
-__all__ = []
-
-resolve = GetResolve()
-
-
-"""
 Example 1
 ---------
 import imp
@@ -54,6 +27,31 @@ import ty_davinci_control_lib as dv_lib
 imp.reload(dv_lib)
 dv_lib.get_avilable_parameters()
 """
+
+# import standard libraries
+import os
+import sys
+import time
+import pprint
+from pathlib import Path
+import re
+
+# import third-party libraries
+from python_get_resolve import GetResolve
+
+# import my libraries
+
+# information
+__author__ = 'Toru Yoshihara'
+__copyright__ = 'Copyright (C) 2024 - Toru Yoshihara'
+__license__ = 'New BSD License - https://opensource.org/licenses/BSD-3-Clause'
+__maintainer__ = 'Toru Yoshihara'
+__email__ = 'toru.ver.11 at-sign gmail.com'
+
+__all__ = []
+
+resolve = GetResolve()
+
 
 # Page
 MEDIA_PAGE_STR = "media"
@@ -136,6 +134,33 @@ PRJ_ACES_ODT_REC2020_PQ_1000 = "Rec.2020 ST2084 (1000 nits)"
 PRJ_LUMINANCE_MODE_CUSTOM = "Custom"
 PRJ_WORKING_LUMINANCE_MAX = "10000"
 
+PRJECT_SETTINGS_SAMPLE_BT2100 = dict(
+    timelineResolutionWidth=PRJ_TIMELINE_RESOLUTION_1920,
+    timelineResolutionHeight=PRJ_TIMELINE_RESOLUTION_1080,
+    timelinePlaybackFrameRate=PRJ_TIMELINE_PLAYBACK_FRAMERATE_24,
+    videoMonitorFormat=PRJ_VIDEO_MONITOR_FORMAT_HD_1080P24FPS,
+    timelineFrameRate=PRJ_TIMELINE_FRAMERATE_24,
+    videoMonitorUse444SDI=PRJ_PARAM_DISABLE,
+    videoMonitorSDIConfiguration=PRJ_SDI_SINGLE_LINK,
+    videoDataLevels=PRJ_VIDEO_DATA_LEVEL_LIMITED,
+    videoMonitorUseHDROverHDMI=PRJ_PARAM_ENABLE,
+    colorScienceMode=PRJ_COLOR_SCIENCE_MODE_RCM_ON,
+    rcmPresetMode=PRJ_PRESET_MODE_CUSTOM,
+    separateColorSpaceAndGamma=PRJ_PARAM_ENABLE,
+    colorSpaceInput=PRJ_COLOR_SPACE_REC2020,
+    colorSpaceInputGamma=PRJ_GAMMA_STR_ST2084,
+    colorSpaceTimeline=PRJ_COLOR_SPACE_REC2020,
+    colorSpaceTimelineGamma=PRJ_GAMMA_STR_ST2084,
+    colorSpaceOutput=PRJ_COLOR_SPACE_REC2020,
+    colorSpaceOutputGamma=PRJ_GAMMA_STR_ST2084,
+    timelineWorkingLuminance=PRJ_WORKING_LUMINANCE_MAX,
+    timelineWorkingLuminanceMode=PRJ_LUMINANCE_MODE_CUSTOM,
+    inputDRT=PRJ_PARAM_NONE,
+    outputDRT=PRJ_PARAM_NONE,
+    hdrMasteringLuminanceMax="1000",
+    hdrMasteringOn=PRJ_PARAM_ENABLE
+)
+
 
 def wait_for_rendering_completion(project):
     while project.IsRenderingInProgress():
@@ -143,11 +168,11 @@ def wait_for_rendering_completion(project):
     return
 
 
-def get_resolve():
-    return resolve
-
-
 def close_and_remove_project(project_name):
+    """
+    Delete the project.
+    It is intended for use during initialization to ensure reproducibility
+    """
     project_manager = resolve.GetProjectManager()
     project_manager.CloseProject(project_manager.GetCurrentProject())
     project_manager.DeleteProject(project_name)
@@ -247,10 +272,28 @@ def set_project_settings_from_dict(project, params):
     print("project settings has done")
 
 
+def set_cuurent_timecode(timeline, timecode):
+    """
+    Parameters
+    ----------
+    timeline : Timeline
+    timecode : str
+        eg. "01:00:00:12", "01:00:01:00"
+    """
+    timeline.SetCurrentTimecode(timecode)
+
+
 def create_timeline(timeline_name):
     project = resolve.GetProjectManager().GetCurrentProject()
     media_pool = project.GetMediaPool()
     timeline = media_pool.CreateEmptyTimeline(timeline_name)
+
+    if timeline is not None:
+        print(f"{timeline_name} timeline was created")
+    else:
+        print(f"[Error!] Failed to create {timeline_name} timeline")
+        print("Maybe the timeline that has samename is exist")
+        sys.exit(1)
 
     return timeline
 
@@ -258,6 +301,25 @@ def create_timeline(timeline_name):
 def set_current_timeline(timeline):
     project = resolve.GetProjectManager().GetCurrentProject()
     project.SetCurrentTimeline(timeline)
+
+
+def remove_all_timeline(project):
+    """
+    Remove all timeline.
+    """
+    num_of_timeline = project.GetTimelineCount()
+    print(f"num_of_timeline = {num_of_timeline}")
+    media_pool = project.GetMediaPool()
+
+    timelines = []
+
+    for idx in range(num_of_timeline):
+        # timeline index starts from 1 not 0.
+        timeline = project.GetTimelineByIndex(idx + 1)
+        timelines.append(timeline)
+
+    if timelines != []:
+        media_pool.DeleteTimelines(timelines)
 
 
 def add_files_to_media_pool(media_path):
@@ -272,10 +334,10 @@ def add_files_to_media_pool(media_path):
 
     Examples
     --------
-    >>> media_path = Path('D:/abuse/2020/031_cms_for_video_playback/img_seq')
+    >>> media_path = str(Path('D:/abuse/2020/031_cms_for_video_playback/img_seq'))
     >>> add_clips_to_media_pool(media_path)
 
-    >>> media_path = Path('D:/abuse/2020/031_cms_for_video_playback/img_seq/hoge.png')
+    >>> media_path = str(Path('D:/abuse/2020/031_cms_for_video_playback/img_seq/hoge.png'))
     >>> add_clips_to_media_pool(media_path)
     """
     resolve.OpenPage("media")
@@ -410,11 +472,11 @@ def set_render_settings(project, out_path):
     ----------
     project : Project
         a Project instance
-    out_path : Path
+    out_path : pathlib.Path or str
         output file name
     """
-    target_dir = str(out_path.parent)
-    name_prefix = str(out_path.name)
+    target_dir = str(Path(out_path).parent)
+    name_prefix = str(Path(out_path).name)
 
     result = project.SetRenderSettings(
         {"TargetDir": target_dir, "CustomName": name_prefix})
@@ -424,15 +486,13 @@ def set_render_settings(project, out_path):
         print(f"TargetDir={target_dir}, CustomName={name_prefix} is NGGGGGGGG")
 
 
-def encode(resolve, project, out_path, format_str, codec, preset_name=None):
+def encode(project, out_path, format_str, codec, preset_name=None):
     """
     Parameters
     ----------
-    resolve : Resolve
-        a Resolve instance
     project : Project
         a Project instance
-    out_path : Path
+    out_path : pathlib.Path or str
         output file name
     format_str : str
         output format. ex. "mp4", "mov", etc...
@@ -447,8 +507,9 @@ def encode(resolve, project, out_path, format_str, codec, preset_name=None):
 
     if preset_name is not None:
         load_encode_preset(project, preset_name)
-    set_render_format_codec_settings(project, format_str, codec)
-    set_render_settings(project, out_path)
+    else:
+        set_render_format_codec_settings(project, format_str, codec)
+        set_render_settings(project, out_path)
 
     project.AddRenderJob()
     project.StartRendering()
@@ -483,7 +544,7 @@ def _debug_print_and_save_encode_settings(project):
         print(f"=== {ext} ===")
         print(codecs)
         print('')
-    with open("./dv17_codecs.txt", 'wt') as f:
+    with open("./resolve_codecs.txt", 'wt') as f:
         f.write(buf)
     os.chdir(current_directory)
 
@@ -492,6 +553,13 @@ def _debug_print_and_save_project_settings(project):
     project_settings = project.GetSetting()
     pprint.pprint(project_settings)
     _debug_save_dict_as_txt("./project_settings_list.txt", project_settings)
+
+
+def _debug_print_and_save_timeline_settings(project):
+    timeline = create_timeline(timeline_name="dummy")
+    timeline_settings = timeline.GetSetting()
+    pprint.pprint(timeline_settings)
+    _debug_save_dict_as_txt("./timeline_settings_list.txt", timeline_settings)
 
 
 def _debug_print_project_settings(project, key_list=None):
@@ -505,73 +573,86 @@ def _debug_print_project_settings(project, key_list=None):
             pprint.pprint(project_settings[key])
 
 
-def test_func(close_current_project=True):
+def sample_func():
     """
     test
     """
-    # parameter definition
-    out_path = Path(
-        'D:/abuse/2020/031_cms_for_video_playback/mp4_to_png/python_test_')
-    format_str = "mp4"
-    codec = "H264_NVIDIA"
-    preset_name = "H264_lossless"
-    project_params = dict(
-        timelineResolutionHeight="1080",
-        timelineResolutionWidth="1920",
-        videoMonitorFormat="HD 1080p 24",
-        timelineFrameRate="24.000",
-        timelinePlaybackFrameRate="24",
-        colorScienceMode="davinciYRGBColorManagedv2",
-        rcmPresetMode="Custom",
-        separateColorSpaceAndGamma="1",
-        colorSpaceInput="Rec.709",
-        colorSpaceInputGamma="Gamma 2.4",
-        colorSpaceTimeline="Rec.709",
-        colorSpaceTimelineGamma="Gamma 2.4",
-        colorSpaceOutput="Rec.709",
-        colorSpaceOutputGamma="Gamma 2.4",
-        inputDRT="None",
-        outputDRT="None",
+    project_name = "Python Script Test"
+    timeline_name = "Sample Timeline"
+
+    #################################################
+    # Create Project
+    #################################################
+    close_and_remove_project(project_name=project_name)
+    project_manager = init_resolve()
+    project = initialize_project(
+        project_manager=project_manager, project_name=project_name
+    )
+    open_page(EDIT_PAGE_STR)
+    remove_all_timeline(project=project)  # just in case
+    set_project_settings_from_dict(
+        project=project, params=PRJECT_SETTINGS_SAMPLE_BT2100
     )
 
-    # set
-    project_manager = init_resolve(
-        close_current_project=close_current_project)
-    project = initialize_project(project_manager)
+    #################################################
+    # Add Clips
+    #################################################
+    src_media_path_list = [
+        "./videos/countdown_SDR_1920x1080_24fps_Rev9_hevc_yuv420p10le_qp-0.mov",
+        "./videos/countdown_HDR_1920x1080_24fps_Rev9_hevc_yuv420p10le_qp-0.mov"
+    ]
+    # convert to relative path to absolute path using Path module
+    src_media_path_list = [
+        str(Path(src_media_path).resolve())
+        for src_media_path in src_media_path_list
+    ]
+    clip_list = add_files_to_media_pool(media_path=src_media_path_list)
+    timeline = create_timeline_from_clip(
+        clip_list=clip_list, timeline_name=timeline_name
+    )
 
-    set_project_settings_from_dict(project, project_params)
+    # If you want to change the playback position,
+    # you can use `set_cuurent_timecode`
+    set_cuurent_timecode(
+        timeline=timeline, timecode="01:00:01:00"
+    )
 
-    media_path = Path('D:/abuse/2020/031_cms_for_video_playback/img_seq')
-    clip_list = add_files_to_media_pool(media_path=media_path)
-    timeline = create_timeline(timeline_name="hogefuga")
-    set_current_timeline(timeline=timeline)
-    add_clips_to_the_current_timeline(clip_list=clip_list)
+    #################################################
+    # Encode
+    #################################################
+    out_path = str(Path("./videos/sample_out.mp4").resolve())
+    format_str = "mp4"
+    codec = "H264"
+    preset_name = None
+    encode(project, out_path, format_str, codec, preset_name=preset_name)
 
-    encode(resolve, project, out_path, format_str, codec, preset_name)
+    out_path = str(Path("./videos/h265_main10_444_qp0.mp4").resolve())
+    format_str = "mp4"
+    codec = "H265_NVIDIA"
+    preset_name = "H265_main10_444_qp0_preset"
+    encode(project, out_path, format_str, codec, preset_name=preset_name)
 
-    return project
+    #################################################
+    # Save
+    #################################################
+    save_project(project_manager=project_manager)
 
 
-def get_avilable_parameters(project_name="working_project"):
+def get_avilable_parameters(project_name="sample_project"):
+    """
+    Dump all parameters for "Project:SetSetting", "Timeline:SetSetting" and
+    "Project:SetCurrentRenderFormatAndCodec".
+    """
     project_manager = init_resolve(
         close_current_project=True)
     project = initialize_project(
         project_manager=project_manager, project_name=project_name)
     _debug_print_and_save_project_settings(project)
+    _debug_print_and_save_timeline_settings(project)
     _debug_print_and_save_encode_settings(project)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    sample_func()
     # get_avilable_parameters(project_name="aaa")
-
-    project_manager = init_resolve(close_current_project=False)
-    project = project_manager.GetCurrentProject()
-    # key_list = [
-    #     "separateColorSpaceAndGamma", "colorScienceMode",
-    #     "colorSpaceOutput", "colorSpaceOutputGamma", "colorAcesODT"
-    # ]
-    key_list = [
-        "timelineFrameRate", 'timelinePlaybackFrameRate'
-    ]
-    _debug_print_project_settings(project, key_list=key_list)
