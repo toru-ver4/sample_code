@@ -176,7 +176,15 @@ def create_cc_patch_measure_result_fname(luminance, window_size):
     fname += f"win-{window_size_int:03d}.csv"
 
     return fname
-    
+
+
+def create_apl_cc_patch_measure_result_fname(luminance, window_size):
+    window_size_int = int(window_size * 100)
+    fname = f"./AW3225QF/apl_cc_measure_lumi-{luminance:04d}_"
+    fname += f"win-{window_size_int:03d}.csv"
+
+    return fname
+
 
 def plot_color_checker_multi_size_and_cv():
     luminance_list = [100, 200, 400, 600, 1000]
@@ -206,6 +214,90 @@ def plot_color_checker_multi_size_and_cv():
         # break
 
 
+def plot_color_checker_with_over_apl():
+    luminance = 1000
+    window_size_list = [1.00, 0.50, 0.20, 0.10, 0.03]
+    num_of_cc_patch = 18
+
+    # cc_xyY = tpg.generate_color_checker_xyY_value()
+    cc_rgb = tpg.generate_color_checker_rgb_value()
+    cc_rgb = tf.oetf(np.clip(cc_rgb, 0, 1), tf.SRGB)
+    for cc_idx in range(num_of_cc_patch):
+        buf = []
+        for window_size in window_size_list:
+            csv_name = create_cc_patch_measure_result_fname(
+                luminance=luminance, window_size=window_size)
+            data = read_measure_result(csv_name=csv_name)
+            # add xyY
+            temp_buf = [data[cc_idx, 4], data[cc_idx, 5], data[cc_idx, 3]]
+            buf.append(temp_buf)
+        measured_xyY = np.array(buf)
+        # for y_idx, xyY in enumerate(measured_xyY):
+        #     print(f"{y_idx}, {xyY}")
+        plot_color_checker_with_over_apl_core(
+            cc_idx=cc_idx, data=measured_xyY, patch_color=cc_rgb[cc_idx],
+            window_size_list=window_size_list)
+        
+    concat_apl_cc_plot_data()
+        
+
+def concat_apl_cc_plot_data():
+    v_buf = []
+    for v_idx in range(3):
+        h_buf = []
+        for h_idx in range(6):
+            idx = v_idx * 6 + h_idx
+            fname = f"./img/APL_Patch_{idx+1:02d}.png"
+            img = tpg.img_read_as_float(fname)
+            h_buf.append(img)
+        v_buf.append(np.hstack(h_buf))
+    out_img = np.vstack(v_buf)
+
+    tpg.img_wirte_float_as_16bit_int(
+        "./img/APL_Patch_all.png", out_img)
+
+
+def plot_color_checker_with_over_apl_core(
+        cc_idx, data, patch_color, window_size_list):
+    diff_data = np.zeros_like(data)
+    diff_data[..., 0] = data[..., 0] - data[-1, 0]
+    diff_data[..., 1] = data[..., 1] - data[-1, 1]
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(9, 9),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=f"APL and Color Difference - {cc_idx:02d}",
+        graph_title_size=None,
+        xlabel="x (Difference from 3% Patch)",
+        ylabel="y (Difference from 3% Patch)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[-0.003, 0.003],
+        ylim=[-0.003, 0.003],
+        xtick_size=None, ytick_size=None,
+        linewidth=2,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    
+    size_list = np.array([29, 26, 23, 19, 14]) * 1.5
+    alpha_list = [0.3, 0.5, 0.7, 0.8, 1.0]
+    alpha_list = [1.0, 1.0, 1.0, 1.0, 1.0]
+    for w_idx, window_size in enumerate(window_size_list):
+        label = f"{int(window_size*100)}% window"
+        plot_color = np.array(patch_color)
+        edge_color = (0.7, 0.7, 0.7) if np.max(plot_color) < 0.6 else 'k'
+        ax1.plot(
+            diff_data[w_idx, 0], diff_data[w_idx, 1], 'o', label=label,
+            ms=size_list[w_idx], mec=edge_color, mfc=plot_color, mew=1.6,
+            alpha=alpha_list[w_idx])
+        
+    fname = f"./img/APL_Patch_{cc_idx+1:02d}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', save_fname=fname, show=False,
+        fontsize=20)
+
+
 def concat_cc_plot_data():
     v_buf = []
     for v_idx in range(3):
@@ -232,5 +324,7 @@ if __name__ == '__main__':
     # for condition in condition_list:
     #     plot_each_hdr_mode_result(condition=condition)
 
-    plot_color_checker_multi_size_and_cv()
-    concat_cc_plot_data()
+    # plot_color_checker_multi_size_and_cv()
+    # concat_cc_plot_data()
+
+    plot_color_checker_with_over_apl()
