@@ -237,8 +237,13 @@ def plot_color_checker_with_over_apl():
         plot_color_checker_with_over_apl_core(
             cc_idx=cc_idx, data=measured_xyY, patch_color=cc_rgb[cc_idx],
             window_size_list=window_size_list)
+        plot_color_checker_Y_with_over_apl_core(
+            cc_idx=cc_idx, data=measured_xyY, patch_color=cc_rgb[cc_idx],
+            window_size_list=window_size_list)
+        # break
         
     concat_apl_cc_plot_data()
+    concat_apl_cc_Y_plot_data()
         
 
 def concat_apl_cc_plot_data():
@@ -266,7 +271,7 @@ def plot_color_checker_with_over_apl_core(
         fontsize=20,
         figsize=(9, 9),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title=f"APL and Color Difference - {cc_idx:02d}",
+        graph_title=f"APL and Color Difference - {cc_idx+1:02d}",
         graph_title_size=None,
         xlabel="x (Difference from 3% Patch)",
         ylabel="y (Difference from 3% Patch)",
@@ -281,20 +286,65 @@ def plot_color_checker_with_over_apl_core(
     
     size_list = np.array([29, 26, 23, 19, 14]) * 1.5
     alpha_list = [0.3, 0.5, 0.7, 0.8, 1.0]
-    alpha_list = [1.0, 1.0, 1.0, 1.0, 1.0]
+    marker_list = ['x', 'x', "x", 'x', "x"]
+    color_rate = np.linspace(0, 1, 5)
+    ms_list = np.array([20, 20, 20, 20, 20]) * 1.4
     for w_idx, window_size in enumerate(window_size_list):
         label = f"{int(window_size*100)}% window"
-        plot_color = np.array(patch_color)
+        plot_color = np.array(patch_color) * color_rate[w_idx]
         edge_color = (0.7, 0.7, 0.7) if np.max(plot_color) < 0.6 else 'k'
         ax1.plot(
-            diff_data[w_idx, 0], diff_data[w_idx, 1], 'o', label=label,
-            ms=size_list[w_idx], mec=edge_color, mfc=plot_color, mew=1.6,
-            alpha=alpha_list[w_idx])
+            diff_data[w_idx, 0], diff_data[w_idx, 1], marker_list[w_idx],
+            label=label, mec=plot_color, mfc=plot_color, mew=4,
+            ms=ms_list[w_idx],
+            # ms=size_list[w_idx], mec=edge_color, mfc=plot_color, mew=1.6,
+            # alpha=alpha_list[w_idx]
+        )
         
     fname = f"./img/APL_Patch_{cc_idx+1:02d}.png"
     print(fname)
     pu.show_and_save(
         fig=fig, legend_loc='upper left', save_fname=fname, show=False,
+        fontsize=16)
+
+
+def plot_color_checker_Y_with_over_apl_core(
+        cc_idx, data, patch_color, window_size_list):
+    num_of_data = len(data)
+    categories = [f"{int(size * 100)}%" for size in window_size_list]
+
+    x = np.linspace(0, 1, num_of_data)[::-1]
+    diff_data = np.zeros_like(data)
+    diff_data[..., 2] = data[..., 2]
+    y = diff_data[..., 2]
+    y = y[::-1]
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(9, 9),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=f"Luminance (Color Patch - {cc_idx+1:02d})",
+        graph_title_size=None,
+        xlabel="Window Size",
+        ylabel="Luminance [nits]",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=2,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    
+    plot_color = np.array(patch_color)
+    ax1.bar(
+        categories, y,
+        width=0.5, color=plot_color, edgecolor='k')
+        
+    fname = f"./img/APL_Patch_Y_{cc_idx+1:02d}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc=None, save_fname=fname, show=False,
         fontsize=20)
 
 
@@ -304,7 +354,7 @@ def concat_cc_plot_data():
         h_buf = []
         for h_idx in range(6):
             idx = v_idx * 6 + h_idx
-            fname = f"./img/scatter_single_patch_{idx:02d}.png"
+            fname = f"./img/scatter_single_patch_{idx+1:02d}.png"
             img = tpg.img_read_as_float(fname)
             h_buf.append(img)
         v_buf.append(np.hstack(h_buf))
@@ -312,7 +362,23 @@ def concat_cc_plot_data():
 
     tpg.img_wirte_float_as_16bit_int(
         "./img/scatter_single_patch_all.png", out_img)
-        
+
+
+def concat_apl_cc_Y_plot_data():
+    v_buf = []
+    for v_idx in range(3):
+        h_buf = []
+        for h_idx in range(6):
+            idx = v_idx * 6 + h_idx
+            fname = f"./img/APL_Patch_Y_{idx+1:02d}.png"
+            img = tpg.img_read_as_float(fname)
+            h_buf.append(img)
+        v_buf.append(np.hstack(h_buf))
+    out_img = np.vstack(v_buf)
+
+    tpg.img_wirte_float_as_16bit_int(
+        "./img/APL_Patch_Y_all.png", out_img)
+
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
