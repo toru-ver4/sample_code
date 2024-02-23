@@ -15,7 +15,8 @@ import matplotlib.pyplot as plt
 
 # import my libraries
 import plot_utility as pu
-from ty_display_pro_hl import read_xyz
+from ty_display_pro_hl import read_xyz, read_xyz_and_save_to_csv_file
+from ty_utility import search_specific_extension_files
 
 matplotlib.use('TkAgg')
 
@@ -166,3 +167,11 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # analyze_ccss_file_all()
     # plot_aw3225qf_spectrum()
+
+    ccss_file_list = search_specific_extension_files(
+        dir="./ccss", ext=".ccss")
+    for ccss_file in ccss_file_list:
+        print(ccss_file)
+        read_xyz_and_save_to_csv_file(
+            result_fname="./AW3225QF/white_ccss_diff.csv",
+            ccss_file=ccss_file)

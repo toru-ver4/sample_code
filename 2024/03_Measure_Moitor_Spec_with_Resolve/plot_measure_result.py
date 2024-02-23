@@ -330,7 +330,7 @@ def plot_color_checker_Y_with_over_apl_core(
         axis_label_size=None,
         legend_size=17,
         xlim=None,
-        ylim=None,
+        ylim=[0, 650],
         xtick_size=None, ytick_size=None,
         linewidth=2,
         minor_xtick_num=None,
