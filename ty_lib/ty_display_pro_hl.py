@@ -176,7 +176,7 @@ def read_xyz(ccss_file=None, flush=True):
     PATH. The 'flush' parameter is particularly useful for scripts running
     in interactive shells or within environments that buffer output.
     """
-    cmd = "spotread.exe"
+    cmd = "spotread"
     if shutil.which(cmd) is None:
         raise FileNotFoundError(f"{cmd} not found in system PATH.")
 
