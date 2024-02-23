@@ -5,6 +5,7 @@
 
 # import standard libraries
 import os
+import re
 
 # import third-party libraries
 import numpy as np
@@ -13,10 +14,12 @@ import matplotlib.ticker as ticker
 
 # import my libraries
 import plot_utility as pu
+from ty_utility import search_specific_extension_files
 from ty_display_pro_hl import read_measure_result, calculate_elapsed_seconds
 from create_tp_for_measure import create_cv_list
 import transfer_functions as tf
 import test_pattern_generator2 as tpg
+import color_space as cs
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -380,6 +383,68 @@ def concat_apl_cc_Y_plot_data():
         "./img/APL_Patch_Y_all.png", out_img)
 
 
+def check_ccss_difference_with_white_patch():
+    measure_file_name = "./AW3225QF/white_ccss_diff.csv"
+    ccss_file_list = search_specific_extension_files(
+        dir="./ccss", ext=".ccss")
+    marker_size = 12
+    pattern = r"ccss\\|_[0-9]+[a-zA-Z]+[0-9]+\.ccss"
+    print(ccss_file_list)
+
+    data_list = read_measure_result(csv_name=measure_file_name)
+
+    x_min = np.min(data_list[..., 4])
+    x_max = np.max(data_list[..., 4])
+    y_min = np.min(data_list[..., 5])
+    y_max = np.max(data_list[..., 5])
+
+    rad = np.linspace(0, 1, 1024) * 2 * np.pi
+    x_01 = np.cos(rad) * 0.001 + cs.D65[0]
+    x_02 = np.cos(rad) * 0.002 + cs.D65[0]
+    y_01 = np.sin(rad) * 0.001 + cs.D65[1]
+    y_02 = np.sin(rad) * 0.002 + cs.D65[1]
+
+    x_diff = max(abs(cs.D65[0]-x_min), abs(cs.D65[0]-x_max)) * 1.2
+    y_diff = max(abs(cs.D65[1]-y_min), abs(cs.D65[1]-y_max)) * 1.2
+    diff_d65 = max(x_diff, y_diff)
+
+    print(x_diff, y_diff)
+
+    title = "The Relationship Between the CCSS File "
+    title += "and the D65 Measurement Values"
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=12,
+        figsize=(9, 9),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=title,
+        graph_title_size=None,
+        xlabel="x",
+        ylabel="y",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[cs.D65[0]-diff_d65, cs.D65[0]+diff_d65],
+        ylim=[cs.D65[1]-diff_d65, cs.D65[1]+diff_d65],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    for data, ccss_file in zip(data_list, ccss_file_list):
+        x = data[..., 4]
+        y = data[..., 5]
+        label = re.sub(pattern, '', ccss_file)
+        ax1.plot(x, y, 'o', ms=marker_size, label=label)
+    ax1.plot(
+        cs.D65[0], cs.D65[1], 'x', color='k', label="D65",
+        ms=marker_size, mew=4)
+    ax1.plot(x_01, y_01, '--k', label="Δ0.001", lw=2, alpha=0.66)
+    ax1.plot(x_02, y_02, '-.k', label="Δ0.002", lw=2, alpha=0.66)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', fontsize=12,
+        save_fname="./img/d65_with_all_ccss.png", show=True)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # plot_peak_60s_data()
@@ -393,4 +458,6 @@ if __name__ == '__main__':
     # plot_color_checker_multi_size_and_cv()
     # concat_cc_plot_data()
 
-    plot_color_checker_with_over_apl()
+    # plot_color_checker_with_over_apl()
+
+    check_ccss_difference_with_white_patch()
