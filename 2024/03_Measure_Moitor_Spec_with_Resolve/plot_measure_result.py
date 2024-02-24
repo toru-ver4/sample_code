@@ -443,6 +443,86 @@ def check_ccss_difference_with_white_patch():
     pu.show_and_save(
         fig=fig, legend_loc='upper left', fontsize=12,
         save_fname="./img/d65_with_all_ccss.png", show=True)
+    
+
+def plot_abs_diff_colorchecker():
+    num_of_color_checker = 18
+    cc_xyY = tpg.generate_color_checker_xyY_value()
+    cc_rgb = tpg.generate_color_checker_rgb_value()
+    cc_rgb = tf.oetf(np.clip(cc_rgb, 0, 1), tf.SRGB)
+    luminance_list = [100, 200]
+    window_size = 0.03
+    for cc_idx in range(num_of_color_checker):
+        buf = []
+        for luminance in luminance_list:
+            csv_name = create_cc_patch_measure_result_fname(
+                luminance=luminance, window_size=window_size)
+            data = read_measure_result(csv_name=csv_name)
+            # add xyY
+            temp_buf = [data[cc_idx, 4], data[cc_idx, 5], data[cc_idx, 3]]
+            buf.append(temp_buf)
+        measured_xyY = np.array(buf)
+        plot_abs_diff_colorchecker_core(
+            cc_idx=cc_idx, data=measured_xyY, ref_xy=cc_xyY[cc_idx],
+            patch_color=cc_rgb[cc_idx])
+        # break
+
+    concat_abs_diff_colorchecker()
+
+
+def concat_abs_diff_colorchecker():
+    v_buf = []
+    for v_idx in range(3):
+        h_buf = []
+        for h_idx in range(6):
+            idx = v_idx * 6 + h_idx
+            fname = f"./img/abs_xy_cc_patch_{idx+1:02d}.png"
+            img = tpg.img_read_as_float(fname)
+            h_buf.append(img)
+        v_buf.append(np.hstack(h_buf))
+    out_img = np.vstack(v_buf)
+
+    tpg.img_wirte_float_as_16bit_int(
+        "./img/abs_xy_cc_patch_all.png", out_img)
+
+
+def plot_abs_diff_colorchecker_core(cc_idx, data, ref_xy, patch_color):
+    max_diff = 0.025
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(9, 9),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=f"Color Accuracy for the ColorChecker Patch - {cc_idx+1:02d}",
+        graph_title_size=None,
+        xlabel="x",
+        ylabel="y",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[ref_xy[0] - max_diff, ref_xy[0] + max_diff],
+        ylim=[ref_xy[1] - max_diff, ref_xy[1] + max_diff],
+        xtick_size=None, ytick_size=None,
+        linewidth=2,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    
+    ax1.plot(
+        ref_xy[0], ref_xy[1], "s", label="Reference",
+        mec=patch_color, mfc='w', mew=4, ms=20,
+    )
+    ax1.plot(
+        data[0, 0], data[0, 1], "x", label="White: 100 nits",
+        mec=patch_color*0.5, mfc=patch_color*0.5, mew=4, ms=20,
+    )
+    ax1.plot(
+        data[1, 0], data[1, 1], "+", label="White: 200 nits",
+        mec=patch_color, mfc=patch_color, mew=4, ms=24,
+    )
+        
+    fname = f"./img/abs_xy_cc_patch_{cc_idx+1:02d}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', save_fname=fname, show=False,
+        fontsize=16)
 
 
 if __name__ == '__main__':
@@ -460,4 +540,6 @@ if __name__ == '__main__':
 
     # plot_color_checker_with_over_apl()
 
-    check_ccss_difference_with_white_patch()
+    # check_ccss_difference_with_white_patch()
+
+    plot_abs_diff_colorchecker()

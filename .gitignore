@@ -238,3 +238,4 @@ temporary/**/**
 *.DS_Store
 2024/03_Measure_Moitor_Spec_with_Resolve/tp_img/*.png
 2024/03_Measure_Moitor_Spec_with_Resolve/img_cctp/*.png
+*.bkp

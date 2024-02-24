@@ -161,6 +161,80 @@ def plot_aw3225qf_spectrum():
     pu.show_and_save(
         fig=fig, legend_loc='upper left', show=True,
         save_fname="./img/AW3225QF_Spectrum.png")
+    
+
+def plot_spectrum_with_oled_ccss():
+    ccss_file = "./ccss/OLEDFamily_20Jul12.ccss"
+    wl, _, spd = parse_ccss_file(file_path=ccss_file)
+    ccss_name = Path(ccss_file).stem
+    y_max = np.max(spd[3]) * 1.05
+    y_min = -y_max * 0.02
+    dell_spd = np.loadtxt(
+        "./AW3225QF/WRGB_Data.csv", skiprows=1, usecols=(0, 1, 2, 3, 4),
+        delimiter=',')
+    x_dell = dell_spd[..., 0]
+    y_dell = (dell_spd[..., 1] / np.max(dell_spd[..., 1])) * y_max
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 6),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=None,
+        graph_title_size=None,
+        xlabel="Wavelength [nm]",
+        ylabel="Relative Power",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[380, 730],
+        ylim=[0, 6],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=2,
+        minor_xtick_num=None,
+        minor_ytick_num=5)
+    ax1.plot(wl, spd[3], '--k', label=f"{ccss_name}.ccss")
+    ax1.plot(x_dell, y_dell, '-k', label="AW3225QF")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', show=True, fontsize=15,
+        save_fname=f"./img/{ccss_name}_all_with_AW3225QF.png")
+
+
+def plot_spectrum_with_rgbled_ccss():
+    ccss_file = "./ccss/RGBLEDFamily_07Feb11.ccss"
+    wl, _, spd = parse_ccss_file(file_path=ccss_file)
+    ccss_name = Path(ccss_file).stem
+    y_max = np.max(spd[4]) * 1.05
+    y_min = -y_max * 0.02
+    dell_spd = np.loadtxt(
+        "./AW3225QF/WRGB_Data.csv", skiprows=1, usecols=(0, 1, 2, 3, 4),
+        delimiter=',')
+    x_dell = dell_spd[..., 0]
+    y_dell = (dell_spd[..., 1] / np.max(dell_spd[..., 1])) * y_max
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 6),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=None,
+        graph_title_size=None,
+        xlabel="Wavelength [nm]",
+        ylabel="Relative Power",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[380, 730],
+        ylim=[0, 10],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=2,
+        minor_xtick_num=None,
+        minor_ytick_num=5)
+    ax1.plot(wl, spd[4], '--k', label=f"{ccss_name}.ccss")
+    ax1.plot(x_dell, y_dell, '-k', label="AW3225QF")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', show=True, fontsize=15,
+        save_fname=f"./img/{ccss_name}_all_with_AW3225QF.png")
 
 
 if __name__ == '__main__':
@@ -168,10 +242,13 @@ if __name__ == '__main__':
     # analyze_ccss_file_all()
     # plot_aw3225qf_spectrum()
 
-    ccss_file_list = search_specific_extension_files(
-        dir="./ccss", ext=".ccss")
-    for ccss_file in ccss_file_list:
-        print(ccss_file)
-        read_xyz_and_save_to_csv_file(
-            result_fname="./AW3225QF/white_ccss_diff.csv",
-            ccss_file=ccss_file)
+    # ccss_file_list = search_specific_extension_files(
+    #     dir="./ccss", ext=".ccss")
+    # for ccss_file in ccss_file_list:
+    #     print(ccss_file)
+    #     read_xyz_and_save_to_csv_file(
+    #         result_fname="./AW3225QF/white_ccss_diff.csv",
+    #         ccss_file=ccss_file)
+
+    # plot_spectrum_with_oled_ccss()
+    plot_spectrum_with_rgbled_ccss()
