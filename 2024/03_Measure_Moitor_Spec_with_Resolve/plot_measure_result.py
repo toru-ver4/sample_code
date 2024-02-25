@@ -78,7 +78,8 @@ def plot_each_hdr_mode_result(condition: str):
         fontsize=20,
         figsize=(12, 8),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title=f"Smart HDR Settings: {condition_str_space}",
+        # graph_title=f"Smart HDR Settings: {condition_str_space}",
+        graph_title=None,
         graph_title_size=None,
         xlabel="Target Luminance [nits]",
         ylabel="Measured Luminance [nits]",
@@ -102,12 +103,42 @@ def plot_each_hdr_mode_result(condition: str):
             ref_lumnance, luminance, '-o', color=color_list[idx], label=label)
     ax1.plot(ref_lumnance, ref_lumnance, '--k', lw=1.5, label="Reference")
     pu.log_scale_settings(ax1=ax1, grid_alpha=0.5, bg_color="#F0F0F0")
-    ax1.set_xlim(0.008, 11000)
-    ax1.set_ylim(0.008, 11000)
+    ax1.set_xlim(0.07, 4000)
+    ax1.set_ylim(0.07, 4000)
+
+    # add info text
+    text_pos_x = 0.1
+    text_pos_y = 1500
+    bbox_ops = dict(
+        facecolor='white', edgecolor='black', boxstyle='square,pad=0.5')
+    ax1.text(
+        text_pos_x, text_pos_y, condition.replace("_", " "),
+        fontsize=30, va='center', ha='left', bbox=bbox_ops)
 
     print(fname)
     pu.show_and_save(
-        fig=fig, legend_loc='upper left', save_fname=fname, show=True)
+        fig=fig, legend_loc='lower right', save_fname=fname, show=False,
+        fontsize=20)
+    
+
+def concat_each_hdr_mode_result():
+    condition_list = [
+        "Desktop", "Movie_HDR", "Game_HDR", "Custom_Color_HDR",
+        "DisplayHDR_True_Black", "HDR_Peak_1000"]
+    v_buf = []
+    for v_idx in range(2):
+        h_buf = []
+        for h_idx in range(3):
+            idx = v_idx * 3 + h_idx
+            condition = condition_list[idx]
+            fname = f"./img/increment_patch_{condition}.png"
+            img = tpg.img_read_as_float(fname)
+            h_buf.append(img)
+        v_buf.append(np.hstack(h_buf))
+    out_img = np.vstack(v_buf)
+
+    tpg.img_wirte_float_as_16bit_int(
+        "./img/increment_patch_all.png", out_img)
     
 
 def scatter_plot_for_single_patch(
@@ -530,13 +561,16 @@ def plot_abs_diff_colorchecker_core(cc_idx, data, ref_xy, patch_color):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    plot_peak_60s_data()
+    # plot_peak_60s_data()
 
-    # condition_list = [
-    #     "Desktop", "Movie_HDR", "Game_HDR", "Custom_Color_HDR",
-    #     "DisplayHDR_True_Black", "HDR_Peak_1000"]
-    # for condition in condition_list:
-    #     plot_each_hdr_mode_result(condition=condition)
+    condition_list = [
+        "Desktop", "Movie_HDR", "Game_HDR", "Custom_Color_HDR",
+        "DisplayHDR_True_Black", "HDR_Peak_1000"]
+    for condition in condition_list:
+        plot_each_hdr_mode_result(condition=condition)
+        # break
+    concat_each_hdr_mode_result()
+
 
     # plot_color_checker_multi_size_and_cv()
     # concat_cc_plot_data()
