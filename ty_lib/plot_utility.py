@@ -600,12 +600,12 @@ def plot_3d_init(
 
 def show_and_save(
         fig, legend_loc=None, save_fname=None, show=False, dpi=100,
-        fontsize=None, only_graph_area=False):
+        fontsize=None, only_graph_area=False, ncol=1):
     if legend_loc is not None:
         if fontsize is not None:
-            plt.legend(fontsize=fontsize, loc=legend_loc)
+            plt.legend(fontsize=fontsize, loc=legend_loc, ncol=ncol)
         else:
-            plt.legend(loc=legend_loc)
+            plt.legend(loc=legend_loc, ncol=ncol)
 
     if only_graph_area:
         plt.savefig(

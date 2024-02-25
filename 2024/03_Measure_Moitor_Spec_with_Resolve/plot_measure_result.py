@@ -32,17 +32,12 @@ __all__ = []
 
 
 def plot_peak_60s_data():
-    csv_name = "./measure_result/measure_result_peak_60s.csv"
-    read_data = read_measure_result(csv_name=csv_name)
-    elapsed_time = calculate_elapsed_seconds(file_path=csv_name)
-    luminance = read_data[..., 3]
-    fname = "./img/peak_60s.png"
-
+    window_size_list = [3, 5, 10, 50, 100]
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
         figsize=(12, 8),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title=None,
+        graph_title="Short-duration Test",
         graph_title_size=None,
         xlabel="Elapsed Time [sec]",
         ylabel="Luminance [nits]",
@@ -53,14 +48,22 @@ def plot_peak_60s_data():
         xtick=None,
         ytick=None,
         xtick_size=None, ytick_size=None,
-        linewidth=3,
+        linewidth=3,    
         minor_xtick_num=None,
         minor_ytick_num=None)
-    ax1.plot(elapsed_time, luminance, '-o', label="3% Window")
+    for window_size in window_size_list:
+        csv_name = f"./AW3225QF/measure_duration_{window_size:03d}.csv"
+        read_data = read_measure_result(csv_name=csv_name)
+        elapsed_time = calculate_elapsed_seconds(file_path=csv_name)
+        luminance = read_data[..., 3]
+        ax1.plot(
+            elapsed_time, luminance, '-o', label=f"{window_size}% Window")
 
+    fname = "./img/duration_test_result.png"
     print(fname)
     pu.show_and_save(
-        fig=fig, legend_loc='lower right', save_fname=fname)
+        fig=fig, legend_loc='lower right', save_fname=fname, ncol=2,
+        show=True)
 
 
 def plot_each_hdr_mode_result(condition: str):
@@ -527,7 +530,7 @@ def plot_abs_diff_colorchecker_core(cc_idx, data, ref_xy, patch_color):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # plot_peak_60s_data()
+    plot_peak_60s_data()
 
     # condition_list = [
     #     "Desktop", "Movie_HDR", "Game_HDR", "Custom_Color_HDR",
@@ -542,4 +545,4 @@ if __name__ == '__main__':
 
     # check_ccss_difference_with_white_patch()
 
-    plot_abs_diff_colorchecker()
+    # plot_abs_diff_colorchecker()
