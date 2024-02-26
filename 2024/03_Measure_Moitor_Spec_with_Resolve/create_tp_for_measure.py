@@ -190,9 +190,26 @@ def verify_patch():
     print(XYZ_to_xyY(large_xyz))
 
 
+def create_colorchecker_xyY_for_blog():
+    xyY = tpg.generate_color_checker_xyY_value()
+    sdr_xyY = xyY.copy()
+    sdr_xyY[..., 2] = sdr_xyY[..., 2] * 100
+    hdr_xyY = xyY.copy()
+    hdr_xyY[..., 2] = hdr_xyY[..., 2] * 1000
+
+    print("| Index | x (SDR) | y (SDR) | Y (SDR) | x (HDR) | y (HDR) | Y (HDR) |")
+    print("|----:|-----:|----:|----:|-----:|----:|----:|")
+    for idx in range(24):
+        buf = f"| {idx+1} "
+        buf += f"| {sdr_xyY[idx, 0]:.4f} | {sdr_xyY[idx, 1]:.4f} | {sdr_xyY[idx, 2]:.3f} "
+        buf += f"| {hdr_xyY[idx, 0]:.4f} | {hdr_xyY[idx, 1]:.4f} | {hdr_xyY[idx, 2]:.2f} |"
+        print(buf)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_black()
     # create_white_patch_all()
     # create_color_checker_measure_pattern()
-    verify_patch()
+    # verify_patch()
+    create_colorchecker_xyY_for_blog()

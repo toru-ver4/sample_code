@@ -11,6 +11,7 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+import matplotlib.patches as patches
 
 # import my libraries
 import plot_utility as pu
@@ -76,7 +77,7 @@ def plot_each_hdr_mode_result(condition: str):
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(12, 8),
+        figsize=(12, 10),
         bg_color=(0.96, 0.96, 0.96),
         # graph_title=f"Smart HDR Settings: {condition_str_space}",
         graph_title=None,
@@ -269,18 +270,16 @@ def plot_color_checker_with_over_apl():
             temp_buf = [data[cc_idx, 4], data[cc_idx, 5], data[cc_idx, 3]]
             buf.append(temp_buf)
         measured_xyY = np.array(buf)
-        # for y_idx, xyY in enumerate(measured_xyY):
-        #     print(f"{y_idx}, {xyY}")
         plot_color_checker_with_over_apl_core(
             cc_idx=cc_idx, data=measured_xyY, patch_color=cc_rgb[cc_idx],
             window_size_list=window_size_list)
-        plot_color_checker_Y_with_over_apl_core(
-            cc_idx=cc_idx, data=measured_xyY, patch_color=cc_rgb[cc_idx],
-            window_size_list=window_size_list)
+        # plot_color_checker_Y_with_over_apl_core(
+        #     cc_idx=cc_idx, data=measured_xyY, patch_color=cc_rgb[cc_idx],
+        #     window_size_list=window_size_list)
         # break
         
     concat_apl_cc_plot_data()
-    concat_apl_cc_Y_plot_data()
+    # concat_apl_cc_Y_plot_data()
         
 
 def concat_apl_cc_plot_data():
@@ -306,9 +305,10 @@ def plot_color_checker_with_over_apl_core(
     diff_data[..., 1] = data[..., 1] - data[-1, 1]
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(9, 9),
+        figsize=(9.6, 8.8),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title=f"APL and Color Difference - {cc_idx+1:02d}",
+        # graph_title=f"APL and Color Difference - {cc_idx+1:02d}",
+        graph_title=None,
         graph_title_size=None,
         xlabel="x (Difference from 3% Patch)",
         ylabel="y (Difference from 3% Patch)",
@@ -321,15 +321,15 @@ def plot_color_checker_with_over_apl_core(
         minor_xtick_num=None,
         minor_ytick_num=None)
     
-    size_list = np.array([29, 26, 23, 19, 14]) * 1.5
-    alpha_list = [0.3, 0.5, 0.7, 0.8, 1.0]
     marker_list = ['x', 'x', "x", 'x', "x"]
     color_rate = np.linspace(0, 1, 5)
     ms_list = np.array([20, 20, 20, 20, 20]) * 1.4
-    for w_idx, window_size in enumerate(window_size_list):
+    for w_idx in range(4, -1, -1):
+        window_size = window_size_list[w_idx]
+    # for w_idx, window_size in enumerate(window_size_list):
         label = f"{int(window_size*100)}% window"
         plot_color = np.array(patch_color) * color_rate[w_idx]
-        edge_color = (0.7, 0.7, 0.7) if np.max(plot_color) < 0.6 else 'k'
+        # edge_color = (0.7, 0.7, 0.7) if np.max(plot_color) < 0.6 else 'k'
         ax1.plot(
             diff_data[w_idx, 0], diff_data[w_idx, 1], marker_list[w_idx],
             label=label, mec=plot_color, mfc=plot_color, mew=4,
@@ -337,11 +337,41 @@ def plot_color_checker_with_over_apl_core(
             # ms=size_list[w_idx], mec=edge_color, mfc=plot_color, mew=1.6,
             # alpha=alpha_list[w_idx]
         )
+
+    rad = np.linspace(0, 1, 1024) * 2 * np.pi
+    x_01 = np.cos(rad) * 0.001 + diff_data[-1, 0]
+    x_02 = np.cos(rad) * 0.002 + diff_data[-1, 0]
+    y_01 = np.sin(rad) * 0.001 + diff_data[-1, 1]
+    y_02 = np.sin(rad) * 0.002 + diff_data[-1, 1]
+    ax1.plot(x_01, y_01, '--k', label="⊿0.001", lw=2, alpha=0.66)
+    ax1.plot(x_02, y_02, '-.k', label="⊿0.002", lw=2, alpha=0.66)
+
+    # add info text
+    text_pos_x = -0.00274
+    text_pos_y = 0.0026
+    bbox_ops = dict(
+        facecolor='white', edgecolor='black', boxstyle='square,pad=0.5')
+    ax1.text(
+        text_pos_x, text_pos_y, f"ColorChecker No.{cc_idx+1:02d}        ",
+        fontsize=26, va='center', ha='left', bbox=bbox_ops)
+    
+    # plot Color Patch
+    rectangle_color = patch_color
+    rectangle_edge_color = 'black'
+    rectangle_width = 0.0004
+    rectangle_height = 0.0004
+    rectangle_x = 0.0002  # x軸の位置
+    rectangle_y = 0.0024  # y軸の位置
+    rect = patches.Rectangle(
+        (rectangle_x, rectangle_y), rectangle_width, rectangle_height,
+        linewidth=1, edgecolor=rectangle_edge_color,
+        facecolor=rectangle_color, zorder=10)
+    ax1.add_patch(rect)
         
     fname = f"./img/APL_Patch_{cc_idx+1:02d}.png"
     print(fname)
     pu.show_and_save(
-        fig=fig, legend_loc='upper left', save_fname=fname, show=False,
+        fig=fig, legend_loc='lower right', save_fname=fname, show=False,
         fontsize=16)
 
 
@@ -358,9 +388,10 @@ def plot_color_checker_Y_with_over_apl_core(
 
     fig, ax1 = pu.plot_1_graph(
         fontsize=20,
-        figsize=(9, 9),
+        figsize=(9.6, 8.8),
         bg_color=(0.96, 0.96, 0.96),
-        graph_title=f"Luminance (Color Patch - {cc_idx+1:02d})",
+        # graph_title=f"Luminance (Color Patch - {cc_idx+1:02d})",
+        graph_title=None,
         graph_title_size=None,
         xlabel="Window Size",
         ylabel="Luminance [nits]",
@@ -377,6 +408,28 @@ def plot_color_checker_Y_with_over_apl_core(
     ax1.bar(
         categories, y,
         width=0.5, color=plot_color, edgecolor='k')
+    
+    # add info text
+    text_pos_x = 1.8
+    text_pos_y = 600
+    bbox_ops = dict(
+        facecolor='white', edgecolor='black', boxstyle='square,pad=0.5')
+    ax1.text(
+        text_pos_x, text_pos_y, f"ColorChecker No.{cc_idx+1:02d}        ",
+        fontsize=26, va='center', ha='left', bbox=bbox_ops)
+    
+    # plot Color Patch
+    rectangle_color = patch_color
+    rectangle_edge_color = 'black'
+    rectangle_width = 0.33
+    rectangle_height = 44
+    rectangle_x = 4  # x軸の位置
+    rectangle_y = 600 - (rectangle_height//2)  # y軸の位置
+    rect = patches.Rectangle(
+        (rectangle_x, rectangle_y), rectangle_width, rectangle_height,
+        linewidth=1, edgecolor=rectangle_edge_color,
+        facecolor=rectangle_color, zorder=10)
+    ax1.add_patch(rect)
         
     fname = f"./img/APL_Patch_Y_{cc_idx+1:02d}.png"
     print(fname)
@@ -563,19 +616,19 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # plot_peak_60s_data()
 
-    condition_list = [
-        "Desktop", "Movie_HDR", "Game_HDR", "Custom_Color_HDR",
-        "DisplayHDR_True_Black", "HDR_Peak_1000"]
-    for condition in condition_list:
-        plot_each_hdr_mode_result(condition=condition)
-        # break
-    concat_each_hdr_mode_result()
+    # condition_list = [
+    #     "Desktop", "Movie_HDR", "Game_HDR", "Custom_Color_HDR",
+    #     "DisplayHDR_True_Black", "HDR_Peak_1000"]
+    # for condition in condition_list:
+    #     plot_each_hdr_mode_result(condition=condition)
+    #     # break
+    # concat_each_hdr_mode_result()
 
 
     # plot_color_checker_multi_size_and_cv()
     # concat_cc_plot_data()
 
-    # plot_color_checker_with_over_apl()
+    plot_color_checker_with_over_apl()
 
     # check_ccss_difference_with_white_patch()
 
