@@ -211,6 +211,11 @@ def close_and_remove_project(project_name):
     project_manager.DeleteProject(project_name)
 
 
+def close_current_project():
+    project_manager = resolve.GetProjectManager()
+    project_manager.CloseProject(project_manager.GetCurrentProject())
+
+
 def get_project_manager(close_current_project=False):
     """
     * Create ProjectManager instance
@@ -270,6 +275,23 @@ def save_project(project_manager):
         print("Failed to save project...")
     else:
         print("Project is saved")
+
+
+def archive_project(project_name="hoge", archive_path="./hoge.dra"):
+    close_current_project()
+    project_manager = get_project_manager()
+    print(f"project_name = {project_name}, path = {archive_path}")
+    result = project_manager.ArchiveProject(
+        project_name, archive_path, True, False, False)
+    if result is True:
+        print("ArchiveProject is succeeded")
+    else:
+        print("ArchiveProject is filed...")
+    """
+    ArchiveProject(
+        projectName, filePath, isArchiveSrcMedia=True,
+        isArchiveRenderCache=True, isArchiveProxyMedia=False) 
+    """
 
 
 def set_project_settings_from_dict(project, params):

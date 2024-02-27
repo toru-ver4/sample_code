@@ -46,7 +46,7 @@ CCSS_RGBLED = "C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_S
 
 
 def create_project(project_name="Dummy Project"):
-    project_manager = dcl.init_resolve()
+    project_manager = dcl.get_project_manager()
     project = dcl.initialize_project(
         project_manager=project_manager, project_name=project_name)
     return project, project_manager
@@ -158,7 +158,7 @@ def duration_measure(
     tp_timeline = dcl.create_timeline_from_clip(
         clip_list=clip_list, timeline_name="TP_Timeline")
 
-    # add test pattern for rest in peace
+    # add all black pattern
     fname_black = "C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img/black.png"
     clip_list = dcl.add_files_to_media_pool(media_path=fname_black)
     black_timeline = dcl.create_timeline_from_clip(
@@ -189,6 +189,12 @@ def duration_measure(
     time.sleep(10)
 
     dcl.save_project(project_manager=project_manager)
+    # dcl.close_current_project()
+    # patch_area_str = f"{int(patch_area_ratio * 100):03d}"
+    # archive_path = Path(
+    #     f"./project_archive/duration_measure_{patch_area_str}-window.dra").resolve()
+    # dcl.archive_project(
+    #     project_name=project_name, archive_path=str(archive_path))
 
 
 def increase_cv_measure(
@@ -218,7 +224,7 @@ def increase_cv_measure(
     tp_timeline = dcl.create_timeline_from_clip(
         clip_list=clip_list, timeline_name="TP_Timeline")
 
-    # add test pattern for rest in peace
+    # add all black pattern
     fname_black = "C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img/black.png"
     clip_list = dcl.add_files_to_media_pool(media_path=fname_black)
     black_timeline = dcl.create_timeline_from_clip(
@@ -243,6 +249,12 @@ def increase_cv_measure(
         time.sleep(1)
 
     dcl.save_project(project_manager=project_manager)
+    dcl.close_current_project()
+    # patch_area_str = f"{int(patch_area_ratio * 100):03d}"
+    # archive_path = Path(
+    #     f"./project_archive/increment_measure_{patch_area_str}-window.dra").resolve()
+    # dcl.archive_project(
+    #     project_name=project_name, archive_path=str(archive_path))
 
 
 def create_cc_patch_measure_result_fname(luminance, window_size):
@@ -278,7 +290,7 @@ def cc_patch_measure(luminance, window_size, ccss_file):
     tp_timeline = dcl.create_timeline_from_clip(
         clip_list=clip_list, timeline_name="TP_Timeline")
 
-    # add test pattern for rest in peace
+    # add all black pattern
     fname_black = "C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img/black.png"
     clip_list = dcl.add_files_to_media_pool(media_path=fname_black)
     black_timeline = dcl.create_timeline_from_clip(
@@ -306,6 +318,72 @@ def cc_patch_measure(luminance, window_size, ccss_file):
         time.sleep(1)
 
     dcl.save_project(project_manager=project_manager)
+    # window_size_str = f"{int(window_size * 100):03d}"
+    # archive_path = Path(
+    #     f"./project_archive/colorchecker_measure_{luminance}-nits_{window_size_str}-window.dra").resolve()
+    # dcl.archive_project(
+    #     project_name=project_name, archive_path=str(archive_path))
+
+
+def demo_measure_for_blog():
+    csv_name = "./demo_measure_result.csv"
+    ccss_file = "./ccss/RGBLEDFamily_07Feb11.ccss"
+    color_mask = [1, 1, 1]
+
+    remove_csv(file_path=csv_name)
+
+    project_name = "Measure_AW3225QF"
+    dcl.close_and_remove_project(project_name=project_name)
+    project, project_manager = create_project(project_name=project_name)
+    dcl.open_page(dcl.EDIT_PAGE_STR)
+    remove_all_timeline(project=project)
+    set_project_settings_bt2100(project=project)
+
+    media_path = Path('C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img')
+
+    # add test pattern for measure
+    window_size_list = [
+        0.03, 0.05, 0.10, 0.20, 0.30, 0.40,
+        0.50, 0.60, 0.70, 0.80, 0.90, 1.00]
+    fname_list = [
+        create_tp_base_name(
+            color_mask=color_mask, cv=1,
+            patch_area_ratio=window_size_ratio) + ".png"
+        for window_size_ratio in window_size_list]
+    fname_list = [str(media_path / Path(fname)) for fname in fname_list]
+
+    clip_list = dcl.add_files_to_media_pool(media_path=fname_list)
+    tp_timeline = dcl.create_timeline_from_clip(
+        clip_list=clip_list, timeline_name="TP_Timeline")
+
+    # add all black pattern
+    fname_black = "C:/Users/toruv/OneDrive/work/sample_code/2024/03_Measure_Moitor_Spec_with_Resolve/tp_img/black.png"
+    clip_list = dcl.add_files_to_media_pool(media_path=fname_black)
+    black_timeline = dcl.create_timeline_from_clip(
+        clip_list=clip_list, timeline_name="Black_Timeline")
+
+    # initialize with black
+    project.SetCurrentTimeline(black_timeline)
+    time.sleep(1)
+
+    for frame_idx in range(len(window_size_list)):
+        project.SetCurrentTimeline(tp_timeline)
+        timecode_str = frame_number_to_timecode(frame_number=frame_idx, fps=24)
+        tp_timeline.SetCurrentTimecode(timecode_str)
+        time.sleep(0.5)
+        large_xyz, Yxy = read_xyz(flush=False, ccss_file=ccss_file)
+        ccss_name = Path(ccss_file).stem if ccss_file else "-"
+        save_measure_result(
+            large_xyz=large_xyz, Yxy=Yxy,
+            csv_name=csv_name, ccss_name=ccss_name)
+        project.SetCurrentTimeline(black_timeline)
+        time.sleep(1)
+
+    dcl.save_project(project_manager=project_manager)
+    dcl.close_current_project()
+    archive_path = Path("./project_archive/hoge.dra").resolve()
+    dcl.archive_project(
+        project_name=project_name, archive_path=str(archive_path))
 
 
 if __name__ == '__main__':
@@ -360,3 +438,8 @@ if __name__ == '__main__':
     #         cc_patch_measure(
     #             luminance=luminance, window_size=window_size,
     #             ccss_file=CCSS_RGBLED)
+
+    #############################
+    # Demo for Blog
+    #############################
+    # demo_measure_for_blog()
