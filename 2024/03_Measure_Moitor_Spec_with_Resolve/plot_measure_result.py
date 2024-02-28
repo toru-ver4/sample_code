@@ -628,7 +628,7 @@ if __name__ == '__main__':
     # plot_color_checker_multi_size_and_cv()
     # concat_cc_plot_data()
 
-    plot_color_checker_with_over_apl()
+    # plot_color_checker_with_over_apl()
 
     # check_ccss_difference_with_white_patch()
 
