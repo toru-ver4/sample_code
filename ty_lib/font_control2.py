@@ -52,10 +52,10 @@ BIZUD_P_GOTHIC_REGULAR\
 if platform.system() == "Windows":
     NOTO_SANS_CJKJP_MEDIUM\
         = "C:/Users/toruv/AppData/Local/Microsoft/Windows"\
-        + "/Fonts/NotoSansJP-Medium.otf"
+        + "/Fonts/NotoSansJP-Medium.ttf"
     NOTO_SANS_CJKJP_BOLD\
         = "C:/Users/toruv/AppData/Local/Microsoft/Windows"\
-        + "/Fonts/NotoSansJP-Bold.otf"
+        + "/Fonts/NotoSansJP-Bold.ttf"
 
 
 def get_text_width_height(
