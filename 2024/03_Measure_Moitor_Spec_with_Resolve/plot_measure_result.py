@@ -109,7 +109,7 @@ def plot_each_hdr_mode_result(condition: str):
 
     # add info text
     text_pos_x = 0.1
-    text_pos_y = 1500
+    text_pos_y = 2000
     bbox_ops = dict(
         facecolor='white', edgecolor='black', boxstyle='square,pad=0.5')
     ax1.text(
@@ -273,13 +273,13 @@ def plot_color_checker_with_over_apl():
         plot_color_checker_with_over_apl_core(
             cc_idx=cc_idx, data=measured_xyY, patch_color=cc_rgb[cc_idx],
             window_size_list=window_size_list)
-        # plot_color_checker_Y_with_over_apl_core(
-        #     cc_idx=cc_idx, data=measured_xyY, patch_color=cc_rgb[cc_idx],
-        #     window_size_list=window_size_list)
+        plot_color_checker_Y_with_over_apl_core(
+            cc_idx=cc_idx, data=measured_xyY, patch_color=cc_rgb[cc_idx],
+            window_size_list=window_size_list)
         # break
         
     concat_apl_cc_plot_data()
-    # concat_apl_cc_Y_plot_data()
+    concat_apl_cc_Y_plot_data()
         
 
 def concat_apl_cc_plot_data():
@@ -378,7 +378,7 @@ def plot_color_checker_with_over_apl_core(
 def plot_color_checker_Y_with_over_apl_core(
         cc_idx, data, patch_color, window_size_list):
     num_of_data = len(data)
-    categories = [f"{int(size * 100)}%" for size in window_size_list]
+    categories = [f"{int(size * 100)}%" for size in window_size_list[::-1]]
 
     x = np.linspace(0, 1, num_of_data)[::-1]
     diff_data = np.zeros_like(data)
