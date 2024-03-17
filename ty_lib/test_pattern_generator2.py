@@ -629,6 +629,40 @@ def quadratic_bezier_curve(t, p0, p1, p2, samples=1024):
     # plt.show()
 
 
+def float_to_int_to_float(data, normalized_val=1024):
+    """
+    Examples
+    --------
+    >>> data = [0.00, 0.25, 0.5, 0.75, 1.00]
+    >>> data = float_to_int_to_float(data=data, normalized_val=1024)
+    >>> print(np.uint16(np.round(data * 1023)))
+    [   0  256  512  768 1023]
+    """
+    maximum_val = normalized_val - 1
+
+    out_data = np.array(data) * normalized_val
+    out_data[out_data > maximum_val] = maximum_val
+
+    out_data = out_data / maximum_val
+
+    return out_data
+
+
+def gen_step_ramp_v2(
+        width=1024, height=128, num_of_step=17, max_val=1.0, color=[1, 0, 0]):
+    cv_list = max_val / (num_of_step - 1) * np.arange(num_of_step)
+    block_width_list = equal_devision(width, num_of_step)
+    line_data_list = []
+    for block_idx in range(num_of_step):
+        line_data\
+            = np.ones((1, block_width_list[block_idx], 3))\
+            * cv_list[block_idx] * np.array(color)
+        line_data_list.append(line_data)
+    line_img = np.hstack(line_data_list)
+    img = h_color_line_to_img(line=line_img, height=height)
+    return img, cv_list
+
+
 def gen_step_gradation(width=1024, height=128, step_num=17,
                        bit_depth=10, color=(1.0, 1.0, 1.0),
                        direction='h', debug=False):
@@ -2810,7 +2844,3 @@ if __name__ == '__main__':
     # print(line)
     # img = h_mono_line_to_img(line, 6)
     # print(img)
-    line = np.linspace(0, 1, 4)
-    print(line)
-    img = v_mono_line_to_img(line, 6)
-    print(img)
