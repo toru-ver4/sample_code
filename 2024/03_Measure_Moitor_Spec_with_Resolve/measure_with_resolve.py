@@ -384,6 +384,15 @@ def demo_measure_for_blog():
     archive_path = Path("./project_archive/hoge.dra").resolve()
     dcl.archive_project(
         project_name=project_name, archive_path=str(archive_path))
+    
+
+def create_resolve_project_no_measure():
+    project_name = "Measure_AW3225QF"
+    dcl.close_and_remove_project(project_name=project_name)
+    project, project_manager = create_project(project_name=project_name)
+    dcl.open_page(dcl.EDIT_PAGE_STR)
+    remove_all_timeline(project=project)
+    set_project_settings_bt2100(project=project)
 
 
 if __name__ == '__main__':
@@ -443,3 +452,8 @@ if __name__ == '__main__':
     # Demo for Blog
     #############################
     # demo_measure_for_blog()
+
+    ##################################################
+    # Create project only (for additional evaluation)
+    ##################################################
+    create_resolve_project_no_measure()

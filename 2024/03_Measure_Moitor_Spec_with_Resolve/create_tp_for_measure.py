@@ -206,6 +206,50 @@ def create_colorchecker_xyY_for_blog():
         print(buf)
 
 
+def create_hdr_peak_1000_tp_core(window_size=0.03):
+    base_width = 3840
+    base_height = 2160
+    img = np.zeros((base_height, base_width, 3))
+
+    width = int(base_width * window_size)
+    height = int(base_height * window_size)
+
+    block_width, block_height = calc_patch_size(img, window_size)
+    block_width = block_width // 3
+    block_height = block_height // 3
+
+    cv_list = np.array([480, 496, 512, 528, 544, 560, 576, 592, 769], dtype=np.uint16)
+    conv_list = np.array([0, 1, 2, 7, 8, 3, 6, 5, 4])
+    cv_list = cv_list[conv_list] / 1023
+
+    v_buf = []
+    for v_idx in range(3):
+        h_buf = []
+        for h_idx in range(3):
+            idx = v_idx * 3 + h_idx
+            tp_img = np.ones((block_height, block_width, 3)) * cv_list[idx]
+            h_buf.append(tp_img)
+        v_buf.append(np.hstack(h_buf))
+    img_center = np.vstack(v_buf)
+
+    merge_pos_h = (base_width // 2) - (img_center.shape[1] // 2)
+    merge_pos_v = (base_height // 2) - (img_center.shape[0] // 2)
+    tpg.merge(img, img_center, pos=(merge_pos_h, merge_pos_v))
+
+    win_size_str = f"{int(window_size * 100):03d}"
+    fname = f"./tp_1000_mode/apl_check_1000_{win_size_str}.png"
+    print(fname)
+    tpg.img_wirte_float_as_16bit_int(fname, img)
+
+
+def create_hdr_peak_1000_tp():
+    window_size_list = [
+        0.03, 0.05, 0.10, 0.20, 0.50, 1.00
+    ]
+    for window_size in window_size_list:
+        create_hdr_peak_1000_tp_core(window_size=window_size)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_black()
@@ -213,3 +257,4 @@ if __name__ == '__main__':
     # create_color_checker_measure_pattern()
     # verify_patch()
     # create_colorchecker_xyY_for_blog()
+    create_hdr_peak_1000_tp()
