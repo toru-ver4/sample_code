@@ -5,7 +5,7 @@
     <ProfileDeviceClass>mntr</ProfileDeviceClass>
     <DataColourSpace>RGB </DataColourSpace>
     <PCS>XYZ </PCS>
-    <CreationDateTime>2024-03-18T21:00:08</CreationDateTime>
+    <CreationDateTime>2024-03-18T21:13:06</CreationDateTime>
     <PrimaryPlatform>MSFT</PrimaryPlatform>
     <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
     <DeviceManufacturer></DeviceManufacturer>
@@ -21,7 +21,7 @@
   <Tags>
     <multiLocalizedUnicodeType>
       <TagSignature>desc</TagSignature>
-      <LocalizedText LanguageCountry="enUS">HDR_GM24_BT2020_MHC2_sample2-400-200nits</LocalizedText>
+      <LocalizedText LanguageCountry="enUS">HDR_GM24_BT2020_MHC2_sample2-400-200-nits_g_</LocalizedText>
     </multiLocalizedUnicodeType>
     <multiLocalizedUnicodeType>
       <TagSignature>cprt</TagSignature>

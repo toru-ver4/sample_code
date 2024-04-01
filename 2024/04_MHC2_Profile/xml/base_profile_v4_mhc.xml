@@ -1,59 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <IccProfile>
   <Header>
-    <PreferredCMMType>ADBE</PreferredCMMType>
-    <ProfileVersion>4.30</ProfileVersion>
+    <PreferredCMMType>SICC</PreferredCMMType>
+    <ProfileVersion>4.40</ProfileVersion>
     <ProfileDeviceClass>mntr</ProfileDeviceClass>
     <DataColourSpace>RGB </DataColourSpace>
     <PCS>XYZ </PCS>
-    <CreationDateTime>2024-03-18T21:00:08</CreationDateTime>
+    <CreationDateTime>2020-09-15T21:37:10</CreationDateTime>
     <PrimaryPlatform>MSFT</PrimaryPlatform>
-    <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
-    <DeviceManufacturer></DeviceManufacturer>
-    <DeviceModel></DeviceModel>
-    <DeviceAttributes ReflectiveOrTransparency="transparency" GlossyOrMatte="glossy" MediaPolarity="positive" MediaColour="colour"></DeviceAttributes>
+    <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"/>
+    <DeviceManufacturer>MSFT</DeviceManufacturer>
+    <DeviceModel>0000</DeviceModel>
+    <DeviceAttributes ReflectiveOrTransparency="transparency" GlossyOrMatte="glossy" MediaPolarity="positive" MediaColour="colour"/>
     <RenderingIntent>Relative Colorimetric</RenderingIntent>
     <PCSIlluminant>
-      <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"></XYZNumber>
+      <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"/>
     </PCSIlluminant>
-    <ProfileCreator></ProfileCreator>
-    <ProfileID></ProfileID>
+    <ProfileCreator>MSFT</ProfileCreator>
+    <ProfileID>4E81565CB7C90E4854581D688C658D84</ProfileID>
   </Header>
   <Tags>
     <multiLocalizedUnicodeType>
       <TagSignature>desc</TagSignature>
-      <LocalizedText LanguageCountry="enUS">HDR_GM24_BT2020_MHC2_sample2-400-200nits</LocalizedText>
+      <LocalizedText LanguageCountry="enUS"><![CDATA[image P3]]></LocalizedText>
     </multiLocalizedUnicodeType>
     <multiLocalizedUnicodeType>
       <TagSignature>cprt</TagSignature>
-      <LocalizedText LanguageCountry="enUS">Copyright 2024 Toru Yoshihara</LocalizedText>
+      <LocalizedText LanguageCountry="enUS"><![CDATA[Copyright 2017 Adobe Systems Incorporated]]></LocalizedText>
     </multiLocalizedUnicodeType>
     <XYZType>
       <TagSignature>wtpt</TagSignature>
-      <XYZNumber X="0.96420000" Y="1.00000000" Z="0.82490000"></XYZNumber>
+      <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"/>
     </XYZType>
     <XYZType>
       <TagSignature>lumi</TagSignature>
-      <XYZNumber X="0.00000000" Y="200.00000000" Z="0.00000000"></XYZNumber>
+      <XYZNumber X="0.00000000" Y="100.00000000" Z="0.00000000"/>
     </XYZType>
     <parametricCurveType>
       <TagSignature>rTRC</TagSignature>
       <TagSignature>gTRC</TagSignature>
       <TagSignature>bTRC</TagSignature>
-      <ParametricCurve FunctionType="0">
-        2.40000000
+      <ParametricCurve FunctionType="3">
+        2.39999390 0.94786072 0.05213928 0.07739258 0.04045105
       </ParametricCurve>
     </parametricCurveType>
     <XYZType>
       <TagSignature>rXYZ</TagSignature>
-      <XYZNumber X="0.63695805" Y="0.26270021" Z="0.00000000"></XYZNumber>
+      <XYZNumber X="0.51512146" Y="0.24119568" Z="-0.00105286"/>
     </XYZType>
     <XYZType>
       <TagSignature>gXYZ</TagSignature>
-      <XYZNumber X="0.14461690" Y="0.67799807" Z="0.02807269"></XYZNumber>
+      <XYZNumber X="0.29197693" Y="0.69224548" Z="0.04188538"/>
     </XYZType>
     <XYZType>
       <TagSignature>bXYZ</TagSignature>
-      <XYZNumber X="0.16888098" Y="0.05930172" Z="1.06098506"></XYZNumber>
+      <XYZNumber X="0.15710449" Y="0.06657410" Z="0.78407288"/>
     </XYZType>
     <PrivateType type="MHC2">
       <TagSignature>MHC2</TagSignature>
@@ -157,7 +158,8 @@
        0000e6e70000e7e80000e8e90000e9ea0000eaeb0000ebec0000eced0000edee
        0000eeef0000eff00000f0f10000f1f20000f2f30000f3f40000f4f50000f5f6
        0000f6f70000f7f80000f8f90000f9fa0000fafb0000fbfc0000fcfd0000fdfe
-       0000feff00010000</UnknownData>
+       0000feff00010000
+      </UnknownData>
     </PrivateType>
   </Tags>
 </IccProfile>

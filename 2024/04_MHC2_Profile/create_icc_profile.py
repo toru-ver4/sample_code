@@ -111,7 +111,7 @@ def parse_mhc2_data():
         print(f"{ii}, {raw_data[ii]}")
 
 
-def create_sample_identity_1dlut(num_of_sample):
+def create_sample_identity_1dlut(num_of_sample, gain=0.5):
     x = np.linspace(0, 1, num_of_sample)
     y = x
 
@@ -122,7 +122,6 @@ def create_sample_identity_1dlut(num_of_sample):
 
 def debug_func():
     # parse_mhc2_data()
-    luts = create_sample_identity_1dlut(num_of_sample=4)
 
     # # SDR BT.709
     # xml_fname = "./xml/BT709_MHC2_sample.xml"
@@ -200,19 +199,28 @@ def debug_func():
     #     calibration_luts=luts)
 
     # HDR BT.2020
+    gain = 0.5
+    peak_luminance = 400
+    max_full_frame_luminance = 200
+    calibration_matrix = np.identity(3)
+    calibration_matrix[0, 0] = 0
+    calibration_matrix[2, 2] = 0
+    luminance_str = f"{peak_luminance}-{max_full_frame_luminance}"
+    luts = create_sample_identity_1dlut(num_of_sample=4, gain=gain)
     xml_fname = "./xml/HDR_BT2020_MHC2_sample.xml"
-    icc_fname = "./icc/HDR_GM24_BT2020_MHC2_sample2-400-200nits.icm"
+    icc_fname = f"./icc/HDR_GM24_BT2020_MHC2_sample2-{luminance_str}-nits_g_.icm"
     create_mhc_icc_profile(
         gamma=2.4, src_white=cs.D65,
         src_primaries=cs.get_primaries(cs.BT2020),
         desc_str=str(Path(icc_fname).stem),
         cprt_str="Copyright 2024 Toru Yoshihara",
         min_luminance=0.005,
-        peak_luminance=400,
-        max_full_frame_luminance=200,
+        peak_luminance=peak_luminance,
+        max_full_frame_luminance=max_full_frame_luminance,
         xml_fname=xml_fname,
         icc_fname=icc_fname,
-        calibration_luts=luts)
+        calibration_luts=luts,
+        calibration_matrix=calibration_matrix)
 
 
 if __name__ == '__main__':
