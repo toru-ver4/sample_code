@@ -96,7 +96,9 @@ def create_mhc_icc_profile(
         matrix=calibration_matrix, luts=calibration_luts)
 
     tree.write(xml_fname, short_empty_elements=False)
-    subprocess.run(["iccFromXml", xml_fname, icc_fname])
+    command = "iccFromXml"
+    print(f"{command} {xml_fname} {icc_fname}")
+    subprocess.run([command, xml_fname, icc_fname])
 
 
 def parse_mhc2_data():
@@ -206,7 +208,7 @@ def debug_func():
     calibration_matrix[0, 0] = 0
     calibration_matrix[2, 2] = 0
     luminance_str = f"{peak_luminance}-{max_full_frame_luminance}"
-    luts = create_sample_identity_1dlut(num_of_sample=4, gain=gain)
+    luts = create_sample_identity_1dlut(num_of_sample=4, gain=gain) / 2.0
     xml_fname = "./xml/HDR_BT2020_MHC2_sample.xml"
     icc_fname = f"./icc/HDR_GM24_BT2020_MHC2_sample2-{luminance_str}-nits_g_.icm"
     create_mhc_icc_profile(

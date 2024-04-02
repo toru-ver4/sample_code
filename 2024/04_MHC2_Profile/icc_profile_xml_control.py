@@ -595,7 +595,8 @@ def set_mhc2_params_to_element(
         + ((num_of_1dlut_entries + 2) * 3)
 
     raw_text = mhc2_element.text
-    data = mhc2_raw_text_to_ndarray(raw_text)
+    print(raw_text)
+    # data = mhc2_raw_text_to_ndarray(raw_text)
 
     out_buf = np.zeros(num_of_total_mhc2_element, dtype=np.int32)
     set_mhc2_basic_info(
@@ -615,7 +616,7 @@ def set_mhc2_params_to_element(
     #         # break
 
     # write modified data
-    raw_text = mhc2_ndarray_to_text(data_array=data)
+    raw_text = mhc2_ndarray_to_text(data_array=out_buf)
     mhc2_element.text = raw_text
 
 
