@@ -19,6 +19,7 @@ from colour.utilities import tstack
 import icc_profile_xml_control as ipxc
 import icc_profile_calc_param as ipcp
 import color_space as cs
+import transfer_functions as tf
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -63,11 +64,11 @@ def create_mhc_icc_profile(
     cprt_element = ipxc.get_cprt_element(root)
     cprt_element.text = cprt_str
 
-    # chad_mtx = ipcp.calc_chromatic_adaptation_matrix(
-    #     src_white=src_white, dst_white=ipcp.PCS_D50)
-    # chad_mtx_element = ipxc.get_chad_mtx_element(root)
-    # ipxc.set_chad_matrix_to_chad_mtx_element(
-    #     mtx=chad_mtx, chad_mtx_element=chad_mtx_element)
+    chad_mtx = ipcp.calc_chromatic_adaptation_matrix(
+        src_white=src_white, dst_white=ipcp.PCS_D50)
+    chad_mtx_element = ipxc.get_chad_mtx_element(root)
+    ipxc.set_chad_matrix_to_chad_mtx_element(
+        mtx=chad_mtx, chad_mtx_element=chad_mtx_element)
 
     lumi_element = ipxc.get_lumi_element(root)
     ipxc.set_lumi_params_to_element(
@@ -116,6 +117,16 @@ def parse_mhc2_data():
 def create_sample_identity_1dlut(num_of_sample, gain=0.5):
     x = np.linspace(0, 1, num_of_sample)
     y = x
+
+    lut = tstack([y, y, y])
+
+    return lut
+
+
+def create_gain_1dlut(num_of_sample, gain=0.5):
+    x = np.linspace(0, 1, num_of_sample)
+    linear = tf.eotf_to_luminance(x, tf.ST2084) * gain
+    y = tf.oetf_from_luminance(linear, tf.ST2084)
 
     lut = tstack([y, y, y])
 
@@ -201,16 +212,15 @@ def debug_func():
     #     calibration_luts=luts)
 
     # HDR BT.2020
-    gain = 0.5
-    peak_luminance = 400
-    max_full_frame_luminance = 200
+    # gain = 0.55
+    gain = 0.54
+    peak_luminance = 450
+    max_full_frame_luminance = 250
     calibration_matrix = np.identity(3)
-    calibration_matrix[0, 0] = 0
-    calibration_matrix[2, 2] = 0
     luminance_str = f"{peak_luminance}-{max_full_frame_luminance}"
-    luts = create_sample_identity_1dlut(num_of_sample=4, gain=gain) / 2.0
-    xml_fname = "./xml/HDR_BT2020_MHC2_sample.xml"
-    icc_fname = f"./icc/HDR_GM24_BT2020_MHC2_sample2-{luminance_str}-nits_g_.icm"
+    luts = create_gain_1dlut(num_of_sample=8, gain=gain)
+    xml_fname = "./xml/MHC2_sample.xml"
+    icc_fname = f"./icc/MHC2_{luminance_str}-nits_gain-0.54.icm"
     create_mhc_icc_profile(
         gamma=2.4, src_white=cs.D65,
         src_primaries=cs.get_primaries(cs.BT2020),

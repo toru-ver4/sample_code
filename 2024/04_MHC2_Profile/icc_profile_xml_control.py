@@ -562,7 +562,7 @@ def set_mhc2_1dlut_params(out_buf, luts, elem_size_to_byte):
     data_len = len(luts)
     for c_idx in range(3):  # "3" means R, G, B colors
         lut_st_idx = (out_buf[c_idx+5] // elem_size_to_byte) - 1
-        out_buf[lut_st_idx] = 0x73663332
+        out_buf[lut_st_idx] = 0x73663332  # 'sf32'
         out_buf[lut_st_idx+1] = 0x00000000
         out_buf[lut_st_idx+2:lut_st_idx+2+data_len]\
             = luts_int32[..., c_idx].reshape(data_len)

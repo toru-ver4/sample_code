@@ -56,6 +56,14 @@
       <TagSignature>bXYZ</TagSignature>
       <XYZNumber X="0.15710449" Y="0.06657410" Z="0.78407288"/>
     </XYZType>
+    <s15Fixed16ArrayType>
+      <TagSignature>chad</TagSignature>
+      <Array>
+            1.04772949 0.02296448 -0.04931641
+            0.02976990 0.98992920 -0.01681519
+            -0.00903320 0.01467896 0.75692749
+      </Array>
+    </s15Fixed16ArrayType>
     <PrivateType type="MHC2">
       <TagSignature>MHC2</TagSignature>
       <UnknownData>

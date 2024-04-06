@@ -1,0 +1,78 @@
+<IccProfile>
+  <Header>
+    <PreferredCMMType>ADBE</PreferredCMMType>
+    <ProfileVersion>4.30</ProfileVersion>
+    <ProfileDeviceClass>mntr</ProfileDeviceClass>
+    <DataColourSpace>RGB </DataColourSpace>
+    <PCS>XYZ </PCS>
+    <CreationDateTime>2024-04-06T18:34:45</CreationDateTime>
+    <PrimaryPlatform>MSFT</PrimaryPlatform>
+    <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
+    <DeviceManufacturer></DeviceManufacturer>
+    <DeviceModel></DeviceModel>
+    <DeviceAttributes ReflectiveOrTransparency="transparency" GlossyOrMatte="glossy" MediaPolarity="positive" MediaColour="colour"></DeviceAttributes>
+    <RenderingIntent>Relative Colorimetric</RenderingIntent>
+    <PCSIlluminant>
+      <XYZNumber X="0.96420288" Y="1.00000000" Z="0.82490540"></XYZNumber>
+    </PCSIlluminant>
+    <ProfileCreator></ProfileCreator>
+    <ProfileID></ProfileID>
+  </Header>
+  <Tags>
+    <multiLocalizedUnicodeType>
+      <TagSignature>desc</TagSignature>
+      <LocalizedText LanguageCountry="enUS">MHC2_450-250-nits_gain-0.54</LocalizedText>
+    </multiLocalizedUnicodeType>
+    <multiLocalizedUnicodeType>
+      <TagSignature>cprt</TagSignature>
+      <LocalizedText LanguageCountry="enUS">Copyright 2024 Toru Yoshihara</LocalizedText>
+    </multiLocalizedUnicodeType>
+    <XYZType>
+      <TagSignature>wtpt</TagSignature>
+      <XYZNumber X="0.96420000" Y="1.00000000" Z="0.82490000"></XYZNumber>
+    </XYZType>
+    <XYZType>
+      <TagSignature>lumi</TagSignature>
+      <XYZNumber X="0.00000000" Y="250.00000000" Z="0.00000000"></XYZNumber>
+    </XYZType>
+    <parametricCurveType>
+      <TagSignature>rTRC</TagSignature>
+      <TagSignature>gTRC</TagSignature>
+      <TagSignature>bTRC</TagSignature>
+      <ParametricCurve FunctionType="0">
+        2.40000000
+      </ParametricCurve>
+    </parametricCurveType>
+    <XYZType>
+      <TagSignature>rXYZ</TagSignature>
+      <XYZNumber X="0.63695805" Y="0.26270021" Z="0.00000000"></XYZNumber>
+    </XYZType>
+    <XYZType>
+      <TagSignature>gXYZ</TagSignature>
+      <XYZNumber X="0.14461690" Y="0.67799807" Z="0.02807269"></XYZNumber>
+    </XYZType>
+    <XYZType>
+      <TagSignature>bXYZ</TagSignature>
+      <XYZNumber X="0.16888098" Y="0.05930172" Z="1.06098506"></XYZNumber>
+    </XYZType>
+    <s15Fixed16ArrayType>
+      <TagSignature>chad</TagSignature>
+      <Array>
+            1.04788600 0.02291877 -0.05021610
+            0.02958178 0.99048352 -0.01707871
+            -0.00925188 0.01507261 0.75167813
+      </Array>
+    </s15Fixed16ArrayType>
+    <PrivateType type="MHC2">
+      <TagSignature>MHC2</TagSignature>
+      <UnknownData>
+       00000000000000080000014801c2000000000024000000540000007c000000a4
+       0001000000000000000000000000000000000000000100000000000000000000
+       0000000000000000000100000000000073663332000000000000000000001d5e
+       00003d9b00005f55000082260000a5d40000ca3f0000ef4e7366333200000000
+       0000000000001d5e00003d9b00005f55000082260000a5d40000ca3f0000ef4e
+       73663332000000000000000000001d5e00003d9b00005f55000082260000a5d4
+       0000ca3f0000ef4e</UnknownData>
+    </PrivateType>
+  </Tags>
+</IccProfile>
