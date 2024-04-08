@@ -5,7 +5,7 @@
     <ProfileDeviceClass>mntr</ProfileDeviceClass>
     <DataColourSpace>RGB </DataColourSpace>
     <PCS>XYZ </PCS>
-    <CreationDateTime>2024-04-06T18:34:45</CreationDateTime>
+    <CreationDateTime>2024-04-06T18:42:32</CreationDateTime>
     <PrimaryPlatform>MSFT</PrimaryPlatform>
     <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
     <DeviceManufacturer></DeviceManufacturer>
@@ -21,7 +21,7 @@
   <Tags>
     <multiLocalizedUnicodeType>
       <TagSignature>desc</TagSignature>
-      <LocalizedText LanguageCountry="enUS">MHC2_450-250-nits_gain-0.54</LocalizedText>
+      <LocalizedText LanguageCountry="enUS">MHC2_P3-D65_gain-0.54</LocalizedText>
     </multiLocalizedUnicodeType>
     <multiLocalizedUnicodeType>
       <TagSignature>cprt</TagSignature>
@@ -45,15 +45,15 @@
     </parametricCurveType>
     <XYZType>
       <TagSignature>rXYZ</TagSignature>
-      <XYZNumber X="0.63695805" Y="0.26270021" Z="0.00000000"></XYZNumber>
+      <XYZNumber X="0.48657095" Y="0.22897456" Z="0.00000000"></XYZNumber>
     </XYZType>
     <XYZType>
       <TagSignature>gXYZ</TagSignature>
-      <XYZNumber X="0.14461690" Y="0.67799807" Z="0.02807269"></XYZNumber>
+      <XYZNumber X="0.26566769" Y="0.69173852" Z="0.04511338"></XYZNumber>
     </XYZType>
     <XYZType>
       <TagSignature>bXYZ</TagSignature>
-      <XYZNumber X="0.16888098" Y="0.05930172" Z="1.06098506"></XYZNumber>
+      <XYZNumber X="0.19821729" Y="0.07928691" Z="1.04394437"></XYZNumber>
     </XYZType>
     <s15Fixed16ArrayType>
       <TagSignature>chad</TagSignature>

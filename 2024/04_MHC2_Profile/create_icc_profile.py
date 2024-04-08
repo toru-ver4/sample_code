@@ -211,8 +211,31 @@ def debug_func():
     #     max_full_frame_luminance=100,
     #     calibration_luts=luts)
 
-    # HDR BT.2020
-    # gain = 0.55
+    # # HDR BT.2020
+    # gain = 0.54
+    # peak_luminance = 450
+    # max_full_frame_luminance = 250
+    # calibration_matrix = np.identity(3)
+    # luminance_str = f"{peak_luminance}-{max_full_frame_luminance}"
+    # luts = create_gain_1dlut(num_of_sample=8, gain=gain)
+    # xml_fname = "./xml/MHC2_sample.xml"
+    # icc_fname = f"./icc/MHC2_{luminance_str}-nits_gain-0.54.icm"
+    # create_mhc_icc_profile(
+    #     gamma=2.4, src_white=cs.D65,
+    #     src_primaries=cs.get_primaries(cs.BT2020),
+    #     desc_str=str(Path(icc_fname).stem),
+    #     cprt_str="Copyright 2024 Toru Yoshihara",
+    #     min_luminance=0.005,
+    #     peak_luminance=peak_luminance,
+    #     max_full_frame_luminance=max_full_frame_luminance,
+    #     xml_fname=xml_fname,
+    #     icc_fname=icc_fname,
+    #     calibration_luts=luts,
+    #     calibration_matrix=calibration_matrix)
+    pass
+
+
+def create_mhc2_profile_with_gain():
     gain = 0.54
     peak_luminance = 450
     max_full_frame_luminance = 250
@@ -235,7 +258,33 @@ def debug_func():
         calibration_matrix=calibration_matrix)
 
 
+def create_mhc2_profile_with_color_space(color_space=cs.BT2020):
+    gain = 0.54
+    peak_luminance = 450
+    max_full_frame_luminance = 250
+    calibration_matrix = np.identity(3)
+    luts = create_gain_1dlut(num_of_sample=8, gain=gain)
+    xml_fname = "./xml/MHC2_sample.xml"
+    icc_fname = f"./icc/MHC2_{color_space}_gain-0.54.icm"
+    create_mhc_icc_profile(
+        gamma=2.4, src_white=cs.D65,
+        src_primaries=cs.get_primaries(color_space),
+        desc_str=str(Path(icc_fname).stem),
+        cprt_str="Copyright 2024 Toru Yoshihara",
+        min_luminance=0.005,
+        peak_luminance=peak_luminance,
+        max_full_frame_luminance=max_full_frame_luminance,
+        xml_fname=xml_fname,
+        icc_fname=icc_fname,
+        calibration_luts=luts,
+        calibration_matrix=calibration_matrix)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # main_func()
-    debug_func()
+    # debug_func()
+    create_mhc2_profile_with_gain()
+    create_mhc2_profile_with_color_space(color_space=cs.BT2020)
+    create_mhc2_profile_with_color_space(color_space=cs.BT709)
+    create_mhc2_profile_with_color_space(color_space=cs.P3_D65)
