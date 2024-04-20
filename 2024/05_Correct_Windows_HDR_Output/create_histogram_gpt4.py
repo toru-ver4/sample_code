@@ -24,7 +24,7 @@ def plot_luminance_histogram():
         ylabel="Frequency",
         axis_label_size=None,
         legend_size=17,
-        xlim=None,
+        xlim=[100, 1700],
         ylim=None,
         xtick=None,
         ytick=None,
@@ -32,9 +32,12 @@ def plot_luminance_histogram():
         linewidth=3,
         minor_xtick_num=None,
         minor_ytick_num=None)
+    ax1.grid(True, which='both', axis='y')
+    ax1.grid(False, which='both', axis='x')
     ax1.hist(
         data['Brightness Values'],
-        bins=range(0, int(data['Brightness Values'].max()) + 100, 100),
+        bins=range(100, int(data['Brightness Values'].max()) + 100, 100),
+        color=pu.YELLOW, lw=2,
         edgecolor='black')
     pu.show_and_save(
         fig=fig, legend_loc=None,
@@ -69,18 +72,21 @@ def plot_rec2020_coverage_histogram():
         minor_xtick_num=None,
         minor_ytick_num=None)
     
+    ax1.grid(True, which='both', axis='y')
+    ax1.grid(False, which='both', axis='x')
+    
     ax1.hist(
         data['Gamut Coverage Values'],
         bins=np.arange(50, 85, 2.5),
-        # bins=range(50, int(data['Gamut Coverage Values'].max()) + 5, 5),
+        color=pu.SKY, lw=2,
         edgecolor='black')
     pu.show_and_save(
         fig=fig, legend_loc=None,
         save_fname="./blog_img/rec2020_coverage_distribution.png",
-        show=True)
+        show=False)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # plot_luminance_histogram()
+    plot_luminance_histogram()
     plot_rec2020_coverage_histogram()

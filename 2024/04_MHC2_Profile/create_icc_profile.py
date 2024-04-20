@@ -212,27 +212,30 @@ def debug_func():
     #     max_full_frame_luminance=100,
     #     calibration_luts=luts)
 
-    # # HDR BT.2020
-    # gain = 0.54
-    # peak_luminance = 450
-    # max_full_frame_luminance = 250
-    # calibration_matrix = np.identity(3)
-    # luminance_str = f"{peak_luminance}-{max_full_frame_luminance}"
-    # luts = create_gain_1dlut(num_of_sample=8, gain=gain)
-    # xml_fname = "./xml/MHC2_sample.xml"
-    # icc_fname = f"./icc/MHC2_{luminance_str}-nits_gain-0.54.icm"
-    # create_mhc_icc_profile(
-    #     gamma=2.4, src_white=cs.D65,
-    #     src_primaries=cs.get_primaries(cs.BT2020),
-    #     desc_str=str(Path(icc_fname).stem),
-    #     cprt_str="Copyright 2024 Toru Yoshihara",
-    #     min_luminance=0.005,
-    #     peak_luminance=peak_luminance,
-    #     max_full_frame_luminance=max_full_frame_luminance,
-    #     xml_fname=xml_fname,
-    #     icc_fname=icc_fname,
-    #     calibration_luts=luts,
-    #     calibration_matrix=calibration_matrix)
+    # HDR BT.2020
+    gain = 1.0
+    peak_luminance = 450
+    max_full_frame_luminance = 250
+    calibration_matrix = np.identity(3)
+    calibration_matrix[0, 0] = 0.1
+    calibration_matrix[2, 2] = 0.1
+    print(calibration_matrix)
+    luminance_str = f"{peak_luminance}-{max_full_frame_luminance}"
+    luts = create_gain_1dlut(num_of_sample=8, gain=gain)
+    xml_fname = "./xml/MHC2_sample.xml"
+    icc_fname = f"./icc/MHC2_{luminance_str}-nits_green3.icm"
+    create_mhc_icc_profile(
+        gamma=2.4, src_white=cs.D65,
+        src_primaries=cs.get_primaries(cs.BT2020),
+        desc_str=str(Path(icc_fname).stem),
+        cprt_str="Copyright 2024 Toru Yoshihara",
+        min_luminance=0.005,
+        peak_luminance=peak_luminance,
+        max_full_frame_luminance=max_full_frame_luminance,
+        xml_fname=xml_fname,
+        icc_fname=icc_fname,
+        calibration_luts=luts,
+        calibration_matrix=calibration_matrix)
     pass
 
 
@@ -282,19 +285,18 @@ def create_mhc2_profile_with_color_space(color_space=cs.BT2020):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # main_func()
-    # debug_func()
-    create_mhc2_profile_with_gain()
     # create_mhc2_profile_with_color_space(color_space=cs.BT2020)
     # create_mhc2_profile_with_color_space(color_space=cs.BT709)
     # create_mhc2_profile_with_color_space(color_space=cs.P3_D65)
-    gain_list = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
-    # gain_list = [1.0]
-    # peak_full_luminance_pair_list = [
-    #     [1000, 1000], [1000, 600], [1000, 250],
-    #     [600, 600], [600, 250],
-    #     [450, 450], [450, 250]
-    # ]
-    peak_full_luminance_pair_list = [[10000, 10000]]
+    # debug_func()
+    # create_mhc2_profile_with_gain()
+    # gain_list = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
+    gain_list = [1.0]
+    peak_full_luminance_pair_list = [
+        [10000, 10000], [4000, 4000], [1000, 1000],
+        [600, 600], [400, 400], [200, 200], [100, 100]
+    ]
+    # peak_full_luminance_pair_list = [[10000, 10000]]
     for gain in gain_list:
         for peak_full_luminance_pair in peak_full_luminance_pair_list:
             peak_luminance = peak_full_luminance_pair[0]

@@ -1,0 +1,42 @@
+# -*- coding: utf-8 -*-
+"""
+
+"""
+
+# import standard libraries
+import os
+
+# import third-party libraries
+import numpy as np
+from imagecodecs import JPEGXR, imread
+from colour.io import write_image
+
+# import my libraries
+
+# information
+__author__ = 'Toru Yoshihara'
+__copyright__ = 'Copyright (C) 2024 - Toru Yoshihara'
+__license__ = 'New BSD License - https://opensource.org/licenses/BSD-3-Clause'
+__maintainer__ = 'Toru Yoshihara'
+__email__ = 'toru.ver.11 at-sign gmail.com'
+
+__all__ = []
+
+
+def main_func(src_fname="./Windows_HDR_Capture/600.jxr"):
+    if not JPEGXR.available:
+        print("JPEG XR is not supported")
+        return
+
+    dst_fname = src_fname.replace(".jxr", ".exr")
+    image = imread(src_fname)
+    print(image.dtype)
+    write_image(image=image, path=dst_fname)
+
+
+if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    main_func(src_fname="./Windows_HDR_Capture/10000.jxr")
+    main_func(src_fname="./Windows_HDR_Capture/600.jxr")
+    main_func(src_fname="./Windows_HDR_Capture/peak_400.jxr")
+    main_func(src_fname="./Windows_HDR_Capture/peak_10000.jxr")
