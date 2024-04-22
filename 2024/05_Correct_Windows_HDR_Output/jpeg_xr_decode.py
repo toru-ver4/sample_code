@@ -36,7 +36,4 @@ def main_func(src_fname="./Windows_HDR_Capture/600.jxr"):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    main_func(src_fname="./Windows_HDR_Capture/10000.jxr")
-    main_func(src_fname="./Windows_HDR_Capture/600.jxr")
-    main_func(src_fname="./Windows_HDR_Capture/peak_400.jxr")
-    main_func(src_fname="./Windows_HDR_Capture/peak_10000.jxr")
+    main_func(src_fname="./Windows_HDR_Capture/YouTube_10000_gain_1.0.jxr")
