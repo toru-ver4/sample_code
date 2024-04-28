@@ -994,40 +994,40 @@ def calc_blog_param():
 def plot_bt2020_bt709_tp():
     # Hue-Chroma Pattern
 
-    # lightness_num = L_SAMPLE_NUM
-    # hue_num = H_SAMPLE_NUM
-    # prefix = "BT709-BT2020"
-    # luminance_list = [1000, 10000]
-    # resolution_list = [[1920, 1080], [3840, 2160]]
-    # hue_num_list = [32, 48, 64]
-    # oetf = tf.ST2084
+    lightness_num = L_SAMPLE_NUM
+    hue_num = H_SAMPLE_NUM
+    prefix = "BT709-BT2020"
+    luminance_list = [1000, 10000]
+    resolution_list = [[1920, 1080], [3840, 2160]]
+    hue_num_list = [32, 48, 64]
+    oetf = tf.ST2084
 
-    # for luminance in luminance_list:
-    #     for resolution in resolution_list:
-    #         for tp_hue_num in hue_num_list:
-    #             width = resolution[0]
-    #             height = resolution[1]
+    for luminance in luminance_list:
+        for resolution in resolution_list:
+            for tp_hue_num in hue_num_list:
+                width = resolution[0]
+                height = resolution[1]
 
-    #             focal_lut_name = make_jzazbz_focal_lut_fname(
-    #                 luminance=luminance, lightness_num=lightness_num,
-    #                 hue_num=hue_num, prefix=prefix)
-    #             focal_lut = np.load(focal_lut_name)
-    #             outer_lut = load_gamut_boundary_lut_old(
-    #                 color_space_name=cs.BT2020,
-    #                 lightness_sample_num=lightness_num,
-    #                 hue_sample_num=hue_num, maximum_luminance=luminance)
-    #             inner_lut = load_gamut_boundary_lut_new(
-    #                 color_space_name=cs.BT709,
-    #                 lightness_sample_num=lightness_num,
-    #                 hue_sample_num=hue_num, maximum_luminance=luminance)
-    #             img = tpg.make_bt2020_bt709_hue_chroma_pattern_jzazbz(
-    #                 focal_lut=focal_lut, outer_lut=outer_lut,
-    #                 hue_num=tp_hue_num, width=width, height=height,
-    #                 luminance=luminance, oetf=oetf)
-    #             tp_fname = f"./img/BT2020-BT709_HC_Pattern_{width}x{height}_"
-    #             tp_fname += f"h-{tp_hue_num}_{luminance}nits.png"
-    #             tpg.img_wirte_float_as_16bit_int(
-    #                 filename=tp_fname, img_float=img)
+                focal_lut_name = make_jzazbz_focal_lut_fname(
+                    luminance=luminance, lightness_num=lightness_num,
+                    hue_num=hue_num, prefix=prefix)
+                focal_lut = np.load(focal_lut_name)
+                outer_lut = load_gamut_boundary_lut_old(
+                    color_space_name=cs.BT2020,
+                    lightness_sample_num=lightness_num,
+                    hue_sample_num=hue_num, maximum_luminance=luminance)
+                inner_lut = load_gamut_boundary_lut_new(
+                    color_space_name=cs.BT709,
+                    lightness_sample_num=lightness_num,
+                    hue_sample_num=hue_num, maximum_luminance=luminance)
+                img = tpg.make_bt2020_bt709_hue_chroma_pattern_jzazbz(
+                    focal_lut=focal_lut, outer_lut=outer_lut,
+                    hue_num=tp_hue_num, width=width, height=height,
+                    luminance=luminance, oetf=oetf)
+                tp_fname = f"./img/BT2020-BT709_HC_Pattern_{width}x{height}_"
+                tp_fname += f"h-{tp_hue_num}_{luminance}nits.png"
+                tpg.img_wirte_float_as_16bit_int(
+                    filename=tp_fname, img_float=img)
 
     luminance = 100
     resolution_list = [[1920, 1080], [3840, 2160]]
@@ -1200,8 +1200,8 @@ def plot_focal_lut_all():
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # plot_focal_lut_all()
-    # plot_bt2020_bt709_tp()
-    plot_p3d65_bt709_tp()
+    plot_bt2020_bt709_tp()
+    # plot_p3d65_bt709_tp()
 
     # plot_ab_plane_without_interpolation()
     # plot_cj_plane_without_interpolation()
@@ -1230,9 +1230,9 @@ if __name__ == '__main__':
     # plot_cj_plane_with_interpolation(
     #     color_space_name=cs.P3_D65, luminance=100)
 
-    plot_cups(luminance=10000)
-    plot_cups(luminance=1000)
-    plot_cups(luminance=100)
+    # # plot_cups(luminance=10000)
+    # plot_cups(luminance=1000)
+    # plot_cups(luminance=100)
 
     # plot_rgb_near_cups()
 
