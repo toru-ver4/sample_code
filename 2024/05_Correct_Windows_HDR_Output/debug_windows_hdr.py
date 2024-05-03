@@ -6,14 +6,16 @@
 # import standard libraries
 import os
 from pathlib import Path
-import subprocess
 
 # import third-party libraries
 import numpy as np
 from imagecodecs import JPEGXR, imread
+from colour import matrix_RGB_to_RGB, normalised_primary_matrix
+from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020
 from colour.io import write_image
 from colour.utilities import tstack
 import matplotlib.pyplot as plt
+from scipy import linalg
 
 # import my libraries
 import plot_utility as pu
@@ -576,6 +578,26 @@ def debug_check_srgb_rgbw():
         print(f"{color_name} - {rgb_val}")
 
 
+def debug_output_matrix():
+    rec2020_to_rec709_mtx = matrix_RGB_to_RGB(
+        RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020
+    )
+    rec709_to_rec2020_mtx = matrix_RGB_to_RGB(
+        RGB_COLOURSPACE_BT2020, RGB_COLOURSPACE_BT709
+    )
+
+    print(rec2020_to_rec709_mtx)
+    print(rec709_to_rec2020_mtx)
+    print(RGB_COLOURSPACE_BT709.primaries.flatten())
+    print(RGB_COLOURSPACE_BT709.whitepoint)
+    rec709_to_xyz_mtx = normalised_primary_matrix(
+        RGB_COLOURSPACE_BT709.primaries.flatten(),
+        RGB_COLOURSPACE_BT709.whitepoint
+    )
+    print(rec709_to_xyz_mtx)
+    print(linalg.inv(rec709_to_xyz_mtx))
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # plot_captured_hdr_tp()
@@ -586,5 +608,6 @@ if __name__ == '__main__':
     # plot_rec2020_10bit_wrgbmyc_ramp_data_all()
     # plot_rec709_10bit_wrgbmyc_ramp_data_all()
     # debug_plot_check_raw()
-    debug_plot_check_after_conv()
+    # debug_plot_check_after_conv()
     # debug_check_srgb_rgbw()
+    debug_output_matrix()
