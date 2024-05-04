@@ -291,6 +291,24 @@ void D3D12HDR::LoadAssets()
     // Create the vertex buffer.
     {
         // Create geometry for the different sections of the render target.
+        //GradientVertex gradientVertices[] =
+        //{
+        //    // Upper strip. SDR Gradient from [0,1].
+
+        //    { { -1.0f, 0.45f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+        //    { { -1.0f, 0.55f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+        //    { { 0.0f, 0.45f, 0.0f }, { 1.0f, 1.0f, 1.0f } },
+        //    { { 0.0f, 0.55f, 0.0f }, { 1.0f, 1.0f, 1.0f } },
+
+        //    // Lower strip. HDR Gradient from [0,9]. Perceptually, 9.0 is about 3 times as bright as 1.0. (See gradientPS.hlsl.)
+
+        //    { { -1.0f, -0.55f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+        //    { { -1.0f, -0.45f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+        //    { { 0.0f, -0.55f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
+        //    { { 0.0f, -0.45f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
+        //};
+
+        static const float lumi100_gm22 = 8.11130830789687;
         GradientVertex gradientVertices[] =
         {
             // Upper strip. SDR Gradient from [0,1].
@@ -306,6 +324,13 @@ void D3D12HDR::LoadAssets()
             { { -1.0f, -0.45f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
             { { 0.0f, -0.55f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
             { { 0.0f, -0.45f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
+
+            // Additional strip. HDR Gradient from [0,9]. Perceptually, 9.0 is about 3 times as bright as 1.0. (See gradientPS.hlsl.)
+
+            { { -1.0f, -0.05f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+            { { -1.0f, +0.05f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+            { { 0.0f, -0.05f, 0.0f }, { lumi100_gm22, lumi100_gm22, lumi100_gm22 } },
+            { { 0.0f, +0.05f, 0.0f }, { lumi100_gm22, lumi100_gm22, lumi100_gm22 } },
         };
 
         // The vertices for the color space triangles are dependent on the size of the
@@ -659,6 +684,10 @@ void D3D12HDR::RenderScene()
         m_commandList->DrawInstanced(4, 1, 4, 0);
         PIXEndEvent(m_commandList.Get());
 
+        PIXBeginEvent(m_commandList.Get(), 0, L"Additional Gradient");
+        m_commandList->DrawInstanced(4, 1, 8, 0);
+        PIXEndEvent(m_commandList.Get());
+
         m_commandList->SetPipelineState(m_pipelineStates[PalettePSO].Get());
         m_commandList->IASetVertexBuffers(0, 1, &m_trianglesVertexBufferView);
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -701,7 +730,7 @@ void D3D12HDR::RenderScene()
         // If the UI is enabled, the 11on12 layer will do the state transition for us.
         UINT barrierCount = m_enableUI ? 2 : _countof(barriers);
         m_commandList->ResourceBarrier(barrierCount, barriers);
-        m_commandList->SetPipelineState(m_pipelineStates[Present8bitPSO + m_currentSwapChainBitDepth].Get());
+        m_commandList->SetPipelineState(m_pipelineStates[Present8bitPSO + m_currentSwapChainBitDepth].Get()); 
 
         CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
         m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);

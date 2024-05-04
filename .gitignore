@@ -241,6 +241,7 @@ temporary/**/**
 2024/03_Measure_Moitor_Spec_with_Resolve/project_archive/**
 2024/05_Correct_Windows_HDR_Output/Windows_HDR_Capture/**
 2024/05_Correct_Windows_HDR_Output/debug_img/**
+2024/05_Correct_Windows_HDR_Output/debug_img/**/*.hlsl.h
 *.bkp
 
 [Dd]ebug/

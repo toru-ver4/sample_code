@@ -610,4 +610,8 @@ if __name__ == '__main__':
     # debug_plot_check_raw()
     # debug_plot_check_after_conv()
     # debug_check_srgb_rgbw()
-    debug_output_matrix()
+    # debug_output_matrix()
+    x = 100 ** (1/2.2)
+    print(x)
+    y = x ** 2.2
+    print(y)
