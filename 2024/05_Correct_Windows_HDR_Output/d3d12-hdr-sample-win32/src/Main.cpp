@@ -28,6 +28,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
         FreeLibrary(hUser32);
     }
 
-    D3D12HDR sample(1280, 720, L"D3D12 HDR sample");
+    D3D12HDR sample(1920, 1080, L"D3D12 HDR sample");
     return Win32Application::Run(&sample, hInstance, nCmdShow);
 }
