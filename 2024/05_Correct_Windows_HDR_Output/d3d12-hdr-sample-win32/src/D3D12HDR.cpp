@@ -309,29 +309,63 @@ void D3D12HDR::LoadAssets()
         //};
 
         static const float lumi100_gm22 = 8.11130830789687;
-        GradientVertex gradientVertices[] =
-        {
-            // Upper strip. SDR Gradient from [0,1].
-
-            { { -1.0f, 0.45f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-            { { -1.0f, 0.55f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-            { { 0.0f, 0.45f, 0.0f }, { 1.0f, 1.0f, 1.0f } },
-            { { 0.0f, 0.55f, 0.0f }, { 1.0f, 1.0f, 1.0f } },
-
-            // Lower strip. HDR Gradient from [0,9]. Perceptually, 9.0 is about 3 times as bright as 1.0. (See gradientPS.hlsl.)
-
-            { { -1.0f, -0.55f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-            { { -1.0f, -0.45f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-            { { 0.0f, -0.55f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
-            { { 0.0f, -0.45f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
-
-            // Additional strip. HDR Gradient from [0,9]. Perceptually, 9.0 is about 3 times as bright as 1.0. (See gradientPS.hlsl.)
-
-            { { -1.0f, -0.05f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-            { { -1.0f, +0.05f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-            { { 0.0f, -0.05f, 0.0f }, { lumi100_gm22, lumi100_gm22, lumi100_gm22 } },
-            { { 0.0f, +0.05f, 0.0f }, { lumi100_gm22, lumi100_gm22, lumi100_gm22 } },
+        static const int gradHeightInt = 64;
+        static const int gradWidthInt = 1024;
+        static const int numOfGradColor = 7;
+        XMFLOAT3 targetColorList[numOfGradColor] = {
+            { 1.0f, 1.0f, 1.0f },
+            { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f },
+            { 1.0f, 0.0f, 1.0f }, { 1.0f, 1.0f, 0.0f }, { 0.0f, 1.0f, 1.0f }
         };
+        XMFLOAT3 blackColor = { 0.0f, 0.0f, 0.0f };
+        float gradHeight = float(gradHeightInt) / m_height;
+        float gradWidth = float(gradWidthInt) / m_width;
+
+        GradientVertex gradientVertices[4 * numOfGradColor] = {};
+
+        for (int ii = 0; ii < numOfGradColor; ii++) {
+            XMFLOAT3 upperLeftPos;
+            XMFLOAT3 lowerLeftPos;
+            XMFLOAT3 upperRightPos;
+            XMFLOAT3 lowerRightPos;
+            float upperY = 1.0 - (ii * gradHeight);
+            float lowerY = 1.0 - ((ii + 1) * gradHeight);
+            int baseVertex = ii * 4;
+            
+            lowerLeftPos = { -1.0f, lowerY, 0.0f };
+            upperLeftPos = { -1.0f, upperY, 0.0f };
+            lowerRightPos = { gradWidth, lowerY, 0.0f };
+            upperRightPos = { gradWidth, upperY, 0.0f };
+            
+            gradientVertices[baseVertex + 0] = { lowerLeftPos, blackColor };
+            gradientVertices[baseVertex + 1] = { upperLeftPos, blackColor };
+            gradientVertices[baseVertex + 2] = { lowerRightPos, targetColorList[ii]};
+            gradientVertices[baseVertex + 3] = { upperRightPos, targetColorList[ii]};
+        }
+
+        //GradientVertex gradientVertices[] =
+        //{
+        //    // Upper strip. SDR Gradient from [0,1].
+
+        //    { { -1.0f, 0.45f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+        //    { { -1.0f, 0.55f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+        //    { { 0.0f, 0.45f, 0.0f }, { 1.0f, 1.0f, 1.0f } },
+        //    { { 0.0f, 0.55f, 0.0f }, { 1.0f, 1.0f, 1.0f } },
+
+        //    // Lower strip. HDR Gradient from [0,9]. Perceptually, 9.0 is about 3 times as bright as 1.0. (See gradientPS.hlsl.)
+
+        //    { { -1.0f, -0.55f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+        //    { { -1.0f, -0.45f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+        //    { { 0.0f, -0.55f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
+        //    { { 0.0f, -0.45f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
+
+        //    // Additional strip. HDR Gradient from [0,9]. Perceptually, 9.0 is about 3 times as bright as 1.0. (See gradientPS.hlsl.)
+
+        //    { { -1.0f, -0.05f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+        //    { { -1.0f, +0.05f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+        //    { { 0.0f, -0.05f, 0.0f }, { lumi100_gm22, lumi100_gm22, lumi100_gm22 } },
+        //    { { 0.0f, +0.05f, 0.0f }, { lumi100_gm22, lumi100_gm22, lumi100_gm22 } },
+        //};
 
         // The vertices for the color space triangles are dependent on the size of the
         // render target and will not be loaded at this time. We'll leave a gap in the
@@ -675,18 +709,34 @@ void D3D12HDR::RenderScene()
         const float clearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
         m_commandList->ClearRenderTargetView(intermediateRtv, clearColor, 0, nullptr);
 
+        const wchar_t* gradientName[] = {
+            L"White",
+            L"Red",
+            L"Green",
+            L"Blue",
+            L"Magenta",
+            L"Yellow",
+            L"Cyan"
+        };
+
         m_commandList->IASetVertexBuffers(0, 1, &m_gradientVertexBufferView);
-        PIXBeginEvent(m_commandList.Get(), 0, L"Standard Gradient");
-        m_commandList->DrawInstanced(4, 1, 0, 0);
-        PIXEndEvent(m_commandList.Get());
 
-        PIXBeginEvent(m_commandList.Get(), 0, L"Bright Gradient");
-        m_commandList->DrawInstanced(4, 1, 4, 0);
-        PIXEndEvent(m_commandList.Get());
+        for (int ii = 0; ii < 7; ii++) {
+            PIXBeginEvent(m_commandList.Get(), 0, gradientName[ii]);
+            m_commandList->DrawInstanced(4, 1, ii*4, 0);
+            PIXEndEvent(m_commandList.Get());
+        }
+        //PIXBeginEvent(m_commandList.Get(), 0, L"Standard Gradient");
+        //m_commandList->DrawInstanced(4, 1, 0, 0);
+        //PIXEndEvent(m_commandList.Get());
 
-        PIXBeginEvent(m_commandList.Get(), 0, L"Additional Gradient");
-        m_commandList->DrawInstanced(4, 1, 8, 0);
-        PIXEndEvent(m_commandList.Get());
+        //PIXBeginEvent(m_commandList.Get(), 0, L"Bright Gradient");
+        //m_commandList->DrawInstanced(4, 1, 4, 0);
+        //PIXEndEvent(m_commandList.Get());
+
+        //PIXBeginEvent(m_commandList.Get(), 0, L"Additional Gradient");
+        //m_commandList->DrawInstanced(4, 1, 8, 0);
+        //PIXEndEvent(m_commandList.Get());
 
         m_commandList->SetPipelineState(m_pipelineStates[PalettePSO].Get());
         m_commandList->IASetVertexBuffers(0, 1, &m_trianglesVertexBufferView);
