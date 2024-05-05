@@ -252,13 +252,13 @@ void UILayer::Resize()
         &m_smallTextFormat));
 
     // Update the UI elements.
-    m_ui[Format] = { m_labels[Format], D2D1::RectF(0.0f, 0.0f, width, height), m_textFormat.Get() };
-    m_ui[Signal] = { m_labels[Signal], D2D1::RectF(0.0f, fontSize, width, height), m_textFormat.Get() };
-    m_ui[HDRSupport] = { m_labels[HDRSupport], D2D1::RectF(0.0f, fontSize * 2.0f, width, height), m_textFormat.Get() };
-    m_ui[StandardGradient] = { m_labels[StandardGradient], D2D1::RectF(0.0f, height * 0.25f + fontSize, width * 0.5f, height), m_textFormat.Get() };
-    m_ui[BrightGradient] = { m_labels[BrightGradient], D2D1::RectF(0.0f, height * 0.75f + fontSize, width * 0.5f, height), m_textFormat.Get() };
-    m_ui[Rec709] = { m_labels[Rec709], D2D1::RectF(width * 0.5f, height * 0.25f + fontSize, width * 0.8f, height), m_textFormat.Get() };
-    m_ui[Rec2020] = { m_labels[Rec2020], D2D1::RectF(width * 0.5f, height * 0.75f + fontSize, width * 0.8f, height), m_textFormat.Get() };
+    m_ui[Format] = { m_labels[Format], D2D1::RectF(0.0f, 0.0f + 0.5f * height, width, height), m_textFormat.Get() };
+    m_ui[Signal] = { m_labels[Signal], D2D1::RectF(0.0f, fontSize + 0.5f * height, width, height), m_textFormat.Get() };
+    m_ui[HDRSupport] = { m_labels[HDRSupport], D2D1::RectF(0.0f, fontSize * 2.0f + 0.5f * height, width, height), m_textFormat.Get() };
+    m_ui[StandardGradient] = { m_labels[StandardGradient], D2D1::RectF(0.0f + 10000.0f, height * 0.25f + fontSize, width * 0.5f + 10000.0f, height), m_textFormat.Get() };
+    m_ui[BrightGradient] = { m_labels[BrightGradient], D2D1::RectF(0.0f + 10000.0f, height * 0.75f + fontSize, width * 0.5f + 10000.0f, height), m_textFormat.Get() };
+    m_ui[Rec709] = { m_labels[Rec709], D2D1::RectF(width * 0.5f + 10000.0f, height * 0.25f + fontSize, width * 0.8f + 10000.0f, height), m_textFormat.Get() };
+    m_ui[Rec2020] = { m_labels[Rec2020], D2D1::RectF(width * 0.5f + 10000.0f, height * 0.75f + fontSize, width * 0.8f + 10000.0f, height), m_textFormat.Get() };
 
     m_ui[ChangeFormat] = { m_labels[ChangeFormat], D2D1::RectF(smallFontSize, height - fontSize * 5.0f, width, height), m_smallTextFormat.Get() };
     m_ui[ChangeCurve] = { m_labels[ChangeCurve], D2D1::RectF(smallFontSize, height - fontSize * 3.0f, width, height), m_smallTextFormat.Get() };
