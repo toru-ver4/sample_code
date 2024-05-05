@@ -310,19 +310,18 @@ void D3D12HDR::LoadAssets()
         //    { { 0.0f, -0.45f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
         //};
 
-        static const double lumi100_gm22 = 8.11130830789687;
         static const int gradHeightInt = 64;
         static const int gradWidthInt = 1024;
         static const int numOfGradColor = 7;
         static const int numOfRectColor = 4;
-        static const float peak_value = pow(100.0, 1.0 / lumi100_gm22);
+        static const float peak_value = pow(100.0, (1.0/2.2));
         XMFLOAT3 targetColorList[numOfGradColor] = {
             { peak_value, peak_value, peak_value },
             { peak_value, 0.0f, 0.0f }, { 0.0f, peak_value, 0.0f }, { 0.0f, 0.0f, peak_value },
             { peak_value, 0.0f, peak_value }, { peak_value, peak_value, 0.0f }, { 0.0f, peak_value, peak_value }
         };
         XMFLOAT3 blackColor = { 0.0f, 0.0f, 0.0f };
-        float gradHeight = float(gradHeightInt) / m_height;
+        float gradHeight = float(gradHeightInt) / (m_height - 38);  // 38 is title bar margin
         float gradWidth = float(gradWidthInt) / m_width;
 
         GradientVertex gradientVertices[4 * (numOfGradColor + numOfRectColor)] = {};
@@ -351,7 +350,7 @@ void D3D12HDR::LoadAssets()
         static const int rectWidthInt = 256;
         static const int rectHeightInt = 256;
         static const float rectWidth = float(rectWidthInt) / m_width;
-        static const float rectHeight = float(rectHeightInt) / m_height;
+        static const float rectHeight = float(rectHeightInt) / (m_height - 38);  // 38 is title bar margin
         float rectUpperY = 1.0 - numOfGradColor * gradHeight;
         float rectLowerY = 1.0 - numOfGradColor * gradHeight - rectHeight;
 
