@@ -322,7 +322,7 @@ void D3D12HDR::LoadAssets()
         };
         XMFLOAT3 blackColor = { 0.0f, 0.0f, 0.0f };
         float gradHeight = float(gradHeightInt) / (m_height - 38);  // 38 is title bar margin
-        float gradWidth = float(gradWidthInt) / m_width;
+        float gradWidth = float(gradWidthInt) / (m_width - 2);
 
         GradientVertex gradientVertices[4 * (numOfGradColor + numOfRectColor)] = {};
 
@@ -349,7 +349,7 @@ void D3D12HDR::LoadAssets()
 
         static const int rectWidthInt = 256;
         static const int rectHeightInt = 256;
-        static const float rectWidth = float(rectWidthInt) / m_width;
+        static const float rectWidth = float(rectWidthInt) / (m_width - 2);
         static const float rectHeight = float(rectHeightInt) / (m_height - 38);  // 38 is title bar margin
         float rectUpperY = 1.0 - numOfGradColor * gradHeight;
         float rectLowerY = 1.0 - numOfGradColor * gradHeight - rectHeight;
