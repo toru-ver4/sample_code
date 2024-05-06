@@ -292,37 +292,20 @@ void D3D12HDR::LoadAssets()
 
     // Create the vertex buffer.
     {
-        // Create geometry for the different sections of the render target.
-        //GradientVertex gradientVertices[] =
-        //{
-        //    // Upper strip. SDR Gradient from [0,1].
-
-        //    { { -1.0f, 0.45f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-        //    { { -1.0f, 0.55f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-        //    { { 0.0f, 0.45f, 0.0f }, { 1.0f, 1.0f, 1.0f } },
-        //    { { 0.0f, 0.55f, 0.0f }, { 1.0f, 1.0f, 1.0f } },
-
-        //    // Lower strip. HDR Gradient from [0,9]. Perceptually, 9.0 is about 3 times as bright as 1.0. (See gradientPS.hlsl.)
-
-        //    { { -1.0f, -0.55f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-        //    { { -1.0f, -0.45f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-        //    { { 0.0f, -0.55f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
-        //    { { 0.0f, -0.45f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
-        //};
-
         static const int gradHeightInt = 64;
         static const int gradWidthInt = 1024;
         static const int numOfGradColor = 7;
         static const int numOfRectColor = 4;
-        static const float peak_value = pow(100.0, (1.0/2.2));
+        // static const float peak_value = float(pow(100.0, (1.0/2.2)));
+        static const float peak_value = 1.0;
         XMFLOAT3 targetColorList[numOfGradColor] = {
             { peak_value, peak_value, peak_value },
             { peak_value, 0.0f, 0.0f }, { 0.0f, peak_value, 0.0f }, { 0.0f, 0.0f, peak_value },
             { peak_value, 0.0f, peak_value }, { peak_value, peak_value, 0.0f }, { 0.0f, peak_value, peak_value }
         };
         XMFLOAT3 blackColor = { 0.0f, 0.0f, 0.0f };
-        float gradHeight = float(gradHeightInt) / (m_height - 38);  // 38 is title bar margin
-        float gradWidth = float(gradWidthInt) / (m_width - 2);
+        float gradHeight = float(gradHeightInt) / (m_height - 39) * 2;  // 39 is title bar margin
+        float gradWidth = float(gradWidthInt) / (m_width - 2) * 2;
 
         GradientVertex gradientVertices[4 * (numOfGradColor + numOfRectColor)] = {};
 
@@ -338,8 +321,8 @@ void D3D12HDR::LoadAssets()
             
             lowerLeftPos = { -1.0f, lowerY, 0.0f };
             upperLeftPos = { -1.0f, upperY, 0.0f };
-            lowerRightPos = { gradWidth, lowerY, 0.0f };
-            upperRightPos = { gradWidth, upperY, 0.0f };
+            lowerRightPos = { gradWidth -1.0f, lowerY, 0.0f };
+            upperRightPos = { gradWidth -1.0f, upperY, 0.0f };
             
             gradientVertices[baseVertex + 0] = { lowerLeftPos, blackColor };
             gradientVertices[baseVertex + 1] = { upperLeftPos, blackColor };
@@ -347,10 +330,10 @@ void D3D12HDR::LoadAssets()
             gradientVertices[baseVertex + 3] = { upperRightPos, targetColorList[ii]};
         }
 
-        static const int rectWidthInt = 256;
-        static const int rectHeightInt = 256;
-        static const float rectWidth = float(rectWidthInt) / (m_width - 2);
-        static const float rectHeight = float(rectHeightInt) / (m_height - 38);  // 38 is title bar margin
+        static const int rectWidthInt = 128;
+        static const int rectHeightInt = 128;
+        static const float rectWidth = float(rectWidthInt) / (m_width - 2) * 2;
+        static const float rectHeight = float(rectHeightInt) / (m_height - 39) * 2;  // 39 is title bar margin
         float rectUpperY = 1.0 - numOfGradColor * gradHeight;
         float rectLowerY = 1.0 - numOfGradColor * gradHeight - rectHeight;
 
@@ -372,30 +355,6 @@ void D3D12HDR::LoadAssets()
             gradientVertices[baseVertex + 2] = { lowerRightPos, targetColorList[ii] };
             gradientVertices[baseVertex + 3] = { upperRightPos, targetColorList[ii] };
         }
-
-        //GradientVertex gradientVertices[] =
-        //{
-        //    // Upper strip. SDR Gradient from [0,1].
-
-        //    { { -1.0f, 0.45f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-        //    { { -1.0f, 0.55f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-        //    { { 0.0f, 0.45f, 0.0f }, { 1.0f, 1.0f, 1.0f } },
-        //    { { 0.0f, 0.55f, 0.0f }, { 1.0f, 1.0f, 1.0f } },
-
-        //    // Lower strip. HDR Gradient from [0,9]. Perceptually, 9.0 is about 3 times as bright as 1.0. (See gradientPS.hlsl.)
-
-        //    { { -1.0f, -0.55f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-        //    { { -1.0f, -0.45f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-        //    { { 0.0f, -0.55f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
-        //    { { 0.0f, -0.45f, 0.0f }, { 3.0f, 3.0f, 3.0f } },
-
-        //    // Additional strip. HDR Gradient from [0,9]. Perceptually, 9.0 is about 3 times as bright as 1.0. (See gradientPS.hlsl.)
-
-        //    { { -1.0f, -0.05f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-        //    { { -1.0f, +0.05f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-        //    { { 0.0f, -0.05f, 0.0f }, { lumi100_gm22, lumi100_gm22, lumi100_gm22 } },
-        //    { { 0.0f, +0.05f, 0.0f }, { lumi100_gm22, lumi100_gm22, lumi100_gm22 } },
-        //};
 
         // The vertices for the color space triangles are dependent on the size of the
         // render target and will not be loaded at this time. We'll leave a gap in the
@@ -760,17 +719,6 @@ void D3D12HDR::RenderScene()
             m_commandList->DrawInstanced(4, 1, ii*4, 0);
             PIXEndEvent(m_commandList.Get());
         }
-        //PIXBeginEvent(m_commandList.Get(), 0, L"Standard Gradient");
-        //m_commandList->DrawInstanced(4, 1, 0, 0);
-        //PIXEndEvent(m_commandList.Get());
-
-        //PIXBeginEvent(m_commandList.Get(), 0, L"Bright Gradient");
-        //m_commandList->DrawInstanced(4, 1, 4, 0);
-        //PIXEndEvent(m_commandList.Get());
-
-        //PIXBeginEvent(m_commandList.Get(), 0, L"Additional Gradient");
-        //m_commandList->DrawInstanced(4, 1, 8, 0);
-        //PIXEndEvent(m_commandList.Get());
 
         m_commandList->SetPipelineState(m_pipelineStates[PalettePSO].Get());
         m_commandList->IASetVertexBuffers(0, 1, &m_trianglesVertexBufferView);
