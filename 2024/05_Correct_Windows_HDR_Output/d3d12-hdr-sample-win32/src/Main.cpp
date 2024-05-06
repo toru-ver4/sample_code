@@ -12,6 +12,8 @@
 #include "stdafx.h"
 #include "D3D12HDR.h"
 
+// v0.0.8 Changed the transfer characteristics from gamma2.2 to SMPTE ST 2084
+
 _Use_decl_annotations_
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
@@ -28,6 +30,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
         FreeLibrary(hUser32);
     }
 
-    D3D12HDR sample(1920 + 2, 1080 + 39, L"D3D12 HDR sample"); // + 39 is title bar margin
+    D3D12HDR sample(1920 + 2, 1080 + 39, L"D3D12 HDR sample v0.0.8"); // + 39 is title bar margin
     return Win32Application::Run(&sample, hInstance, nCmdShow);
 }
