@@ -598,6 +598,73 @@ def debug_output_matrix():
     print(linalg.inv(rec709_to_xyz_mtx))
 
 
+def get_directX_app_gradient_data(img: np.ndarray):
+    num_of_grad_sample = 1025
+    num_of_grad_color = 7
+    grad_st_pos_h = 1
+    grad_st_pos_v_base = 70
+    grad_pos_v_offset = 66
+    grad_ed_pos_h = grad_st_pos_h + num_of_grad_sample
+
+    gradient_rgb = np.zeros(
+        (num_of_grad_color, num_of_grad_sample, 3), dtype=img.dtype)
+    for color_idx in range(num_of_grad_color):
+        grad_st_pos_v = grad_st_pos_v_base + grad_pos_v_offset * color_idx
+        grad_ed_pos_v = grad_st_pos_v + 1
+        gradient_rgb[color_idx]\
+            = img[grad_st_pos_v:grad_ed_pos_v, grad_st_pos_h:grad_ed_pos_h]
+
+    num_of_rect_color = 4
+    rect_st_pos_v = 566
+    rect_ed_pos_v = rect_st_pos_v + 1
+    rect_st_pox_h_base = 64
+    rect_pos_h_offset = 128
+    rect_rgb = np.zeros((num_of_rect_color, 3), dtype=img.dtype)
+    for color_idx in range(num_of_rect_color):
+        rect_st_pox_h = rect_st_pox_h_base + rect_pos_h_offset * color_idx
+        rect_ed_pos_h = rect_st_pox_h + 1
+        rect_rgb[color_idx]\
+            = img[rect_st_pos_v:rect_ed_pos_v, rect_st_pox_h:rect_ed_pos_h]
+        
+    return gradient_rgb, rect_rgb
+
+
+def debug_plot_directX_app():
+    jxr_file_name = "./Windows_HDR_Capture/DirectX/rgb_10bit.jxr"
+    img = imread(jxr_file_name)[..., :3]
+    gradient_rgb, rect_rgb = get_directX_app_gradient_data(img=img)
+    basename = Path(jxr_file_name).stem
+
+    print(rect_rgb)
+
+    # multi plots
+    fig, axes = plt.subplots(7, 1, figsize=(10, 60))
+    xx = np.arange(gradient_rgb.shape[1])
+    title_list = [
+        "White", "Red", "Green", "Blue", "Majenta", "Yellow", "Cyan"
+    ]
+    for idx in range(7):
+        ax1 = axes[idx]
+        # yy = (gradient_rgb[idx] ** (1/2.2)) / (100 ** (1/2.2)) * 1023
+        yy = gradient_rgb[idx]
+        ms = 4
+        ax1.plot(xx, yy[..., 0], '-', ms=ms, color=pu.RED, label="R")
+        ax1.plot(xx, yy[..., 1], '-', ms=ms, color=pu.GREEN, label="G")
+        ax1.plot(xx, yy[..., 2], '-', ms=ms, color=pu.BLUE, label="B")
+        # ax1.set_xticks([x * 128 for x in range(8)] + [1023])
+        # ax1.set_yticks([x * 256 for x in range(4)] + [1023])
+        # ax1.set_xlim([-10, 1033])
+        # ax1.set_ylim([-0.8, 0.8])
+        ax1.set_title(f'{basename} - {title_list[idx]} Patch')
+        ax1.grid(True)
+        # pu.log_sacle_settings_x_linear_y_log(ax=ax1)
+        ax1.legend(loc='upper left')
+    plt.tight_layout()
+    save_fname = f"./debug_img/debug_{basename}.png"
+    print(save_fname)
+    plt.savefig(save_fname, dpi=100)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # plot_captured_hdr_tp()
@@ -611,7 +678,4 @@ if __name__ == '__main__':
     # debug_plot_check_after_conv()
     # debug_check_srgb_rgbw()
     # debug_output_matrix()
-    x = 100 ** (1/2.2)
-    print(x)
-    y = x ** 2.2
-    print(y)
+    debug_plot_directX_app()
