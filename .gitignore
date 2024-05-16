@@ -243,6 +243,7 @@ temporary/**/**
 2024/05_Correct_Windows_HDR_Output/debug_img/**
 2024/05_Correct_Windows_HDR_Output/debug_img/**/*.hlsl.h
 *.bkp
+2024/06_Correct_Windows_HDR_Output2/debug/**
 
 [Dd]ebug/
 [Rr]elease/
