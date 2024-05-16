@@ -10,7 +10,7 @@ from pathlib import Path
 # import third-party libraries
 import numpy as np
 from imagecodecs import JPEGXR, imread
-from colour import matrix_RGB_to_RGB, normalised_primary_matrix, xy_to_XYZ
+from colour import matrix_RGB_to_RGB, normalised_primary_matrix, xy_to_XYZ, RGB_to_RGB
 from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020
 from colour.io import write_image
 from colour.utilities import tstack
@@ -166,8 +166,9 @@ def conv_hdr_tp_from_sc_rgb_to_target_sc_pq_10bit_ramp(
         jsr_file="./Windows_HDR_Capture/bak/YouTube_10000_gain_1.0.jxr",
         target_color_space_name=cs.BT2020):
     sc_rgb_img = imread(jsr_file)[..., :3].astype(np.float64)  # remove alpha channel
-    target_rgb_img = conv_scRGB_to_target_rgb(
-        sc_rgb_img=sc_rgb_img, target_color_space_name=target_color_space_name)
+    if target_color_space_name is not cs.BT709:
+        target_rgb_img = conv_scRGB_to_target_rgb(
+            sc_rgb_img=sc_rgb_img, target_color_space_name=target_color_space_name)
     
     # #################################
     # # remove !!!
@@ -319,6 +320,85 @@ def plot_10bit_wrgbmyc_ramp_data_jxr(
         ax1.set_ylim([-20, 1043])
         ax1.set_xlabel('Target Code Value (10-bit)')
         ax1.set_ylabel('Measured Code Value (10-bit)')
+        ax1.set_title(f'{title_base} - {title_list[idx]}')
+        ax1.grid(True)
+        ax1.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    save_fname = f"./img/{basename}.png"
+    print(save_fname)
+    plt.savefig(save_fname, dpi=100)
+
+
+def plot_rec709_on_rec2020_10bit_wrgbmyc_ramp_data_jxr(jxr_file, replace_str):
+    basename = Path(jxr_file).stem
+    title_base = basename.replace(replace_str, "")
+    sc_rgb_img = imread(jxr_file)[..., :3].astype(np.float64)  # remove alpha channel
+    rgb = get_wrgbmyc_10bit_data(img=sc_rgb_img)
+    fig, axes = plt.subplots(7, 1, figsize=(8, 20))
+    xx = np.arange(1024).astype(np.uint16)
+    title_list = [
+        "White", "Red", "Green", "Blue", "Majenta", "Yellow", "Cyan"
+    ]
+    num_of_color = len(title_list)
+
+    for idx in range(num_of_color):
+        ax1 = axes[idx]
+        yy = rgb[idx]
+        ms = 4
+        ax1.plot(xx, yy[..., 0], '-', ms=ms, color=pu.RED, label="R")
+        ax1.plot(xx, yy[..., 1], '-', ms=ms, color=pu.GREEN, label="G")
+        ax1.plot(xx, yy[..., 2], '-', ms=ms, color=pu.BLUE, label="B")
+        ax1.set_xticks([x * 128 for x in range(8)] + [1023])
+        # ax1.set_yticks([x * 256 for x in range(4)] + [1023])
+        ax1.set_xlim([-10, 1033])
+        ax1.set_ylim([-1.0, 1.0])
+        ax1.set_xlabel('Target Code Value (10-bit)')
+        ax1.set_ylabel('???')
+        ax1.set_title(f'{title_base} - {title_list[idx]}')
+        ax1.grid(True)
+        ax1.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    save_fname = f"./img/{basename}.png"
+    print(save_fname)
+    plt.savefig(save_fname, dpi=100)
+
+
+def plot_rec709_on_rec2020_10bit_wrgbmyc_ramp_data_hdmi(png_file, replace_str):
+    basename = Path(png_file).stem
+    title_base = basename.replace(replace_str, "")
+    img_2020 = tpg.img_read_as_float(png_file)
+    img_2020_linear = tf.eotf(img_2020, tf.ST2084)
+    img_709_linear = RGB_to_RGB(
+        RGB=img_2020_linear,
+        input_colourspace=RGB_COLOURSPACE_BT2020,
+        output_colourspace=RGB_COLOURSPACE_BT709
+    )
+    rgb_linear = get_wrgbmyc_10bit_data(img=img_709_linear)
+    rgb_st2084 = tf.oetf(np.clip(rgb_linear, 0, 1), tf.ST2084) * 1023
+    fig, axes = plt.subplots(7, 1, figsize=(8, 20))
+    xx = np.arange(1024).astype(np.uint16)
+    title_list = [
+        "White", "Red", "Green", "Blue", "Majenta", "Yellow", "Cyan"
+    ]
+    num_of_color = len(title_list)
+
+    for idx in range(num_of_color):
+        ax1 = axes[idx]
+        yy = rgb_st2084[idx]
+        ms = 4
+        ax1.plot(xx, yy[..., 0], '-', ms=ms, color=pu.RED, label="R")
+        ax1.plot(xx, yy[..., 1], '-', ms=ms, color=pu.GREEN, label="G")
+        ax1.plot(xx, yy[..., 2], '-', ms=ms, color=pu.BLUE, label="B")
+        ax1.set_xticks([x * 128 for x in range(8)] + [1023])
+        ax1.set_yticks([x * 256 for x in range(4)] + [1023])
+        ax1.set_xlim([-10, 1033])
+        ax1.set_ylim([-10, 1033])
+        ax1.set_xlabel('Target Code Value (10-bit)')
+        ax1.set_ylabel('Captured Code Value (10-bit)')
         ax1.set_title(f'{title_base} - {title_list[idx]}')
         ax1.grid(True)
         ax1.legend(loc='upper left')
@@ -502,16 +582,15 @@ def plot_rec2020_10bit_wrgbmyc_ramp_data_all_raw():
 
 def plot_rec709_10bit_wrgbmyc_ramp_data_all():
     jxr_file_list = [
-        # "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec709_10-bit_Chrome.jxr",
-        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec709_10-bit_Edge.jxr",
-        # "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec709_10-bit_MPC-BE.jxr",
-        # "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec709_10-bit_VLC.jxr",
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec709_on_Rec2020_10-bit_Chrome.jxr",
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec709_on_Rec2020_10-bit_Edge.jxr",
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec709_on_Rec2020_10-bit_MPC-BE.jxr",
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec709_on_Rec2020_10-bit_Movies_and_TV.jxr",
     ]
 
     for jxr_file in jxr_file_list:
-        plot_10bit_wrgbmyc_ramp_data_jxr(
-            jxr_file=jxr_file, replace_str="TP_Rec709_10-bit_",
-            target_color_space_name=cs.BT709)
+        plot_rec709_on_rec2020_10bit_wrgbmyc_ramp_data_jxr(
+            jxr_file=jxr_file, replace_str="TP_Rec709_on_Rec2020_10-bit_")
 
     img_list = []
     for jxr_file in jxr_file_list:
@@ -521,6 +600,30 @@ def plot_rec709_10bit_wrgbmyc_ramp_data_all():
         img_list.append(img)
     out_img = np.hstack(img_list)
     concat_fname = "./img/concat_rec709_10bit_wrgbmyc_result.png"
+    print(concat_fname)
+    tpg.img_wirte_float_as_16bit_int(concat_fname, out_img)
+
+
+def plot_rec709_10bit_wrgbmyc_ramp_data_hdmi_all():
+    png_file_list = [
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec709_on_Rec2020_10-bit_Chrome_hdmi.png",
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec709_on_Rec2020_10-bit_Edge_hdmi.png",
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec709_on_Rec2020_10-bit_MPC-BE_hdmi.png",
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec709_on_Rec2020_10-bit_Movies_and_TV_hdmi.png",
+    ]
+
+    for png_file in png_file_list:
+        plot_rec709_on_rec2020_10bit_wrgbmyc_ramp_data_hdmi(
+            png_file=png_file, replace_str="TP_Rec709_on_Rec2020_10-bit_")
+
+    img_list = []
+    for png_file in png_file_list:
+        basename = Path(png_file).stem
+        in_fname = f"./img/{basename}.png"
+        img = tpg.img_read_as_float(in_fname)
+        img_list.append(img)
+    out_img = np.hstack(img_list)
+    concat_fname = "./img/concat_rec709_10bit_wrgbmyc_result_hdmi.png"
     print(concat_fname)
     tpg.img_wirte_float_as_16bit_int(concat_fname, out_img)
 
@@ -1074,8 +1177,9 @@ if __name__ == '__main__':
     # plot_concat_debug_player_result()
     # check_half_float_error()
     # plot_rec2020_10bit_wrgbmyc_ramp_data_all()
-    plot_rec2020_10bit_wrgbmyc_ramp_data_all_raw()
+    # plot_rec2020_10bit_wrgbmyc_ramp_data_all_raw()
     # plot_rec709_10bit_wrgbmyc_ramp_data_all()
+    plot_rec709_10bit_wrgbmyc_ramp_data_hdmi_all()
     # debug_plot_check_raw()
     # debug_plot_check_after_conv()
     # debug_check_srgb_rgbw()
@@ -1115,16 +1219,3 @@ if __name__ == '__main__':
     # print(concat_fname)
     # tpg.img_wirte_float_as_16bit_int(concat_fname, out_img)
 
-    # white_large_xyz = np.array([95.047, 100, 108.883])
-    # white_small = xy_to_XYZ([0.3127, 0.3290]) * 100
-    # mtx_large = calc_rec2020_to_rec709_matrix(white_xyz=white_large_xyz)
-    # mtx_small = calc_rec2020_to_rec709_matrix(white_xyz=white_small)
-    # print(mtx_large)
-    # print(mtx_small)
-    # print(mtx_small - mtx_large)
-
-    # x = np.linspace(0, 1, 1024)
-    # st2084_1dlut = create_st2084_eotf_1dlut(num_of_sample=32)
-    # y = st2084_1dlut(x)
-    # plt.plot(x, y, '-')
-    # plt.show()
