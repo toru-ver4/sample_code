@@ -12,6 +12,11 @@ import os
 import numpy as np
 from colour.algebra import vector_dot
 from colour.io import read_image
+from colour.utilities import tstack
+from colour.models import eotf_ST2084, eotf_inverse_ST2084
+from colour import normalised_primary_matrix
+from scipy import linalg
+import matplotlib.pyplot as plt
 
 # import my libraries
 import test_pattern_generator2 as tpg
@@ -175,10 +180,116 @@ def debug_1018cv():
     color_idx = 2  # green
 
 
+def apply_mtx(mtx, rgb, calc_dtype=np.float64):
+    return np.einsum(
+        "...ij,...j->...i",
+        mtx.astype(calc_dtype),
+        rgb.astype(calc_dtype),
+        dtype=calc_dtype
+    )
+
+
+def calculate_rgb_to_rgb_matrix(
+        src_primary_xy, dst_primary_xy,
+        src_white=[0.3127, 0.3290], dst_white=[0.3127, 0.3290],
+        calc_dtype=np.float64):
+    """
+    Examples
+    --------
+    >>> calc_rgb_to_rgb_matrix(src_cs_name=cs.BT709, dst_cs_name=cs.BT2020)
+    [[ 0.6274039   0.32928304  0.04331307]
+     [ 0.06909729  0.9195404   0.01136232]
+     [ 0.01639144  0.08801331  0.89559525]]    
+    """
+    npm_src = normalised_primary_matrix(
+        primaries=src_primary_xy, whitepoint=src_white)
+    npm_dst = normalised_primary_matrix(
+        primaries=dst_primary_xy, whitepoint=dst_white)
+    npm_dst_inv = linalg.inv(npm_dst)
+
+    conv_mtx = npm_dst_inv.dot(npm_src)
+
+    return conv_mtx.astype(calc_dtype)
+
+
+def scrgb_half_float_error_simulation(calc_dtype=np.float64):
+    x = np.arange(0, 1024, 1)
+    x = tstack([x, x, x])
+    color_mask_list = np.array([
+        [1, 1, 1], [1, 0, 0], [0, 1, 0], [0, 0, 1],
+        [1, 0, 1], [1, 1, 0], [0, 1, 1]
+    ])
+    yy = []
+    for color_mask in color_mask_list:
+        yy_temp = x * color_mask
+        yy.append(yy_temp)
+
+    rec2020_primary_xy = [[0.708, 0.292], [0.170, 0.797], [0.131, 0.046]]
+    rec709_primary_xy = [[0.640, 0.330], [0.300, 0.600], [0.150, 0.060]]
+    rec2020_to_rec709_mtx = calculate_rgb_to_rgb_matrix(
+        src_primary_xy=rec2020_primary_xy, dst_primary_xy=rec709_primary_xy, calc_dtype=calc_dtype)
+    rec709_to_rec2020_mtx = calculate_rgb_to_rgb_matrix(
+        src_primary_xy=rec709_primary_xy, dst_primary_xy=rec2020_primary_xy, calc_dtype=calc_dtype)
+
+    rgb_2020_st2084 = np.array(yy, dtype=np.int16)
+    rgb_2020_linear = eotf_ST2084(rgb_2020_st2084 / 1023.0).astype(calc_dtype)
+    rgb_709_linear = apply_mtx(
+        mtx=rec2020_to_rec709_mtx, rgb=rgb_2020_linear, calc_dtype=calc_dtype)
+    rgb_2020_linear_2 = apply_mtx(
+        mtx=rec709_to_rec2020_mtx, rgb=rgb_709_linear, calc_dtype=calc_dtype)
+    rgb_2020_st2084_2 = np.round(eotf_inverse_ST2084(np.clip(rgb_2020_linear_2, 0.0, 10000)) * 1023)\
+        .astype(np.int16)
+
+    diff = np.abs(rgb_2020_st2084 - rgb_2020_st2084_2)
+    print(diff)
+
+    return rgb_2020_st2084_2
+
+
+def plot_simulated_data(data):
+    fig, axes = plt.subplots(7, 1, figsize=(8, 20))
+    xx = np.arange(1024)
+    title_list = [
+        "White", "Red", "Green", "Blue", "Majenta", "Yellow", "Cyan"
+    ]
+
+    for idx in range(7):
+        ax1 = axes[idx]
+        yy = data[idx]
+        ms = 4
+        ax1.plot(xx, yy[..., 0], '-o', ms=ms, color=pu.RED, label="R")
+        ax1.plot(xx, yy[..., 1], '-o', ms=ms, color=pu.GREEN, label="G")
+        ax1.plot(xx, yy[..., 2], '-o', ms=ms, color=pu.BLUE, label="B")
+        ax1.set_xticks([x * 128 for x in range(8)] + [1023])
+        ax1.set_yticks([x * 256 for x in range(4)] + [1023])
+        ax1.set_xlim([-10, 1033])
+        ax1.set_ylim([-20, 1043])
+        ax1.set_title(f'{title_list[idx]} - np.float16')
+        ax1.grid(True)
+        ax1.legend(loc='upper left')
+
+    plt.tight_layout()
+    save_fname = f"./debug/simulation.png"
+    print(save_fname)
+    plt.savefig(save_fname, dpi=100)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    debug_plot_different_bit_depth(bit_depth=16)
-    debug_plot_different_bit_depth(bit_depth=32)
-    debug_plot_different_bit_depth(bit_depth=64)
+    # debug_plot_different_bit_depth(bit_depth=16)
+    # debug_plot_different_bit_depth(bit_depth=32)
+    # debug_plot_different_bit_depth(bit_depth=64)
     # debug_matrix_error()
     # debug_1018cv()
+    data = scrgb_half_float_error_simulation(calc_dtype=np.float16)
+    plot_simulated_data(data=data)
+
+    # rec2020_primary_xy = [[0.708, 0.292], [0.170, 0.797], [0.131, 0.046]]
+    # rec709_primary_xy = [[0.640, 0.330], [0.300, 0.600], [0.150, 0.060]]
+    # rec2020_to_rec709_mtx = calculate_rgb_to_rgb_matrix(
+    #     src_primary_xy=rec2020_primary_xy, dst_primary_xy=rec709_primary_xy, calc_dtype=np.float16)
+    # print(rec2020_to_rec709_mtx)
+    # rec709_to_rec2020_mtx = calculate_rgb_to_rgb_matrix(
+    #     src_primary_xy=rec709_primary_xy, dst_primary_xy=rec2020_primary_xy, calc_dtype=np.float16)
+    # print(rec709_to_rec2020_mtx)
+    # print(rec709_to_rec2020_mtx.dot(rec2020_to_rec709_mtx))
