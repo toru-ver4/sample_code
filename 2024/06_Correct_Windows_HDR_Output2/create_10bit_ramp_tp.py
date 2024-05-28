@@ -16,6 +16,7 @@ from colour import normalised_primary_matrix
 from colour.algebra import vector_dot
 from scipy import linalg
 from colour.io import write_image
+from colour import LUT3D
 
 # import my libraries
 import test_pattern_generator2 as tpg
@@ -51,7 +52,7 @@ def calc_block_num_h(width=1920, block_size=64):
 
 
 def calc_ramp_pattern_block_st_pos_with_color_idx(
-        code_value=0, width=1920, block_size=64, color_kind_idx=0):
+        code_value=0, width=1920, block_size=64, color_kind_idx=0 ):
     color_block_height = calc_ramp_pattern_block_st_pos(
         code_value=MAXIMUM_CODE_VALUE, width=width, block_size=block_size)[1]\
         + block_size
@@ -123,6 +124,22 @@ def create_10bit_cms_test_pattern_img(
     return img / MAXIMUM_CODE_VALUE
 
 
+def create_10bit_17x17x17_test_patch_img(
+        width=3840, height=2160, block_size=32):
+    img = np.zeros((height, width, 3), dtype=np.uint16)
+    block_img_base = np.ones((block_size, block_size, 3), dtype=np.uint16)
+    rgb = np.round(LUT3D.linear_table(size=17) * 1023).astype(np.uint16)
+    rgb = rgb.reshape(-1, 3)
+
+    for idx, yyy in enumerate(rgb):
+        block_img = block_img_base * yyy
+        st_pos = calc_ramp_pattern_block_st_pos(
+            code_value=idx, width=width, block_size=block_size)
+        tpg.merge(img, block_img, st_pos)
+
+    return img / MAXIMUM_CODE_VALUE
+
+
 def create_10bit_cms_test_pattern_img_with_text_info(
         width=3840, height=2160, block_size=32, text_area_height=80,
         text="sample"):
@@ -131,10 +148,31 @@ def create_10bit_cms_test_pattern_img_with_text_info(
     )
     img_text = create_info_text_img(
         width=width, height=text_area_height, text=text)
+    
+    merge_pos = calc_ramp_pattern_block_st_pos_with_color_idx(
+        code_value=0, width=width, block_size=block_size, color_kind_idx=7)
 
-    img = np.vstack([img_src_cs, img_text])
+    tpg.merge(img_src_cs, img_text, pos=merge_pos)
 
-    return img
+    return img_src_cs
+
+
+def create_10bit_17x17x17_test_pattern_img_with_text_info(
+        width=3840, height=2160, block_size=32, text_area_height=80,
+        text="sample"):
+    img_src_cs = create_10bit_17x17x17_test_patch_img(
+        width=width, height=height, block_size=block_size
+    )
+    img_text = create_info_text_img(
+        width=width, height=text_area_height, text=text)
+    
+    num_of_v_block = int(round( (17 ** 3) / (width // block_size) + 0.5 ))
+    st_pos_v = num_of_v_block * block_size
+
+    tpg.merge(img_src_cs, img_text, (0, st_pos_v))
+    # img = np.vstack([img_src_cs, img_text])
+
+    return img_src_cs
 
 
 def calc_rgb_to_rgb_matrix(src_cs_name, dst_cs_name):
@@ -178,11 +216,49 @@ def conv_rec709_pq_to_rec2020_pq(img):
     return rec709_st2084
 
 
+def get_gradient_tp_ref_value(tp_img, width, block_size):
+    """
+    return data[color_idx][code_value][3]
+    """
+    num_of_color = 7
+    num_of_code_value = 1024
+    data = np.zeros((num_of_color, num_of_code_value, 3))
+    for color_idx in range(num_of_color):
+        for cv in range(num_of_code_value):
+            base_pos = calc_ramp_pattern_block_st_pos_with_color_idx(
+                code_value=cv, width=width, block_size=block_size,
+                color_kind_idx=color_idx
+            )
+            center_pos = (
+                base_pos[0] + (block_size//2), base_pos[1] + (block_size//2)
+            )
+            rgb = tp_img[center_pos[1], center_pos[0]]
+            data[color_idx][cv] = rgb
+
+    return data
+
+def get_17x17x17_tp_ref_value(tp_img, width, block_size):
+    num_of_grid = 17
+    num_of_patch = num_of_grid ** 3
+    data = np.zeros((num_of_patch, 3))
+    for idx in range(num_of_patch):
+        base_pos = calc_ramp_pattern_block_st_pos(
+            code_value=idx, width=width, block_size=block_size)
+        center_pos = (
+            base_pos[0] + (block_size//2),
+            base_pos[1] + (block_size//2),
+        )
+        rgb = tp_img[center_pos[1], center_pos[0]]
+        data[idx] = rgb
+
+    return data
+
+
 def main_func():
     width = TP_WIDTH
     block_height = TP_BLOCK_HEIGHT
     text_area_height = TP_TEXT_AREA_HEIGHT
-    tp_area_height = block_height - text_area_height
+    tp_area_height = block_height
     block_size = TP_BLOCK_SIZE
 
     img_rec2020_pq = create_10bit_cms_test_pattern_img_with_text_info(
@@ -194,20 +270,31 @@ def main_func():
     img_for_rec709 = create_10bit_cms_test_pattern_img_with_text_info(
         width=width, height=tp_area_height, block_size=block_size,
         text_area_height=text_area_height,
-        text="Rec.709 WRGBMYC Gradient Pattern (0 CV - 1023 CV)"
+        text="Rec.709 on Rec.2020 WRGBMYC Gradient Pattern (0 CV - 1023 CV)"
     )
     img_rec709_pq = conv_rec709_pq_to_rec2020_pq(img=img_for_rec709)
 
-    eval_img = np.vstack([img_rec709_pq, img_rec2020_pq])
+    img_rec2020_patch = create_10bit_17x17x17_test_pattern_img_with_text_info(
+        width=width, height=tp_area_height, block_size=block_size,
+        text_area_height=text_area_height,
+        text="Rec.2020 17x17x17 Test Patch")
+
+    eval_img = np.vstack([img_rec709_pq, img_rec2020_pq, img_rec2020_patch])
     
     fname_bt2020_png = "./debug/src_tp/tp_10bit_ramp_wrgbmyc_rec2020.png"
     tpg.img_wirte_float_as_16bit_int(fname_bt2020_png, img_rec2020_pq)
+
     fname_bt709_png = "./debug/src_tp/tp_10bit_ramp_wrgbmyc_rec709.png"
     fname_bt709_exr = "./debug/src_tp/tp_10bit_ramp_wrgbmyc_rec709.exr"
     tpg.img_wirte_float_as_16bit_int(fname_bt709_png, img_rec709_pq)
     write_image(image=img_rec709_pq, path=fname_bt709_exr, bit_depth='float32')
     np.save("./debug/src_tp/tp_10bit_ramp_wrgbmyc_rec709.npy", img_rec709_pq)
-    eval_img_name = "./debug/src_tp/10bit_gradient_tp_709_2020_xxx_2.png"
+
+    fname_17x17x17_patch_png\
+        = "./debug/src_tp/tp_10bit_ramp_17x17x17_rec2020.png"
+    tpg.img_wirte_float_as_16bit_int(fname_17x17x17_patch_png, img_rec2020_patch)
+
+    eval_img_name = "./debug/src_tp/10bit_gradient_tp_709_2020_17x17x17.png"
     tpg.img_wirte_float_as_16bit_int(eval_img_name, eval_img)
 
 
@@ -229,8 +316,35 @@ def conv_to_avif():
         subprocess.run(cmd)
 
 
+def debug_get_ref_value():
+    block_height = TP_BLOCK_HEIGHT
+    block_size = TP_BLOCK_SIZE
+    width = TP_WIDTH
+    tp_fname = "./debug/src_tp/10bit_gradient_tp_709_2020_17x17x17.png"
+    tp_img = tpg.img_read_as_float(tp_fname)
+    tp_img_rec709 = tp_img[0:block_height]
+    tp_img_rec2020 = tp_img[block_height:block_height*2]
+    tp_img_17x17x17 = tp_img[block_height*2:block_height*3]
+    rgb_2020 = get_gradient_tp_ref_value(
+        tp_img=tp_img_rec2020, width=width, block_size=block_size)
+    rgb_709 = get_gradient_tp_ref_value(
+        tp_img=tp_img_rec709, width=width, block_size=block_size)
+    rgb_17x17x17 = get_17x17x17_tp_ref_value(
+        tp_img=tp_img_17x17x17, width=width, block_size=block_size)
+
+    # rgb = np.round(rgb_709 * 1023).astype(np.uint16)
+    # for c_idx in range(7):
+    #     for cv in range(1024):
+    #         print(c_idx, cv, rgb[c_idx, cv])
+
+    rgb_17x17x17 = np.round(rgb_17x17x17 * 1023).astype(np.uint16)
+    for idx in range(17**3):
+        print(idx, rgb_17x17x17[idx])    
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    main_func()
+    # main_func()
+    debug_get_ref_value()
     # calc_rgb_to_rgb_matrix(src_cs_name=cs.BT709, dst_cs_name=cs.BT2020)
     # calc_rgb_to_rgb_matrix(src_cs_name=cs.BT2020, dst_cs_name=cs.BT709)

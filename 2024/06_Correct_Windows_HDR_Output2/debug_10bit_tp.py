@@ -246,6 +246,40 @@ def scrgb_half_float_error_simulation(calc_dtype=np.float64):
     return rgb_2020_st2084_2
 
 
+def dirext_x_app_ng_simulation(calc_dtype=np.float64):
+    x = np.arange(1023, 1024, 1)
+    x = tstack([x, x, x])
+    color_mask_list = np.array([
+        [1, 1, 1], [1, 0, 0], [0, 1, 0], [0, 0, 1],
+        [1, 0, 1], [1, 1, 0], [0, 1, 1]
+    ])
+    yy = []
+    for color_mask in color_mask_list:
+        yy_temp = x * color_mask
+        yy.append(yy_temp)
+
+    rec2020_primary_xy = [[0.708, 0.292], [0.170, 0.797], [0.131, 0.046]]
+    rec709_primary_xy = [[0.640, 0.330], [0.300, 0.600], [0.150, 0.060]]
+    rec2020_to_rec709_mtx = calculate_rgb_to_rgb_matrix(
+        src_primary_xy=rec2020_primary_xy, dst_primary_xy=rec709_primary_xy, calc_dtype=np.float32)
+    rec709_to_rec2020_mtx = calculate_rgb_to_rgb_matrix(
+        src_primary_xy=rec709_primary_xy, dst_primary_xy=rec2020_primary_xy, calc_dtype=calc_dtype)
+
+    rgb_2020_st2084 = np.array(yy, dtype=np.int16)
+    rgb_2020_linear = eotf_ST2084(rgb_2020_st2084 / 1023.0).astype(np.float32)
+    rgb_709_linear = apply_mtx(
+        mtx=rec2020_to_rec709_mtx, rgb=rgb_2020_linear, calc_dtype=np.float32).astype(calc_dtype)
+    rgb_2020_linear_2 = apply_mtx(
+        mtx=rec709_to_rec2020_mtx, rgb=rgb_709_linear, calc_dtype=calc_dtype)
+    rgb_2020_st2084_2 = np.round(eotf_inverse_ST2084(np.clip(rgb_2020_linear_2, 0.0, 10000)) * 1023)\
+        .astype(np.int16)
+
+    diff = np.abs(rgb_2020_st2084 - rgb_2020_st2084_2)
+    print(rgb_2020_st2084_2)
+
+    return rgb_2020_st2084_2
+
+
 def plot_simulated_data(data):
     fig, axes = plt.subplots(7, 1, figsize=(8, 20))
     xx = np.arange(1024)
@@ -281,8 +315,11 @@ if __name__ == '__main__':
     # debug_plot_different_bit_depth(bit_depth=64)
     # debug_matrix_error()
     # debug_1018cv()
-    data = scrgb_half_float_error_simulation(calc_dtype=np.float16)
-    plot_simulated_data(data=data)
+
+    # data = scrgb_half_float_error_simulation(calc_dtype=np.float16)
+    # plot_simulated_data(data=data)
+
+    dirext_x_app_ng_simulation(calc_dtype=np.float16)
 
     # rec2020_primary_xy = [[0.708, 0.292], [0.170, 0.797], [0.131, 0.046]]
     # rec709_primary_xy = [[0.640, 0.330], [0.300, 0.600], [0.150, 0.060]]
