@@ -7,6 +7,7 @@
 
 # import standard libraries
 import os
+from pathlib import Path
 
 # import third-party libraries
 import numpy as np
@@ -21,8 +22,10 @@ import matplotlib.pyplot as plt
 # import my libraries
 import test_pattern_generator2 as tpg
 from create_10bit_ramp_tp import\
-    calc_ramp_pattern_block_center_pos_with_color_idx,\
-    TP_WIDTH, TP_BLOCK_SIZE, calc_rgb_to_rgb_matrix
+    calc_ramp_pattern_block_center_pos_with_color_idx, \
+    TP_WIDTH, TP_BLOCK_SIZE, TP_BLOCK_HEIGHT, calc_rgb_to_rgb_matrix, \
+    TP_FILE_NAME, get_gradient_tp_ref_value
+    
 import plot_utility as pu
 import transfer_functions as tf
 import color_space as cs
@@ -308,6 +311,189 @@ def plot_simulated_data(data):
     plt.savefig(save_fname, dpi=100)
 
 
+def get_app_name_from_fname(fname):
+    fname_base = Path(fname).stem
+    app_name = fname_base.rsplit("_", 1)[-1]
+
+    return app_name
+
+
+def float_to_int10(x):
+    return np.round(x * 1023).astype(np.int16)
+
+
+def debug_plot_captured_rec2020_within_three_tp(
+        captured_img, base_fname, app_name):
+    cap_2020_img = captured_img[TP_BLOCK_HEIGHT:TP_BLOCK_HEIGHT*2]
+    cap_rgb = get_gradient_tp_ref_value(
+        tp_img=cap_2020_img, width=TP_WIDTH, block_size=TP_BLOCK_SIZE)
+    cap_rgb_int10 = float_to_int10(cap_rgb)
+
+    ref_img = tpg.img_read_as_float(TP_FILE_NAME)
+    ref_2020_img = ref_img[TP_BLOCK_HEIGHT:TP_BLOCK_HEIGHT*2]
+    ref_rgb = get_gradient_tp_ref_value(
+        tp_img=ref_2020_img, width=TP_WIDTH, block_size=TP_BLOCK_SIZE)
+    ref_rgb_int10 = float_to_int10(ref_rgb)
+
+    #################################################
+    # NORMAL PLOT
+    #################################################
+    fig, axes = plt.subplots(7, 1, figsize=(8, 20))
+    xx = np.arange(1024).astype(np.uint16)
+    title_list = [
+        "White", "Red", "Green", "Blue", "Majenta", "Yellow", "Cyan"
+    ]
+
+    for idx in range(7):
+        ax1 = axes[idx]
+        yy = cap_rgb_int10[idx]
+        y_ref = ref_rgb_int10[idx]
+        ms = 4
+        ax1.plot(xx, yy[..., 0], '-', ms=ms, color=pu.RED, label="R")
+        ax1.plot(xx, yy[..., 1], '-', ms=ms, color=pu.GREEN, label="G")
+        ax1.plot(xx, yy[..., 2], '-', ms=ms, color=pu.BLUE, label="B")
+        ax1.plot(xx, y_ref[..., 0], '--', ms=ms, color=pu.MAJENTA, label="R_Ref")
+        ax1.plot(xx, y_ref[..., 1], '--', ms=ms, color=pu.YELLOW, label="G_Ref")
+        ax1.plot(xx, y_ref[..., 2], '--', ms=ms, color=pu.SKY, label="B_Ref")
+        ax1.set_xticks([x * 128 for x in range(8)] + [1023])
+        ax1.set_yticks([x * 256 for x in range(4)] + [1023])
+        ax1.set_xlim([-10, 1033])
+        ax1.set_ylim([-20, 1043])
+        ax1.set_title(f'{app_name} - {title_list[idx]} Patch')
+        ax1.grid(True)
+        ax1.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    save_fname = f"./debug/plot/{base_fname}_Rec2020.png"
+    print(save_fname)
+    plt.savefig(save_fname, dpi=100)
+
+    #################################################
+    # DIFF PLOT
+    #################################################
+    fig, axes = plt.subplots(7, 1, figsize=(8, 20))
+    xx = np.arange(1024).astype(np.uint16)
+    title_list = [
+        "White", "Red", "Green", "Blue", "Majenta", "Yellow", "Cyan"
+    ]
+
+    for idx in range(7):
+        ax1 = axes[idx]
+        yy = cap_rgb_int10[idx]
+        y_ref = ref_rgb_int10[idx]
+        ms = 4
+        ax1.plot(xx, y_ref[..., 0] - yy[..., 0], '-', ms=ms, color=pu.RED, label="R_diff")
+        ax1.plot(xx, y_ref[..., 1] - yy[..., 1], '-', ms=ms, color=pu.GREEN, label="G_diff")
+        ax1.plot(xx, y_ref[..., 2] - yy[..., 2], '-', ms=ms, color=pu.BLUE, label="B_diff")
+        ax1.set_xticks([x * 128 for x in range(8)] + [1023])
+        ax1.set_xlim([-10, 1033])
+        ax1.set_ylim([-200, 200])
+        ax1.set_title(f'{app_name} - {title_list[idx]} Patch')
+        ax1.grid(True)
+        ax1.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    save_fname = f"./debug/plot/{base_fname}_Rec2020_diff.png"
+    print(save_fname)
+    plt.savefig(save_fname, dpi=100)
+
+
+def debug_plot_captured_rec709_within_three_tp(
+        captured_img, base_fname, app_name):
+    cap_709_img = captured_img[0:TP_BLOCK_HEIGHT]
+    cap_rgb = get_gradient_tp_ref_value(
+        tp_img=cap_709_img, width=TP_WIDTH, block_size=TP_BLOCK_SIZE)
+    cap_rgb_int10 = float_to_int10(cap_rgb)
+
+    ref_img = tpg.img_read_as_float(TP_FILE_NAME)
+    ref_709_img = ref_img[0:TP_BLOCK_HEIGHT]
+    ref_rgb = get_gradient_tp_ref_value(
+        tp_img=ref_709_img, width=TP_WIDTH, block_size=TP_BLOCK_SIZE)
+    ref_rgb_int10 = float_to_int10(ref_rgb)
+
+    #################################################
+    # NORMAL PLOT
+    #################################################
+    fig, axes = plt.subplots(7, 1, figsize=(8, 20))
+    xx = np.arange(1024).astype(np.uint16)
+    title_list = [
+        "White", "Red", "Green", "Blue", "Majenta", "Yellow", "Cyan"
+    ]
+
+    for idx in range(7):
+        ax1 = axes[idx]
+        yy = cap_rgb_int10[idx]
+        y_ref = ref_rgb_int10[idx]
+        ms = 4
+        ax1.plot(xx, yy[..., 0], '-', ms=ms, color=pu.RED, label="R")
+        ax1.plot(xx, yy[..., 1], '-', ms=ms, color=pu.GREEN, label="G")
+        ax1.plot(xx, yy[..., 2], '-', ms=ms, color=pu.BLUE, label="B")
+        ax1.plot(xx, y_ref[..., 0], '--', ms=ms, color=pu.MAJENTA, label="R_Ref")
+        ax1.plot(xx, y_ref[..., 1], '--', ms=ms, color=pu.YELLOW, label="G_Ref")
+        ax1.plot(xx, y_ref[..., 2], '--', ms=ms, color=pu.SKY, label="B_Ref")
+        ax1.set_xticks([x * 128 for x in range(8)] + [1023])
+        ax1.set_yticks([x * 256 for x in range(4)] + [1023])
+        ax1.set_xlim([-10, 1033])
+        ax1.set_ylim([-20, 1043])
+        ax1.set_title(f'{app_name} - {title_list[idx]} Patch')
+        ax1.grid(True)
+        ax1.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    save_fname = f"./debug/plot/{base_fname}_Rec709.png"
+    print(save_fname)
+    plt.savefig(save_fname, dpi=100)
+
+    #################################################
+    # DIFF PLOT
+    #################################################
+    fig, axes = plt.subplots(7, 1, figsize=(8, 20))
+    xx = np.arange(1024).astype(np.uint16)
+    title_list = [
+        "White", "Red", "Green", "Blue", "Majenta", "Yellow", "Cyan"
+    ]
+
+    for idx in range(7):
+        ax1 = axes[idx]
+        yy = cap_rgb_int10[idx]
+        y_ref = ref_rgb_int10[idx]
+        ms = 4
+        ax1.plot(xx, y_ref[..., 0] - yy[..., 0], '-', ms=ms, color=pu.RED, label="R_diff")
+        ax1.plot(xx, y_ref[..., 1] - yy[..., 1], '-', ms=ms, color=pu.GREEN, label="G_diff")
+        ax1.plot(xx, y_ref[..., 2] - yy[..., 2], '-', ms=ms, color=pu.BLUE, label="B_diff")
+        ax1.set_xticks([x * 128 for x in range(8)] + [1023])
+        ax1.set_xlim([-10, 1033])
+        ax1.set_ylim([-20, 1043])
+        ax1.set_ylim([-200, 200])
+        ax1.set_title(f'{app_name} - {title_list[idx]} Patch')
+        ax1.grid(True)
+        ax1.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    save_fname = f"./debug/plot/{base_fname}_Rec709_diff.png"
+    print(save_fname)
+    plt.savefig(save_fname, dpi=100)
+
+
+def debug_plot_captured_three_tp(fname: str):
+    img = tpg.img_read_as_float(fname)
+    base_fname = Path(fname).stem
+    app_name = get_app_name_from_fname(fname=fname)
+
+    debug_plot_captured_rec2020_within_three_tp(
+        captured_img=img, base_fname=base_fname, app_name=app_name)
+    debug_plot_captured_rec709_within_three_tp(
+        captured_img=img, base_fname=base_fname, app_name=app_name)
+
+
+def calc_matrix_based_on_DWM():
+    red = [166, -12.45313]
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_plot_different_bit_depth(bit_depth=16)
@@ -319,14 +505,12 @@ if __name__ == '__main__':
     # data = scrgb_half_float_error_simulation(calc_dtype=np.float16)
     # plot_simulated_data(data=data)
 
-    dirext_x_app_ng_simulation(calc_dtype=np.float16)
+    # dirext_x_app_ng_simulation(calc_dtype=np.float16)
 
-    # rec2020_primary_xy = [[0.708, 0.292], [0.170, 0.797], [0.131, 0.046]]
-    # rec709_primary_xy = [[0.640, 0.330], [0.300, 0.600], [0.150, 0.060]]
-    # rec2020_to_rec709_mtx = calculate_rgb_to_rgb_matrix(
-    #     src_primary_xy=rec2020_primary_xy, dst_primary_xy=rec709_primary_xy, calc_dtype=np.float16)
-    # print(rec2020_to_rec709_mtx)
-    # rec709_to_rec2020_mtx = calculate_rgb_to_rgb_matrix(
-    #     src_primary_xy=rec709_primary_xy, dst_primary_xy=rec2020_primary_xy, calc_dtype=np.float16)
-    # print(rec709_to_rec2020_mtx)
-    # print(rec709_to_rec2020_mtx.dot(rec2020_to_rec709_mtx))
+    # DO NOT FORGET TO IMPLEMENT THIS FUNCTION!!!!!!
+    # calc_matrix_based_on_DWM()
+
+    debug_plot_captured_three_tp(
+        fname="./debug/capture/TP_Rec709_2020_17x17x17_Edge.png")
+    debug_plot_captured_three_tp(
+        fname="./debug/capture/TP_Rec709_2020_17x17x17_MPC-BE.png")

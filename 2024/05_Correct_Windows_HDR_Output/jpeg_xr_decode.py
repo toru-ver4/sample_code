@@ -39,4 +39,5 @@ if __name__ == '__main__':
     # main_func(src_fname="./Windows_HDR_Capture/DirectX/rgb_10bit.jxr")
     # main_func(src_fname="./Windows_HDR_Capture/DirectX/rgb_16bit.jxr")
     # main_func(src_fname="./Windows_HDR_Capture/gain_1.0/AW3225QF.jxr")
-    main_func(src_fname="./Windows_HDR_Capture/DirectX/Rec2100_10bit_to_scRGB.jxr")
+    # main_func(src_fname="./Windows_HDR_Capture/DirectX/Rec2100_10bit_to_scRGB.jxr")
+    main_func(src_fname="./Windows_HDR_Capture/DirectX/check_rec2020_to_rec709_matrix.jxr")

@@ -46,6 +46,8 @@ TP_BLOCK_HEIGHT = 720
 TP_TEXT_AREA_HEIGHT = 60
 TP_BLOCK_SIZE = 16
 
+TP_FILE_NAME = "./debug/src_tp/10bit_gradient_tp_709_2020_17x17x17.png"
+
 
 def calc_block_num_h(width=1920, block_size=64):
     return width // block_size
@@ -294,7 +296,7 @@ def main_func():
         = "./debug/src_tp/tp_10bit_ramp_17x17x17_rec2020.png"
     tpg.img_wirte_float_as_16bit_int(fname_17x17x17_patch_png, img_rec2020_patch)
 
-    eval_img_name = "./debug/src_tp/10bit_gradient_tp_709_2020_17x17x17.png"
+    eval_img_name = TP_FILE_NAME
     tpg.img_wirte_float_as_16bit_int(eval_img_name, eval_img)
 
 
@@ -320,7 +322,7 @@ def debug_get_ref_value():
     block_height = TP_BLOCK_HEIGHT
     block_size = TP_BLOCK_SIZE
     width = TP_WIDTH
-    tp_fname = "./debug/src_tp/10bit_gradient_tp_709_2020_17x17x17.png"
+    tp_fname = TP_FILE_NAME
     tp_img = tpg.img_read_as_float(tp_fname)
     tp_img_rec709 = tp_img[0:block_height]
     tp_img_rec2020 = tp_img[block_height:block_height*2]
