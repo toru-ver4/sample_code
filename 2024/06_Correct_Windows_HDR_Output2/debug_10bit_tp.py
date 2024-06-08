@@ -491,7 +491,230 @@ def debug_plot_captured_three_tp(fname: str):
 
 
 def calc_matrix_based_on_DWM():
-    red = [166, -12.45313]
+    rr = np.array([166, -12.45313, -1.81445]) / 100.0
+    gg = np.array([-58.75, 113.25, -10.05469]) / 100.0
+    bb = np.array([-7.28516, -0.83447, 111.81250]) / 100.0
+
+    mtx = np.zeros((3, 3), dtype=np.float64)
+    mtx[0, 0] = rr[0]
+    mtx[0, 1] = gg[0]
+    mtx[0, 2] = bb[0]
+    mtx[1, 0] = rr[1]
+    mtx[1, 1] = gg[1]
+    mtx[1, 2] = bb[1]
+    mtx[2, 0] = rr[2]
+    mtx[2, 1] = gg[2]
+    mtx[2, 2] = bb[2]
+
+    mtx = mtx.astype(np.float16)
+
+    print(mtx)
+
+
+def calc_half_float_inv_rec709_to_rec2020_mtx():
+    rec709_to_rec2020_mtx = calc_rgb_to_rgb_matrix(
+        src_cs_name=cs.BT709, dst_cs_name=cs.BT2020)
+    rec709_to_rec2020_mtx_half = rec709_to_rec2020_mtx.astype(np.float16)
+    rec2020_to_rec709_mtx = np.linalg.inv(rec709_to_rec2020_mtx_half.astype(np.float32))
+    rec2020_to_rec709_mtx_half = rec2020_to_rec709_mtx.astype(np.float16)
+    print(rec2020_to_rec709_mtx_half)
+    dot_mtx = rec709_to_rec2020_mtx_half.dot(rec2020_to_rec709_mtx_half)
+    print(dot_mtx)
+
+
+def plot_tp_10bit_green_high_luminance_hdmi():
+    fname = "../05_Correct_Windows_HDR_Output/Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec2020_10-bit_Edge_hdmi.png"
+    img = tpg.img_read_as_float(fname)
+    rgb_data = get_gradient_tp_ref_value(
+        tp_img=img, width=3840, block_size=32)
+    gg = rgb_data[2] * 1023
+
+    x = np.arange(768, 1024)
+    print(x)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(14, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Edge_hdmi - Green",
+        graph_title_size=None,
+        xlabel="Target Code Value (10-bit)",
+        ylabel="Measured Code Value (10-bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=[768 + x * 32 for x in range(8)] + [1023],
+        ytick=[x * 128 for x in range(8)] + [1023],
+        xtick_size=None, ytick_size=None,
+        linewidth=2,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, gg[x, 0], '-o', color=pu.RED, label="R")
+    ax1.plot(x, gg[x, 1], '-o', color=pu.GREEN, label="G")
+    ax1.plot(x, gg[x, 2], '-o', color=pu.BLUE, label="B")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', show=False,
+        save_fname="./debug/plot/TP_2020_Edge_HDMI_Green_Magnified.png")
+
+
+def create_tp_corrdinate_and_ref_value_csv():
+    def core_func_rec709_rec2020(
+            ref_tp_fname, out_csv_name, v_offset_for_type, color_name_list,
+            num_of_color, num_of_cv, csv_header):
+        coordinate_info = np.zeros(
+            (num_of_color, num_of_cv, 2), dtype=np.uint16)
+        reference_cv = np.zeros((num_of_color, num_of_cv, 3), dtype=np.uint16)
+        ref_img = tpg.img_read_as_float(ref_tp_fname)
+        ref_img = np.round(ref_img * 1023).astype(np.uint16)
+
+        for c_idx in range(num_of_color):
+            for cv in range(num_of_cv):
+                center_pos = calc_ramp_pattern_block_center_pos_with_color_idx(
+                    code_value=cv, width=width, block_size=block_size,
+                    color_kind_idx=c_idx
+                )
+                center_pos[1] = center_pos[1] + v_offset_for_type
+                coordinate_info[c_idx, cv] = center_pos
+                reference_cv[c_idx, cv] = ref_img[center_pos[1], center_pos[0]]
+
+        with open(out_csv_name, 'wt') as f:
+            buf = ""
+            buf += csv_header
+            for c_idx in range(num_of_color):
+                color_name = color_name_list[c_idx]
+                for cv in range(num_of_cv):
+                    center_pos = coordinate_info[c_idx, cv]
+                    ref_rgb = reference_cv[c_idx, cv]
+                    buf += f"{color_name},{cv},"
+                    buf += f"{center_pos[0]},{center_pos[1]},"
+                    buf += f"{ref_rgb[0]},{ref_rgb[1]},{ref_rgb[2]}\n"
+
+            f.write(buf)
+
+    width = TP_WIDTH
+    block_size = TP_BLOCK_SIZE
+    num_of_color = 7
+    num_of_cv = 1024
+    csv_header = "colors,code_value,pos_x,pos_y,ref_R,ref_G,ref_B\n"
+    color_name_list =\
+        ["white", "red", "green", 'blue', 'magenta', 'cyan', 'yellow']
+    ref_tp_fname = "./debug/src_tp/10bit_gradient_tp_709_2020_17x17x17.png"
+    v_offset_for_type = 720  # 2160 (px) / 3 (type) = 720 px
+
+    # Rec.709 on Re.2020
+    out_csv_name = "./debug/tp_coordinate/tp_coordinate_rec709_on_rec2020.csv"
+    core_func_rec709_rec2020(
+        ref_tp_fname=ref_tp_fname, color_name_list=color_name_list,
+        out_csv_name=out_csv_name, v_offset_for_type=v_offset_for_type * 0,
+        num_of_color=num_of_color, num_of_cv=num_of_cv, csv_header=csv_header
+    )
+
+    # Rec.2020
+    out_csv_name = "./debug/tp_coordinate/tp_coordinate_rec2020.csv"
+    core_func_rec709_rec2020(
+        ref_tp_fname=ref_tp_fname, color_name_list=color_name_list,
+        out_csv_name=out_csv_name, v_offset_for_type=v_offset_for_type * 1,
+        num_of_color=num_of_color, num_of_cv=num_of_cv, csv_header=csv_header
+    )
+
+    # 17x17x17
+    num_of_color = 1
+    num_of_cv = 17 ** 3
+    csv_header = "type,sequential_index,pos_x,pos_y,ref_R,ref_G,ref_B\n"
+    out_csv_name = "./debug/tp_coordinate/tp_coordinate_17x17x17.csv"
+    color_name_list = ["17x17x17"]
+    core_func_rec709_rec2020(
+        ref_tp_fname=ref_tp_fname, color_name_list=color_name_list,
+        out_csv_name=out_csv_name, v_offset_for_type=v_offset_for_type * 2,
+        num_of_color=num_of_color, num_of_cv=num_of_cv, csv_header=csv_header
+    )
+
+
+def plot_diff_rec709_rec2020_single(capture_png_fname, color_space="Rec.709"):
+    basename = Path(capture_png_fname).stem
+    title_base = basename.replace("TP_Rec709_2020_17x17x17_HDMI_", "")
+    img_all = tpg.img_read_as_float(capture_png_fname)
+    img_all = np.round(img_all * 1023).astype(np.int16)
+    if color_space == 'Rec.709':
+        csv_fname = "./debug/tp_coordinate/tp_coordinate_rec709_on_rec2020.csv"
+    elif color_space == "Rec.2020":
+        csv_fname = "./debug/tp_coordinate/tp_coordinate_rec2020.csv"
+    else:
+        raise ValueError(f'color_space: {color_space} is invalid parameter')
+    pos_and_ref_rgb_list = np.loadtxt(
+        fname=csv_fname, delimiter=',', skiprows=1, usecols=np.arange(1, 7),
+        dtype=np.int16)
+    pos_and_ref_rgb_list = pos_and_ref_rgb_list.reshape(7, 1024, 6)
+    cv_list = pos_and_ref_rgb_list[..., 0]
+    pos_list = pos_and_ref_rgb_list[..., 1:3]
+    ref_rgb_list = pos_and_ref_rgb_list[..., 3:6]
+
+    captured_rgb_list = img_all[pos_list[..., 1], pos_list[..., 0]]
+    diff_rgb = captured_rgb_list - ref_rgb_list
+
+    fig, axes = plt.subplots(7, 1, figsize=(8, 20))
+    title_list = [
+        "White", "Red", "Green", "Blue", "Majenta", "Yellow", "Cyan"
+    ]
+    num_of_color = len(title_list)
+
+    for idx in range(num_of_color):
+        ax1 = axes[idx]
+        xx = cv_list[idx]
+        yy = diff_rgb[idx]
+        ms = 4
+        ax1.plot(xx, yy[..., 0], '-', ms=ms, color=pu.RED, label="R")
+        ax1.plot(xx, yy[..., 1], '-', ms=ms, color=pu.GREEN, label="G")
+        ax1.plot(xx, yy[..., 2], '-', ms=ms, color=pu.BLUE, label="B")
+        ax1.set_xticks([x * 128 for x in range(8)] + [1023])
+        ax1.set_yticks([-100 + x * 50 for x in range(9)])
+        ax1.set_xlim([-10, 1033])
+        ax1.set_ylim([-100, 300])
+        ax1.set_xlabel('Target Code Value (10-bit)')
+        ax1.set_ylabel('Difference (10-bit)')
+        ax1.set_title(f'Difference {title_base} - {title_list[idx]}')
+        ax1.grid(True)
+        ax1.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    save_fname = f"./debug/plot/diff_{basename}_{color_space}.png"
+    print(save_fname)
+    plt.savefig(save_fname, dpi=100)
+
+    return save_fname
+
+
+def plot_diff_rec709_rec2020_control():
+    def plot_and_concat(capture_png_fname_list, color_space):
+        graph_fname_list = []
+        for capture_png_fname in capture_png_fname_list:
+            graph_fname = plot_diff_rec709_rec2020_single(
+                capture_png_fname=capture_png_fname, color_space=color_space)
+            graph_fname_list.append(graph_fname)
+
+        img_list = []
+        for graph_fname in graph_fname_list:
+            img = tpg.img_read(graph_fname)
+            img_list.append(img)
+        out_img = np.hstack(img_list)
+        concat_fname = "./debug/plot/concat_diff_TP_Rec709_2020_17x17x17"
+        concat_fname += f"_{color_space}.png"
+        tpg.img_write(concat_fname, out_img)
+
+    capture_png_fname_list = [
+        "./debug/capture/TP_Rec709_2020_17x17x17_HDMI_Edge.png",
+        "./debug/capture/TP_Rec709_2020_17x17x17_HDMI_Chrome.png",
+        "./debug/capture/TP_Rec709_2020_17x17x17_HDMI_MPC-BE.png",
+        "./debug/capture/TP_Rec709_2020_17x17x17_HDMI_movies_and_TV.png"
+    ]
+    plot_and_concat(
+        capture_png_fname_list=capture_png_fname_list,
+        color_space="Rec.2020")
+    plot_and_concat(
+        capture_png_fname_list=capture_png_fname_list,
+        color_space="Rec.709")
 
 
 if __name__ == '__main__':
@@ -510,7 +733,13 @@ if __name__ == '__main__':
     # DO NOT FORGET TO IMPLEMENT THIS FUNCTION!!!!!!
     # calc_matrix_based_on_DWM()
 
-    debug_plot_captured_three_tp(
-        fname="./debug/capture/TP_Rec709_2020_17x17x17_Edge.png")
-    debug_plot_captured_three_tp(
-        fname="./debug/capture/TP_Rec709_2020_17x17x17_MPC-BE.png")
+    # debug_plot_captured_three_tp(
+    #     fname="./debug/capture/TP_Rec709_2020_17x17x17_Edge.png")
+    # debug_plot_captured_three_tp(
+    #     fname="./debug/capture/TP_Rec709_2020_17x17x17_MPC-BE.png")
+    # calc_half_float_inv_rec709_to_rec2020_mtx()
+
+    # plot_tp_10bit_green_high_luminance_hdmi()
+    # create_tp_corrdinate_and_ref_value_csv()
+
+    plot_diff_rec709_rec2020_control()

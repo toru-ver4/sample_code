@@ -1179,7 +1179,7 @@ if __name__ == '__main__':
     # plot_rec2020_10bit_wrgbmyc_ramp_data_all()
     # plot_rec2020_10bit_wrgbmyc_ramp_data_all_raw()
     # plot_rec709_10bit_wrgbmyc_ramp_data_all()
-    plot_rec709_10bit_wrgbmyc_ramp_data_hdmi_all()
+    # plot_rec709_10bit_wrgbmyc_ramp_data_hdmi_all()
     # debug_plot_check_raw()
     # debug_plot_check_after_conv()
     # debug_check_srgb_rgbw()
@@ -1199,23 +1199,22 @@ if __name__ == '__main__':
     #     png_file_name="./Windows_HDR_Capture/gain_1.0_10-bit/rec2100_pq_youtube_block_gradient_HDMI.png"
     # )
 
-    # file_list = [
-    #     "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec2020_10-bit_Edge_hdmi.png",
-    #     "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec2020_10-bit_Chrome_hdmi.png",
-    #     "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec2020_10-bit_MPC-BE_hdmi.png",
-    #     "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec2020_10-bit_VLC_hdmi.png",
-    #     "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec2020_10-bit_Movies_and_TV_hdmi.png",
-    # ]
-    # for png_file in file_list:
-    #     plot_10bit_wrgbmyc_ramp_data_hdmi(png_file=png_file)
-    # img_list = []
-    # for png_file in file_list:
-    #     basename = Path(png_file).stem
-    #     in_fname = f"./img/{basename}.png"
-    #     img = tpg.img_read_as_float(in_fname)
-    #     img_list.append(img)
-    # out_img = np.hstack(img_list)
-    # concat_fname = "./img/concat_rec2020_10bit_wrgbmyc_result_hdmi.png"
-    # print(concat_fname)
-    # tpg.img_wirte_float_as_16bit_int(concat_fname, out_img)
-
+    file_list = [
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec2020_10-bit_Edge_hdmi.png",
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec2020_10-bit_Chrome_hdmi.png",
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec2020_10-bit_MPC-BE_hdmi.png",
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec2020_10-bit_VLC_hdmi.png",
+        "./Windows_HDR_Capture/gain_1.0_10-bit/TP_Rec2020_10-bit_Movies_and_TV_hdmi.png",
+    ]
+    for png_file in file_list:
+        plot_10bit_wrgbmyc_ramp_data_hdmi(png_file=png_file)
+    img_list = []
+    for png_file in file_list:
+        basename = Path(png_file).stem
+        in_fname = f"./img/{basename}.png"
+        img = tpg.img_read_as_float(in_fname)
+        img_list.append(img)
+    out_img = np.hstack(img_list)
+    concat_fname = "./img/concat_rec2020_10bit_wrgbmyc_result_hdmi.png"
+    print(concat_fname)
+    tpg.img_wirte_float_as_16bit_int(concat_fname, out_img)
