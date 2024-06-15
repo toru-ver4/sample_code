@@ -541,6 +541,57 @@ def log_sacle_settings_x_linear_y_log(
         linewidth=minor_line_width, alpha=alpha_minor, zorder=-10)
 
 
+def log_sacle_settings_x_log_y_linear(
+        ax, alpha_major=0.8, alpha_minor=0.2,
+        major_color=0.0, major_line_width=0.85,
+        minor_color=0.0, minor_line_width=0.85):
+    """
+    Examples
+    --------
+    >>> x = np.linspace(0, 1, 1024)
+    >>> y = tf.eotf_to_luminance(x, tf.ST2084)
+    >>> fig, ax1 = pu.plot_1_graph(
+    ...     fontsize=20,
+    ...     figsize=(8, 8),
+    ...     bg_color=None,
+    ...     graph_title="Title",
+    ...     graph_title_size=None,
+    ...     xlabel="X Axis Label", ylabel="Y Axis Label",
+    ...     axis_label_size=None,
+    ...     legend_size=17,
+    ...     xlim=None,
+    ...     ylim=None,
+    ...     xtick=[x * 128 for x in range(8)] + [1023],
+    ...     ytick=None,
+    ...     xtick_size=None, ytick_size=None,
+    ...     linewidth=3,
+    ...     minor_xtick_num=32,
+    ...     minor_ytick_num=None)
+    >>> pu.log_sacle_settings_x_linear_y_log(
+    ...     ax=ax1, alpha_major=0.6, alpha_minor=0.1)
+    >>> ax1.plot(x*1023, y, label=tf.ST2084)
+    >>> fname = "./figure/st2084_log.png"
+    >>> pu.show_and_save(
+        ... fig=fig, legend_loc='upper left', save_fname=fname)
+    """
+    ax.set_xscale("log")
+    ax.tick_params(
+        which='major', direction='in', top=True, right=True, length=8)
+    ax.tick_params(
+        which='minor', direction='in', top=True, right=True, length=4)
+    major_locator = ticker.LogLocator(base=10, numticks=16)
+    minor_locator = ticker.LogLocator(
+        base=10, subs=[x * 0.1 for x in range(10)], numticks=16)
+    ax.get_xaxis().set_major_locator(major_locator)
+    ax.get_xaxis().set_minor_locator(minor_locator)
+    ax.grid(
+        True, "major", color=str(major_color), linestyle='-',
+        linewidth=major_line_width, alpha=alpha_major, zorder=-10)
+    ax.grid(
+        True, "minor", color=str(minor_color), linestyle='-',
+        linewidth=minor_line_width, alpha=alpha_minor, zorder=-10)
+
+
 def plot_3d_init(
         figsize=(9, 9),
         title="Title",

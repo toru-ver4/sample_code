@@ -25,7 +25,7 @@ from create_10bit_ramp_tp import\
     calc_ramp_pattern_block_center_pos_with_color_idx, \
     TP_WIDTH, TP_BLOCK_SIZE, TP_BLOCK_HEIGHT, calc_rgb_to_rgb_matrix, \
     TP_FILE_NAME, get_gradient_tp_ref_value
-    
+
 import plot_utility as pu
 import transfer_functions as tf
 import color_space as cs
@@ -631,7 +631,8 @@ def create_tp_corrdinate_and_ref_value_csv():
     )
 
 
-def plot_diff_rec709_rec2020_single(capture_png_fname, color_space="Rec.709"):
+def plot_diff_rec709_rec2020_single_diff_base(
+        capture_png_fname, color_space="Rec.709"):
     basename = Path(capture_png_fname).stem
     title_base = basename.replace("TP_Rec709_2020_17x17x17_HDMI_", "")
     img_all = tpg.img_read_as_float(capture_png_fname)
@@ -673,7 +674,7 @@ def plot_diff_rec709_rec2020_single(capture_png_fname, color_space="Rec.709"):
         ax1.set_ylim([-100, 300])
         ax1.set_xlabel('Target Code Value (10-bit)')
         ax1.set_ylabel('Difference (10-bit)')
-        ax1.set_title(f'Difference {title_base} - {title_list[idx]}')
+        ax1.set_title(f'{title_base} - {title_list[idx]}')
         ax1.grid(True)
         ax1.legend(loc='upper left')
 
@@ -686,20 +687,95 @@ def plot_diff_rec709_rec2020_single(capture_png_fname, color_space="Rec.709"):
     return save_fname
 
 
+def plot_diff_rec709_rec2020_single_reference_base(
+        capture_png_fname, color_space="Rec.709"):
+    basename = Path(capture_png_fname).stem
+    title_base = basename.replace("TP_Rec709_2020_17x17x17_HDMI_", "")
+    img_all = tpg.img_read_as_float(capture_png_fname)
+    img_all = np.round(img_all * 1023).astype(np.int16)
+    if color_space == 'Rec.709':
+        csv_fname = "./debug/tp_coordinate/tp_coordinate_rec709_on_rec2020.csv"
+    elif color_space == "Rec.2020":
+        csv_fname = "./debug/tp_coordinate/tp_coordinate_rec2020.csv"
+    else:
+        raise ValueError(f'color_space: {color_space} is invalid parameter')
+    pos_and_ref_rgb_list = np.loadtxt(
+        fname=csv_fname, delimiter=',', skiprows=1, usecols=np.arange(1, 7),
+        dtype=np.int16)
+    pos_and_ref_rgb_list = pos_and_ref_rgb_list.reshape(7, 1024, 6)
+    cv_list = pos_and_ref_rgb_list[..., 0]
+    pos_list = pos_and_ref_rgb_list[..., 1:3]
+    ref_rgb_list = pos_and_ref_rgb_list[..., 3:6]
+
+    captured_rgb_list = img_all[pos_list[..., 1], pos_list[..., 0]]
+
+    fig, axes = plt.subplots(7, 1, figsize=(8, 20))
+    title_list = [
+        "White", "Red", "Green", "Blue", "Majenta", "Yellow", "Cyan"
+    ]
+    num_of_color = len(title_list)
+
+    for idx in range(num_of_color):
+        ax1 = axes[idx]
+        xx = cv_list[idx]
+        yy = captured_rgb_list[idx]
+        ref = ref_rgb_list[idx]
+        ms = 4
+        ax1.plot(xx, yy[..., 0], '-', ms=ms, color=pu.RED, label="R")
+        ax1.plot(xx, yy[..., 1], '-', ms=ms, color=pu.GREEN, label="G")
+        ax1.plot(xx, yy[..., 2], '-', ms=ms, color=pu.BLUE, label="B")
+        ax1.plot(xx, ref[..., 0], '--', ms=ms, color=pu.MAJENTA, alpha=0.5, label="R (Reference)")
+        ax1.plot(xx, ref[..., 1], '--', ms=ms, color=pu.YELLOW, alpha=0.5, label="G (Reference)")
+        ax1.plot(xx, ref[..., 2], '--', ms=ms, color=pu.SKY, alpha=0.5, label="B (Reference)")
+        ax1.set_xticks([x * 128 for x in range(8)] + [1023])
+        ax1.set_yticks([x * 256 for x in range(4)] + [1023])
+        ax1.set_xlim([-10, 1033])
+        ax1.set_ylim([-20, 1043])
+        ax1.set_xlabel('Target Code Value (10-bit)')
+        ax1.set_ylabel('Measured Code Value (10-bit)')
+        ax1.set_title(f'{title_base} - {title_list[idx]}')
+        ax1.grid(True)
+        ax1.legend(loc='upper left')
+
+    plt.tight_layout()
+
+    save_fname = f"./debug/plot/ref_{basename}_{color_space}.png"
+    print(save_fname)
+    plt.savefig(save_fname, dpi=100)
+
+    return save_fname
+
+
 def plot_diff_rec709_rec2020_control():
     def plot_and_concat(capture_png_fname_list, color_space):
-        graph_fname_list = []
+        graph_diff_fname_list = []
+        graph_ref_fname_list = []
         for capture_png_fname in capture_png_fname_list:
-            graph_fname = plot_diff_rec709_rec2020_single(
+            graph_diff_fname = plot_diff_rec709_rec2020_single_diff_base(
                 capture_png_fname=capture_png_fname, color_space=color_space)
-            graph_fname_list.append(graph_fname)
+            graph_diff_fname_list.append(graph_diff_fname)
 
-        img_list = []
-        for graph_fname in graph_fname_list:
-            img = tpg.img_read(graph_fname)
-            img_list.append(img)
-        out_img = np.hstack(img_list)
+            graph_ref_fname = plot_diff_rec709_rec2020_single_reference_base(
+                capture_png_fname=capture_png_fname, color_space=color_space)
+            graph_ref_fname_list.append(graph_ref_fname)
+
+        img_diff_list = []
+        img_ref_list = []
+        for graph_diff_fname, graph_ref_fname in\
+                zip(graph_diff_fname_list, graph_ref_fname_list):
+            img = tpg.img_read(graph_diff_fname)
+            img_diff_list.append(img)
+
+            img = tpg.img_read(graph_ref_fname)
+            img_ref_list.append(img)
+
+        out_img = np.hstack(img_diff_list)
         concat_fname = "./debug/plot/concat_diff_TP_Rec709_2020_17x17x17"
+        concat_fname += f"_{color_space}.png"
+        tpg.img_write(concat_fname, out_img)
+
+        out_img = np.hstack(img_ref_list)
+        concat_fname = "./debug/plot/concat_ref_TP_Rec709_2020_17x17x17"
         concat_fname += f"_{color_space}.png"
         tpg.img_write(concat_fname, out_img)
 
@@ -715,6 +791,122 @@ def plot_diff_rec709_rec2020_control():
     plot_and_concat(
         capture_png_fname_list=capture_png_fname_list,
         color_space="Rec.709")
+
+
+def create_diff_csv_17x17x17_single(capture_png_fname):
+    basename = Path(capture_png_fname).stem
+    # title_base = basename.replace("TP_Rec709_2020_17x17x17_HDMI_", "")
+    img_all = tpg.img_read_as_float(capture_png_fname)
+    img_all = np.round(img_all * 1023).astype(np.int16)
+    csv_fname = "./debug/tp_coordinate/tp_coordinate_17x17x17.csv"
+    pos_and_ref_rgb_list = np.loadtxt(
+        fname=csv_fname, delimiter=',', skiprows=1, usecols=np.arange(1, 7),
+        dtype=np.int16)
+    pos_list = pos_and_ref_rgb_list[..., 1:3]
+    ref_rgb_list = pos_and_ref_rgb_list[..., 3:6]
+    captured_rgb_list = img_all[pos_list[..., 1], pos_list[..., 0]]
+    # normalize_coef = np.max(ref_rgb_list, axis=-1).reshape(-1, 1)
+    # normalize_coef[normalize_coef == 0] = 1
+
+    # nor_captured_rgb_list = captured_rgb_list / normalize_coef
+    # nor_ref_rgb_list = ref_rgb_list / normalize_coef
+
+    # diff = np.abs(nor_captured_rgb_list - nor_ref_rgb_list)
+    # diff_sum = np.sum(diff, axis=-1)
+
+    csv_file_fname = f"./debug/plot/diff_17x17x17_{basename}.csv"
+    header = "idx,ref_r,ref_g,reg_b,measure_r,measure_g,measure_b\n"
+    with open(csv_file_fname, "wt") as f:
+        buf = ""
+        buf += header
+        for idx in range(17**3):
+            buf += f"{idx},"
+            buf += f"{ref_rgb_list[idx, 0]},"
+            buf += f"{ref_rgb_list[idx, 1]},"
+            buf += f"{ref_rgb_list[idx, 2]},"
+            buf += f"{captured_rgb_list[idx, 0]},"
+            buf += f"{captured_rgb_list[idx, 1]},"
+            buf += f"{captured_rgb_list[idx, 2]},"
+            buf += "\n"
+        f.write(buf)
+
+
+def create_diff_csv_17x17x17_control():
+    capture_png_fname_list = [
+        "./debug/capture/TP_Rec709_2020_17x17x17_HDMI_Edge.png",
+        "./debug/capture/TP_Rec709_2020_17x17x17_HDMI_Chrome.png",
+        "./debug/capture/TP_Rec709_2020_17x17x17_HDMI_MPC-BE.png",
+        "./debug/capture/TP_Rec709_2020_17x17x17_HDMI_movies_and_TV.png"
+    ]
+
+    for capture_png_fname in capture_png_fname_list:
+        create_diff_csv_17x17x17_single(
+            capture_png_fname=capture_png_fname
+        )
+        break
+
+
+def plot_inverse_st2084():
+    min_val = 10 ** (-4)
+    max_val = 10000
+    num_of_sample = 32
+    min_log = np.log2(min_val)
+    max_log = np.log2(max_val)
+    print(min_log, max_log)
+
+    # Linear Scale
+    x = np.arange(10001)
+    y = eotf_inverse_ST2084(x) * 1023
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="SMPTE ST 2084 Inverse EOTF",
+        graph_title_size=None,
+        xlabel="Display Light (cd/m2)",
+        ylabel="Code Value (10-bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=[x * 128 for x in range(8)] + [1023],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, y, label="SMPTE ST 2084 Inverse EOTF")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', show=True,
+        save_fname="./debug/plot/pq_oetf_linear.png")
+
+    # Log Scale
+    x = 2 ** (np.linspace(min_log, max_log, num_of_sample))
+    y = eotf_inverse_ST2084(x) * 1023
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="SMPTE ST 2084 Inverse EOTF",
+        graph_title_size=None,
+        xlabel="Display Light (cd/m2)",
+        ylabel="Code Value (10-bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=[x * 128 for x in range(8)] + [1023],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    pu.log_sacle_settings_x_log_y_linear(
+        ax=ax1, alpha_major=0.6, alpha_minor=0.2)
+    ax1.plot(x, y, label="SMPTE ST 2084 Inverse EOTF")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', show=False,
+        save_fname="./debug/plot/pq_oetf_log.png")
 
 
 if __name__ == '__main__':
@@ -742,4 +934,12 @@ if __name__ == '__main__':
     # plot_tp_10bit_green_high_luminance_hdmi()
     # create_tp_corrdinate_and_ref_value_csv()
 
-    plot_diff_rec709_rec2020_control()
+    # plot_diff_rec709_rec2020_control()
+    # create_diff_csv_17x17x17_control()
+
+    # plot_inverse_st2084()
+
+    # print(eotf_ST2084(128/1023))
+    # x = np.array([0.01, 1000, 0.1])
+    # y = np.round(tf.oetf_from_luminance(x, tf.ST2084) * 1023).astype(np.uint16)
+    # print(y)

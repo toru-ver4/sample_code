@@ -883,7 +883,7 @@ def get_directX_app_gradient_data(img: np.ndarray):
         rect_ed_pos_h = rect_st_pox_h + 1
         rect_rgb[color_idx]\
             = img[rect_st_pos_v:rect_ed_pos_v, rect_st_pox_h:rect_ed_pos_h]
-        
+
     return gradient_rgb, rect_rgb
 
 
