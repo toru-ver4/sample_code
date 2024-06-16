@@ -184,7 +184,7 @@ def calc_rgb_to_rgb_matrix(src_cs_name, dst_cs_name):
     >>> calc_rgb_to_rgb_matrix(src_cs_name=cs.BT709, dst_cs_name=cs.BT2020)
     [[ 0.6274039   0.32928304  0.04331307]
      [ 0.06909729  0.9195404   0.01136232]
-     [ 0.01639144  0.08801331  0.89559525]]    
+     [ 0.01639144  0.08801331  0.89559525]]
     """
     src_gamut_xy = cs.get_primaries(color_space_name=src_cs_name).flatten()
     dst_gamut_xy = cs.get_primaries(color_space_name=dst_cs_name).flatten()

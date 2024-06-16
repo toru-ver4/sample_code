@@ -25,6 +25,8 @@ from create_10bit_ramp_tp import\
     calc_ramp_pattern_block_center_pos_with_color_idx, \
     TP_WIDTH, TP_BLOCK_SIZE, TP_BLOCK_HEIGHT, calc_rgb_to_rgb_matrix, \
     TP_FILE_NAME, get_gradient_tp_ref_value
+from simulate_windows_signal_processing\
+    import simulate_windows_signal_processing
 
 import plot_utility as pu
 import transfer_functions as tf
@@ -909,6 +911,38 @@ def plot_inverse_st2084():
         save_fname="./debug/plot/pq_oetf_log.png")
 
 
+def plot_simulated_green_only_data():
+    dummy1, dummy2, rgb = simulate_windows_signal_processing()
+
+    x = np.arange(1024).astype(np.uint16)
+    y = rgb[2]  # green data
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Simulated HDMI Output (Green Gradient)",
+        graph_title_size=None,
+        xlabel="Target Code Value (10-bit)",
+        ylabel="Simulated Code Value (10-bit)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=[128 * x for x in range(8)] + [1023],
+        ytick=[128 * x for x in range(8)] + [1023],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, y[..., 0], '-', color=pu.RED, label="R")
+    ax1.plot(x, y[..., 1], '-', color=pu.GREEN, label="G")
+    ax1.plot(x, y[..., 2], '-', color=pu.BLUE, label="B")
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', show=False,
+        save_fname="./debug/plot/simulated_data_green_only.png")
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_plot_different_bit_depth(bit_depth=16)
@@ -943,3 +977,5 @@ if __name__ == '__main__':
     # x = np.array([0.01, 1000, 0.1])
     # y = np.round(tf.oetf_from_luminance(x, tf.ST2084) * 1023).astype(np.uint16)
     # print(y)
+
+    plot_simulated_green_only_data()
