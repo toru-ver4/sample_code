@@ -111,6 +111,8 @@ requirements.lock
 # vs code
 .vscode/
 
+ty_lib/.secret/**
+
 2019/009_python_subprocess/bin/*
 2019/001_make_3dlut/**/*.tif
 2019/005_make_animation_using_matplotlib/*.mp4
