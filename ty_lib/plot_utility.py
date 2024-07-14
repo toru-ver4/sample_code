@@ -469,7 +469,8 @@ def _check_hsv_space():
     plt.show()
 
 
-def log_scale_settings(ax1, grid_alpha=0.5, bg_color="#E0E0E0"):
+def log_scale_settings(
+        ax1, grid_alpha=0.5, bg_color="#F0F0F0", grid_color="#808080"):
     """
     https://stackoverflow.com/questions/44078409/matplotlib-semi-log-plot-minor-tick-marks-are-gone-when-range-is-large
     """
@@ -486,7 +487,7 @@ def log_scale_settings(ax1, grid_alpha=0.5, bg_color="#E0E0E0"):
     ax1.get_xaxis().set_major_locator(major_locator)
     ax1.get_xaxis().set_minor_locator(minor_locator)
     ax1.get_xaxis().set_major_locator(ticker.LogLocator())
-    ax1.grid(which='both', linestyle='-', alpha=grid_alpha)
+    ax1.grid(which='both', linestyle='-', alpha=grid_alpha, color=grid_color)
     ax1.patch.set_facecolor(bg_color)
 
 

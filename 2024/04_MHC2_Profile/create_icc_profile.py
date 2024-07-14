@@ -10,7 +10,7 @@ import os
 import xml.etree.ElementTree as ET
 import subprocess
 from pathlib import Path
-import itertools
+from itertools import product
 
 # import third-party libraries
 import numpy as np
@@ -240,18 +240,25 @@ def debug_func():
 
 
 def create_mhc2_profile_with_gain(
-        gain=0.5, peak_luminance=450, max_full_frame_luminance=250):
+        gain=0.5,
+        min_luminance=0.001,
+        peak_luminance=450,
+        max_full_frame_luminance=250,
+        cs_name=cs.BT2020):
     calibration_matrix = np.identity(3)
-    luminance_str = f"{peak_luminance}-{max_full_frame_luminance}"
+    luminance_str = f"{min_luminance}-{peak_luminance}-"
+    luminance_str += f"{max_full_frame_luminance}"
     luts = create_gain_1dlut(num_of_sample=1024, gain=gain)
     xml_fname = "./xml/MHC2_sample.xml"
-    icc_fname = f"./icc/MHC2_{luminance_str}-nits_gain-{gain:.2f}.icm"
+    cs_name_file = cs_name.replace(" ", "_")
+    icc_fname = f"./icc/MHC2_{luminance_str}-nits_gain-{gain:.2f}_"
+    icc_fname += f"{cs_name_file}.icm"
     create_mhc_icc_profile(
         gamma=2.4, src_white=cs.D65,
-        src_primaries=cs.get_primaries(cs.BT2020),
+        src_primaries=cs.get_primaries(cs_name),
         desc_str=str(Path(icc_fname).stem),
         cprt_str="Copyright 2024 Toru Yoshihara",
-        min_luminance=0.001,
+        min_luminance=min_luminance,
         peak_luminance=peak_luminance,
         max_full_frame_luminance=max_full_frame_luminance,
         xml_fname=xml_fname,
@@ -296,11 +303,16 @@ if __name__ == '__main__':
         [10000, 10000], [4000, 4000], [1000, 1000],
         [600, 600], [400, 400], [200, 200], [100, 100]
     ]
-    # peak_full_luminance_pair_list = [[10000, 10000]]
-    for gain in gain_list:
-        for peak_full_luminance_pair in peak_full_luminance_pair_list:
-            peak_luminance = peak_full_luminance_pair[0]
-            max_full_frame_luminance = peak_full_luminance_pair[1]
-            create_mhc2_profile_with_gain(
-                gain=gain, peak_luminance=peak_luminance,
-                max_full_frame_luminance=max_full_frame_luminance)
+    min_lumiannce_list = [0, 0.001, 0.01, 0.1, 1.0]
+    color_space_list = [cs.BT2020, cs.P3_D65, cs.BT709]
+    for gain, peak_full_luminance_pair, min_luminance, color_space in product(
+            gain_list, peak_full_luminance_pair_list, min_lumiannce_list,
+            color_space_list):
+        peak_luminance = peak_full_luminance_pair[0]
+        max_full_frame_luminance = peak_full_luminance_pair[1]
+        create_mhc2_profile_with_gain(
+            gain=gain,
+            min_luminance=min_luminance,
+            peak_luminance=peak_luminance,
+            max_full_frame_luminance=max_full_frame_luminance,
+            cs_name=color_space)

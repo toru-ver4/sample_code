@@ -5,7 +5,7 @@
     <ProfileDeviceClass>mntr</ProfileDeviceClass>
     <DataColourSpace>RGB </DataColourSpace>
     <PCS>XYZ </PCS>
-    <CreationDateTime>2024-04-20T15:17:20</CreationDateTime>
+    <CreationDateTime>2024-07-10T23:09:15</CreationDateTime>
     <PrimaryPlatform>MSFT</PrimaryPlatform>
     <ProfileFlags EmbeddedInFile="false" UseWithEmbeddedDataOnly="false"></ProfileFlags>
     <DeviceManufacturer></DeviceManufacturer>
@@ -21,7 +21,7 @@
   <Tags>
     <multiLocalizedUnicodeType>
       <TagSignature>desc</TagSignature>
-      <LocalizedText LanguageCountry="enUS">MHC2_100-100-nits_gain-1.00</LocalizedText>
+      <LocalizedText LanguageCountry="enUS">MHC2_1.0-100-100-nits_gain-1.00_ITU-R_BT.709</LocalizedText>
     </multiLocalizedUnicodeType>
     <multiLocalizedUnicodeType>
       <TagSignature>cprt</TagSignature>
@@ -45,15 +45,15 @@
     </parametricCurveType>
     <XYZType>
       <TagSignature>rXYZ</TagSignature>
-      <XYZNumber X="0.63695805" Y="0.26270021" Z="0.00000000"></XYZNumber>
+      <XYZNumber X="0.41239080" Y="0.21263901" Z="0.01933082"></XYZNumber>
     </XYZType>
     <XYZType>
       <TagSignature>gXYZ</TagSignature>
-      <XYZNumber X="0.14461690" Y="0.67799807" Z="0.02807269"></XYZNumber>
+      <XYZNumber X="0.35758434" Y="0.71516868" Z="0.11919478"></XYZNumber>
     </XYZType>
     <XYZType>
       <TagSignature>bXYZ</TagSignature>
-      <XYZNumber X="0.16888098" Y="0.05930172" Z="1.06098506"></XYZNumber>
+      <XYZNumber X="0.18048079" Y="0.07219232" Z="0.95053215"></XYZNumber>
     </XYZType>
     <s15Fixed16ArrayType>
       <TagSignature>chad</TagSignature>
@@ -66,7 +66,7 @@
     <PrivateType type="MHC2">
       <TagSignature>MHC2</TagSignature>
       <UnknownData>
-       0000000000000400000000420064000000000024000000540000105c00002064
+       0000000000000400000100000064000000000024000000540000105c00002064
        0001000000000000000000000000000000000000000100000000000000000000
        0000000000000000000100000000000073663332000000000000000000000040
        00000080000000c0000001000000014000000180000001c00000020100000241

@@ -89,18 +89,52 @@ def make_output_fname(
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # main_func()
-    input_fname = "./debug/src_tp/HDR_TP_ST2086.mov"
+
+    # fixed parameters
+    # input_fname = "./debug/src_tp/HDR_TP_ST2086.mov"
+    input_fname = "./debug/src_tp/Src_HDR_TP_for_ST2086_HEVC.mov"
     color_matrix = 9
     color_range = 1
     transfer_function = 16
     color_primaries = 9
     white_point = [0.3127, 0.3290]
 
-    max_cll = 1000
-    max_fall = 400
-    max_luminance = 1000
-    min_luminance = 0.01
+    # variable parameters
+    max_cll = 400
+    max_fall = 200
+    max_luminance = 600
+    min_luminance = 0.05
+    color_space_name = cs.BT709
+    chromaticity_coordinates = cs.get_primaries(color_space_name).flatten()
+    output_fname = make_output_fname(
+        color_space_name=color_space_name,
+        max_cll=max_cll,
+        max_fall=max_fall,
+        max_luminance=max_luminance,
+        min_luminance=min_luminance
+    )
+
+    # create .mkv file
+    add_metadata_to_src_mov(
+        input_fname=input_fname,
+        output_fname=output_fname,
+        color_matrix=color_matrix,
+        color_range=color_range,
+        transfer_function=transfer_function,
+        color_primaries=color_primaries,
+        chromaticity_coordinates=chromaticity_coordinates,
+        white_point=white_point,
+        max_cll=max_cll,
+        max_fall=max_fall,
+        max_luminance=max_luminance,
+        min_luminance=min_luminance
+    )
+
+    # variable parameters
+    max_cll = 10000
+    max_fall = 10000
+    max_luminance = 10000
+    min_luminance = 0
     color_space_name = cs.BT2020
     chromaticity_coordinates = cs.get_primaries(color_space_name).flatten()
     output_fname = make_output_fname(
@@ -110,6 +144,8 @@ if __name__ == '__main__':
         max_luminance=max_luminance,
         min_luminance=min_luminance
     )
+
+    # create .mkv file
     add_metadata_to_src_mov(
         input_fname=input_fname,
         output_fname=output_fname,
