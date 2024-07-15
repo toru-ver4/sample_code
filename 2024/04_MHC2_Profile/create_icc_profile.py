@@ -246,12 +246,13 @@ def create_mhc2_profile_with_gain(
         max_full_frame_luminance=250,
         cs_name=cs.BT2020):
     calibration_matrix = np.identity(3)
-    luminance_str = f"{min_luminance}-{peak_luminance}-"
+    # luminance_str = f"{min_luminance}-{peak_luminance}-"
+    luminance_str = f"{peak_luminance}-"
     luminance_str += f"{max_full_frame_luminance}"
     luts = create_gain_1dlut(num_of_sample=1024, gain=gain)
     xml_fname = "./xml/MHC2_sample.xml"
     cs_name_file = cs_name.replace(" ", "_")
-    icc_fname = f"./icc/MHC2_{luminance_str}-nits_gain-{gain:.2f}_"
+    icc_fname = f"./icc/MHC2_{luminance_str}-nits_gain-{gain:.3f}_"
     icc_fname += f"{cs_name_file}.icm"
     create_mhc_icc_profile(
         gamma=2.4, src_white=cs.D65,
@@ -298,13 +299,16 @@ if __name__ == '__main__':
     # debug_func()
     # create_mhc2_profile_with_gain()
     # gain_list = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
-    gain_list = [1.0]
-    peak_full_luminance_pair_list = [
-        [10000, 10000], [4000, 4000], [1000, 1000],
-        [600, 600], [400, 400], [200, 200], [100, 100]
-    ]
-    min_lumiannce_list = [0, 0.001, 0.01, 0.1, 1.0]
-    color_space_list = [cs.BT2020, cs.P3_D65, cs.BT709]
+    gain_list = [203.0/80.0]
+    # peak_full_luminance_pair_list = [
+    #     [10000, 10000], [4000, 4000], [1000, 1000],
+    #     [600, 600], [400, 400], [200, 200], [100, 100]
+    # ]
+    peak_full_luminance_pair_list = [[10000, 10000]]
+    # min_lumiannce_list = [0, 0.001, 0.01, 0.1, 1.0]
+    min_lumiannce_list = [0]
+    # color_space_list = [cs.BT2020, cs.P3_D65, cs.BT709]
+    color_space_list = [cs.BT2020]
     for gain, peak_full_luminance_pair, min_luminance, color_space in product(
             gain_list, peak_full_luminance_pair_list, min_lumiannce_list,
             color_space_list):

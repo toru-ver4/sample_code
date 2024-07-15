@@ -31,11 +31,11 @@ GREEN = np.array([3, 175, 122]) / 255  # for plot
 BLUE = np.array([0, 90, 255]) / 255  # for plot
 
 
-def create_test_rgb_data():
+def create_test_rgb_data(bit_depth=10):
     """
     Examples
     --------
-    >>> rgb = create_test_rgb_data()
+    >>> rgb = create_test_rgb_data(bit_depth=10)
     >>> print(rgb)
     [[[   0    0    0]
       [   1    1    1]
@@ -86,7 +86,6 @@ def create_test_rgb_data():
       [   0 1022 1022]
       [   0 1023 1023]]]
     """
-    bit_depth = 10
     num_of_cv = 2 ** bit_depth
     gradient = np.arange(num_of_cv, dtype=np.uint16)
     color_mask_list = np.array([

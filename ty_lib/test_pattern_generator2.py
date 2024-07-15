@@ -2795,6 +2795,76 @@ def scroll_image(img, offset_h, offset_v):
     return out_img
 
 
+def create_wrgbmyc_ramp_data(bit_depth=10):
+    """
+    Examples
+    --------
+    >>> rgb = create_test_rgb_data(bit_depth=10)
+    >>> print(rgb)
+    [[[   0    0    0]
+      [   1    1    1]
+      [   2    2    2]
+      ...,
+      [1021 1021 1021]
+      [1022 1022 1022]
+      [1023 1023 1023]]
+
+     [[   0    0    0]
+      [   1    0    0]
+      [   2    0    0]
+      ...,
+      [1021    0    0]
+      [1022    0    0]
+      [1023    0    0]]
+
+     [[   0    0    0]
+      [   0    1    0]
+      [   0    2    0]
+      ...,
+      [   0 1021    0]
+      [   0 1022    0]
+      [   0 1023    0]]
+
+     ...,
+     [[   0    0    0]
+      [   1    0    1]
+      [   2    0    2]
+      ...,
+      [1021    0 1021]
+      [1022    0 1022]
+      [1023    0 1023]]
+
+     [[   0    0    0]
+      [   1    1    0]
+      [   2    2    0]
+      ...,
+      [1021 1021    0]
+      [1022 1022    0]
+      [1023 1023    0]]
+
+     [[   0    0    0]
+      [   0    1    1]
+      [   0    2    2]
+      ...,
+      [   0 1021 1021]
+      [   0 1022 1022]
+      [   0 1023 1023]]]
+    """
+    num_of_cv = 2 ** bit_depth
+    gradient = np.arange(num_of_cv, dtype=np.uint16)
+    color_mask_list = np.array([
+        [1, 1, 1],
+        [1, 0, 0], [0, 1, 0], [0, 0, 1],
+        [1, 0, 1], [1, 1, 0], [0, 1, 1]
+    ], dtype=np.uint16)
+    rgb = gradient.reshape(-1, num_of_cv, 1).repeat(3, axis=2)\
+        .repeat(color_mask_list.shape[0], axis=0)
+
+    rgb = rgb * color_mask_list.reshape(-1, 1, 3)
+
+    return rgb
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
