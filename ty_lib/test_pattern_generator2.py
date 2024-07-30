@@ -2865,6 +2865,100 @@ def create_wrgbmyc_ramp_data(bit_depth=10):
     return rgb
 
 
+def calc_rgb_2_Y(rgb_linear, color_space_name):
+    """
+    Parameters
+    ----------
+    rgb_linear : ndarray
+        linear rgb data. the unit is nits
+    color_space_name : str
+        color space name. e.g. `cs.BT709`
+    """
+    large_xyz = cs.rgb_to_large_xyz(
+        rgb=rgb_linear, color_space_name=color_space_name)
+    return large_xyz[..., 1]
+
+
+def calc_max_cll(rgb_linear, color_space_name):
+    """
+    Parameters
+    ----------
+    rgb_linear : ndarray
+        linear rgb data. the unit is nits
+    color_space_name : str
+        color space name. e.g. `cs.BT709`
+    """
+    yy = calc_rgb_2_Y(
+        rgb_linear=rgb_linear, color_space_name=color_space_name)
+    return int(np.round(np.max(yy)))
+
+
+def calc_max_fall(rgb_linear, color_space_name):
+    """
+    Parameters
+    ----------
+    rgb_linear : ndarray
+        linear rgb data. the unit is nits
+    color_space_name : str
+        color space name. e.g. `cs.BT709`
+    """
+    yy = calc_rgb_2_Y(
+        rgb_linear=rgb_linear, color_space_name=color_space_name)
+    return int(np.round(np.average(yy.flatten())))
+
+
+def png_to_avif(
+        png_fname, avif_fname,
+        bit_depth=10,
+        color_space_name=cs.BT2020,
+        transfer_characteristics=tf.ST2084,
+        cll=None, pall=None):
+
+    if (cll is None) or (pall is None):
+        rgb_non_linear = img_read_as_float(png_fname)
+        rgb_linear = tf.eotf_to_luminance(
+            rgb_non_linear, transfer_characteristics
+        )
+        if cll is None:
+            cll = calc_max_cll(
+                rgb_linear=rgb_linear, color_space_name=color_space_name
+            )
+        if pall is None:
+            pall = calc_max_fall(
+                rgb_linear=rgb_linear, color_space_name=color_space_name
+            )
+
+    if color_space_name == cs.BT2020:
+        cicp_cs = "9"
+    elif color_space_name == cs.P3_D65:
+        cicp_cs = "12"
+    elif color_space_name == cs.BT709:
+        cicp_cs = "1"
+    else:
+        raise ValueError("Error. unknown color space name.")
+
+    if transfer_characteristics == tf.ST2084:
+        cicp_tf = "16"
+    elif transfer_characteristics == tf.HLG:
+        cicp_tf = "18"
+    else:
+        cicp_tf = "1"
+
+    cmd = [
+        "avifenc", png_fname,
+        "-d", f"{bit_depth}",
+        "-y", "444",
+        "--cicp", f"{cicp_cs}/{cicp_tf}/0",
+        "-r", "full",
+        "--clli", f"{cll},{pall}",
+        "--lossless",
+        "--ignore-exif",
+        avif_fname
+    ]
+    print(" ".join(cmd))
+    subprocess.run(cmd)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))

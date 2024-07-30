@@ -12,6 +12,7 @@ import subprocess
 import numpy as np
 import test_pattern_generator2 as tpg
 import transfer_functions as tf
+import color_space as cs
 
 # import my libraries
 
@@ -36,24 +37,28 @@ def encode_HDR_TP():
     for png_fname in src_file_list:
         print(png_fname)
         if png_fname.find("BT.2020") > -1:
-            cicp = "9/16/0"
+            color_space_name = cs.BT2020
         elif png_fname.find("P3-D65") > -1:
-            cicp = "12/16/0"
+            color_space_name = cs.P3_D65
         else:
             raise ValueError("filename dosn't contain colorimetry infomation.")
 
         pp = Path(png_fname)
         parent = str(pp.parent)
         avif_fname = "./" + parent + "/" + pp.stem + ".avif"
-        cmd = [
-            "avifenc", png_fname, "-d", "10", "-y", "444", "--cicp", cicp,
-            "-r", "full", "--lossless", "--ignore-exif", avif_fname
-        ]
-        print(" ".join(cmd))
-        subprocess.run(cmd)
+        tpg.png_to_avif(
+            png_fname=png_fname,
+            avif_fname=avif_fname,
+            bit_depth=10,
+            color_space_name=color_space_name,
+            transfer_characteristics=tf.ST2084,
+            cll=None,
+            pall=None
+        )
 
 
-def create_specific_luminance_small_patch(luminance=203, size=256):
+def create_specific_luminance_small_patch(
+        luminance=203, size=256, cll=10000, pall=10000):
     target_cv = tf.oetf_from_luminance(luminance, tf.ST2084)
     img = np.ones((size, size, 3)) * target_cv
 
@@ -64,23 +69,54 @@ def create_specific_luminance_small_patch(luminance=203, size=256):
 
     pp = Path(png_fname)
     parent = str(pp.parent)
-    avif_fname = "./" + parent + "/" + pp.stem + ".avif"
-    cmd = [
-        "avifenc", png_fname, "-d", "10", "-y", "444", "--cicp", "9/16/0",
-        "-r", "full", "--lossless", "--ignore-exif", avif_fname
-    ]
-    print(" ".join(cmd))
-    subprocess.run(cmd)
+    if (cll is None) or (pall is None):
+        avif_fname =\
+            "./" + parent + "/" + pp.stem + "_cll-auto" + ".avif"
+    else:
+        avif_fname =\
+            "./" + parent + "/" + pp.stem + f"_cll-{cll}-{pall}-nits" + ".avif"
+
+    tpg.png_to_avif(
+        png_fname=png_fname,
+        avif_fname=avif_fname,
+        bit_depth=12,
+        color_space_name=cs.BT2020,
+        transfer_characteristics=tf.ST2084,
+        cll=cll,
+        pall=pall,
+    )
+
+    # cmd = [
+    #     "avifenc", png_fname,
+    #     "-d", "10",
+    #     "-y", "444",
+    #     "--cicp", "9/16/0",
+    #     "-r", "full",
+    #     "--clli", f"{cll},{pall}",
+    #     "--lossless",
+    #     "--ignore-exif",
+    #     avif_fname
+    # ]
+    # print(" ".join(cmd))
+    # subprocess.run(cmd)
 
 
-def create_specific_luminance_small_patch_all():
+def create_specific_luminance_small_patch_all(cll_luminance=None):
     lumiannce_list = [
         60, 80, 100, 120, 140, 160, 180,
-        203, 220, 240, 260, 280, 300, 320]
-    patch_size = 128
+        200, 203, 204, 220, 240, 260, 280, 300, 320,
+        1000, 10000]
+    patch_size = 64
+    if cll_luminance is None:
+        cll = None
+        pall = None
+    else:
+        cll = cll_luminance
+        pall = cll_luminance
     for lumiannce in lumiannce_list:
         create_specific_luminance_small_patch(
-            luminance=lumiannce, size=patch_size
+            luminance=lumiannce, size=patch_size,
+            cll=cll, pall=pall
         )
 
 
@@ -122,17 +158,32 @@ def trim_3840x960():
     pp = Path(crop_fname)
     parent = str(pp.parent)
     avif_fname = "./" + parent + "/" + pp.stem + ".avif"
-    cmd = [
-        "avifenc", crop_fname, "-d", "10", "-y", "444", "--cicp", "9/16/0",
-        "-r", "full", "--lossless", "--ignore-exif", avif_fname
-    ]
-    print(" ".join(cmd))
-    subprocess.run(cmd)
+
+    tpg.png_to_avif(
+        png_fname=crop_fname,
+        avif_fname=avif_fname,
+        bit_depth=10,
+        color_space_name=cs.BT2020,
+        transfer_characteristics=tf.ST2084,
+        cll=None,
+        pall=None
+    )
+
+
+def _debug_calc_sdr_color_code():
+    num_of_patch = 10
+    max_8bit = 255
+    cv = np.round(np.linspace(0, 1, num_of_patch) * max_8bit).astype(np.uint8)
+    for x in cv:
+        print(f"#{x:02X}{x:02X}{x:02X}")
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # create_specific_luminance_small_patch_all()
+    # create_specific_luminance_small_patch_all(cll_luminance=None)
+    # create_specific_luminance_small_patch_all(cll_luminance=1000)
+    # create_specific_luminance_small_patch_all(cll_luminance=10000)
     # encode_HDR_TP()
     # encode_av1_tp_video(pix_fmt="yuv420p10le")
-    trim_3840x960()
+    # trim_3840x960()
+    _debug_calc_sdr_color_code()

@@ -83,4 +83,5 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_specific_bit_depth_avif()
     # decode_specific_bit_depth_avif()
-    verify_data()
+    # verify_data()
+    print(tf.eotf_to_luminance(900/1023, tf.ST2084))

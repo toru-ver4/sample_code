@@ -39,4 +39,22 @@ def main_func(src_fname="./Windows_HDR_Capture/600.jxr"):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # main_func(src_fname="./debug/jpeg_xr/Rec2100_PQ_TP.jxr")
-    main_func(src_fname="./debug/jpeg_xr/Rec2100_PQ_TP_with_BG.jxr")
+    # main_func(src_fname="./debug/jpeg_xr/Rec2100_PQ_TP_with_BG.jxr")
+    # main_func(src_fname="./debug/jpeg_xr/check_hdr_ref_white_80nits.jxr")
+    # main_func(src_fname="./debug/jpeg_xr/check_hdr_ref_white_200nits.jxr")
+    # main_func(src_fname="./debug/jpeg_xr/check_hdr_ref_white_204nits.jxr")
+    # main_func(src_fname="./debug/jpeg_xr/check_hdr_ref_white_sdr80nits.jxr")
+    # main_func(src_fname="./debug/jpeg_xr/check_hdr_ref_white_sdr100nits.jxr")
+    main_func(src_fname="./debug/jpeg_xr/Lightroom_204nits.jxr")
+
+    # fname_list = [
+    #     "./debug/jpeg_xr/TP_080_nits.jxr",
+    #     "./debug/jpeg_xr/TP_100_nits.jxr",
+    #     "./debug/jpeg_xr/TP_140_nits.jxr",
+    #     "./debug/jpeg_xr/TP_200_nits.jxr",
+    #     "./debug/jpeg_xr/TP_204_nits.jxr",
+    #     "./debug/jpeg_xr/TP_280_nits.jxr",
+    #     "./debug/jpeg_xr/TP_480_nits.jxr",
+    # ]
+    # for fname in fname_list:
+    #     main_func(src_fname=fname)
