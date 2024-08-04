@@ -246,8 +246,8 @@ def create_mhc2_profile_with_gain(
         max_full_frame_luminance=250,
         cs_name=cs.BT2020):
     calibration_matrix = np.identity(3)
-    # luminance_str = f"{min_luminance}-{peak_luminance}-"
-    luminance_str = f"{peak_luminance}-"
+    luminance_str = f"{min_luminance}-{peak_luminance}-"
+    # luminance_str += f"{peak_luminance}-"
     luminance_str += f"{max_full_frame_luminance}"
     luts = create_gain_1dlut(num_of_sample=1024, gain=gain)
     xml_fname = "./xml/MHC2_sample.xml"
@@ -299,7 +299,8 @@ if __name__ == '__main__':
     # debug_func()
     # create_mhc2_profile_with_gain()
     # gain_list = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
-    gain_list = [203.0/80.0]
+    # gain_list = [100/80]
+    gain_list = [0.45]
     # peak_full_luminance_pair_list = [
     #     [10000, 10000], [4000, 4000], [1000, 1000],
     #     [600, 600], [400, 400], [200, 200], [100, 100]

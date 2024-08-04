@@ -185,5 +185,5 @@ if __name__ == '__main__':
     # create_specific_luminance_small_patch_all(cll_luminance=10000)
     # encode_HDR_TP()
     # encode_av1_tp_video(pix_fmt="yuv420p10le")
-    # trim_3840x960()
-    _debug_calc_sdr_color_code()
+    trim_3840x960()
+    # _debug_calc_sdr_color_code()
