@@ -50,4 +50,5 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # main_func(src_fname="./debug/jpeg_xr/resolve_80nits.jxr")
     # main_func(src_fname="./debug/jpeg_xr/resolve_204nits.jxr")
-    main_func(src_fname="./debug/jpeg_xr/resole_st2084_p3d65_output.jxr")
+    # main_func(src_fname="./debug/jpeg_xr/resole_st2084_p3d65_output.jxr")
+    main_func(src_fname="./debug/jpeg_xr/No3_P3D65_PQ.jxr")
