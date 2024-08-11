@@ -152,7 +152,7 @@ def plot_chromaticity_diagram(
         fontsize=20 * rate,
         figsize=((xmax - xmin) * 10 * rate,
                  (ymax - ymin) * 10 * rate),
-        graph_title="Chromaticity Gamut",
+        graph_title=None,
         graph_title_size=None,
         xlabel=None, ylabel=None,
         axis_label_size=None,
@@ -331,6 +331,24 @@ def test_no1_without_correction():
     )
 
 
+def test_no1_with_correction():
+    plot_param_list = [
+        PlotParam(
+            img_fname="./debug/jpeg_xr/Re_No1_SDR_bright_000.jxr",
+            plot_color=pu.RED,
+            label="SDR content brightness = 0",
+            marker=None,
+            edgecolor=None,
+            lw=2
+        ),
+    ]
+    plot_bright_result(
+        plot_param_list=plot_param_list,
+        dr="hdr",
+        graph_fname="./img/No1_retry_sdr_content_bight_test_result.png"
+    )
+
+
 def test_no2_without_correction():
     # luminance
     plot_param_list = [
@@ -388,7 +406,7 @@ def test_no3_without_correction():
         PlotParam(
             img_fname="./debug/jpeg_xr/No3_P3D65_PQ.jxr",
             plot_color=pu.RED,
-            label="Output color space: P3D65-PQ",
+            label="Output color space: P3D65-ST2084",
             marker=None,
             edgecolor=None,
             lw=2
@@ -405,7 +423,7 @@ def test_no3_without_correction():
         PlotParam(
             img_fname="./debug/jpeg_xr/No3_P3D65_PQ.jxr",
             plot_color=pu.RED,
-            label="Output color space: P3D65-PQ",
+            label="Output color space: P3D65-ST2084",
             marker="+",
             edgecolor=pu.RED,
             lw=2
@@ -505,21 +523,20 @@ def debug_rec2100_output():
 
 
 def main_func():
-    # No.1 SDR content brightness
+    # # No.1 SDR content brightness
     # test_no1_without_correction()
 
-    # No.2 Change MHC Profile Luminance
+    # # No.2 Change MHC Profile Luminance
     # test_no2_without_correction()
 
-    # No.3 P3D65-ST2084 Luminance
+    # # No.3 P3D65-ST2084 Luminance
     # test_no3_without_correction()
 
     # No.4 Rec.709-gm24 Luminance
     # test_no4_without_correction()
 
-    # # debug
-    # debug_p3d65_output()
-    # debug_rec2100_output()
+    # # No.1 SDR content brightness
+    # test_no1_with_correction()
 
     pass
 
@@ -528,3 +545,7 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     main_func()
     # debug_p3d65_st2084_color_checker()
+
+    # # debug
+    # debug_p3d65_output()
+    # debug_rec2100_output()
