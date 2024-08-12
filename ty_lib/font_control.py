@@ -199,8 +199,19 @@ class TextDrawer():
         dummy_img = Image.new("RGBA", (1, 1), self.bg_color)
         dummy_draw = ImageDraw.Draw(dummy_img)
         font = ImageFont.truetype(self.font_path, self.font_size)
-        text_size = dummy_draw.textsize(
-            self.text, font, stroke_width=self.stroke_width)
+        # text_size = dummy_draw.textsize(
+        #     self.text, font, stroke_width=self.stroke_width)
+        bbox = dummy_draw.multiline_textbbox(
+            (0, 0), self.text, font=font, stroke_width=self.stroke_width
+        )
+        if self.stroke_width is not None:
+            stroke_width_offset = self.stroke_width
+        else:
+            stroke_width_offset = 0
+        text_width = bbox[2]
+        text_height = bbox[3] + stroke_width_offset
+        text_size = [text_width, text_height]
+
         (_, _), (_, offset_y) = font.font.getsize(self.text)
         # print(f"make: text_size={text_size}")
         # print(f"offset_y={offset_y}")
