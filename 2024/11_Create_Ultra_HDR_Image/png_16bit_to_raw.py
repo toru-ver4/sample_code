@@ -1,4 +1,5 @@
 import cv2
+from pathlib import Path
 import numpy as np
 import os
 
@@ -55,9 +56,39 @@ def create_test_data():
     tpg.img_write("./test_data.png", img)
 
 
+def calc_gain_map_metadata(hdr_fname, sdr_fname):
+    img_hdr = tpg.img_read_as_float(filename=hdr_fname)
+    img_sdr = tpg.img_read_as_float(filename=sdr_fname)
+
+    cfg_name = f"./metadata_{Path(hdr_fname).stem}-{Path(sdr_fname).stem}.cfg"
+    print(cfg_name)
+
+    kk = 0.00001
+    gg = np.log2((img_hdr + kk)/(img_sdr + kk))
+
+    with open(cfg_name, 'wt') as f:
+        buf = ""
+        buf += f"--maxContentBoost {np.max(gg):.3f}\n"
+        buf += f"--minContentBoost {np.min(gg):.3f}\n"
+        buf += "--gamma 1.0\n"
+        buf += "--offsetSdr 0.0\n"
+        buf += "--offsetHdr 0.0\n"
+        buf += "--hdrCapacityMin 1.0\n"
+        buf += "--hdrCapacityMax 2.3\n"
+        f.write(buf)
+
+
+def create_raw_for_ultrahdr_app(hdr_fname, sdr_fname):
+    png_16bit_to_rgba1010102(fname=hdr_fname)
+    png_16bit_to_rgba8888(fname=sdr_fname)
+    calc_gain_map_metadata(hdr_fname=hdr_fname, sdr_fname=sdr_fname)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_test_data()
     # main_func(fname="./test_data.png")
-    png_16bit_to_rgba1010102(fname="./src_rec2100-pq.png")
-    png_16bit_to_rgba8888(fname="./src_rec709.png")
+    create_raw_for_ultrahdr_app(
+        hdr_fname="./src_rec2100-pq.png",
+        sdr_fname="./src_rec709.png"
+    )
