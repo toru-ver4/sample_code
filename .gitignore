@@ -246,6 +246,7 @@ temporary/**/**
 2024/05_Correct_Windows_HDR_Output/debug_img/**/*.hlsl.h
 *.bkp
 2024/06_Correct_Windows_HDR_Output2/debug/**
+2024/11_Create_Ultra_HDR_Image/**/*.raw
 
 [Dd]ebug/
 [Rr]elease/
