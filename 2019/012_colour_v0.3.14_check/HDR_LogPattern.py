@@ -63,7 +63,8 @@ ACES_AP0_CS = colour.models.RGB_COLOURSPACE_ACES2065_1
 #     {'tf': tf.LOGC4, 'cs': ALEXA_WIDE_GAMUT_CS4, 'wp': 'D65'}
 # ]
 PARAM_LIST = [
-    {'tf': tf.SRGB, 'cs': BT2020_CS, 'wp': 'D65'},
+    {'tf': tf.HLG, 'cs': BT2020_CS, 'wp': 'D65'},
+    {'tf': tf.SRGB, 'cs': BT709_CS, 'wp': 'D65'},
 ]
 
 

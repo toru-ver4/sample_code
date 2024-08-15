@@ -128,7 +128,7 @@ def oetf(x, name=GAMMA24):
     elif name == BT709:
         y = colour.models.oetf_BT709(x * MAX_VALUE[name])
     elif name == HLG:
-        y = colour.models.eotf_inverse_HLG_BT2100(x * MAX_VALUE[name])
+        y = colour.models.eotf_inverse_BT2100_HLG(x * MAX_VALUE[name])
     elif name == ST2084:
         # fix me!
         y = colour.models.eotf_inverse_ST2084(x * MAX_VALUE[name])
@@ -234,7 +234,7 @@ def eotf(x, name=GAMMA24):
         # fix me!
         y = colour.models.eotf_ST2084(x) / MAX_VALUE[name]
     elif name == HLG:
-        y = colour.models.eotf_HLG_BT2100(x) / MAX_VALUE[name]
+        y = colour.models.eotf_BT2100_HLG(x) / MAX_VALUE[name]
     elif name == SLOG3:
         y = colour.models.log_decoding_SLog3(x, out_reflection=False)\
             / MAX_VALUE[name]

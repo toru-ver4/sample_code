@@ -25,5 +25,5 @@ RUN apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /roor/local/src
 
-# # ENTRYPOINT ["/opt/ultrahdr/ultrahdr_app"]
+# ENTRYPOINT ["/opt/ultrahdr/ultrahdr_app"]
 CMD ["bash"]

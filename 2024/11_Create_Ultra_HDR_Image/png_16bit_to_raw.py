@@ -3,6 +3,8 @@ from pathlib import Path
 import numpy as np
 import os
 
+from PIL import Image
+
 import test_pattern_generator2 as tpg
 import transfer_functions as tf
 import color_space as cs
@@ -25,19 +27,12 @@ def linearize_input_image(fname, tf_name=tf.ST2084, cs_name=cs.P3_D65):
 
 def img_write_8bit_jpeg_from_float(filename: str, img_float: np.ndarray):
     img = np.round(img_float * 0xFF).astype(np.uint8)
-    if img.shape[2] == 3:
-        img_save = img[:, :, ::-1]
-    elif img.shape[2] == 4:
-        shape = img.shape
-        r, g, b, a = np.dsplit(img, 4)
-        img_save = np.dstack((b, g, r, a)).reshape((shape))
-    else:
-        raise ValueError("not supported img shape for immg_write")
-
-    cv2.imwrite(filename, img_save, [
-        cv2.IMWRITE_JPEG_QUALITY, 100,
-        cv2.IMWRITE_JPEG_SAMPLING_FACTOR, cv2.IMWRITE_JPEG_SAMPLING_FACTOR_444,
-    ])
+    img_pil = Image.fromarray(img)
+    with open("./icc_profile/sRGB_BT2020.icc", 'rb') as f:
+        icc_profile = f.read()
+    img_pil.save(
+        filename, 'JPEG', quality=100, icc_profile=icc_profile, subsampling=0
+    )
 
 
 def png_16bit_to_rgba1010102(fname: str):
@@ -115,7 +110,8 @@ def _debug_calc_gain_map_metadata(hdr_fname, sdr_fname):
 def save_gain_map_metadata(
         hdr_fname, sdr_fname, min_val, max_val, offset_val,
         hdr_capacity_min=0.0, hdr_capacity_max=2.3):
-    cfg_name = f"./metadata_{Path(hdr_fname).stem}-{Path(sdr_fname).stem}.cfg"
+    cfg_name = f"./metadata/metadata_{Path(hdr_fname).stem}-"
+    cfg_name += f"{Path(sdr_fname).stem}.cfg"
     print(cfg_name)
 
     with open(cfg_name, 'wt') as f:
@@ -137,25 +133,24 @@ def make_sdr_8bit_jpeg(sdr_fname: str):
     img_write_8bit_jpeg_from_float(filename=fname, img_float=img)
 
 
-def create_gain_map_jpeg(hdr_fname, sdr_fname):
+def create_gain_map_jpeg_and_metadata(hdr_fname, sdr_fname, hdr_tf):
     sdr_linear = linearize_input_image(
         fname=sdr_fname, tf_name=tf.SRGB, cs_name=cs.BT2020
     )
     sdr_linear = sdr_linear * SDR_WHITE_LUMINANCE / tf.REF_WHITE_LUMINANCE
 
     hdr_linear = linearize_input_image(
-        fname=hdr_fname, tf_name=tf.ST2084, cs_name=cs.BT2020
+        fname=hdr_fname, tf_name=hdr_tf, cs_name=cs.BT2020
     )
 
     gain_map_raw = np.log2((hdr_linear + OFFSET_VAL)/(sdr_linear + OFFSET_VAL))
-    # gain_map_raw[gain_map_raw < 0.0] = 0.0
 
     min_val = np.min(gain_map_raw)
     max_val = np.max(gain_map_raw)
     gain_map_normalized = (gain_map_raw - min_val) / (max_val - min_val)
 
-    gain_map_fname\
-        = f"./gain_map_{Path(hdr_fname).stem}-{Path(sdr_fname).stem}.jpeg"
+    gain_map_fname = "./gain_map_img/gain_map_"
+    gain_map_fname += f"{Path(hdr_fname).stem}-{Path(sdr_fname).stem}.jpeg"
     img_write_8bit_jpeg_from_float(
         filename=gain_map_fname, img_float=gain_map_normalized
     )
@@ -169,12 +164,14 @@ def create_gain_map_jpeg(hdr_fname, sdr_fname):
     )
 
 
-def make_raw_for_ultrahdr_app(hdr_fname, sdr_fname):
+def make_raw_for_ultrahdr_app(hdr_fname, sdr_fname, hdr_tf=tf.ST2084):
     png_16bit_to_rgba1010102(fname=hdr_fname)
     png_16bit_to_rgba8888(fname=sdr_fname)
     # _debug_calc_gain_map_metadata(hdr_fname=hdr_fname, sdr_fname=sdr_fname)
     make_sdr_8bit_jpeg(sdr_fname=sdr_fname)
-    create_gain_map_jpeg(hdr_fname=hdr_fname, sdr_fname=sdr_fname)
+    create_gain_map_jpeg_and_metadata(
+        hdr_fname=hdr_fname, sdr_fname=sdr_fname, hdr_tf=hdr_tf
+    )
 
 
 if __name__ == '__main__':
@@ -182,6 +179,12 @@ if __name__ == '__main__':
     # create_test_data()
     # main_func(fname="./test_data.png")
     make_raw_for_ultrahdr_app(
-        hdr_fname="./src_rec2100-pq.png",
-        sdr_fname="./src_rec2020_srgb.png"
+        hdr_fname="./src_img/src_rec2100-pq.png",
+        sdr_fname="./src_img/src_rec2020_srgb.png",
+        hdr_tf=tf.ST2084
+    )
+    make_raw_for_ultrahdr_app(
+        hdr_fname="./src_img/src_rec2100-hlg.png",
+        sdr_fname="./src_img/src_rec2020_srgb.png",
+        hdr_tf=tf.HLG
     )
