@@ -16,8 +16,9 @@ RUN git clone https://github.com/google/libultrahdr.git \
     && cd build_directory \
     && cmake -G "Unix Makefiles" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DUHDR_BUILD_TESTS=1 ../ \
     && make \
-    && mkdir -p /opt/ultrahdr \
-    && cp ultrahdr_app /opt/ultrahdr/
+    && cp ultrahdr_app /usr/local/bin/ \
+    && cd / \
+    && rm -rf /root/local/libultrahdr
 
 # Clean
 RUN apt-get clean \

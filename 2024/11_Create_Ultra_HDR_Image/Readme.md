@@ -3,13 +3,13 @@
 ## build
 
 ```powershell
-docker build -t takuver4/ultrahdr:rev01 .
+docker build -t takuver4/ultrahdr:rev02 .
 ```
 
 ## docker push
 
 ```powershell
-docker push takuver4/ultrahdr:rev01
+docker push takuver4/ultrahdr:rev02
 ```
 
 ## create p010 file
@@ -24,13 +24,15 @@ ffmpeg -i src_rec709.png -pix_fmt rgba -f rawvideo src_rec709_rgba8888.raw
 ```powershell
 docker run -it -P --name ultrahdr_rev01 -v /Users/toru/Work/sample_code/Temporary/06_ultrahdr:/mnt/data --rm takuver4/ultrahdr:rev01
 
-docker run -it -P --name ultrahdr_rev01 -v C:\Users\toruv\OneDrive\work\sample_code\2024\11_Create_Ultra_HDR_Image:/mnt/data --rm takuver4/ultrahdr:rev01
+docker run -it -P --name ultrahdr_rev02 -v C:\Users\toruv\OneDrive\work\sample_code\2024\11_Create_Ultra_HDR_Image:/mnt/data --rm takuver4/ultrahdr:rev02
 ```
 
 ## create Ultra HDR file
 
 ```powershell
-/opt/ultrahdr/ultrahdr_app -m 0 -p /mnt/data/src_rec2100-pq_rgba1010102.raw -y /mnt/data/src_rec709_rgba8888.raw -w 1920 -h 1080 -q 100 -Q 100 -a 5 -b 3 -C 2 -c 0 -t 2 -R 1  -z /mnt/data/rec2100-pq_cat_rec709.jpeg
-
+# scenario 0
 /opt/ultrahdr/ultrahdr_app -m 0 -p /mnt/data/src_rec2100-pq_rgba1010102.raw -w 1920 -h 1080 -q 100 -Q 100 -a 5 -C 2 -c 0 -t 2 -R 1 -z /mnt/data/rec2100-pq_base.jpeg
+
+# scenario 4
+/opt/ultrahdr/ultrahdr_app -m 0 -i /mnt/data/src_rec2020_srgb_8bit.jpeg -g /mnt/data/gain_map_src_rec2100-pq-src_rec2020_srgb.jpeg -q 100 -Q 100 -C 2 -c 2 -t 2 -R 1 -f /mnt/data/metadata_src_rec2100-pq-src_rec2020_srgb.cfg -z /mnt/data/rec2100-pq_rec2020_srgb_gain-map.jpeg
 ```
