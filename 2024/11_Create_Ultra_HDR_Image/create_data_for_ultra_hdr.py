@@ -50,7 +50,6 @@ def png_16bit_to_rgba1010102(fname: str):
     a = (rgba_image[:, :, 3] >> 14).astype(np.uint32)
 
     rgba1010102 = r | (g << 10) | (b << 20) | (a << 30)
-    # print(np.vectorize(hex)(rgba1010102))
 
     out_fname = fname.replace(".png", "_rgba1010102.raw")
     print(out_fname)
