@@ -1,13 +1,15 @@
-import cv2
 from pathlib import Path
 import numpy as np
 import os
+import subprocess
 
 from PIL import Image
+import cv2
 
 import test_pattern_generator2 as tpg
 import transfer_functions as tf
 import color_space as cs
+from tonemapping import youtube_tonemapping
 
 GAIN_MAP_CS_NAME = cs.BT2020
 SDR_WHITE_LUMINANCE = 203
@@ -163,7 +165,7 @@ def create_gain_map_jpeg_and_metadata(hdr_fname, sdr_fname, hdr_tf):
     )
 
 
-def make_raw_for_ultrahdr_app(hdr_fname, sdr_fname, hdr_tf=tf.ST2084):
+def craete_files_for_ultrahdr_app(hdr_fname, sdr_fname, hdr_tf=tf.ST2084):
     png_16bit_to_rgba1010102(fname=hdr_fname)
     png_16bit_to_rgba8888(fname=sdr_fname)
     # _debug_calc_gain_map_metadata(hdr_fname=hdr_fname, sdr_fname=sdr_fname)
@@ -173,17 +175,88 @@ def make_raw_for_ultrahdr_app(hdr_fname, sdr_fname, hdr_tf=tf.ST2084):
     )
 
 
+def convert_avif_to_png_2100pq_2020srgb_river():
+    avif_fname = "./src_img/river.avif"
+    png_2100_pq_fname_4k = "./src_img/river_rec2100-pq_4k.png"
+    png_2100_pq_fname_2k = "./src_img/river_rec2100-pq_2k.png"
+    png_2020_srgb_fname = "./src_img/river_rec2020-srgb.png"
+
+    # avif to png
+    cmd = [
+        "avifdec",
+        "-d", "16",
+        "--png-compress", "9",
+        "--ignore-icc",
+        avif_fname,
+        png_2100_pq_fname_4k
+    ]
+    print(" ".join(cmd))
+    subprocess.run(cmd)
+
+    # rec2100-pq to rec2020-srgb
+    img_2100_4k = tpg.img_read_as_float(png_2100_pq_fname_4k)
+    img_2100_2k = cv2.resize(
+        img_2100_4k, (1920, 1080), interpolation=cv2.INTER_AREA
+    )
+    tpg.img_wirte_float_as_16bit_int(png_2100_pq_fname_2k, img_2100_2k)
+    img_2100_tm = youtube_tonemapping(img_2100_2k)
+    img_2100_linear = tf.eotf_to_luminance(img_2100_tm, tf.ST2084)
+    img_2100_linear = np.clip(img_2100_linear, 0.0, 100)
+    img_2020_srgb = tf.oetf_from_luminance(img_2100_linear, tf.SRGB)
+    tpg.img_wirte_float_as_16bit_int(png_2020_srgb_fname, img_2020_srgb)
+
+
+def convert_avif_to_png_rec2100_pq_shiga_kougen():
+    avif_fname = "./src_img/shiga_rec2100_pq.avif"
+    png_2100_pq_fname = "./src_img/shiga_rec2100-pq.png"
+    png_p3d65_fname = "./src_img/shiga_sdr_display_p3.png"
+    png_2020_srgb_fname = "./src_img/shiga_sdr_rec2020_srgb.png"
+
+    # avif to png
+    cmd = [
+        "avifdec",
+        "-d", "16",
+        "--png-compress", "9",
+        "--ignore-icc",
+        avif_fname,
+        png_2100_pq_fname
+    ]
+    print(" ".join(cmd))
+    subprocess.run(cmd)
+
+    # convert sdr image from P3D65 to Rec.2020
+    img_p3d65 = tpg.img_read_as_float(png_p3d65_fname)
+    img_p3d65_linear = tf.eotf(img_p3d65, tf.SRGB)
+    img_p3d65_xyz = cs.rgb_to_large_xyz(img_p3d65_linear, cs.P3_D65)
+    img_2020_linear = cs.large_xyz_to_rgb(img_p3d65_xyz, cs.BT2020)
+    img_2020_srgb = tf.oetf(img_2020_linear, tf.SRGB)
+    tpg.img_wirte_float_as_16bit_int(png_2020_srgb_fname, img_2020_srgb)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_test_data()
-    # main_func(fname="./test_data.png")
-    make_raw_for_ultrahdr_app(
-        hdr_fname="./src_img/src_rec2100-pq.png",
-        sdr_fname="./src_img/src_rec2020_srgb.png",
+    # convert_avif_to_png_2100pq_2020srgb_river()
+    # convert_avif_to_png_rec2100_pq_shiga_kougen()
+
+    # craete_files_for_ultrahdr_app(
+    #     hdr_fname="./src_img/src_rec2100-pq.png",
+    #     sdr_fname="./src_img/src_rec2020_srgb.png",
+    #     hdr_tf=tf.ST2084
+    # )
+    # craete_files_for_ultrahdr_app(
+    #     hdr_fname="./src_img/src_rec2100-hlg.png",
+    #     sdr_fname="./src_img/src_rec2020_srgb.png",
+    #     hdr_tf=tf.HLG
+    # )
+    # craete_files_for_ultrahdr_app(
+    #     hdr_fname="./src_img/river_rec2100-pq_2k.png",
+    #     sdr_fname="./src_img/river_rec2020-srgb.png",
+    #     hdr_tf=tf.ST2084
+    # )
+
+    craete_files_for_ultrahdr_app(
+        hdr_fname="./src_img/shiga_rec2100-pq.png",
+        sdr_fname="./src_img/shiga_sdr_rec2020_srgb.png",
         hdr_tf=tf.ST2084
-    )
-    make_raw_for_ultrahdr_app(
-        hdr_fname="./src_img/src_rec2100-hlg.png",
-        sdr_fname="./src_img/src_rec2020_srgb.png",
-        hdr_tf=tf.HLG
     )
