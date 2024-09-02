@@ -1,0 +1,24 @@
+FROM python:3.12.5-bookworm
+
+WORKDIR /root/local
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        clang \
+        cmake \
+        git \
+        libjpeg-dev \
+        ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://github.com/google/libultrahdr.git \
+    && cd libultrahdr \
+    && mkdir build_directory \
+    && cd build_directory \
+    && cmake -G "Unix Makefiles" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DUHDR_BUILD_TESTS=1 ../ \
+    && make \
+    && cp ultrahdr_app /usr/local/bin/ \
+    && cd / \
+    && rm -rf /root/local/libultrahdr
+
+CMD ["bash"]
