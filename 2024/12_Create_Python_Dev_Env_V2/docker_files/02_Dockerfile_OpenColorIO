@@ -1,0 +1,47 @@
+ARG DEBIAN_VERSION="bookworm"
+ARG PYTHON_VERSION="3.12"
+
+FROM python:${PYTHON_VERSION}-${DEBIAN_VERSION} as builder
+
+# Avoid clearing `DEBIAN_VERSION`
+ARG DEBIAN_VERSION
+ARG PYTHON_VERSION
+
+WORKDIR /root/local
+
+RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/apt/sources.list \
+    && echo "deb http://security.debian.org/ ${DEBIAN_VERSION}-security main" >> /etc/apt/sources.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        clang \
+        cmake \
+        ffmpeg \
+        git \
+        libboost-all-dev \
+        libfreetype-dev \
+        libgif-dev \
+        libheif-dev \
+        libimath-dev \
+        libjpeg-dev \
+        libopencv-dev \
+        libopenjp2-7-dev \
+        libopenvdb-dev \
+        libpng-dev \
+        libtbb-dev \
+        libtiff-dev \
+        libraw-dev \
+        libwebp-dev \
+        ninja-build \
+        pybind11-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://github.com/OpenImageIO/oiio.git -b v2.5.14.0 \
+    && cd oiio \
+    && mkdir build \
+    && cd build \
+    && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DPYTHON_VERSION=${PYTHON_VERSION} -DUSE_PYTHON=1 -DVERBOSE=1 -DSTOP_ON_WARNING=0 .. \
+    && make install -j4 \
+    && cd / \
+    && rm -rf /root/local/oiio
+
+CMD ["bash"]
