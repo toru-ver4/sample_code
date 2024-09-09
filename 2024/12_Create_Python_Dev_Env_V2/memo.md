@@ -25,3 +25,17 @@ docker build --no-cache -f ./docker_files/02_Dockerfile_OpenColorIO -t takuver4/
 docker run -it -P --name opencolorio_rev01 -v C:\Users\toruv\OneDrive\work\sample_code:/mnt/data --rm takuver4/opencolorio:rev01
 docker run -it -P --name opencolorio_rev01 -v /Users/toru/Work/sample_code:/mnt/data --rm takuver4/opencolorio:rev01
 ```
+
+### CTL_ICC
+
+```powershell
+docker build --no-cache -f ./docker_files/03_Dockerfile_CTL_ICC -t takuver4/ctl_icc:rev01 .
+docker run -it -P --name ctl_icc_rev01 -v C:\Users\toruv\OneDrive\work\sample_code:/mnt/data --rm takuver4/ctl_icc:rev01
+```
+
+### STILL_HDR
+
+```powershell
+docker build -f ./docker_files/04_Dockerfile_STILL_HDR -t takuver4/still_hdr:rev01 .
+docker run -it -P --name still_hdr_rev01 -v C:\Users\toruv\OneDrive\work\sample_code:/mnt/data --rm takuver4/still_hdr:rev01
+```

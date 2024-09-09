@@ -55,7 +55,7 @@ RUN git clone https://github.com/OpenImageIO/oiio.git -b v2.5.14.0 \
     && cd build \
     && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DPYTHON_VERSION=${PYTHON_VERSION} -DUSE_PYTHON=1 -DVERBOSE=1 -DSTOP_ON_WARNING=0 .. \
     && make install -j4 \
-    && cd / \
+    && cd /root/local \
     && rm -rf /root/local/oiio
 
 RUN mkdir /tmp/ociobuild \
@@ -64,7 +64,7 @@ RUN mkdir /tmp/ociobuild \
     && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOCIO_INSTALL_EXT_PACKAGES=MISSING -DOCIO_BUILD_PYTHON=0 -DOCIO_VERBOSE=1 /root/local/OpenColorIO \
     && make -j16 \
     && make install \
-    && cd / \
+    && cd /root/local \
     && rm -rf /root/local/OpenColorIO /tmp/ociobuild
 
 CMD ["bash"]
