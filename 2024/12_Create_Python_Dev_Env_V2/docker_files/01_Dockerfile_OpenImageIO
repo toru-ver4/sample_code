@@ -24,6 +24,7 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         libimath-dev \
         libjpeg-dev \
         libopencv-dev \
+        libopenexr-dev \
         libopenjp2-7-dev \
         libopenvdb-dev \
         libpng-dev \
