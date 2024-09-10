@@ -19,6 +19,7 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         ffmpeg \
         git \
         libboost-all-dev \
+        libde265-dev \
         libexpat1-dev \
         libfreetype-dev \
         libgif-dev \
@@ -38,6 +39,7 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         libtiff-dev \
         libraw-dev \
         libwebp-dev \
+        libx265-dev \
         libyaml-cpp-dev \
         llvm \
         ninja-build \
@@ -57,17 +59,6 @@ RUN echo "export CC=clang" >> /etc/profile \
     && cmake --install . \
     && cd /root/local \
     && rm -rf /root/local/libjxl
-
-# Install libde265
-RUN git clone https://github.com/strukturag/libde265.git -b v1.0.15 \
-    && cd libde265 \
-    && mkdir build \
-    && cd build \
-    && cmake .. \
-    && make -j16 \
-    && make install \
-    && cd /root/local \
-    && rm -rf /root/local/libde265
 
 # Install libavif
 RUN git clone https://github.com/AOMediaCodec/libavif.git -b v1.0.3 libavif_aom \
