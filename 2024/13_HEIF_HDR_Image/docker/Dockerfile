@@ -13,7 +13,6 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
     && echo "deb http://security.debian.org/ ${DEBIAN_VERSION}-security main" >> /etc/apt/sources.list \
     && apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
-        clang \
         cmake \
         git \
         libx265-dev \
