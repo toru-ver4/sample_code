@@ -64,7 +64,10 @@ ACES_AP0_CS = colour.models.RGB_COLOURSPACE_ACES2065_1
 # ]
 PARAM_LIST = [
     {'tf': tf.HLG, 'cs': BT2020_CS, 'wp': 'D65'},
+    {'tf': tf.ST2084, 'cs': BT2020_CS, 'wp': 'D65'},
+    {'tf': tf.ST2084, 'cs': DCI_P3_CS, 'wp': 'D65'},
     {'tf': tf.SRGB, 'cs': BT709_CS, 'wp': 'D65'},
+    {'tf': tf.GAMMA24, 'cs': BT709_CS, 'wp': 'D65'},
 ]
 
 

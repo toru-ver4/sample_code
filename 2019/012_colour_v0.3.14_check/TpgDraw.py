@@ -17,8 +17,6 @@ from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
 import colour
-import imp
-imp.reload(tpg)
 
 
 class TpgDraw:

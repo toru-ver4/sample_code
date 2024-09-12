@@ -2941,6 +2941,8 @@ def png_to_avif(
         cicp_tf = "16"
     elif transfer_characteristics == tf.HLG:
         cicp_tf = "18"
+    elif transfer_characteristics == tf.SRGB:
+        cicp_tf = "13"
     else:
         cicp_tf = "1"
 
@@ -2954,6 +2956,49 @@ def png_to_avif(
         "--lossless",
         "--ignore-exif",
         avif_fname
+    ]
+    print(" ".join(cmd))
+    subprocess.run(cmd)
+
+
+def png_to_heif(
+        png_fname,
+        heif_fname,
+        bit_depth=10,
+        color_space_name=cs.BT2020,
+        transfer_characteristics=tf.ST2084,
+):
+    if color_space_name == cs.BT2020:
+        cicp_cs = "9"
+        cicp_mtx = "9"
+    elif color_space_name == cs.P3_D65:
+        cicp_cs = "12"
+        cicp_mtx = "1"
+    elif color_space_name == cs.BT709:
+        cicp_cs = "1"
+        cicp_mtx = "1"
+    else:
+        raise ValueError("Error. unknown color space name.")
+
+    if transfer_characteristics == tf.ST2084:
+        cicp_tf = "16"
+    elif transfer_characteristics == tf.HLG:
+        cicp_tf = "18"
+    elif transfer_characteristics == tf.SRGB:
+        cicp_tf = "13"
+    else:
+        cicp_tf = "1"
+
+    cmd = [
+        "heif-enc",
+        "--quality", "100",
+        "--bit-depth", f"{bit_depth}",
+        "--colour_primaries", cicp_cs,
+        "--transfer_characteristic", cicp_tf,
+        "--matrix_coefficients", cicp_mtx,
+        "--full_range_flag", "1",
+        png_fname,
+        '-o', heif_fname
     ]
     print(" ".join(cmd))
     subprocess.run(cmd)

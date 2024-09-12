@@ -40,9 +40,27 @@ docker build -f ./docker_files/04_Dockerfile_STILL_HDR -t takuver4/still_hdr:rev
 docker run -it -P --name still_hdr_rev01 -v C:\Users\toruv\OneDrive\work\sample_code:/mnt/data --rm takuver4/still_hdr:rev01
 ```
 
-### Final Image
+### Integrated Image
+
+
+#### build
 
 ```powershell
 docker build -f ./docker_files/Dockerfile -t takuver4/ty_env_v2:rev01 .
-docker run -it -P --name ty_env_v2_rev01 -v C:\Users\toruv\OneDrive\work\sample_code:/mnt/data --rm takuver4/ty_env_v2:rev01
+```
+
+#### push
+
+## Push
+
+```powershell
+docker push takuver4/ty_env_v2:rev01
+```
+
+#### run
+
+```
+docker-compose up -d
+  or
+docker run -it -P --name ty_env_v2_rev01 -v C:\Users\toruv\OneDrive\work\sample_code:/work/src -v D:\abuse:/work/overuse --rm takuver4/ty_env_v2:rev01
 ```
