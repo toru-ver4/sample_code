@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
     python_dev:
-        image: takuver4/ty_env_v2:rev01
+        image: takuver4/ty_env_v2:rev02
         environment: 
             PYTHONPATH: "/work/src/ty_lib"
             DISPLAY: host.docker.internal:0.0

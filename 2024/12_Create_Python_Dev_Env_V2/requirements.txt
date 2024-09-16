@@ -6,6 +6,7 @@ colour-datasets
 pillow
 sphinx_rtd_theme
 sympy
+matplotlib
 flake8
 pytest
 jupyter
