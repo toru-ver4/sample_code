@@ -27,12 +27,14 @@ __all__ = []
 
 
 def draw_text(img, text, patch_st_pos_v):
-    height, width = img.shape[:2]
+    _, width = img.shape[:2]
     font = fc2.NOTO_SANS_CJKJP_BOLD
+    color_cv = tf.oetf_from_luminance(6, tf.ST2084)
+
     # create instance
     text_draw_ctrl = fc2.TextDrawControl(
-        text=text, font_color=[0.2, 0.2, 0.2],
-        font_size=80, font_path=font,
+        text=text, font_color=[color_cv, color_cv, color_cv],
+        font_size=60, font_path=font,
         stroke_width=0, stroke_fill=None)
 
     # calc position
@@ -58,7 +60,7 @@ def create_patch_png_image(luminance=100):
 
     cv_float = tf.oetf_from_luminance(luminance, tf.ST2084)
     cv_10bit = round(cv_float * 1023)
-    text = f"{cv_10bit:04}/1023 CV, {luminance} nits"
+    text = f"{cv_10bit:04}/1023 CV, {luminance:5.3f} nits"
     
     base_img = np.zeros((height, width, 3))
     patch_img = np.ones((patch_size, patch_size, 3)) * cv_float
@@ -70,14 +72,17 @@ def create_patch_png_image(luminance=100):
 
     draw_text(img=base_img, text=text, patch_st_pos_v=patch_st_pos_v)
 
-    out_fname = f"./src_png/patch_{luminance:05}-nits.png"
+    int_part = int(luminance)
+    dec_part = luminance - int_part
+
+    out_fname = f"./src_png/patch_{int_part:05d}{dec_part:.3f}-nits.png"
     print(out_fname)
     write_image(image=base_img, path=out_fname, bit_depth='uint16')
 
     return out_fname
 
 
-def create_heif_from_png(luminance=1000):
+def create_heif_luminance_patch(luminance=1000):
     png_fname = create_patch_png_image(luminance=luminance)
     heif_fname = make_dst_heif_fname(src_png_name=png_fname)
     tpg.png_to_heif(
@@ -87,8 +92,26 @@ def create_heif_from_png(luminance=1000):
     )
 
 
+def create_luminance_value_array(num_of_array: int = 33):
+    base_cv = 1024 // (num_of_array - 1)
+    cv_list = [base_cv * idx for idx in range(num_of_array)]
+    cv_list[-1] = cv_list[-1] - 1
+
+    luminance_list = tf.eotf_to_luminance(np.array(cv_list)/1023, tf.ST2084)
+
+    return luminance_list
+
+
+def create_n_point_luminance_patch(num_of_sample: int):
+    luminance_list = create_luminance_value_array(num_of_array=num_of_sample)
+    for luminance in luminance_list:
+        create_heif_luminance_patch(luminance=luminance)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    create_heif_from_png(luminance=1000)
-    create_heif_from_png(luminance=500)
-    create_heif_from_png(luminance=100)
+    # create_heif_luminance_patch(luminance=1000)
+    # create_heif_luminance_patch(luminance=500)
+    # create_heif_luminance_patch(luminance=100)
+
+    # create_n_point_luminance_patch(num_of_sample=33)
