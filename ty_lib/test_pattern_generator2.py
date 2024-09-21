@@ -2970,13 +2970,13 @@ def png_to_heif(
 ):
     if color_space_name == cs.BT2020:
         cicp_cs = "9"
-        cicp_mtx = "9"
+        # cicp_mtx = "9"
     elif color_space_name == cs.P3_D65:
         cicp_cs = "12"
-        cicp_mtx = "1"
+        # cicp_mtx = "1"
     elif color_space_name == cs.BT709:
         cicp_cs = "1"
-        cicp_mtx = "1"
+        # cicp_mtx = "1"
     else:
         raise ValueError("Error. unknown color space name.")
 
@@ -2993,9 +2993,10 @@ def png_to_heif(
         "heif-enc",
         "--quality", "100",
         "--bit-depth", f"{bit_depth}",
+        "-p", "chroma=444",
         "--colour_primaries", cicp_cs,
         "--transfer_characteristic", cicp_tf,
-        "--matrix_coefficients", cicp_mtx,
+        "--matrix_coefficients", "0",
         "--full_range_flag", "1",
         png_fname,
         '-o', heif_fname

@@ -247,6 +247,7 @@ temporary/**/**
 *.bkp
 2024/06_Correct_Windows_HDR_Output2/debug/**
 2024/11_Create_Ultra_HDR_Image/**/*.raw
+2024/13_HEIF_HDR_Image/debug/**
 
 [Dd]ebug/
 [Rr]elease/

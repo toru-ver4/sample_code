@@ -43,4 +43,4 @@ def main(output_fname: str):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    main(output_fname="./mesured_luminance/MBP_Photos.csv")
+    main(output_fname="./mesured_luminance/iPhone_Photos.csv")

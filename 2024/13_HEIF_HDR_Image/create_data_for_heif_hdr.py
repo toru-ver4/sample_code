@@ -114,4 +114,4 @@ if __name__ == '__main__':
     # create_heif_luminance_patch(luminance=500)
     # create_heif_luminance_patch(luminance=100)
 
-    # create_n_point_luminance_patch(num_of_sample=33)
+    create_n_point_luminance_patch(num_of_sample=33)
