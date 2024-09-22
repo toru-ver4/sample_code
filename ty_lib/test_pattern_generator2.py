@@ -3005,6 +3005,19 @@ def png_to_heif(
     subprocess.run(cmd)
 
 
+def png_to_jpeg_xl(
+        png_fname,
+        jxl_fname,
+        bit_depth=10,
+        white_point="D65",
+        color_space_name=cs.BT2020,
+        transfer_characteristics=tf.ST2084,
+):
+    if white_point != "D65":
+        msg = 'Supported white_point is "D65" only in "png_to_jpeg_xl"'
+        raise ValueError()
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
