@@ -97,9 +97,13 @@ PRJ_COLOR_SCIENCE_MODE_ACES_CCT = "acescct"
 
 PRJ_PRESET_MODE_CUSTOM = "Custom"
 
+PRJ_GAMMA_STR_LINER = "Linear"
 PRJ_GAMMA_STR_ST2084 = "ST2084"
+PRJ_GAMMA_STR_GAMMA22 = "Gamma 2.2"
 PRJ_GAMMA_STR_GAMMA24 = "Gamma 2.4"
 PRJ_GAMMA_STR_GAMMA26 = "Gamma 2.6"
+PRJ_GAMMA_STR_REC709 = "Rec.709"
+PRJ_GAMMA_STR_REC709_A = "Rec.709-A"
 
 PRJ_COLOR_SPACE_REC2020 = "Rec.2020"
 PRJ_COLOR_SPACE_REC709 = "Rec.709"
@@ -687,8 +691,9 @@ def get_avilable_parameters(project_name="sample_project"):
     """
     project_manager = get_project_manager(
         close_current_project=True)
-    project = initialize_project(
-        project_manager=project_manager, project_name=project_name)
+    # project = initialize_project(
+    #     project_manager=project_manager, project_name=project_name)
+    project = project_manager.GetCurrentProject()
     _debug_print_and_save_project_settings(project)
     _debug_print_and_save_timeline_settings(project)
     _debug_print_and_save_encode_settings(project)
@@ -696,5 +701,5 @@ def get_avilable_parameters(project_name="sample_project"):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    sample_func()
-    # get_avilable_parameters(project_name="aaa")
+    # sample_func()
+    get_avilable_parameters(project_name="aaa")
