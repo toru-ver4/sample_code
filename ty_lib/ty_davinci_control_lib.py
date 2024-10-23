@@ -12,9 +12,9 @@ import pprint
 from pathlib import Path
 
 # import third-party libraries
-from python_get_resolve import GetResolve
 
 # import my libraries
+from python_get_resolve import GetResolve
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -42,7 +42,7 @@ DELIVER_PAGE_STR = "deliver"
 ###################################
 PRJ_PARAM_NONE = "None"
 PRJ_PARAM_ENABLE = "1"
-PRJ_PARAM_DISABLE = "1"
+PRJ_PARAM_DISABLE = "0"
 
 PRJ_TIMELINE_RESOLUTION_1280 = "1280"
 PRJ_TIMELINE_RESOLUTION_720 = "720"
@@ -81,16 +81,16 @@ PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P59FPS = "UHD 2160p 59.94"
 PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P60FPS = "UHD 2160p 60"
 
 PRJ_TIMELINE_FRAMERATE_23 = "23.976"
-PRJ_TIMELINE_FRAMERATE_24 = "24.0"
-PRJ_TIMELINE_FRAMERATE_25 = "25.0"
+PRJ_TIMELINE_FRAMERATE_24 = "24"
+PRJ_TIMELINE_FRAMERATE_25 = "25"
 PRJ_TIMELINE_FRAMERATE_29 = "29.97"
-PRJ_TIMELINE_FRAMERATE_30 = "30.0"
-PRJ_TIMELINE_FRAMERATE_50 = "50.0"
+PRJ_TIMELINE_FRAMERATE_30 = "30"
+PRJ_TIMELINE_FRAMERATE_50 = "50"
 PRJ_TIMELINE_FRAMERATE_59 = "59.94"
-PRJ_TIMELINE_FRAMERATE_60 = "60.0"
+PRJ_TIMELINE_FRAMERATE_60 = "60"
 
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_23 = "23.976"
-PRJ_TIMELINE_PLAYBACK_FRAMERATE_24 = "24"
+PRJ_TIMELINE_PLAYBACK_FRAMERATE_24 = "24.0"
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_25 = "25"
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_29 = "29.97"
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_30 = "30"
@@ -328,13 +328,39 @@ def set_project_settings_from_dict(project, params):
         else:
             print(f'    "{name}" = "{value}" is NGGGGGGGGGGGGGGGGGG.')
         if name == "timelineFrameRate":
-            current_page = resolve.GetCurrentPage() 
+            current_page = resolve.GetCurrentPage()
             result = project.SetRenderSettings({'FrameRate': float(value)})
             if result:
                 print(f'    "{name}" = "{value}" is OK in RenderSettings.')
             else:
                 print(f'    "{name}" = "{value}" is NGGGGGG in RenderSettings')
             resolve.OpenPage(current_page)
+    print("project settings has done")
+
+
+def set_timeline_settings_from_dict(timeline, params):
+    """
+    set project settings from the dictionary type parameters.
+
+    Parameters
+    ----------
+    project : Project
+        a Project instance
+    parames : dict
+        dictionary type parameters
+    """
+    print("Now this script is setting the project settings...")
+    result = timeline.SetSetting("useCustomSettings", "1")
+    if result:
+        print('    "useCustomSettings" = "1" is OK.')
+    else:
+        print('    "useCustomSettings" = "1" is NGGGGGGGGGGGGGGGGGG.')
+    for name, value in params.items():
+        result = timeline.SetSetting(name, value)
+        if result:
+            print(f'    "{name}" = "{value}" is OK.')
+        else:
+            print(f'    "{name}" = "{value}" is NGGGGGGGGGGGGGGGGGG.')
     print("project settings has done")
 
 
@@ -613,7 +639,8 @@ def _debug_print_and_save_project_settings(project):
 
 
 def _debug_print_and_save_timeline_settings(project):
-    timeline = create_timeline(timeline_name="dummy")
+    # timeline = create_timeline(timeline_name="dummy")
+    timeline = project.GetCurrentTimeline()
     timeline_settings = timeline.GetSetting()
     pprint.pprint(timeline_settings)
     _debug_save_dict_as_txt("./timeline_settings_list.txt", timeline_settings)
