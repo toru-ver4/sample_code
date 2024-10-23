@@ -3005,6 +3005,61 @@ def png_to_heif(
     subprocess.run(cmd)
 
 
+def png_to_jxl(
+        png_fname,
+        jxl_fname,
+        bit_depth=10,
+        white_point="D65",
+        color_space_name=cs.BT2020,
+        transfer_characteristics=tf.ST2084,
+):
+    if white_point != "D65":
+        msg = 'Supported white_point is "D65" only in "png_to_jpeg_xl"'
+        raise ValueError()
+
+    color_space = "RGB"
+
+    if (color_space_name == cs.BT709) or (color_space_name == cs.sRGB):
+        primaries = "SRG"
+    elif color_space_name == cs.BT2020:
+        primaries = "202"
+    elif color_space_name == cs.P3_D65:
+        primaries = "DCI"
+    else:
+        primaries = "Cst"
+
+    rendering_intent = "Rel"
+
+    if transfer_characteristics == tf.SRGB:
+        transfer_function = "SRG"
+    elif transfer_characteristics == tf.LINEAR:
+        transfer_function = "Lin"
+    elif (transfer_characteristics == tf.GAMMA24)\
+            or (transfer_characteristics == tf.BT709):
+        transfer_function = "709"
+    elif transfer_characteristics == tf.ST2084:
+        transfer_function = "PeQ"
+    elif transfer_characteristics == tf.HLG:
+        transfer_function = "HLG"
+    else:
+        transfer_function = "TF?"
+
+    color_space_param = f"color_space={color_space}_{white_point}_"
+    color_space_param += f"{primaries}_{rendering_intent}_"
+    color_space_param += f"{transfer_function}"
+
+    cmd = [
+        "cjxl",
+        "-v",
+        png_fname,
+        jxl_fname,
+        "-q", "100",
+        "-x", color_space_param,
+    ]
+    print(" ".join(cmd))
+    subprocess.run(cmd)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # print(calc_rad_patch_idx(outmost_num=9, current_num=1))

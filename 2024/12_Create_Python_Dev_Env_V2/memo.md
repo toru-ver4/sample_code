@@ -23,7 +23,7 @@ docker run -it -P --name openimageio_rev01 -v /Users/toru/Work/sample_code:/mnt/
 ```powershell
 docker build --no-cache -f ./docker_files/02_Dockerfile_OpenColorIO -t takuver4/opencolorio:rev01 .
 docker run -it -P --name opencolorio_rev01 -v C:\Users\toruv\OneDrive\work\sample_code:/mnt/data --rm takuver4/opencolorio:rev01
-docker run -it -P --name opencolorio_rev01 -v /Users/toru/Work/sample_code:/mnt/data --rm takuver4/opencolorio:rev01
+docker run -it -P --name opencolorio_rev01 -v /Users/toru/Work/sample_code:/mnt/data -e PYTHONPATH=/work/src/ty_lib --rm takuver4/opencolorio:rev01
 ```
 
 ### CTL_ICC
@@ -60,4 +60,5 @@ docker push takuver4/ty_env_v2:rev02
 docker-compose up -d
   or
 docker run -it -P --name ty_env_v2_rev02 -v C:\Users\toruv\OneDrive\work\sample_code:/work/src -v D:\abuse:/work/overuse --rm takuver4/ty_env_v2:rev02
+docker run -itd -P --platform linux/amd64 --name ty_env_v2_rev02 -v /Users/toru/Work/sample_code:/work/src -e PYTHONPATH=/work/src/ty_lib --rm takuver4/ty_env_v2:rev02
 ```
