@@ -120,6 +120,12 @@ PRJ_COLOR_SPACE_REC2020 = "Rec.2020"
 PRJ_COLOR_SPACE_REC709 = "Rec.709"
 PRJ_COLOR_SPACE_P3D65 = "P3-D65"
 
+PRJ_CS_GAMMA_CAT_REC709_A = "Rec.709-A"
+PRJ_CS_GAMMA_CAT_REC709 = "Rec.709 (Scene)"
+PRJ_CS_GAMMA_CAT_REC709_GM22 = "Rec.709 Gamma 2.2"
+PRJ_CS_GAMMA_CAT_REC709_GM24 = "Rec.709 Gamma 2.4"
+PRJ_CS_GAMMA_CAT_LINEAR = "Linear"
+
 PRJ_ACES_ODT_P3D65_PQ_108 = "P3-D65 ST2084 (108 nits)"
 PRJ_ACES_ODT_P3D65_PQ_1000 = "P3-D65 ST2084 (1000 nits)"
 PRJ_ACES_ODT_P3D65_PQ_4000 = "P3-D65 ST2084 (4000 nits)"
@@ -128,6 +134,12 @@ PRJ_ACES_ODT_REC2020_PQ_1000 = "Rec.2020 ST2084 (1000 nits)"
 
 PRJ_LUMINANCE_MODE_CUSTOM = "Custom"
 PRJ_WORKING_LUMINANCE_MAX = "10000"
+
+###################################
+# MediaPoolItem
+###################################
+CLIP_PROPERTY_INPUT_COLOR_SPACE = "Input Color Space"
+CLIP_PROPERTY_INPUT_GAMMA = "Input Gamma"
 
 ###################################
 # File Extenstion
@@ -340,16 +352,16 @@ def set_project_settings_from_dict(project, params):
 
 def set_timeline_settings_from_dict(timeline, params):
     """
-    set project settings from the dictionary type parameters.
+    set timeline settings from the dictionary type parameters.
 
     Parameters
     ----------
-    project : Project
-        a Project instance
+    timeline : Timeline
+        a Timeline instance
     parames : dict
         dictionary type parameters
     """
-    print("Now this script is setting the project settings...")
+    print("Now this script is setting the timeline settings...")
     result = timeline.SetSetting("useCustomSettings", "1")
     if result:
         print('    "useCustomSettings" = "1" is OK.')
@@ -361,7 +373,27 @@ def set_timeline_settings_from_dict(timeline, params):
             print(f'    "{name}" = "{value}" is OK.')
         else:
             print(f'    "{name}" = "{value}" is NGGGGGGGGGGGGGGGGGG.')
-    print("project settings has done")
+    print("timeline settings has done")
+
+
+def set_media_pool_item_property_from_dict(media_pool_item, params):
+    """
+    set MediaPoolItem property from the dictionary type parameters.
+
+    Parameters
+    ----------
+    media_pool_item : MediaPoolItem
+        a MediaPoolItem instance
+    parames : dict
+        dictionary type parameters
+    """
+    for name, value in params.items():
+        result = media_pool_item.SetClipProperty(name, value)
+        if result:
+            print(f'    "{name}" = "{value}" is OK.')
+        else:
+            print(f'    "{name}" = "{value}" is NGGGGGGGGGGGGGGGGGG.')
+    print("end of the MediaPoolItem property settings")
 
 
 def set_cuurent_timecode(timeline, timecode):
@@ -632,6 +664,57 @@ def _debug_print_and_save_encode_settings(project):
     os.chdir(current_directory)
 
 
+def _debug_print_and_save_media_pool_item_property(project):
+    current_directory = os.getcwd()
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    timeline = project.GetCurrentTimeline()
+    timeline_items = timeline.GetItemListInTrack("video", 1)
+    timeline_item = timeline_items[0]
+    media_pool_item = timeline_item.GetMediaPoolItem()
+    # print(f"media_pool_item = {media_pool_item}")
+    property = media_pool_item.GetClipProperty()
+    print("media pool property = ")
+    pprint.pprint(property)
+
+    buf = ""
+    # for render_format_name, ext in format_list.items():
+    #     codecs = project.GetRenderCodecs(ext)
+    #     buf += f"=== {ext} ===\n"
+    #     for key, value in codecs.items():
+    #         buf += f"{key}: {value}\n"
+    #     buf += "\n"
+    #     print(f"=== {ext} ===")
+    #     print(codecs)
+    #     print('')
+    # with open("./resolve_media_pool_item_metadata.txt", 'wt') as f:
+    #     f.write(buf)
+    # os.chdir(current_directory)
+
+
+def _debug_print_and_timeline_item_metadata(project):
+    current_directory = os.getcwd()
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    timeline = project.GetCurrentTimeline()
+    timeline_items = timeline.GetItemListInTrack("video", 1)
+    timeline_item = timeline_items[0]
+    property = timeline_item.GetProperty()
+    print(f"timeline item property = {property}")
+
+    buf = ""
+    # for render_format_name, ext in format_list.items():
+    #     codecs = project.GetRenderCodecs(ext)
+    #     buf += f"=== {ext} ===\n"
+    #     for key, value in codecs.items():
+    #         buf += f"{key}: {value}\n"
+    #     buf += "\n"
+    #     print(f"=== {ext} ===")
+    #     print(codecs)
+    #     print('')
+    # with open("./resolve_media_pool_item_metadata.txt", 'wt') as f:
+    #     f.write(buf)
+    # os.chdir(current_directory)
+
+
 def _debug_print_and_save_project_settings(project):
     project_settings = project.GetSetting()
     pprint.pprint(project_settings)
@@ -735,6 +818,8 @@ def get_avilable_parameters(project_name="sample_project"):
     _debug_print_and_save_project_settings(project)
     _debug_print_and_save_timeline_settings(project)
     _debug_print_and_save_encode_settings(project)
+    _debug_print_and_save_media_pool_item_property(project)
+    _debug_print_and_timeline_item_metadata(project)
 
 
 if __name__ == '__main__':

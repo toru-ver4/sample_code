@@ -5,6 +5,7 @@
 
 # import standard libraries
 import os
+from pathlib import Path
 
 # import third-party libraries
 
@@ -67,16 +68,33 @@ def create_timeline_with_settings(project, eotf_str: str):
         timeline=timeline, params=project_params
     )
 
+    return timeline
+
 
 def run_resolve_eotf(eotf_str=dcl.PRJ_GAMMA_STR_REC709_A):
+    # project settings
     project_name = "EOTF_Investigation"
     dcl.close_and_remove_project(project_name=project_name)
     project, project_manager = create_project(project_name=project_name)
     dcl.open_page(dcl.EDIT_PAGE_STR)
     dcl.remove_all_timeline(project=project)
-    create_timeline_with_settings(project=project, eotf_str=eotf_str)
+    timeline = create_timeline_with_settings(
+        project=project, eotf_str=eotf_str
+    )
+
+    # add clips
+    media_path = str(Path('./src_img/10-bit_ramp.dpx').resolve())
+    print(f"media_path = {media_path}")
+    clip_list = dcl.add_files_to_media_pool(media_path=media_path)
+    print(clip_list)
+    dcl.add_clips_to_the_current_timeline(clip_list=clip_list)
+
+    # encode
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    run_resolve_eotf(eotf_str=dcl.PRJ_GAMMA_STR_REC709)
+    run_resolve_eotf(eotf_str=dcl.PRJ_GAMMA_STR_REC709_A)
+
+    # project = dcl.get_project_manager().GetCurrentProject()
+    # dcl._debug_print_and_save_media_pool_item_property(project)
