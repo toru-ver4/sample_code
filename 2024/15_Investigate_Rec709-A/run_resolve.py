@@ -64,20 +64,21 @@ def create_timeline_with_settings(project, eotf_str: str):
     project_params["colorSpaceInputGamma"] = eotf_str
     dcl.set_project_settings_from_dict(project=project, params=project_params)
     timeline = dcl.create_timeline(eotf_str)
-    dcl.set_timeline_settings_from_dict(
-        timeline=timeline, params=project_params
-    )
+
+    """The color settings for each timeline have been abandoned"""
+    # dcl.set_timeline_settings_from_dict(
+    #     timeline=timeline, params=project_params
+    # )
 
     return timeline
 
 
 def run_resolve_eotf(eotf_str=dcl.PRJ_GAMMA_STR_REC709_A):
     # project settings
-    project_name = "EOTF_Investigation"
+    project_name = f"EOTF_{eotf_str}"
     dcl.close_and_remove_project(project_name=project_name)
     project, project_manager = create_project(project_name=project_name)
     dcl.open_page(dcl.EDIT_PAGE_STR)
-    dcl.remove_all_timeline(project=project)
     timeline = create_timeline_with_settings(
         project=project, eotf_str=eotf_str
     )
@@ -86,15 +87,28 @@ def run_resolve_eotf(eotf_str=dcl.PRJ_GAMMA_STR_REC709_A):
     media_path = str(Path('./src_img/10-bit_ramp.dpx').resolve())
     print(f"media_path = {media_path}")
     clip_list = dcl.add_files_to_media_pool(media_path=media_path)
-    print(clip_list)
+    # print(clip_list)
     dcl.add_clips_to_the_current_timeline(clip_list=clip_list)
 
     # encode
+    relative_path = f"./render_out/eotf_{eotf_str}_"
+    out_path = str(Path(relative_path).resolve())
+    format_str = dcl.OUT_FILE_EXTENSTION_EXR
+    codec = dcl.CODEC_EXR_RGB_FLOAT_ZIP
+    preset_name = None
+    dcl.encode(project, out_path, format_str, codec, preset_name=preset_name)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    run_resolve_eotf(eotf_str=dcl.PRJ_GAMMA_STR_REC709_A)
+    eotf_str_list = [
+        dcl.PRJ_GAMMA_STR_GAMMA22,
+        dcl.PRJ_GAMMA_STR_GAMMA24,
+        dcl.PRJ_GAMMA_STR_REC709,
+        dcl.PRJ_GAMMA_STR_REC709_A,
+    ]
+    for eotf_str in eotf_str_list:
+        run_resolve_eotf(eotf_str=eotf_str)
 
     # project = dcl.get_project_manager().GetCurrentProject()
-    # dcl._debug_print_and_save_media_pool_item_property(project)
+    # dcl._debug_print_and_timeline_item_metadata(project)
