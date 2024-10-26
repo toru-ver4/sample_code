@@ -39,6 +39,27 @@ def create_10bit_ramp_tp():
     )
 
 
+def create_test_pattern_for_apple_log_encoding_analysis():
+    width = 1280
+    height = 720
+
+    ref_val = 0.18
+    max_exp = np.log2(1 / 0.18)
+    min_exp = np.log2(0.00003 / 0.18)
+    x = tpg.get_log2_x_scale(
+        sample_num=width, ref_val=ref_val,
+        min_exposure=min_exp, max_exposure=max_exp)
+    img = tpg.h_mono_line_to_img(x, height)
+    fname = f"./src_img/src_log2_{min_exp:.3f}_to_{max_exp:.3f}_stops.exr"
+    print(fname)
+    write_image(img, fname)
+
+
+def create_linear_ramp_tp():
+    pass
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    create_10bit_ramp_tp()
+    # create_10bit_ramp_tp()
+    create_test_pattern_for_apple_log_encoding_analysis()

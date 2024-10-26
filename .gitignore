@@ -249,6 +249,7 @@ temporary/**/**
 2024/11_Create_Ultra_HDR_Image/**/*.raw
 2024/13_HEIF_HDR_Image/debug/**
 2024/15_Investigate_Rec709-A/**/*.exr
+2024/15_Investigate_Rec709-A/**/*.tif
 
 [Dd]ebug/
 [Rr]elease/

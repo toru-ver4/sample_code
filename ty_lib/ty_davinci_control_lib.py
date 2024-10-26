@@ -148,7 +148,8 @@ OUT_FILE_EXTENSTION_MP4 = "mp4"
 OUT_FILE_EXTENSTION_MOV = "mov"
 OUT_FILE_EXTENSTION_EXR = "exr"
 OUT_FILE_EXTENSTION_DPX = "dpx"
-OUT_FILE_EXTENSTION_DPX = "tif"
+OUT_FILE_EXTENSTION_TIFF = "tif"
+OUT_FILE_EXTENSTION_PNG = "png"
 
 ###################################
 # Codec + Encoder
