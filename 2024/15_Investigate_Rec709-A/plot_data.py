@@ -316,8 +316,8 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # test_plot()
 
-    # eotfs_plot()
-    # eotfs_plot_low()
+    eotfs_plot()
+    eotfs_plot_low()
 
     oetfs_plot()
     oetfs_plot_low()
