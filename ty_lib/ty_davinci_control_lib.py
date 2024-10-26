@@ -12,9 +12,9 @@ import pprint
 from pathlib import Path
 
 # import third-party libraries
-from python_get_resolve import GetResolve
 
 # import my libraries
+from python_get_resolve import GetResolve
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -42,14 +42,25 @@ DELIVER_PAGE_STR = "deliver"
 ###################################
 PRJ_PARAM_NONE = "None"
 PRJ_PARAM_ENABLE = "1"
-PRJ_PARAM_DISABLE = "1"
+PRJ_PARAM_DISABLE = "0"
 
+PRJ_TIMELINE_RESOLUTION_1280 = "1280"
+PRJ_TIMELINE_RESOLUTION_720 = "720"
 PRJ_TIMELINE_RESOLUTION_1920 = "1920"
 PRJ_TIMELINE_RESOLUTION_1080 = "1080"
 PRJ_TIMELINE_RESOLUTION_3840 = "3840"
 PRJ_TIMELINE_RESOLUTION_2160 = "2160"
 
 PRJ_SDI_SINGLE_LINK = "single_link"
+
+PRJ_VIDEO_MONITOR_FORMAT_HD_720P23FPS = "HD 720p 23.976"
+PRJ_VIDEO_MONITOR_FORMAT_HD_720P24FPS = "HD 720p 24"
+PRJ_VIDEO_MONITOR_FORMAT_HD_720P29FPS = "HD 720p 29.97"
+PRJ_VIDEO_MONITOR_FORMAT_HD_720P25FPS = "HD 720p 25"
+PRJ_VIDEO_MONITOR_FORMAT_HD_720P30FPS = "HD 720p 30"
+PRJ_VIDEO_MONITOR_FORMAT_HD_720P50FPS = "HD 720p 50"
+PRJ_VIDEO_MONITOR_FORMAT_HD_720P59FPS = "HD 720p 59.94"
+PRJ_VIDEO_MONITOR_FORMAT_HD_720P60FPS = "HD 720p 60"
 
 PRJ_VIDEO_MONITOR_FORMAT_HD_1080P23FPS = "HD 1080p 23.976"
 PRJ_VIDEO_MONITOR_FORMAT_HD_1080P24FPS = "HD 1080p 24"
@@ -70,16 +81,16 @@ PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P59FPS = "UHD 2160p 59.94"
 PRJ_VIDEO_MONITOR_FORMAT_UHD_2160P60FPS = "UHD 2160p 60"
 
 PRJ_TIMELINE_FRAMERATE_23 = "23.976"
-PRJ_TIMELINE_FRAMERATE_24 = "24.0"
-PRJ_TIMELINE_FRAMERATE_25 = "25.0"
+PRJ_TIMELINE_FRAMERATE_24 = "24"
+PRJ_TIMELINE_FRAMERATE_25 = "25"
 PRJ_TIMELINE_FRAMERATE_29 = "29.97"
-PRJ_TIMELINE_FRAMERATE_30 = "30.0"
-PRJ_TIMELINE_FRAMERATE_50 = "50.0"
+PRJ_TIMELINE_FRAMERATE_30 = "30"
+PRJ_TIMELINE_FRAMERATE_50 = "50"
 PRJ_TIMELINE_FRAMERATE_59 = "59.94"
-PRJ_TIMELINE_FRAMERATE_60 = "60.0"
+PRJ_TIMELINE_FRAMERATE_60 = "60"
 
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_23 = "23.976"
-PRJ_TIMELINE_PLAYBACK_FRAMERATE_24 = "24"
+PRJ_TIMELINE_PLAYBACK_FRAMERATE_24 = "24.0"
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_25 = "25"
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_29 = "29.97"
 PRJ_TIMELINE_PLAYBACK_FRAMERATE_30 = "30"
@@ -97,13 +108,23 @@ PRJ_COLOR_SCIENCE_MODE_ACES_CCT = "acescct"
 
 PRJ_PRESET_MODE_CUSTOM = "Custom"
 
+PRJ_GAMMA_STR_LINER = "Linear"
 PRJ_GAMMA_STR_ST2084 = "ST2084"
+PRJ_GAMMA_STR_GAMMA22 = "Gamma 2.2"
 PRJ_GAMMA_STR_GAMMA24 = "Gamma 2.4"
 PRJ_GAMMA_STR_GAMMA26 = "Gamma 2.6"
+PRJ_GAMMA_STR_REC709 = "Rec.709"
+PRJ_GAMMA_STR_REC709_A = "Rec.709-A"
 
 PRJ_COLOR_SPACE_REC2020 = "Rec.2020"
 PRJ_COLOR_SPACE_REC709 = "Rec.709"
 PRJ_COLOR_SPACE_P3D65 = "P3-D65"
+
+PRJ_CS_GAMMA_CAT_REC709_A = "Rec.709-A"
+PRJ_CS_GAMMA_CAT_REC709 = "Rec.709 (Scene)"
+PRJ_CS_GAMMA_CAT_REC709_GM22 = "Rec.709 Gamma 2.2"
+PRJ_CS_GAMMA_CAT_REC709_GM24 = "Rec.709 Gamma 2.4"
+PRJ_CS_GAMMA_CAT_LINEAR = "Linear"
 
 PRJ_ACES_ODT_P3D65_PQ_108 = "P3-D65 ST2084 (108 nits)"
 PRJ_ACES_ODT_P3D65_PQ_1000 = "P3-D65 ST2084 (1000 nits)"
@@ -115,13 +136,20 @@ PRJ_LUMINANCE_MODE_CUSTOM = "Custom"
 PRJ_WORKING_LUMINANCE_MAX = "10000"
 
 ###################################
+# MediaPoolItem
+###################################
+CLIP_PROPERTY_INPUT_COLOR_SPACE = "Input Color Space"
+CLIP_PROPERTY_INPUT_GAMMA = "Input Gamma"
+
+###################################
 # File Extenstion
 ###################################
 OUT_FILE_EXTENSTION_MP4 = "mp4"
 OUT_FILE_EXTENSTION_MOV = "mov"
 OUT_FILE_EXTENSTION_EXR = "exr"
 OUT_FILE_EXTENSTION_DPX = "dpx"
-OUT_FILE_EXTENSTION_DPX = "tif"
+OUT_FILE_EXTENSTION_TIFF = "tif"
+OUT_FILE_EXTENSTION_PNG = "png"
 
 ###################################
 # Codec + Encoder
@@ -313,7 +341,7 @@ def set_project_settings_from_dict(project, params):
         else:
             print(f'    "{name}" = "{value}" is NGGGGGGGGGGGGGGGGGG.')
         if name == "timelineFrameRate":
-            current_page = resolve.GetCurrentPage() 
+            current_page = resolve.GetCurrentPage()
             result = project.SetRenderSettings({'FrameRate': float(value)})
             if result:
                 print(f'    "{name}" = "{value}" is OK in RenderSettings.')
@@ -321,6 +349,52 @@ def set_project_settings_from_dict(project, params):
                 print(f'    "{name}" = "{value}" is NGGGGGG in RenderSettings')
             resolve.OpenPage(current_page)
     print("project settings has done")
+
+
+def set_timeline_settings_from_dict(timeline, params):
+    """
+    set timeline settings from the dictionary type parameters.
+
+    Parameters
+    ----------
+    timeline : Timeline
+        a Timeline instance
+    parames : dict
+        dictionary type parameters
+    """
+    print("Now this script is setting the timeline settings...")
+    result = timeline.SetSetting("useCustomSettings", "1")
+    if result:
+        print('    "useCustomSettings" = "1" is OK.')
+    else:
+        print('    "useCustomSettings" = "1" is NGGGGGGGGGGGGGGGGGG.')
+    for name, value in params.items():
+        result = timeline.SetSetting(name, value)
+        if result:
+            print(f'    "{name}" = "{value}" is OK.')
+        else:
+            print(f'    "{name}" = "{value}" is NGGGGGGGGGGGGGGGGGG.')
+    print("timeline settings has done")
+
+
+def set_media_pool_item_property_from_dict(media_pool_item, params):
+    """
+    set MediaPoolItem property from the dictionary type parameters.
+
+    Parameters
+    ----------
+    media_pool_item : MediaPoolItem
+        a MediaPoolItem instance
+    parames : dict
+        dictionary type parameters
+    """
+    for name, value in params.items():
+        result = media_pool_item.SetClipProperty(name, value)
+        if result:
+            print(f'    "{name}" = "{value}" is OK.')
+        else:
+            print(f'    "{name}" = "{value}" is NGGGGGGGGGGGGGGGGGG.')
+    print("end of the MediaPoolItem property settings")
 
 
 def set_cuurent_timecode(timeline, timecode):
@@ -591,6 +665,57 @@ def _debug_print_and_save_encode_settings(project):
     os.chdir(current_directory)
 
 
+def _debug_print_and_save_media_pool_item_property(project):
+    current_directory = os.getcwd()
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    timeline = project.GetCurrentTimeline()
+    timeline_items = timeline.GetItemListInTrack("video", 1)
+    timeline_item = timeline_items[0]
+    media_pool_item = timeline_item.GetMediaPoolItem()
+    # print(f"media_pool_item = {media_pool_item}")
+    property = media_pool_item.GetClipProperty()
+    print("media pool property = ")
+    pprint.pprint(property)
+
+    buf = ""
+    # for render_format_name, ext in format_list.items():
+    #     codecs = project.GetRenderCodecs(ext)
+    #     buf += f"=== {ext} ===\n"
+    #     for key, value in codecs.items():
+    #         buf += f"{key}: {value}\n"
+    #     buf += "\n"
+    #     print(f"=== {ext} ===")
+    #     print(codecs)
+    #     print('')
+    # with open("./resolve_media_pool_item_metadata.txt", 'wt') as f:
+    #     f.write(buf)
+    # os.chdir(current_directory)
+
+
+def _debug_print_and_timeline_item_metadata(project):
+    current_directory = os.getcwd()
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    timeline = project.GetCurrentTimeline()
+    timeline_items = timeline.GetItemListInTrack("video", 1)
+    timeline_item = timeline_items[0]
+    property = timeline_item.GetProperty()
+    print(f"timeline item property = {property}")
+
+    buf = ""
+    # for render_format_name, ext in format_list.items():
+    #     codecs = project.GetRenderCodecs(ext)
+    #     buf += f"=== {ext} ===\n"
+    #     for key, value in codecs.items():
+    #         buf += f"{key}: {value}\n"
+    #     buf += "\n"
+    #     print(f"=== {ext} ===")
+    #     print(codecs)
+    #     print('')
+    # with open("./resolve_media_pool_item_metadata.txt", 'wt') as f:
+    #     f.write(buf)
+    # os.chdir(current_directory)
+
+
 def _debug_print_and_save_project_settings(project):
     project_settings = project.GetSetting()
     pprint.pprint(project_settings)
@@ -598,7 +723,8 @@ def _debug_print_and_save_project_settings(project):
 
 
 def _debug_print_and_save_timeline_settings(project):
-    timeline = create_timeline(timeline_name="dummy")
+    # timeline = create_timeline(timeline_name="dummy")
+    timeline = project.GetCurrentTimeline()
     timeline_settings = timeline.GetSetting()
     pprint.pprint(timeline_settings)
     _debug_save_dict_as_txt("./timeline_settings_list.txt", timeline_settings)
@@ -687,14 +813,17 @@ def get_avilable_parameters(project_name="sample_project"):
     """
     project_manager = get_project_manager(
         close_current_project=True)
-    project = initialize_project(
-        project_manager=project_manager, project_name=project_name)
+    # project = initialize_project(
+    #     project_manager=project_manager, project_name=project_name)
+    project = project_manager.GetCurrentProject()
     _debug_print_and_save_project_settings(project)
     _debug_print_and_save_timeline_settings(project)
     _debug_print_and_save_encode_settings(project)
+    _debug_print_and_save_media_pool_item_property(project)
+    _debug_print_and_timeline_item_metadata(project)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    sample_func()
-    # get_avilable_parameters(project_name="aaa")
+    # sample_func()
+    get_avilable_parameters(project_name="aaa")
