@@ -143,15 +143,15 @@ def run_resolve_oetf(oetf_str=dcl.PRJ_GAMMA_STR_REC709_A):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     eotf_str_list = [
+        dcl.PRJ_GAMMA_STR_REC709_A,
         dcl.PRJ_GAMMA_STR_GAMMA22,
         dcl.PRJ_GAMMA_STR_GAMMA24,
         dcl.PRJ_GAMMA_STR_REC709,
-        dcl.PRJ_GAMMA_STR_REC709_A,
     ]
     for eotf_str in eotf_str_list:
-        # run_resolve_eotf(eotf_str=eotf_str)
+        run_resolve_eotf(eotf_str=eotf_str)
         run_resolve_oetf(oetf_str=eotf_str)
-        # break
 
+    # # for debug
     # project = dcl.get_project_manager().GetCurrentProject()
     # dcl._debug_print_and_timeline_item_metadata(project)

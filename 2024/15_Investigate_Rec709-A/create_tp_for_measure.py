@@ -23,7 +23,7 @@ __email__ = 'toru.ver.11 at-sign gmail.com'
 __all__ = []
 
 
-def create_10bit_ramp_tp():
+def create_10bit_ramp_for_eotf():
     width = 1280
     height = 720
     num_of_sample = 1024
@@ -37,15 +37,19 @@ def create_10bit_ramp_tp():
         img, path="./img/10-bit_ramp.dpx", bit_depth='uint16',
         attributes=[bit_option]
     )
+    tpg.img_wirte_float_as_16bit_int("./src_img/10-bit_ramp.png", img)
 
 
-def create_test_pattern_for_apple_log_encoding_analysis():
+def create_log2_ramp_for_oetf():
     width = 1280
     height = 720
 
+    target_black_val = 0.00003
+    target_white_val = 1.0
+
     ref_val = 0.18
-    max_exp = np.log2(1 / 0.18)
-    min_exp = np.log2(0.00003 / 0.18)
+    max_exp = np.log2(target_white_val / ref_val)
+    min_exp = np.log2(target_black_val / ref_val)
     x = tpg.get_log2_x_scale(
         sample_num=width, ref_val=ref_val,
         min_exposure=min_exp, max_exposure=max_exp)
@@ -61,5 +65,5 @@ def create_linear_ramp_tp():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # create_10bit_ramp_tp()
-    create_test_pattern_for_apple_log_encoding_analysis()
+    create_10bit_ramp_for_eotf()
+    create_log2_ramp_for_oetf()
