@@ -263,6 +263,11 @@ def get_project_manager(close_current_project=False):
     return project_manager
 
 
+def load_project(project_name="sample"):
+    project_manager = resolve.GetProjectManager()
+    project_manager.LoadProject(project_name)
+
+
 def initialize_project(project_manager, project_name="working_project"):
     """
     * Load working project if the project is exist.
