@@ -86,7 +86,7 @@ def run_resolve_eotf(eotf_str=dcl.PRJ_GAMMA_STR_REC709_A):
     project_name = f"EOTF_{eotf_str}"
     # dcl.close_and_remove_project(project_name=project_name)
     # project, project_manager = create_project(project_name=project_name)
-    project = dcl.load_project(project_name=project_name)
+    dcl.load_project(project_name=project_name)
 
     dcl.open_page(dcl.EDIT_PAGE_STR)
     # create_timeline_with_settings_for_eotf(
@@ -96,14 +96,22 @@ def run_resolve_eotf(eotf_str=dcl.PRJ_GAMMA_STR_REC709_A):
     # add clips
     media_path = str(Path('./src_img/10-bit_ramp.dpx').resolve())
     print(f"media_path = {media_path}")
-    clip_list = dcl.add_files_to_media_pool(media_path=media_path)
+    # clip_list = dcl.add_files_to_media_pool(media_path=media_path)
     # clip_property = clip_list[0].GetClipProperty()
     # print(clip_list)
-    timeline_item = dcl.add_clips_to_the_current_timeline(clip_list=clip_list)
-    media_pool_item = timeline_item[0].GetMediaPoolItem()
-    clip_property = media_pool_item.GetClipProperty()
-    input_color_space_str = "Input Color Space"
-    dump_data_to_log_txt(clip_property[input_color_space_str])
+    # timeline_item = dcl.add_clips_to_the_current_timeline(clip_list=clip_list)
+    # media_pool_item = timeline_item[0].GetMediaPoolItem()
+    # clip_property = media_pool_item.GetClipProperty()
+    # input_color_space_str = "Input Color Space"
+    # dump_data_to_log_txt(clip_property[input_color_space_str])
+    settings = dcl.resolve.GetProjectManager().GetCurrentProject().GetSetting()
+    gamut = settings['colorSpaceTimeline']
+    gamma = settings['colorSpaceTimelineGamma']
+    output_str = f"{gamut}, {gamma}"
+    print(output_str)
+
+    with open("concat_input_color_space-gamut-gamma.txt", "a", encoding="utf-8") as log_file:
+        log_file.write(output_str + "\n")
 
 
 if __name__ == '__main__':
