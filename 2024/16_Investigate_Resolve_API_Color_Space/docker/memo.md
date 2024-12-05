@@ -45,6 +45,6 @@ usbipd.exe attach -w OracleLinux_9_1 -b 7-2
 ```
 
 ```powershell_as_Administrator
-usbipd.exe detach -w OracleLinux_9_1 -b 7-2
+usbipd.exe detach -b 7-2
 usbipd.exe unbind -b 7-2
 ```
