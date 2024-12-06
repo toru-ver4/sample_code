@@ -33,7 +33,7 @@ project_manager.CloseProject(project_manager.GetCurrentProject())
 project_manager.DeleteProject("Hellow, World4")
 project = project_manager.CreateProject("Hellow, World4")
 
-# Project Settings
+# Set up the project settings
 project.SetSetting("timelineResolutionWidth", "1920")
 project.SetSetting("timelineResolutionHeight", "1080")
 project.SetSetting("videoMonitorFormat", "HD 1080p 24")
@@ -58,24 +58,38 @@ project.SetSetting("outputDRT", "None")
 project.SetSetting("hdrMasteringLuminanceMax", "1000")
 project.SetSetting("hdrMasteringOn", "1")
 
+# Add clips
 resolve.OpenPage("media")
 media_storage = resolve.GetMediaStorage()
 media_path = str((Path(__file__).parent / "clip").resolve())
-clip_list = media_storage.AddItemListToMediaPool(media_path)
+media_pool_item_list = media_storage.AddItemListToMediaPool(media_path)
+clip = media_pool_item_list[0]
 
-clip_properties = clip_list[0].GetClipProperty()
+# Chage the clip property
+color_gamut_list = [
+    'Sony S-Gamut3', 'Canon Cinema Gamut', 'REDWideGamutRGB'
+]
+color_space_list = [
+    'S-Gamut3/S-Log3', 'Canon Cinema Gamut/Canon Log 2',
+    'REDWideGamutRGB/Log3G10'
+]
+
+# Color Gamut として設定すると成功する
+print("Change the clip's Input Color Space (as the color gamut)")
+for color_gamut in color_gamut_list:
+    ret_value = clip.SetClipProperty('Input Color Space', color_gamut)
+    debug_str = f"  clip.SetClipProperty('Input Color Space', {color_gamut})"
+    debug_str += f" -> {ret_value}"
+    print(debug_str)
+
+# Color Space として設定すると成功する
+print("Change the clip's Input Color Space (as the color space)")
+for color_space in color_space_list:
+    ret_value = clip.SetClipProperty('Input Color Space', color_space)
+    debug_str = f"  clip.SetClipProperty('Input Color Space', {color_space})"
+    debug_str += f" -> {ret_value}"
+    print(debug_str)
+
+# 参考情報として MediaPoolItem.SetClipProperty で設定可能なパラメータを出力
+clip_properties = clip.GetClipProperty()
 pprint.pprint(clip_properties)
-
-ret_value = clip_list[0].SetClipProperty('Input Color Space', 'P3-D65')
-print(f"ret_value = {ret_value}")
-
-
-    # dcl.open_page(dcl.EDIT_PAGE_STR)
-    # create_timeline_with_settings_for_oetf(
-    #     project=project, oetf_str=oetf_str
-    # )
-
-    # # add clips
-    # media_path = str(Path('./src_img/src_log2_-12.551_to_2.474_stops.exr').resolve())
-    # print(f"media_path = {media_path}")
-    # clip_list = dcl.add_files_to_media_pool(media_path=media_path)
