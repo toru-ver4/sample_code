@@ -105,6 +105,7 @@ def run_resolve_eotf(eotf_str=dcl.PRJ_GAMMA_STR_REC709_A):
     # input_color_space_str = "Input Color Space"
     # dump_data_to_log_txt(clip_property[input_color_space_str])
     settings = dcl.resolve.GetProjectManager().GetCurrentProject().GetSetting()
+    pprint.pprint(settings)
     gamut = settings['colorSpaceTimeline']
     gamma = settings['colorSpaceTimelineGamma']
     output_str = f"{gamut}, {gamma}"

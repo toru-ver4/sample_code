@@ -73,20 +73,31 @@ color_space_list = [
     'S-Gamut3/S-Log3', 'Canon Cinema Gamut/Canon Log 2',
     'REDWideGamutRGB/Log3G10'
 ]
+gamma_list = [
+    'S-Log3', 'Canon Log 2', 'RED Log3G10'
+]
 
-# Color Gamut として設定すると成功する
+# 'Input Color Space' のパラメータを Color Gamut として設定すると成功する
 print("Change the clip's Input Color Space (as the color gamut)")
 for color_gamut in color_gamut_list:
     ret_value = clip.SetClipProperty('Input Color Space', color_gamut)
-    debug_str = f"  clip.SetClipProperty('Input Color Space', {color_gamut})"
+    debug_str = f"  clip.SetClipProperty('Input Color Space', '{color_gamut}')"
     debug_str += f" -> {ret_value}"
     print(debug_str)
 
-# Color Space として設定すると成功する
+# 'Input Color Space' のパラメータを Color Space として設定すると成功する
 print("Change the clip's Input Color Space (as the color space)")
 for color_space in color_space_list:
     ret_value = clip.SetClipProperty('Input Color Space', color_space)
-    debug_str = f"  clip.SetClipProperty('Input Color Space', {color_space})"
+    debug_str = f"  clip.SetClipProperty('Input Color Space', '{color_space}')"
+    debug_str += f" -> {ret_value}"
+    print(debug_str)
+
+# 'Input Gamma' はそもそも propertyName に存在していない
+print("Change the clip's Input Gamma")
+for gamma in gamma_list:
+    ret_value = clip.SetClipProperty('Input Gamma', gamma)
+    debug_str = f"  clip.SetClipProperty('Input Gamma', '{gamma}')"
     debug_str += f" -> {ret_value}"
     print(debug_str)
 
