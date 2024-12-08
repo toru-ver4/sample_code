@@ -3,6 +3,7 @@
 import sys
 import os
 import functools
+from resolve_constants import *
 
 if sys.platform == "darwin":  # macOS
     resolve_script_api = (
@@ -93,8 +94,7 @@ def close_current_project():
     Bool
         Returns True if successful, and False otherwise.    
     """
-    project_manager = get_project_manager()
-    project = project_manager.GetCurrentProject()
+    project = get_current_project()
     ret_val = _close_project(project=project)
 
     return ret_val
@@ -186,6 +186,116 @@ def load_project(project_name):
     return project
 
 
+@log_return_value
+def get_current_project():
+    """
+    Returns
+    -------
+    Project (BlackmagicFusion.PyRemoteObject)
+        If project does not already exist
+    """
+    project_manager = get_project_manager()
+    project = project_manager.GetCurrentProject()
+
+    return project
+
+
+@log_return_value
+def get_media_pool():
+    """
+    Returns
+    -------
+    MediaPool (BlackmagicFusion.PyRemoteObject)
+        A MediaPool instance
+    """
+    project = get_current_project()
+    media_pool = project.GetMediaPool()
+
+    return media_pool
+
+
+@log_return_value
+def create_empty_timeline(name="timeline_x"):
+    """
+    Parameters
+    ----------
+    name : str
+        A timeline name
+
+    Returns
+    -------
+    Timeline (BlackmagicFusion.PyRemoteObject)
+        A empty Timeline instance
+    """
+    media_pool = get_media_pool()
+    timeline = media_pool.CreateEmptyTimeline(name)
+
+    if timeline is None:
+        msg = f'The Timeline "{name}" already exists. '
+        msg += "Please provide a different name."
+        raise TyResolveModuleError(project, msg)
+
+    return timeline
+
+
+@log_return_value
+def setup_project_settings(params):
+    """
+    Parameters
+    ----------
+    params : dict
+        A dictionary that specify the project settings.
+
+    Returns
+    -------
+    Bool
+        Returns True if successful.
+
+    Examples
+    --------
+    >>> params = {
+    ...     "timelineResolutionWidth": "1920",
+    ...     "timelineResolutionHeight": "1080",
+    ...     "videoMonitorFormat": "HD 1080p 24",
+    ...     "timelineFrameRate": "24",
+    ...     "videoMonitorUse444SDI": "0",
+    ...     "videoMonitorSDIConfiguration": "single_link",
+    ...     "videoDataLevels": "Video",
+    ...     "videoMonitorUseHDROverHDMI": "1",
+    ...     "colorScienceMode": "davinciYRGBColorManagedv2",
+    ...     "rcmPresetMode": "Custom",
+    ...     "separateColorSpaceAndGamma": "1",
+    ...     "colorSpaceInput": "Rec.2020",
+    ...     "colorSpaceInputGamma": "ST2084",
+    ...     "colorSpaceTimeline": "Rec.2020",
+    ...     "colorSpaceTimelineGamma": "ST2084",
+    ...     "colorSpaceOutput": "Rec.2020",
+    ...     "colorSpaceOutputGamma": "ST2084",
+    ...     "timelineWorkingLuminance": "10000",
+    ...     "timelineWorkingLuminanceMode": "Custom",
+    ...     "inputDRT": "None",
+    ...     "outputDRT": "None",
+    ...     "hdrMasteringLuminanceMax": "1000",
+    ...     "hdrMasteringOn": "1",
+    ... }
+    >>> setup_project_settings(params=params)
+    """
+    is_success = True
+    for name, value in params.items():
+        result = project.SetSetting(name, value)
+        if result:
+            print(f'    Project.SetSetting("{name}", "{value}") -> Success')
+        else:
+            print(f'    Project.SetSetting("{name}", "{value}") -> Failed')
+            is_success = False
+
+    if is_success is False:
+        msg = 'Project.SetSetting() was failed'
+        raise TyResolveModuleError(project, msg)
+
+    return is_success
+
+
 if __name__ == '__main__':
     # sample code
     project_name = "Hello World3"
@@ -199,9 +309,36 @@ if __name__ == '__main__':
     project = load_project(project_name=project_name)
 
     # set up the project settings
-    
-    # add clips
 
     # create timelines
+    timeline = create_empty_timeline()
+
+    # add clips
 
     # encode
+    params = {
+        "timelineResolutionWidth": "1920",
+        "timelineResolutionHeight": "1080",
+        "videoMonitorFormat": "HD 1080p 24",
+        "timelineFrameRate": "24",
+        "videoMonitorUse444SDI": "0",
+        "videoMonitorSDIConfiguration": "single_link",
+        "videoDataLevels": "Video",
+        "videoMonitorUseHDROverHDMI": "1",
+        "colorScienceMode": "davinciYRGBColorManagedv2",
+        "rcmPresetMode": "Custom",
+        "separateColorSpaceAndGamma": "1",
+        "colorSpaceInput": "Rec.2020",
+        "colorSpaceInputGamma": "ST2084",
+        "colorSpaceTimeline": "Rec.2020",
+        "colorSpaceTimelineGamma": "ST2084",
+        "colorSpaceOutput": "Rec.2020",
+        "colorSpaceOutputGamma": "ST2084",
+        "timelineWorkingLuminance": "10000",
+        "timelineWorkingLuminanceMode": "Custom",
+        "inputDRT": "None",
+        "outputDRT": "None",
+        "hdrMasteringLuminanceMax": "1000",
+        "hdrMasteringOn": "1",
+    }
+    setup_project_settings(params=params)
