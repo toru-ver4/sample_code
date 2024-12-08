@@ -238,6 +238,28 @@ def create_empty_timeline(name="timeline_x"):
     return timeline
 
 
+def set_project_setting(name, value):
+    """
+    Parameters
+    ----------
+    name : str
+        A project setting name
+    value : str
+        A project setting value
+
+    Returns
+    -------
+    Returns True if successful, and False otherwise.
+    """
+    result = project.SetSetting(name, value)
+    if result:
+        print(f'    Project.SetSetting("{name}", "{value}") -> Success')
+    else:
+        print(f'    Project.SetSetting("{name}", "{value}") -> Failed')
+
+    return result
+
+
 @log_return_value
 def setup_project_settings(params):
     """
@@ -282,15 +304,13 @@ def setup_project_settings(params):
     """
     is_success = True
     for name, value in params.items():
-        result = project.SetSetting(name, value)
-        if result:
-            print(f'    Project.SetSetting("{name}", "{value}") -> Success')
-        else:
-            print(f'    Project.SetSetting("{name}", "{value}") -> Failed')
+        result = set_project_setting(name, value)
+        if result is False:
             is_success = False
 
     if is_success is False:
-        msg = 'Project.SetSetting() was failed'
+        msg = 'Project.SetSetting() was failed. '
+        msg += 'Please check your "params" parameters.'
         raise TyResolveModuleError(project, msg)
 
     return is_success
@@ -299,24 +319,7 @@ def setup_project_settings(params):
 if __name__ == '__main__':
     # sample code
     project_name = "Hello World3"
-
-    # control the project
-    close_current_project()
-    delete_project(project_name=project_name)
-    project = create_project(project_name=project_name)
-    save_project()
-    close_current_project()
-    project = load_project(project_name=project_name)
-
-    # set up the project settings
-
-    # create timelines
-    timeline = create_empty_timeline()
-
-    # add clips
-
-    # encode
-    params = {
+    project_settings_params = {
         "timelineResolutionWidth": "1920",
         "timelineResolutionHeight": "1080",
         "videoMonitorFormat": "HD 1080p 24",
@@ -339,6 +342,24 @@ if __name__ == '__main__':
         "inputDRT": "None",
         "outputDRT": "None",
         "hdrMasteringLuminanceMax": "1000",
+        "Unchi": "Puri",
         "hdrMasteringOn": "1",
     }
-    setup_project_settings(params=params)
+
+    # control the project
+    close_current_project()
+    delete_project(project_name=project_name)
+    project = create_project(project_name=project_name)
+    save_project()
+    close_current_project()
+    project = load_project(project_name=project_name)
+
+    # set up the project settings
+    setup_project_settings(params=project_settings_params)
+
+    # create timelines
+    timeline = create_empty_timeline()
+
+    # add clips
+
+    # encode
