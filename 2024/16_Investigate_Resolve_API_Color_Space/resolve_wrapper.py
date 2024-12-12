@@ -338,12 +338,15 @@ def add_file_to_media_pool(file_path, start_frame=None, end_frame=None):
     ----------
     file_path : str
         A absolute file path.
+    start_frame : int
+        A start frame number.
+    end_frame : int
+        A end frame number.
 
     Returns
     -------
     MediaPoolItem
         A MediaPoolItem instance.
-
     """
     resolve.OpenPage("media")
     media_storage = get_media_storage()
@@ -357,6 +360,36 @@ def add_file_to_media_pool(file_path, start_frame=None, end_frame=None):
             "endFrame": end_frame,
         }
         ret_value = media_storage.AddItemListToMediaPool([media_info])
+
+    if ret_value == []:
+        msg = 'add_files_to_media_pool() was failed. '
+        msg += 'Please check `file_path_list` parameter.'
+        raise TyResolveModuleError(ret_value, msg)
+
+    return ret_value[0]
+
+
+@log_return_value
+def add_seq_file_to_media_pool(file_path, start_idx, end_idx):
+    """
+    Parameters
+    ----------
+    file_path : str
+        A sequence file path.
+        example: `file_path = "/media/countdown_%04d.png"`
+    start_idx : int
+        A sequence file start index.
+    end_idx : int
+        A sequence file end index.
+    """
+    resolve.OpenPage("media")
+    media_pool = get_media_pool()
+    clip_info = {
+        "FilePath": file_path,
+        "StartIndex": start_idx,
+        "EndIndex": end_idx,
+    }
+    ret_value = media_pool.ImportMedia([clip_info])
 
     if ret_value == []:
         msg = 'add_files_to_media_pool() was failed. '
@@ -415,6 +448,7 @@ if __name__ == '__main__':
     relative_file_list = [
         "./videos/countdown_HDR_24fps_hevc_yuv420p10le.mov",
         "./videos/countdown_SDR_24fps_hevc_yuv420p10le.mov",
+        "./videos/countdown_SDR_60P_%04d.png"
     ]
     file_path_list = [
         str(Path(x).resolve()) for x in relative_file_list
@@ -422,6 +456,13 @@ if __name__ == '__main__':
     print(file_path_list)
     clip_hdr = add_file_to_media_pool(file_path=file_path_list[0])
     clip_sdr = add_file_to_media_pool(
-        file_path=file_path_list[1], start_frame=24, end_frame=71)
+        file_path=file_path_list[1], start_frame=24, end_frame=71
+    )
+    clip_seq = add_seq_file_to_media_pool(
+        file_path=file_path_list[2], start_idx=120, end_idx=179
+    )
 
+    """
+    add_seq_file_to_media_pool の異常系の動作確認よろ
+    """
     # encode
