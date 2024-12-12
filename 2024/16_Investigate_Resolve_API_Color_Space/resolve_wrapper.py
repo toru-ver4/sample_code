@@ -2,6 +2,7 @@
 
 import sys
 import os
+from pathlib import Path
 import functools
 from resolve_constants import *
 
@@ -40,6 +41,7 @@ class TyResolveModuleError(Exception):
 
 
 DEBUG_ON = True
+# DEBUG_ON = False
 
 
 def log_return_value(func):
@@ -316,7 +318,57 @@ def setup_project_settings(params):
     return is_success
 
 
+@log_return_value
+def get_media_storage():
+    """
+    Returns
+    -------
+    MediaStorage (BlackmagicFusion.PyRemoteObject)
+        A MediaStorage instance
+    """
+    media_storage = resolve.GetMediaStorage()
+
+    return media_storage
+
+
+@log_return_value
+def add_file_to_media_pool(file_path, start_frame=None, end_frame=None):
+    """
+    Parameters
+    ----------
+    file_path : str
+        A absolute file path.
+
+    Returns
+    -------
+    MediaPoolItem
+        A MediaPoolItem instance.
+
+    """
+    resolve.OpenPage("media")
+    media_storage = get_media_storage()
+
+    if (start_frame is None) and (end_frame is None):
+        ret_value = media_storage.AddItemListToMediaPool([file_path])
+    else:
+        media_info = {
+            "media": file_path,
+            "startFrame": start_frame,
+            "endFrame": end_frame,
+        }
+        ret_value = media_storage.AddItemListToMediaPool([media_info])
+
+    if ret_value == []:
+        msg = 'add_files_to_media_pool() was failed. '
+        msg += 'Please check `file_path_list` parameter.'
+        raise TyResolveModuleError(ret_value, msg)
+
+    return ret_value[0]
+
+
 if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
     # sample code
     project_name = "Hello World3"
     project_settings_params = {
@@ -342,7 +394,6 @@ if __name__ == '__main__':
         "inputDRT": "None",
         "outputDRT": "None",
         "hdrMasteringLuminanceMax": "1000",
-        "Unchi": "Puri",
         "hdrMasteringOn": "1",
     }
 
@@ -358,8 +409,19 @@ if __name__ == '__main__':
     setup_project_settings(params=project_settings_params)
 
     # create timelines
-    timeline = create_empty_timeline()
+    timeline = create_empty_timeline(name="My_Timeline")
 
-    # add clips
+    # add files to the media storage
+    relative_file_list = [
+        "./videos/countdown_HDR_24fps_hevc_yuv420p10le.mov",
+        "./videos/countdown_SDR_24fps_hevc_yuv420p10le.mov",
+    ]
+    file_path_list = [
+        str(Path(x).resolve()) for x in relative_file_list
+    ]
+    print(file_path_list)
+    clip_hdr = add_file_to_media_pool(file_path=file_path_list[0])
+    clip_sdr = add_file_to_media_pool(
+        file_path=file_path_list[1], start_frame=24, end_frame=71)
 
     # encode
