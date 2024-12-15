@@ -553,6 +553,102 @@ def set_current_timecode(timecode):
     return ret_val
 
 
+@log_return_value
+def set_render_format_codec_settings(format_str='mov', codec='ProRes422HQ'):
+    """
+    Parameters
+    ----------
+    format_str : str
+        A render format.
+        Example are 'mov', 'mp4', 'tif', 'png', ...
+    codec : str
+        A coding option.
+    """
+    project = get_current_project()
+    result = project.SetCurrentRenderFormatAndCodec(format_str, codec)
+
+    if result:
+        msg = "    Project.SetCurrentRenderFormatAndCodec("
+        msg += f'"{format_str}", "{codec}") -> Success'
+        print(msg)
+    else:
+        msg = "    Project.SetCurrentRenderFormatAndCodec("
+        msg += f'"{format_str}", "{codec}") -> Failed'
+        print(msg)
+
+        msg = 'Failed to set_render_format_codec_settings() '
+        msg += 'Please check if the input parameters are correct.'
+        raise TyResolveModuleError(result, msg)
+
+    return result
+
+
+def set_render_setting(name, value):
+    project = get_current_project()
+    result = project.SetRenderSettings({name: value})
+
+    if result:
+        msg = f"    project.SetRenderSettings({{{name}: {value}}})"
+        msg += '-> Sucess'
+        print(msg)
+    else:
+        msg = f"    project.SetRenderSettings({{{name}: {value}}})"
+        msg += '-> Failed'
+        print(msg)
+
+    return result
+
+
+@log_return_value
+def set_render_settings(setting_dict: dict):
+    """
+    Parameters
+    ----------
+    setting_dict : dict
+        setting dictionary
+    """
+    for key, value in setting_dict.items():
+        result = set_render_setting(name=key, value=value)
+    if result is not True:
+        msg = 'Failed to set_render_settings() '
+        msg += 'Please check if the input parameters are correct.'
+        raise TyResolveModuleError(result, msg)
+
+    return result
+
+
+@log_return_value
+def delete_render_preset(preset_name):
+    """
+    preset_name : str
+        A preset name.
+    """
+    project = get_current_project()
+    result = project.DeleteRenderPreset(preset_name)
+
+    return result
+
+
+@log_return_value
+def import_render_preset(preset_path):
+    """
+    Parameters
+    ----------
+    preset_path : str
+        A path for the preset settigs.
+    """
+    preset_name = Path(preset_path).stem
+    delete_render_preset(preset_name=preset_name)
+    result = resolve.ImportRenderPreset(preset_path)
+
+    if result is not True:
+        msg = 'Failed to import_render_preset() '
+        msg += 'Please check if the input parameters are correct.'
+        raise TyResolveModuleError(result, msg)
+
+    return result
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -630,7 +726,17 @@ if __name__ == '__main__':
         end_frame=24+60,
         pos_timecode="01:00:06:00"
     )
-    import pprint
-    pprint.pprint(tl_item_audio.GetStart())
 
     # encode
+    set_render_format_codec_settings(
+        format_str=OUT_FILE_EXTENSTION_MOV, codec=CODEC_H264,
+    )
+
+    import_render_preset(
+        preset_path=str(Path("./render_presets/h265_main10_444_qp-0.xml")
+                        .resolve())
+    )
+    import_render_preset(
+        preset_path=str(Path("./render_presets/H265_Constant_Bitrate_2-pass Render.xml")
+                        .resolve())
+    )
