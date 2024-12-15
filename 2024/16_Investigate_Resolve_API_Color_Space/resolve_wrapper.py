@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+"""
+方針: 
+"""
+
 import sys
 import os
 from pathlib import Path
@@ -40,6 +44,9 @@ class TyResolveModuleError(Exception):
         super().__init__(f"{message}")
 
 
+# =====================
+# for Debug
+# =====================
 DEBUG_ON = True
 # DEBUG_ON = False
 
@@ -203,6 +210,30 @@ def get_current_project():
 
 
 @log_return_value
+def open_page(page_name="edit"):
+    """
+    Parameters
+    ----------
+    page_name : str
+        A page name. You can use strings listed below.
+            * "media"
+            * "cut"
+            * "edit"
+            * 'fusion'
+            * "color"
+            * "deliver"
+    """
+    ret_val = resolve.OpenPage(page_name)
+
+    if ret_val is not True:
+        msg = f'Failed to open "{page_name}" page. '
+        msg += 'Please verify that the `page_name` is correct.'
+        raise TyResolveModuleError(project, msg)
+
+    return project
+
+
+@log_return_value
 def get_media_pool():
     """
     Returns
@@ -229,6 +260,7 @@ def create_empty_timeline(name="timeline_x"):
     Timeline (BlackmagicFusion.PyRemoteObject)
         A empty Timeline instance
     """
+    open_page(page_name='edit')
     media_pool = get_media_pool()
     timeline = media_pool.CreateEmptyTimeline(name)
 
@@ -258,6 +290,25 @@ def set_project_setting(name, value):
         print(f'    Project.SetSetting("{name}", "{value}") -> Success')
     else:
         print(f'    Project.SetSetting("{name}", "{value}") -> Failed')
+
+    return result
+
+
+@log_return_value
+def get_project_setting(name):
+    """
+    Parameters
+    ----------
+    name : str
+        A project setting name
+
+    Returns
+    -------
+    str
+        A project setting value
+    """
+    result = project.GetSetting(name)
+    print(f'    Project.GetSetting("{name}") -> "{result}"')
 
     return result
 
@@ -348,7 +399,7 @@ def add_file_to_media_pool(file_path, start_frame=None, end_frame=None):
     MediaPoolItem
         A MediaPoolItem instance.
     """
-    resolve.OpenPage("media")
+    open_page(page_name='media')
     media_storage = get_media_storage()
 
     if (start_frame is None) and (end_frame is None):
@@ -382,7 +433,7 @@ def add_seq_file_to_media_pool(file_path, start_idx, end_idx):
     end_idx : int
         A sequence file end index.
     """
-    resolve.OpenPage("media")
+    open_page(page_name="media")
     media_pool = get_media_pool()
     clip_info = {
         "FilePath": file_path,
@@ -391,12 +442,115 @@ def add_seq_file_to_media_pool(file_path, start_idx, end_idx):
     }
     ret_value = media_pool.ImportMedia([clip_info])
 
-    if ret_value == []:
+    if ret_value is None:
         msg = 'add_files_to_media_pool() was failed. '
         msg += 'Please check `file_path_list` parameter.'
         raise TyResolveModuleError(ret_value, msg)
 
     return ret_value[0]
+
+
+@log_return_value
+def append_clip_to_timeline(
+        clip, pos_timecode=None,
+        start_frame=None, end_frame=None, media_type=None, track_index=1):
+    """
+    Parameters
+    ----------
+    clip : MediaPoolItem
+        clip
+    pos_timecode : str
+        clip start position (timecode).
+        example -> `pos_timecode="01:00:00:12"`
+    start_frame : int or float
+        start frame number
+    end_frame : int or float
+        end frame number
+    media_type : int
+        1: video only, 2: autio only
+    track_index : int
+        track index
+
+    Returns
+    -------
+    TimelineItem
+        A TimelineItem instance
+    """
+    media_pool = get_media_pool()
+
+    clip_info = {
+        "mediaPoolItem": clip
+    }
+
+    if pos_timecode is not None:
+        frame_idx = _timecode_to_frame_index(timecode=pos_timecode)
+        clip_info.update({'recordFrame': frame_idx})
+    if (start_frame is not None) and (end_frame is not None):
+        clip_info.update({'startFrame': start_frame})
+        clip_info.update({'endFrame': end_frame})
+    if media_type is not None:
+        clip_info.update({'mediaType': media_type})
+    if track_index is not None:
+        clip_info.update({'trackIndex': track_index})
+
+    ret_value = media_pool.AppendToTimeline([clip_info])
+
+    if ret_value[0] is None:
+        msg = 'append_clip_to_timeline() was failed. '
+        msg += 'Please check arguments.'
+        raise TyResolveModuleError(ret_value, msg)
+
+    return ret_value[0]
+
+
+def _frame_index_to_timecode(
+        frame_index, start_timecode="01:00:00:00"):
+    fps_float = get_project_setting("timelineFrameRate")
+    if abs(fps_float - int(fps_float)) > 0.0:
+        msg = 'Unsupported frame rate '
+        msg += 'Please specify integer framerate to the project settings.'
+        raise TyResolveModuleError(False, msg)
+
+    fps = int(fps_float)
+
+    hours, minutes, seconds, frames = map(int, start_timecode.split(':'))
+
+    total_frames = frames + frame_index
+
+    added_seconds = total_frames // fps
+    frames = total_frames % fps
+    seconds += added_seconds
+    minutes += seconds // 60
+    seconds %= 60
+    hours += minutes // 60
+    minutes %= 60
+
+    new_timecode = f"{hours:02d}:{minutes:02d}:{seconds:02d}:{frames:02d}"
+    return new_timecode
+
+
+def _timecode_to_frame_index(timecode: str):
+    fps_float = get_project_setting("timelineFrameRate")
+    if abs(fps_float - int(fps_float)) > 0.0:
+        msg = 'Unsupported frame rate. '
+        msg += 'Please specify integer framerate in the project settings.'
+        raise TyResolveModuleError(False, msg)
+
+    fps = int(fps_float)
+
+    th, tm, ts, tf = map(int, timecode.split(':'))
+
+    frame_index = ((th * 3600) + (tm * 60) + ts) * fps + tf
+
+    return frame_index
+
+
+@log_return_value
+def set_current_timecode(timecode):
+    timeline = get_current_project().GetCurrentTimeline()
+    ret_val = timeline.SetCurrentTimecode(timecode)
+
+    return ret_val
 
 
 if __name__ == '__main__':
@@ -448,7 +602,8 @@ if __name__ == '__main__':
     relative_file_list = [
         "./videos/countdown_HDR_24fps_hevc_yuv420p10le.mov",
         "./videos/countdown_SDR_24fps_hevc_yuv420p10le.mov",
-        "./videos/countdown_SDR_60P_%04d.png"
+        "./videos/countdown_SDR_60P_%04d.png",
+        "./videos/countdown.wav",
     ]
     file_path_list = [
         str(Path(x).resolve()) for x in relative_file_list
@@ -461,8 +616,21 @@ if __name__ == '__main__':
     clip_seq = add_seq_file_to_media_pool(
         file_path=file_path_list[2], start_idx=120, end_idx=179
     )
+    clip_audio = add_file_to_media_pool(file_path=file_path_list[3])
 
-    """
-    add_seq_file_to_media_pool の異常系の動作確認よろ
-    """
+    # # add clips to the timeline
+    append_clip_to_timeline(clip=clip_hdr)
+    append_clip_to_timeline(clip=clip_sdr)
+    append_clip_to_timeline(
+        clip=clip_seq, media_type=1, pos_timecode="01:00:06:00")
+    tl_item_audio = append_clip_to_timeline(
+        clip=clip_audio,
+        media_type=2,
+        start_frame=24,
+        end_frame=24+60,
+        pos_timecode="01:00:06:00"
+    )
+    import pprint
+    pprint.pprint(tl_item_audio.GetStart())
+
     # encode
