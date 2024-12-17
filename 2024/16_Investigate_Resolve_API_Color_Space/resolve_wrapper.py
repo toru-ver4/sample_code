@@ -8,7 +8,7 @@ import sys
 import os
 from pathlib import Path
 import functools
-from resolve_constants import *
+import resolve_constants as drc
 
 if sys.platform == "darwin":  # macOS
     resolve_script_api = (
@@ -554,26 +554,27 @@ def set_current_timecode(timecode):
 
 
 @log_return_value
-def set_render_format_codec_settings(format_str='mov', codec='ProRes422HQ'):
+def set_render_format_codec_settings(format='mov', codec='ProRes422HQ'):
     """
     Parameters
     ----------
-    format_str : str
+    format : str
         A render format.
-        Example are 'mov', 'mp4', 'tif', 'png', ...
+        Examples are 'mov', 'mp4', 'tif', 'png', ...
     codec : str
         A coding option.
+        Examples are "H265_NVIDIA", "H265", "ProRes422HQ", "DNxHRHQX_12"
     """
     project = get_current_project()
-    result = project.SetCurrentRenderFormatAndCodec(format_str, codec)
+    result = project.SetCurrentRenderFormatAndCodec(format, codec)
 
     if result:
         msg = "    Project.SetCurrentRenderFormatAndCodec("
-        msg += f'"{format_str}", "{codec}") -> Success'
+        msg += f'"{format}", "{codec}") -> Success'
         print(msg)
     else:
         msg = "    Project.SetCurrentRenderFormatAndCodec("
-        msg += f'"{format_str}", "{codec}") -> Failed'
+        msg += f'"{format}", "{codec}") -> Failed'
         print(msg)
 
         msg = 'Failed to set_render_format_codec_settings() '
@@ -728,15 +729,54 @@ if __name__ == '__main__':
     )
 
     # encode
-    set_render_format_codec_settings(
-        format_str=OUT_FILE_EXTENSTION_MOV, codec=CODEC_H264,
-    )
+    # preset_path = str(
+    #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
+    # )
+    preset_path = None
 
-    import_render_preset(
-        preset_path=str(Path("./render_presets/h265_main10_444_qp-0.xml")
-                        .resolve())
-    )
-    import_render_preset(
-        preset_path=str(Path("./render_presets/H265_Constant_Bitrate_2-pass Render.xml")
-                        .resolve())
-    )
+    format_extension = drc.OUT_FILE_EXTENSTION_MP4
+    codec = drc.CODEC_H265_NVIDIA
+    # format_extension = drc.OUT_FILE_EXTENSTION_EXR
+    # codec = drc.CODEC_EXR_RGB_HALF
+    output_fname = "./render_out/dummy_out" + "." + format_extension
+    target_dir = str(Path(output_fname).resolve().parent)
+    custom_name = str(Path(output_fname).resolve().name)
+
+    if preset_path is not None:
+        import_render_preset(preset_path=preset_path)
+    else:
+        set_render_format_codec_settings(format=format_extension, codec=codec)
+
+    render_settings = {
+        "SelectAllFrames": True,
+        "MarkIn": 0,
+        "MarkOut": 0,
+        "TargetDir": target_dir,
+        "CustomName": custom_name,
+        # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
+        "ExportVideo": True,
+        "ExportAudio": True,
+        # "FormatWidth": 3840,
+        # "FormatHeight": 2160,
+        # "FrameRate": 23.976,
+        # "PixelAspectRatio": "square",
+        # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
+        "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
+        "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
+        "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
+        "ColorSpaceTag": "Same as Project",
+        "GammaTag": "Same as Project",
+        # "ExportAlpha": False,
+        # "EncodingProfile": "Main10",
+        # "MultiPassEncode": True,
+        # "AlphaMode": 
+        # "NetworkOptimization": True,
+        # "ClipStartFrame": 0,
+        # "TimelineStartTimecode": "01:00:00:00",
+        # "ReplaceExistingFilesInPlace": True,
+    }
+    set_render_settings(setting_dict=render_settings)
+
+    project.AddRenderJob()
+    project.StartRendering()
+    project.DeleteAllRenderJobs()
