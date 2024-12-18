@@ -653,7 +653,9 @@ def import_render_preset(preset_path):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-    # sample code
+    ##################
+    # Project Settings
+    ##################
     project_name = "Hello World3"
     project_settings_params = {
         "timelineResolutionWidth": "1920",
@@ -692,6 +694,9 @@ if __name__ == '__main__':
     # set up the project settings
     setup_project_settings(params=project_settings_params)
 
+    ###########################
+    # Add files to the timeline
+    ###########################
     # create timelines
     timeline = create_empty_timeline(name="My_Timeline")
 
@@ -728,11 +733,13 @@ if __name__ == '__main__':
         pos_timecode="01:00:06:00"
     )
 
+    ###################
     # encode
-    # preset_path = str(
-    #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
-    # )
-    preset_path = None
+    ###################
+    preset_path = str(
+        Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
+    )
+    # preset_path = None
 
     format_extension = drc.OUT_FILE_EXTENSTION_MP4
     codec = drc.CODEC_H265_NVIDIA
@@ -742,30 +749,25 @@ if __name__ == '__main__':
     target_dir = str(Path(output_fname).resolve().parent)
     custom_name = str(Path(output_fname).resolve().name)
 
-    if preset_path is not None:
-        import_render_preset(preset_path=preset_path)
-    else:
-        set_render_format_codec_settings(format=format_extension, codec=codec)
-
     render_settings = {
-        "SelectAllFrames": True,
-        "MarkIn": 0,
-        "MarkOut": 0,
+        # "SelectAllFrames": True,
+        # "MarkIn": _timecode_to_frame_index("01:00:00:00"),
+        # "MarkOut": _timecode_to_frame_index("01:00:08:12"),
         "TargetDir": target_dir,
         "CustomName": custom_name,
         # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
-        "ExportVideo": True,
-        "ExportAudio": True,
+        # "ExportVideo": True,
+        # "ExportAudio": True,
         # "FormatWidth": 3840,
         # "FormatHeight": 2160,
         # "FrameRate": 23.976,
         # "PixelAspectRatio": "square",
         # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
-        "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
-        "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
-        "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
-        "ColorSpaceTag": "Same as Project",
-        "GammaTag": "Same as Project",
+        # "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
+        # "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
+        # "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
+        # "ColorSpaceTag": "Same as Project",
+        # "GammaTag": "Same as Project",
         # "ExportAlpha": False,
         # "EncodingProfile": "Main10",
         # "MultiPassEncode": True,
@@ -775,8 +777,13 @@ if __name__ == '__main__':
         # "TimelineStartTimecode": "01:00:00:00",
         # "ReplaceExistingFilesInPlace": True,
     }
-    set_render_settings(setting_dict=render_settings)
 
+    if preset_path is not None:
+        import_render_preset(preset_path=preset_path)
+    else:
+        set_render_format_codec_settings(format=format_extension, codec=codec)
+
+    set_render_settings(setting_dict=render_settings)
     project.AddRenderJob()
     project.StartRendering()
     project.DeleteAllRenderJobs()
