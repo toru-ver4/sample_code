@@ -503,6 +503,17 @@ def append_clip_to_timeline(
     return ret_value[0]
 
 
+@log_return_value
+def insert_generator_into_timeline(timeline, generator_name):
+    timeline_item = timeline.InsertGeneratorIntoTimeline(generator_name)
+    if timeline_item is None:
+        msg = '`insert_generator_into_timeline` was failed. '
+        msg += 'Please check if "generator_name" is correct.'
+        raise TyResolveModuleError(False, msg)
+
+    return timeline_item
+
+
 def _frame_index_to_timecode(
         frame_index, start_timecode="01:00:00:00"):
     fps_float = get_project_setting("timelineFrameRate")
@@ -732,6 +743,23 @@ if __name__ == '__main__':
         end_frame=24+60,
         pos_timecode="01:00:06:00"
     )
+    solid_color = insert_generator_into_timeline(
+        timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
+    )
+    window = insert_generator_into_timeline(
+        timeline=timeline, generator_name=drc.GENERATOR_WINDOW
+    )
+
+    # fusion_item = timeline.InsertFusionCompositionIntoTimeline()
+    # print(f"fusion_item = {fusion_item}")
+    # fusion_comp = fusion_item.GetFusionCompByIndex(1)
+    # print(f"fusion_comp = {fusion_comp}")
+    # fusion_item_2 = timeline.InsertFusionCompositionIntoTimeline()
+    # print(f"fusion_item = {fusion_item}")
+    # fusion_comp_2 = fusion_item_2.GetFusionCompByIndex(1)
+    # print(f"fusion_comp = {fusion_comp}")
+    # bg = fusion_comp.AddTool("Background")
+    # bg.Background = [1.0, 0.0, 0.0, 1.0] 
 
     ###################
     # encode
@@ -741,8 +769,9 @@ if __name__ == '__main__':
     )
     # preset_path = None
 
-    format_extension = drc.OUT_FILE_EXTENSTION_MP4
-    codec = drc.CODEC_H265_NVIDIA
+    format_extension = drc.OUT_FILE_EXTENSTION_MOV
+    # codec = drc.CODEC_H265_NVIDIA
+    codec = drc.CODEC_APPLE_PRORES_422_HQ
     # format_extension = drc.OUT_FILE_EXTENSTION_EXR
     # codec = drc.CODEC_EXR_RGB_HALF
     output_fname = "./render_out/dummy_out" + "." + format_extension

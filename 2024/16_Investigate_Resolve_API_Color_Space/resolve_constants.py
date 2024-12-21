@@ -114,6 +114,12 @@ CLIP_PROPERTY_INPUT_COLOR_SPACE = "Input Color Space"
 CLIP_PROPERTY_INPUT_GAMMA = "Input Gamma"
 
 ###################################
+# Generator
+###################################
+GENERATOR_SOLID_COLOR = "Solid Color"
+GENERATOR_WINDOW = "Window"
+
+###################################
 # File Extenstion
 ###################################
 OUT_FILE_EXTENSTION_MP4 = "mp4"
