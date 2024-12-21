@@ -503,6 +503,17 @@ def append_clip_to_timeline(
     return ret_value[0]
 
 
+@log_return_value
+def insert_generator_into_timeline(timeline, generator_name):
+    timeline_item = timeline.InsertGeneratorIntoTimeline(generator_name)
+    if timeline_item is None:
+        msg = '`insert_generator_into_timeline` was failed. '
+        msg += 'Please check if "generator_name" is correct.'
+        raise TyResolveModuleError(False, msg)
+
+    return timeline_item
+
+
 def _frame_index_to_timecode(
         frame_index, start_timecode="01:00:00:00"):
     fps_float = get_project_setting("timelineFrameRate")
@@ -653,7 +664,9 @@ def import_render_preset(preset_path):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-    # sample code
+    ##################
+    # Project Settings
+    ##################
     project_name = "Hello World3"
     project_settings_params = {
         "timelineResolutionWidth": "1920",
@@ -692,6 +705,9 @@ if __name__ == '__main__':
     # set up the project settings
     setup_project_settings(params=project_settings_params)
 
+    ###########################
+    # Add files to the timeline
+    ###########################
     # create timelines
     timeline = create_empty_timeline(name="My_Timeline")
 
@@ -727,45 +743,60 @@ if __name__ == '__main__':
         end_frame=24+60,
         pos_timecode="01:00:06:00"
     )
+    solid_color = insert_generator_into_timeline(
+        timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
+    )
+    window = insert_generator_into_timeline(
+        timeline=timeline, generator_name=drc.GENERATOR_WINDOW
+    )
 
+    # fusion_item = timeline.InsertFusionCompositionIntoTimeline()
+    # print(f"fusion_item = {fusion_item}")
+    # fusion_comp = fusion_item.GetFusionCompByIndex(1)
+    # print(f"fusion_comp = {fusion_comp}")
+    # fusion_item_2 = timeline.InsertFusionCompositionIntoTimeline()
+    # print(f"fusion_item = {fusion_item}")
+    # fusion_comp_2 = fusion_item_2.GetFusionCompByIndex(1)
+    # print(f"fusion_comp = {fusion_comp}")
+    # bg = fusion_comp.AddTool("Background")
+    # bg.Background = [1.0, 0.0, 0.0, 1.0] 
+
+    ###################
     # encode
-    # preset_path = str(
-    #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
-    # )
-    preset_path = None
+    ###################
+    preset_path = str(
+        Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
+    )
+    # preset_path = None
 
-    format_extension = drc.OUT_FILE_EXTENSTION_MP4
-    codec = drc.CODEC_H265_NVIDIA
+    format_extension = drc.OUT_FILE_EXTENSTION_MOV
+    # codec = drc.CODEC_H265_NVIDIA
+    codec = drc.CODEC_APPLE_PRORES_422_HQ
     # format_extension = drc.OUT_FILE_EXTENSTION_EXR
     # codec = drc.CODEC_EXR_RGB_HALF
     output_fname = "./render_out/dummy_out" + "." + format_extension
     target_dir = str(Path(output_fname).resolve().parent)
     custom_name = str(Path(output_fname).resolve().name)
 
-    if preset_path is not None:
-        import_render_preset(preset_path=preset_path)
-    else:
-        set_render_format_codec_settings(format=format_extension, codec=codec)
-
     render_settings = {
-        "SelectAllFrames": True,
-        "MarkIn": 0,
-        "MarkOut": 0,
+        # "SelectAllFrames": True,
+        # "MarkIn": _timecode_to_frame_index("01:00:00:00"),
+        # "MarkOut": _timecode_to_frame_index("01:00:08:12"),
         "TargetDir": target_dir,
         "CustomName": custom_name,
         # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
-        "ExportVideo": True,
-        "ExportAudio": True,
+        # "ExportVideo": True,
+        # "ExportAudio": True,
         # "FormatWidth": 3840,
         # "FormatHeight": 2160,
         # "FrameRate": 23.976,
         # "PixelAspectRatio": "square",
         # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
-        "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
-        "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
-        "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
-        "ColorSpaceTag": "Same as Project",
-        "GammaTag": "Same as Project",
+        # "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
+        # "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
+        # "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
+        # "ColorSpaceTag": "Same as Project",
+        # "GammaTag": "Same as Project",
         # "ExportAlpha": False,
         # "EncodingProfile": "Main10",
         # "MultiPassEncode": True,
@@ -775,8 +806,13 @@ if __name__ == '__main__':
         # "TimelineStartTimecode": "01:00:00:00",
         # "ReplaceExistingFilesInPlace": True,
     }
-    set_render_settings(setting_dict=render_settings)
 
+    if preset_path is not None:
+        import_render_preset(preset_path=preset_path)
+    else:
+        set_render_format_codec_settings(format=format_extension, codec=codec)
+
+    set_render_settings(setting_dict=render_settings)
     project.AddRenderJob()
     project.StartRendering()
     project.DeleteAllRenderJobs()
