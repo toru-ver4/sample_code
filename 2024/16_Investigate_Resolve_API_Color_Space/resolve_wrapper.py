@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import functools
 import resolve_constants as drc
+from pprint import pprint
 
 if sys.platform == "darwin":  # macOS
     resolve_script_api = (
@@ -32,6 +33,8 @@ import DaVinciResolveScript as dvr_script
 resolve = dvr_script.scriptapp("Resolve")
 if resolve is None:
     raise ConnectionError("The DaVinci Resolve app is not running.")
+
+fusion = resolve.Fusion()
 
 
 class TyResolveModuleError(Exception):
@@ -711,108 +714,108 @@ if __name__ == '__main__':
     # create timelines
     timeline = create_empty_timeline(name="My_Timeline")
 
-    # add files to the media storage
-    relative_file_list = [
-        "./videos/countdown_HDR_24fps_hevc_yuv420p10le.mov",
-        "./videos/countdown_SDR_24fps_hevc_yuv420p10le.mov",
-        "./videos/countdown_SDR_60P_%04d.png",
-        "./videos/countdown.wav",
-    ]
-    file_path_list = [
-        str(Path(x).resolve()) for x in relative_file_list
-    ]
-    print(file_path_list)
-    clip_hdr = add_file_to_media_pool(file_path=file_path_list[0])
-    clip_sdr = add_file_to_media_pool(
-        file_path=file_path_list[1], start_frame=24, end_frame=71
-    )
-    clip_seq = add_seq_file_to_media_pool(
-        file_path=file_path_list[2], start_idx=120, end_idx=179
-    )
-    clip_audio = add_file_to_media_pool(file_path=file_path_list[3])
+    # # add files to the media storage
+    # relative_file_list = [
+    #     "./videos/countdown_HDR_24fps_hevc_yuv420p10le.mov",
+    #     "./videos/countdown_SDR_24fps_hevc_yuv420p10le.mov",
+    #     "./videos/countdown_SDR_60P_%04d.png",
+    #     "./videos/countdown.wav",
+    # ]
+    # file_path_list = [
+    #     str(Path(x).resolve()) for x in relative_file_list
+    # ]
+    # print(file_path_list)
+    # clip_hdr = add_file_to_media_pool(file_path=file_path_list[0])
+    # clip_sdr = add_file_to_media_pool(
+    #     file_path=file_path_list[1], start_frame=24, end_frame=71
+    # )
+    # clip_seq = add_seq_file_to_media_pool(
+    #     file_path=file_path_list[2], start_idx=120, end_idx=179
+    # )
+    # clip_audio = add_file_to_media_pool(file_path=file_path_list[3])
 
-    # # add clips to the timeline
-    append_clip_to_timeline(clip=clip_hdr)
-    append_clip_to_timeline(clip=clip_sdr)
-    append_clip_to_timeline(
-        clip=clip_seq, media_type=1, pos_timecode="01:00:06:00")
-    tl_item_audio = append_clip_to_timeline(
-        clip=clip_audio,
-        media_type=2,
-        start_frame=24,
-        end_frame=24+60,
-        pos_timecode="01:00:06:00"
-    )
-    solid_color = insert_generator_into_timeline(
-        timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
-    )
-    window = insert_generator_into_timeline(
-        timeline=timeline, generator_name=drc.GENERATOR_WINDOW
-    )
+    # # # add clips to the timeline
+    # append_clip_to_timeline(clip=clip_hdr)
+    # append_clip_to_timeline(clip=clip_sdr)
+    # append_clip_to_timeline(
+    #     clip=clip_seq, media_type=1, pos_timecode="01:00:06:00")
+    # tl_item_audio = append_clip_to_timeline(
+    #     clip=clip_audio,
+    #     media_type=2,
+    #     start_frame=24,
+    #     end_frame=24+60,
+    #     pos_timecode="01:00:06:00"
+    # )
+    # solid_color = insert_generator_into_timeline(
+    #     timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
+    # )
+    # window = insert_generator_into_timeline(
+    #     timeline=timeline, generator_name=drc.GENERATOR_WINDOW
+    # )
 
-    # fusion_item = timeline.InsertFusionCompositionIntoTimeline()
-    # print(f"fusion_item = {fusion_item}")
-    # fusion_comp = fusion_item.GetFusionCompByIndex(1)
-    # print(f"fusion_comp = {fusion_comp}")
-    # fusion_item_2 = timeline.InsertFusionCompositionIntoTimeline()
-    # print(f"fusion_item = {fusion_item}")
-    # fusion_comp_2 = fusion_item_2.GetFusionCompByIndex(1)
-    # print(f"fusion_comp = {fusion_comp}")
-    # bg = fusion_comp.AddTool("Background")
-    # bg.Background = [1.0, 0.0, 0.0, 1.0] 
+    fusion_item = timeline.InsertFusionCompositionIntoTimeline()
+    print(f"fusion_item = {fusion_item}")
+    fusion_comp = fusion_item.GetFusionCompByIndex(1)
+    print(f"fusion_comp = {fusion_comp}")
+    bg1 = fusion_comp.AddTool("Background")
+    bg1.Background = [1.0, 0.0, 0.0, 1.0]
+    bg2 = fusion_comp.AddTool("Background")
+    bg2.Background = [1.0, 0.0, 0.0, 1.0]
+    media_out = fusion_comp.GetToolList()[1]
+    pprint(dir(fusion_comp))
 
-    ###################
-    # encode
-    ###################
-    preset_path = str(
-        Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
-    )
-    # preset_path = None
+    # ###################
+    # # encode
+    # ###################
+    # preset_path = str(
+    #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
+    # )
+    # # preset_path = None
 
-    format_extension = drc.OUT_FILE_EXTENSTION_MOV
-    # codec = drc.CODEC_H265_NVIDIA
-    codec = drc.CODEC_APPLE_PRORES_422_HQ
-    # format_extension = drc.OUT_FILE_EXTENSTION_EXR
-    # codec = drc.CODEC_EXR_RGB_HALF
-    output_fname = "./render_out/dummy_out" + "." + format_extension
-    target_dir = str(Path(output_fname).resolve().parent)
-    custom_name = str(Path(output_fname).resolve().name)
+    # format_extension = drc.OUT_FILE_EXTENSTION_MOV
+    # # codec = drc.CODEC_H265_NVIDIA
+    # codec = drc.CODEC_APPLE_PRORES_422_HQ
+    # # format_extension = drc.OUT_FILE_EXTENSTION_EXR
+    # # codec = drc.CODEC_EXR_RGB_HALF
+    # output_fname = "./render_out/dummy_out" + "." + format_extension
+    # target_dir = str(Path(output_fname).resolve().parent)
+    # custom_name = str(Path(output_fname).resolve().name)
 
-    render_settings = {
-        # "SelectAllFrames": True,
-        # "MarkIn": _timecode_to_frame_index("01:00:00:00"),
-        # "MarkOut": _timecode_to_frame_index("01:00:08:12"),
-        "TargetDir": target_dir,
-        "CustomName": custom_name,
-        # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
-        # "ExportVideo": True,
-        # "ExportAudio": True,
-        # "FormatWidth": 3840,
-        # "FormatHeight": 2160,
-        # "FrameRate": 23.976,
-        # "PixelAspectRatio": "square",
-        # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
-        # "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
-        # "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
-        # "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
-        # "ColorSpaceTag": "Same as Project",
-        # "GammaTag": "Same as Project",
-        # "ExportAlpha": False,
-        # "EncodingProfile": "Main10",
-        # "MultiPassEncode": True,
-        # "AlphaMode": 
-        # "NetworkOptimization": True,
-        # "ClipStartFrame": 0,
-        # "TimelineStartTimecode": "01:00:00:00",
-        # "ReplaceExistingFilesInPlace": True,
-    }
+    # render_settings = {
+    #     # "SelectAllFrames": True,
+    #     # "MarkIn": _timecode_to_frame_index("01:00:00:00"),
+    #     # "MarkOut": _timecode_to_frame_index("01:00:08:12"),
+    #     "TargetDir": target_dir,
+    #     "CustomName": custom_name,
+    #     # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
+    #     # "ExportVideo": True,
+    #     # "ExportAudio": True,
+    #     # "FormatWidth": 3840,
+    #     # "FormatHeight": 2160,
+    #     # "FrameRate": 23.976,
+    #     # "PixelAspectRatio": "square",
+    #     # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
+    #     # "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
+    #     # "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
+    #     # "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
+    #     # "ColorSpaceTag": "Same as Project",
+    #     # "GammaTag": "Same as Project",
+    #     # "ExportAlpha": False,
+    #     # "EncodingProfile": "Main10",
+    #     # "MultiPassEncode": True,
+    #     # "AlphaMode": 
+    #     # "NetworkOptimization": True,
+    #     # "ClipStartFrame": 0,
+    #     # "TimelineStartTimecode": "01:00:00:00",
+    #     # "ReplaceExistingFilesInPlace": True,
+    # }
 
-    if preset_path is not None:
-        import_render_preset(preset_path=preset_path)
-    else:
-        set_render_format_codec_settings(format=format_extension, codec=codec)
+    # if preset_path is not None:
+    #     import_render_preset(preset_path=preset_path)
+    # else:
+    #     set_render_format_codec_settings(format=format_extension, codec=codec)
 
-    set_render_settings(setting_dict=render_settings)
-    project.AddRenderJob()
-    project.StartRendering()
-    project.DeleteAllRenderJobs()
+    # set_render_settings(setting_dict=render_settings)
+    # project.AddRenderJob()
+    # project.StartRendering()
+    # project.DeleteAllRenderJobs()
