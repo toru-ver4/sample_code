@@ -664,6 +664,50 @@ def import_render_preset(preset_path):
     return result
 
 
+############################################
+# Fusion Page
+############################################
+@log_return_value
+def get_media_out(comp):
+    """
+    Parameters
+    ----------
+    comp: Composition
+        The composition
+
+    Returns
+    -------
+    Media Out
+        The media out node
+    """
+    media_out = None
+    for key, value in comp.GetToolList().items():
+        if value.Name == "MediaOut1":
+            media_out = value
+            pass
+
+    if media_out is None:
+        msg = 'Failed to get_media_out() '
+        msg += 'Please check if the media_out node name is "MediaOut1".'
+        raise TyResolveModuleError(media_out, msg)
+    
+    return media_out
+
+
+@log_return_value
+def connect_node(a, b):
+    """
+    Connect a to b.
+    """
+    result = b.Input.ConnectTo(a.Output)
+
+    if result is not True:
+        msg = 'Failed to connect_node() '
+        raise TyResolveModuleError(media_out, msg)
+
+    return result
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -714,55 +758,61 @@ if __name__ == '__main__':
     # create timelines
     timeline = create_empty_timeline(name="My_Timeline")
 
-    # # add files to the media storage
-    # relative_file_list = [
-    #     "./videos/countdown_HDR_24fps_hevc_yuv420p10le.mov",
-    #     "./videos/countdown_SDR_24fps_hevc_yuv420p10le.mov",
-    #     "./videos/countdown_SDR_60P_%04d.png",
-    #     "./videos/countdown.wav",
-    # ]
-    # file_path_list = [
-    #     str(Path(x).resolve()) for x in relative_file_list
-    # ]
-    # print(file_path_list)
-    # clip_hdr = add_file_to_media_pool(file_path=file_path_list[0])
-    # clip_sdr = add_file_to_media_pool(
-    #     file_path=file_path_list[1], start_frame=24, end_frame=71
-    # )
-    # clip_seq = add_seq_file_to_media_pool(
-    #     file_path=file_path_list[2], start_idx=120, end_idx=179
-    # )
-    # clip_audio = add_file_to_media_pool(file_path=file_path_list[3])
+    # add files to the media storage
+    relative_file_list = [
+        "./videos/countdown_HDR_24fps_hevc_yuv420p10le.mov",
+        "./videos/countdown_SDR_24fps_hevc_yuv420p10le.mov",
+        "./videos/countdown_SDR_60P_%04d.png",
+        "./videos/countdown.wav",
+    ]
+    file_path_list = [
+        str(Path(x).resolve()) for x in relative_file_list
+    ]
+    print(file_path_list)
+    clip_hdr = add_file_to_media_pool(file_path=file_path_list[0])
+    clip_sdr = add_file_to_media_pool(
+        file_path=file_path_list[1], start_frame=24, end_frame=71
+    )
+    clip_seq = add_seq_file_to_media_pool(
+        file_path=file_path_list[2], start_idx=120, end_idx=179
+    )
+    clip_audio = add_file_to_media_pool(file_path=file_path_list[3])
 
-    # # # add clips to the timeline
-    # append_clip_to_timeline(clip=clip_hdr)
-    # append_clip_to_timeline(clip=clip_sdr)
-    # append_clip_to_timeline(
-    #     clip=clip_seq, media_type=1, pos_timecode="01:00:06:00")
-    # tl_item_audio = append_clip_to_timeline(
-    #     clip=clip_audio,
-    #     media_type=2,
-    #     start_frame=24,
-    #     end_frame=24+60,
-    #     pos_timecode="01:00:06:00"
-    # )
-    # solid_color = insert_generator_into_timeline(
-    #     timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
-    # )
-    # window = insert_generator_into_timeline(
-    #     timeline=timeline, generator_name=drc.GENERATOR_WINDOW
-    # )
+    # # add clips to the timeline
+    append_clip_to_timeline(clip=clip_hdr)
+    append_clip_to_timeline(clip=clip_sdr)
+    append_clip_to_timeline(
+        clip=clip_seq, media_type=1, pos_timecode="01:00:06:00")
+    tl_item_audio = append_clip_to_timeline(
+        clip=clip_audio,
+        media_type=2,
+        start_frame=24,
+        end_frame=24+60,
+        pos_timecode="01:00:06:00"
+    )
+    solid_color = insert_generator_into_timeline(
+        timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
+    )
+    window = insert_generator_into_timeline(
+        timeline=timeline, generator_name=drc.GENERATOR_WINDOW
+    )
 
-    fusion_item = timeline.InsertFusionCompositionIntoTimeline()
-    print(f"fusion_item = {fusion_item}")
-    fusion_comp = fusion_item.GetFusionCompByIndex(1)
-    print(f"fusion_comp = {fusion_comp}")
-    bg1 = fusion_comp.AddTool("Background")
-    bg1.Background = [1.0, 0.0, 0.0, 1.0]
-    bg2 = fusion_comp.AddTool("Background")
-    bg2.Background = [1.0, 0.0, 0.0, 1.0]
-    media_out = fusion_comp.GetToolList()[1]
-    pprint(dir(fusion_comp))
+    # fusion_item = timeline.InsertFusionCompositionIntoTimeline()
+    # print(f"fusion_item = {fusion_item}")
+    # fusion_comp = fusion_item.GetFusionCompByIndex(1)
+    # print(f"fusion_comp = {fusion_comp}")
+    # bg1 = fusion_comp.AddTool("Background")
+    # bg1.SetInput("TopLeftRed", 1.0)
+    # bg1.SetInput("TopLeftGreen", 0.5)
+    # bg1.SetInput("TopLeftBlue", 0.25)
+
+    # media_out = get_media_out(comp=fusion_comp)
+    # connect_node(a=bg1, b=media_out)
+
+    # bg2 = fusion_comp.AddTool("Background")
+    # bg2.Background = {'Red': 1.0, "Green": 1.0, "Blue": 1.0, "Alpha": 1.0}
+    # pprint(bg2.Background)
+    # pprint(dir(main_input))
 
     # ###################
     # # encode

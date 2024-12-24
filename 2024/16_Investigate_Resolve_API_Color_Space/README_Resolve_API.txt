@@ -414,7 +414,7 @@ TimelineItem
   GetLeftOffset(subframe_precision)               --> int/float          # Returns the maximum extension by frame for clip from left side. Returns fractional frames if subframe_precision is True
   GetRightOffset(subframe_precision)              --> int/float          # Returns the maximum extension by frame for clip from right side. Returns fractional frames if subframe_precision is True
   GetStart(subframe_precision)                    --> int/float          # Returns the start frame position on the timeline. Returns fractional frames if subframe_precision is True
-  GetSourceStartFrame()                           --> int                # Returns the start frame position of the media pool clip in the timeline clip.
+  GetSourceStartFrame()                          --> int                # Returns the start frame position of the media pool clip in the timeline clip.
   GetSourceStartTime()                            --> float              # Returns the start time position of the media pool clip in the timeline clip.
   SetProperty(propertyKey, propertyValue)         --> Bool               # Sets the value of property "propertyKey" to value "propertyValue"
                                                                          # Refer to "Looking up Timeline item properties" for more information
