@@ -664,6 +664,53 @@ def import_render_preset(preset_path):
     return result
 
 
+@log_return_value
+def add_fusion_comp(timeline_item):
+    """
+    Parameters
+    ----------
+    timeline_item : TimelineItem
+        A TimelineItem instance
+
+    Returns
+    -------
+    Composition
+        A fusion composition
+    """
+    fusion_comp = timeline_item.AddFusionComp()
+    if fusion_comp is None:
+        msg = 'Failed to add_fusion_comp() '
+        msg += 'Please check if the `timeline_item` is exist on the timeline.'
+        raise TyResolveModuleError(fusion_comp, msg)
+
+    return fusion_comp
+
+
+@log_return_value
+def append_fusion_composition_to_timeline(
+        num_of_frame: int, pos_timecode: str | None = None):
+    """
+    Note
+    ----
+    This function uses abnormal workaround.
+    This is because `Timeline:InsertFusionCompositionIntoTimeline()` can not
+    specify the frame length.
+    """
+    fps_str = int(get_project_setting(name="timelineFrameRate"))
+    dummy_video_path = f"./videos/dummy_video_{fps_str}P.mp4"
+    dummy_video_full_path = str(Path(dummy_video_path).resolve())
+    clip = add_file_to_media_pool(file_path=dummy_video_full_path)
+    timeline_item = append_clip_to_timeline(
+        clip=clip,
+        media_type=1,
+        start_frame=0,
+        end_frame=num_of_frame,  # specify the frame length
+        pos_timecode=pos_timecode)
+    fusion_comp = add_fusion_comp(timeline_item)
+
+    return timeline_item, fusion_comp
+
+
 ############################################
 # Fusion Page
 ############################################
@@ -764,6 +811,7 @@ if __name__ == '__main__':
         "./videos/countdown_SDR_24fps_hevc_yuv420p10le.mov",
         "./videos/countdown_SDR_60P_%04d.png",
         "./videos/countdown.wav",
+        "./videos/dummy_video_24P.mp4",
     ]
     file_path_list = [
         str(Path(x).resolve()) for x in relative_file_list
@@ -777,6 +825,9 @@ if __name__ == '__main__':
         file_path=file_path_list[2], start_idx=120, end_idx=179
     )
     clip_audio = add_file_to_media_pool(file_path=file_path_list[3])
+    clip_black = add_file_to_media_pool(
+        file_path=file_path_list[4], start_frame=0, end_frame=119
+    )
 
     # # add clips to the timeline
     append_clip_to_timeline(clip=clip_hdr)
@@ -793,21 +844,24 @@ if __name__ == '__main__':
     solid_color = insert_generator_into_timeline(
         timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
     )
-    window = insert_generator_into_timeline(
-        timeline=timeline, generator_name=drc.GENERATOR_WINDOW
-    )
+    tl_item_fusion_comp, fusion_comp =\
+        append_fusion_composition_to_timeline(
+            num_of_frame=24,
+            pos_timecode="01:00:14:00"
+        )
 
     # fusion_item = timeline.InsertFusionCompositionIntoTimeline()
     # print(f"fusion_item = {fusion_item}")
     # fusion_comp = fusion_item.GetFusionCompByIndex(1)
     # print(f"fusion_comp = {fusion_comp}")
-    # bg1 = fusion_comp.AddTool("Background")
-    # bg1.SetInput("TopLeftRed", 1.0)
-    # bg1.SetInput("TopLeftGreen", 0.5)
-    # bg1.SetInput("TopLeftBlue", 0.25)
 
-    # media_out = get_media_out(comp=fusion_comp)
-    # connect_node(a=bg1, b=media_out)
+    bg1 = fusion_comp.AddTool("Background")
+    bg1.SetInput("TopLeftRed", 1.0)
+    bg1.SetInput("TopLeftGreen", 0.5)
+    bg1.SetInput("TopLeftBlue", 0.25)
+
+    media_out = get_media_out(comp=fusion_comp)
+    connect_node(a=bg1, b=media_out)
 
     # bg2 = fusion_comp.AddTool("Background")
     # bg2.Background = {'Red': 1.0, "Green": 1.0, "Blue": 1.0, "Alpha": 1.0}
