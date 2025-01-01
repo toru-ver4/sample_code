@@ -708,6 +708,10 @@ def append_fusion_composition_to_timeline(
         pos_timecode=pos_timecode)
     fusion_comp = add_fusion_comp(timeline_item)
 
+    # Delete MediaIn1 (Because MediaIn is dummy data)
+    get_comp_node_by_name(comp=fusion_comp, name="MediaIn1").Delete()
+
+
     return timeline_item, fusion_comp
 
 
@@ -715,6 +719,56 @@ def append_fusion_composition_to_timeline(
 # Fusion Page
 ############################################
 @log_return_value
+def get_comp_node_by_name(comp, name):
+    """
+    Parameters
+    ----------
+    comp : Composition
+        The composition
+    name : str
+        The node name.
+    
+    Returns
+    -------
+    
+    """
+    node = None
+    for _, value in comp.GetToolList().items():
+        if value.Name == name:
+            node = value
+            pass
+
+    if node is None:
+        msg = 'Failed to get_media_out() '
+        msg += 'Please check if the media_out node name is "MediaOut1".'
+        raise TyResolveModuleError(node, msg)
+
+    return node
+
+
+@log_return_value
+def add_fusion_node(comp, name):
+    """
+    Parameters
+    ----------
+    comp : Composition
+        The composition
+    name : str
+        The node name.
+    
+    Returns
+    -------
+    """
+    node = comp.AddTool(name)
+
+    if node is None:
+        msg = 'Failed to add_fusion_node() '
+        msg += f'Please check if "name" = {name} is correct.'
+        raise TyResolveModuleError(node, msg)
+    
+    return node
+
+
 def get_media_out(comp):
     """
     Parameters
@@ -727,18 +781,22 @@ def get_media_out(comp):
     Media Out
         The media out node
     """
-    media_out = None
-    for key, value in comp.GetToolList().items():
-        if value.Name == "MediaOut1":
-            media_out = value
-            pass
+    return get_comp_node_by_name(comp=comp, name="MediaOut1")
 
-    if media_out is None:
-        msg = 'Failed to get_media_out() '
-        msg += 'Please check if the media_out node name is "MediaOut1".'
-        raise TyResolveModuleError(media_out, msg)
-    
-    return media_out
+
+def get_media_in(comp):
+    """
+    Parameters
+    ----------
+    comp: Composition
+        The composition
+
+    Returns
+    -------
+    Media In
+        The media In node
+    """
+    return get_comp_node_by_name(comp=comp, name="MediaIn1")
 
 
 @log_return_value
@@ -753,6 +811,18 @@ def connect_node(a, b):
         raise TyResolveModuleError(media_out, msg)
 
     return result
+
+
+@log_return_value
+def set_topleft_color(node, rgba=[0.18, 0.18, 0.18, 1.0]):
+    channels = ["Red", "Green", "Blue", "Alpha"]
+    for channel, value in zip(channels, rgba):
+        node.SetInput(f"TopLeft{channel}", value)
+        # verify
+        if node.GetInput(f"TopLeft{channel}") != value:
+            msg = 'Failed to set_topleft_color()'
+            raise TyResolveModuleError(False, msg)
+    return True
 
 
 if __name__ == '__main__':
@@ -850,23 +920,19 @@ if __name__ == '__main__':
             pos_timecode="01:00:14:00"
         )
 
-    # fusion_item = timeline.InsertFusionCompositionIntoTimeline()
-    # print(f"fusion_item = {fusion_item}")
-    # fusion_comp = fusion_item.GetFusionCompByIndex(1)
-    # print(f"fusion_comp = {fusion_comp}")
+    bg1 = add_fusion_node(comp=fusion_comp, name="Background")
+    set_topleft_color(node=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
 
-    bg1 = fusion_comp.AddTool("Background")
-    bg1.SetInput("TopLeftRed", 1.0)
-    bg1.SetInput("TopLeftGreen", 0.5)
-    bg1.SetInput("TopLeftBlue", 0.25)
+    circle_fg = add_fusion_node(comp=fusion_comp, name="Background")
+    set_topleft_color(node=circle_fg, rgba=[0.8, 0.05, 0.05, 1.0])
+
+    circle_merge = add_fusion_node(comp=fusion_comp, name="Merge")
+    print(circle_merge)
 
     media_out = get_media_out(comp=fusion_comp)
     connect_node(a=bg1, b=media_out)
 
-    # bg2 = fusion_comp.AddTool("Background")
-    # bg2.Background = {'Red': 1.0, "Green": 1.0, "Blue": 1.0, "Alpha": 1.0}
-    # pprint(bg2.Background)
-    # pprint(dir(main_input))
+    print(dir(bg1))
 
     # ###################
     # # encode
