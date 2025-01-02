@@ -568,6 +568,34 @@ def set_current_timecode(timecode):
 
 
 @log_return_value
+def get_current_timeline():
+    timeline = get_current_project().GetCurrentTimeline()
+
+    return timeline
+
+
+@log_return_value
+def get_timeline_items_in_track(timeline, track_type="video", track_idx=1):
+    """
+    Parameters
+    ----------
+    track_type : str
+        The track type.
+        "video", "audio" or "subtitle".
+    track_idx : int
+        The track index. It starts from 1.
+    """
+    timeline_item_list = timeline.GetItemListInTrack(track_type, track_idx)
+
+    if timeline_item_list is None:
+        msg = 'Failed to get_timeline_items_in_track(). '
+        msg += 'Please check if the input argument is correct.'
+        raise TyResolveModuleError(False, msg)
+
+    return timeline_item_list
+
+
+@log_return_value
 def set_render_format_codec_settings(format='mov', codec='ProRes422HQ'):
     """
     Parameters
@@ -814,6 +842,12 @@ def connect_node(a, b):
 
 
 @log_return_value
+def connect_merge_node(merge_node, bg_node, fg_node):
+    merge_node.ConnectInput("Background", bg_node)
+    merge_node.ConnectInput("Foreground", fg_node)
+
+
+@log_return_value
 def set_topleft_color(node, rgba=[0.18, 0.18, 0.18, 1.0]):
     channels = ["Red", "Green", "Blue", "Alpha"]
     for channel, value in zip(channels, rgba):
@@ -825,8 +859,55 @@ def set_topleft_color(node, rgba=[0.18, 0.18, 0.18, 1.0]):
     return True
 
 
+def dump_node_input_value(node):
+    print("=" * 80)
+    print(f" {node.Name} InputValue List")
+    print("=" * 80)
+    for key, value in node.GetInputList().items():
+        print(f"{value.ID} = {node.GetInput(value.ID)}")
+
+
+def dump_node_main_input_value(node):
+    print("=" * 80)
+    print(f" {node.Name} MainInput List")
+    print("=" * 80)
+    idx = 1
+    while(True):
+        input_node = node.FindMainInput(idx)
+        if input_node is None:
+            break
+        print(f"{idx}: Name = {input_node.Name}, ID = {input_node.ID}")
+        idx += 1
+
+
+def debug_code():
+    print("Debug Start")
+    target_track_name = "dummy_video_24P.mp4"
+    timeline = get_current_timeline()
+    timeline_item_list = get_timeline_items_in_track(
+        timeline=timeline, track_type="video", track_idx=1)
+    
+    for timeline_item in timeline_item_list:
+        if timeline_item.GetName() == target_track_name:
+            break
+
+    fusion_comp = timeline_item.GetFusionCompByIndex(1)
+    merge_node = get_comp_node_by_name(comp=fusion_comp, name="Merge1")
+    print(merge_node)
+    dump_node_input_value(node=merge_node)
+    dump_node_main_input_value(node=merge_node)
+    media_out = get_comp_node_by_name(comp=fusion_comp, name="MediaOut1")
+    dump_node_main_input_value(node=media_out)
+
+    print(dir(merge_node))
+
+    import sys
+    sys.exit(0)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    debug_code()
 
     ##################
     # Project Settings
@@ -927,12 +1008,8 @@ if __name__ == '__main__':
     set_topleft_color(node=circle_fg, rgba=[0.8, 0.05, 0.05, 1.0])
 
     circle_merge = add_fusion_node(comp=fusion_comp, name="Merge")
-    print(circle_merge)
-
+    
     media_out = get_media_out(comp=fusion_comp)
-    connect_node(a=bg1, b=media_out)
-
-    print(dir(bg1))
 
     # ###################
     # # encode
