@@ -714,6 +714,15 @@ def add_fusion_comp(timeline_item):
     return fusion_comp
 
 
+def _create_dummy_video_relative_path():
+    fps_str = int(get_project_setting(name="timelineFrameRate"))
+    width = int(get_project_setting(name="timelineResolutionWidth"))
+    height = int(get_project_setting(name="timelineResolutionHeight"))
+    dummy_video_path = f"./videos/dummy_video_{width}x{height}_{fps_str}P.mp4"
+
+    return dummy_video_path
+
+
 @log_return_value
 def append_fusion_composition_to_timeline(
         num_of_frame: int, pos_timecode: str | None = None):
@@ -724,8 +733,7 @@ def append_fusion_composition_to_timeline(
     This is because `Timeline:InsertFusionCompositionIntoTimeline()` can not
     specify the frame length.
     """
-    fps_str = int(get_project_setting(name="timelineFrameRate"))
-    dummy_video_path = f"./videos/dummy_video_{fps_str}P.mp4"
+    dummy_video_path = _create_dummy_video_relative_path()
     dummy_video_full_path = str(Path(dummy_video_path).resolve())
     clip = add_file_to_media_pool(file_path=dummy_video_full_path)
     timeline_item = append_clip_to_timeline(
@@ -806,7 +814,7 @@ def connect_tool(a, b):
 
     if result is not True:
         msg = 'Failed to connect_tool() '
-        raise TyResolveModuleError(media_out, msg)
+        raise TyResolveModuleError(result, msg)
 
     return result
 
@@ -818,14 +826,43 @@ def connect_merge_tool(merge_tool, bg_tool, fg_tool):
 
 
 @log_return_value
+def set_tool_input(tool, name, value):
+    tool.SetInput(name, value)
+
+    # verify
+    tolerance = 1e-6
+    verify_value = tool.GetInput(name)
+
+    if isinstance(value, float):
+        if abs(value - verify_value) > tolerance:
+            msg = 'Failed to set_tool_input()\n'
+            msg += f"Verification failed for {name}: expected {value}, got {verify_value}"
+            raise TyResolveModuleError(False, msg)
+    elif isinstance(value, str) or isinstance(value, int):
+        if value != verify_value:
+            msg = 'Failed to set_tool_input()\n'
+            msg += f"Verification failed for {name}: expected {value}, got {verify_value}"
+            raise TyResolveModuleError(False, msg)
+    elif (type(value).__name__ == "PyRemoteObject")\
+            and (type(value).__module__ == "BlackmagicFusion"):
+        pass
+    else:
+        msg = 'Unknown type to the set_tool_input()\n'
+        msg += f"print(type({value})) = {type(value)}"
+        raise TyResolveModuleError(False, msg)
+
+    return True
+
+
+def set_multiple_tool_input(tool, input_dict):
+    for name, value in input_dict.items():
+        set_tool_input(tool=tool, name=name, value=value)
+
+
 def set_tool_topleft_color(tool, rgba=[0.18, 0.18, 0.18, 1.0]):
     channels = ["Red", "Green", "Blue", "Alpha"]
     for channel, value in zip(channels, rgba):
-        tool.SetInput(f"TopLeft{channel}", value)
-        # verify
-        if tool.GetInput(f"TopLeft{channel}") != value:
-            msg = 'Failed to set_topleft_color()'
-            raise TyResolveModuleError(False, msg)
+        set_tool_input(tool=tool, name=f"TopLeft{channel}", value=value)
     return True
 
 
@@ -893,10 +930,11 @@ def dump_tool_main_input_value(tool):
 
 def debug_code():
     print("Debug Start")
-    target_track_name = "dummy_video_24P.mp4"
+    target_track_name = "dummy_video_1920x1080_24P.mp4"
     timeline = get_current_timeline()
     timeline_item_list = get_timeline_items_in_track(
-        timeline=timeline, track_type="video", track_idx=1)
+        timeline=timeline, track_type="video", track_idx=1
+    )
     
     for timeline_item in timeline_item_list:
         if timeline_item.GetName() == target_track_name:
@@ -907,16 +945,85 @@ def debug_code():
     print(merge_tool)
     dump_tool_input_value(tool=merge_tool)
     dump_tool_main_input_value(tool=merge_tool)
-    media_out = get_comp_tool_by_name(comp=fusion_comp, name="MediaOut1")
-    dump_tool_main_input_value(tool=media_out)
+    text = get_comp_tool_by_name(comp=fusion_comp, name="Background2")
+    dump_tool_main_input_value(tool=text)
     dump_tool_input_value(tool=merge_tool)
 
-    set_tool_position(comp=fusion_comp, tool=media_out, pos=(10, 2))
-
-    # compare_tool_input_value(aa=ellipse_edit, bb=ellipse_base)
+    # compare_tool_input_value(aa=text, bb=text_base)
 
     import sys
     sys.exit(0)
+
+
+#####################
+# Logic
+#####################
+def create_countdown_comp(comp, fps=24, count_str=3):
+    comp.Lock()
+
+    bg1 = add_comp_tool(comp=comp, name="Background", pos=(4,1))
+    set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
+
+    # countdown circle
+    circle_fg = add_comp_tool(comp=comp, name="Background", pos=(3, 2))
+    set_tool_topleft_color(tool=circle_fg, rgba=[0.8, 0.05, 0.05, 1.0])
+    circle_merge = add_comp_tool(comp=comp, name="Merge", pos=(4, 2))
+
+    radial_wipe = add_comp_tool(comp=comp, name="EllipseMask", pos=(1, 2))
+    circle_mask = add_comp_tool(comp=comp, name="EllipseMask", pos=(2, 2))
+    
+    # connect
+    media_out = get_comp_tool_by_name(comp=comp, name="MediaOut1")
+    set_tool_position(comp=comp, tool=media_out, pos=(10, 2))
+    connect_merge_tool(
+        merge_tool=circle_merge, bg_tool=bg1, fg_tool=circle_fg)
+
+    set_tool_input(tool=circle_mask, name="EffectMask", value=radial_wipe)
+    set_tool_input(tool=circle_fg, name="EffectMask", value=circle_mask)
+
+    radial_wipe_input = {
+        "Invert": 1.0,
+        "BorderWidth": 1.0,
+        "Solid": 0.0,
+        "CapStyle": 0.0,
+        "Width": 1.0,
+        "Height": 1.0,
+        "Angle": 90,
+    }
+    set_multiple_tool_input(tool=radial_wipe, input_dict=radial_wipe_input)
+
+    circle_mask_input = {
+        "Invert": 1.0,
+        "Width": 0.45,
+        "Height": 0.45,
+        "PaintMode": "Subtract",
+    }
+    set_multiple_tool_input(tool=circle_mask, input_dict=circle_mask_input)
+
+    radial_wipe["WriteLength"] = comp.BezierSpline()
+    radial_wipe["WriteLength"][0] = 1.0
+    radial_wipe["WriteLength"][fps] = 0.0
+
+    # text
+    countdown_text = add_comp_tool(comp=comp, name="TextPlus", pos=(5, 1))
+    countdown_text_merge = add_comp_tool(comp=comp, name="Merge", pos=(5, 2))
+
+    countdown_text_input = {
+        "StyledText": f"{count_str}",
+        "Font": "Noto Sans Mono",
+        "Style": "Black",
+        "Size": 0.75,
+    }
+    set_multiple_tool_input(
+        tool=countdown_text, input_dict=countdown_text_input
+    )
+    connect_tool(countdown_text_merge, media_out)
+    connect_merge_tool(
+        merge_tool=countdown_text_merge,
+        bg_tool=circle_merge, fg_tool=countdown_text
+    )
+
+    comp.Unlock()
 
 
 if __name__ == '__main__':
@@ -930,8 +1037,9 @@ if __name__ == '__main__':
     project_settings_params = {
         "timelineResolutionWidth": "1920",
         "timelineResolutionHeight": "1080",
-        "videoMonitorFormat": "HD 1080p 24",
-        "timelineFrameRate": "24",
+        "videoMonitorFormat": "HD 1080p 60",
+        "timelineFrameRate": "60",
+        # "timelinePlaybackFrameRate": "60",
         "videoMonitorUse444SDI": "0",
         "videoMonitorSDIConfiguration": "single_link",
         "videoDataLevels": "Video",
@@ -976,7 +1084,6 @@ if __name__ == '__main__':
         "./videos/countdown_SDR_24fps_hevc_yuv420p10le.mov",
         "./videos/countdown_SDR_60P_%04d.png",
         "./videos/countdown.wav",
-        "./videos/dummy_video_24P.mp4",
     ]
     file_path_list = [
         str(Path(x).resolve()) for x in relative_file_list
@@ -991,10 +1098,6 @@ if __name__ == '__main__':
     #     file_path=file_path_list[2], start_idx=120, end_idx=179
     # )
     # clip_audio = add_file_to_media_pool(file_path=file_path_list[3])
-
-    clip_black = add_file_to_media_pool(
-        file_path=file_path_list[4], start_frame=0, end_frame=119
-    )
 
     # # add clips to the timeline
     # append_clip_to_timeline(clip=clip_hdr)
@@ -1011,52 +1114,18 @@ if __name__ == '__main__':
     # solid_color = insert_generator_into_timeline(
     #     timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
     # )
-    tl_item_fusion_comp, comp =\
-        append_fusion_composition_to_timeline(
-            num_of_frame=24,
-            pos_timecode="01:00:00:00"
-        )
-    
-    comp.Lock()
+    fps = int(get_project_setting(name="timelineFrameRate"))
+    for idx, countdown_str in enumerate([3, 2, 1, 0]):
+        tl_item_fusion_comp, comp =\
+            append_fusion_composition_to_timeline(
+                num_of_frame=fps,
+                pos_timecode=f"01:00:{idx:02d}:00"
+            )
+        create_countdown_comp(comp, fps=fps, count_str=countdown_str)
 
-    bg1 = add_comp_tool(comp=comp, name="Background", pos=(4,1))
-    set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
+    set_current_timecode(timecode="01:00:00:00")
 
-    # countdown circle
-    circle_fg = add_comp_tool(comp=comp, name="Background", pos=(3, 2))
-    set_tool_topleft_color(tool=circle_fg, rgba=[0.8, 0.05, 0.05, 1.0])
-    circle_merge = add_comp_tool(comp=comp, name="Merge", pos=(4, 2))
-
-    radial_wipe = add_comp_tool(comp=comp, name="EllipseMask", pos=(1, 2))
-    circle_mask = add_comp_tool(comp=comp, name="EllipseMask", pos=(2, 2))
-    
-    # connect
-    media_out = get_comp_tool_by_name(comp=comp, name="MediaOut1")
-    set_tool_position(comp=comp, tool=media_out, pos=(10, 2))
-    connect_tool(a=circle_merge, b=media_out)
-    connect_merge_tool(
-        merge_tool=circle_merge, bg_tool=bg1, fg_tool=circle_fg)
-    circle_mask.SetInput("EffectMask", radial_wipe)
-    circle_fg.SetInput("EffectMask", circle_mask)
-
-    radial_wipe.SetInput("Invert", 1.0)
-    radial_wipe.SetInput("BorderWidth", 1.0)
-    radial_wipe.SetInput("Solid", 0.0)
-    radial_wipe.SetInput("CapStyle", 0.0)
-    radial_wipe.SetInput("Width", 1.0)
-    radial_wipe.SetInput("Height", 1.0)
-    radial_wipe.SetInput("Angle", 90)
-
-    circle_mask.SetInput("Invert", 1.0)
-    circle_mask.SetInput("PaintMode", "Subtract")
-
-    radial_wipe["WriteLength"] = comp.BezierSpline()
-    radial_wipe["WriteLength"][0] = 1.0
-    radial_wipe["WriteLength"][23] = 0.0
-
-    comp.Unlock()
-
-    open_page(page_name=drc.FUSION_PAGE_STR)
+    open_page(page_name=drc.EDIT_PAGE_STR)
 
     # ###################
     # # encode
