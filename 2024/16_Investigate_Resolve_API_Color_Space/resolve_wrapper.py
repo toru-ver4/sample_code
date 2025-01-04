@@ -737,7 +737,7 @@ def append_fusion_composition_to_timeline(
     fusion_comp = add_fusion_comp(timeline_item)
 
     # Delete MediaIn1 (Because MediaIn is dummy data)
-    get_comp_node_by_name(comp=fusion_comp, name="MediaIn1").Delete()
+    get_comp_tool_by_name(comp=fusion_comp, name="MediaIn1").Delete()
 
 
     return timeline_item, fusion_comp
@@ -747,136 +747,147 @@ def append_fusion_composition_to_timeline(
 # Fusion Page
 ############################################
 @log_return_value
-def get_comp_node_by_name(comp, name):
+def get_comp_tool_by_name(comp, name):
     """
     Parameters
     ----------
     comp : Composition
         The composition
     name : str
-        The node name.
+        The tool name.
     
     Returns
     -------
     
     """
-    node = None
+    tool = None
     for _, value in comp.GetToolList().items():
         if value.Name == name:
-            node = value
+            tool = value
             pass
 
-    if node is None:
+    if tool is None:
         msg = 'Failed to get_media_out() '
-        msg += 'Please check if the media_out node name is "MediaOut1".'
-        raise TyResolveModuleError(node, msg)
+        msg += 'Please check if the media_out tool name is "MediaOut1".'
+        raise TyResolveModuleError(tool, msg)
 
-    return node
+    return tool
 
 
 @log_return_value
-def add_fusion_node(comp, name):
+def add_comp_tool(comp, name, pos=(2, 3)):
     """
     Parameters
     ----------
     comp : Composition
         The composition
     name : str
-        The node name.
+        The tool name.
     
     Returns
     -------
     """
-    node = comp.AddTool(name)
+    tool = comp.AddTool(name, pos[0], pos[1])
 
-    if node is None:
-        msg = 'Failed to add_fusion_node() '
+    if tool is None:
+        msg = 'Failed to add_comp_tool() '
         msg += f'Please check if "name" = {name} is correct.'
-        raise TyResolveModuleError(node, msg)
+        raise TyResolveModuleError(tool, msg)
     
-    return node
-
-
-def get_media_out(comp):
-    """
-    Parameters
-    ----------
-    comp: Composition
-        The composition
-
-    Returns
-    -------
-    Media Out
-        The media out node
-    """
-    return get_comp_node_by_name(comp=comp, name="MediaOut1")
-
-
-def get_media_in(comp):
-    """
-    Parameters
-    ----------
-    comp: Composition
-        The composition
-
-    Returns
-    -------
-    Media In
-        The media In node
-    """
-    return get_comp_node_by_name(comp=comp, name="MediaIn1")
+    return tool
 
 
 @log_return_value
-def connect_node(a, b):
+def connect_tool(a, b):
     """
     Connect a to b.
     """
     result = b.Input.ConnectTo(a.Output)
 
     if result is not True:
-        msg = 'Failed to connect_node() '
+        msg = 'Failed to connect_tool() '
         raise TyResolveModuleError(media_out, msg)
 
     return result
 
 
 @log_return_value
-def connect_merge_node(merge_node, bg_node, fg_node):
-    merge_node.ConnectInput("Background", bg_node)
-    merge_node.ConnectInput("Foreground", fg_node)
+def connect_merge_tool(merge_tool, bg_tool, fg_tool):
+    merge_tool.ConnectInput("Background", bg_tool)
+    merge_tool.ConnectInput("Foreground", fg_tool)
 
 
 @log_return_value
-def set_topleft_color(node, rgba=[0.18, 0.18, 0.18, 1.0]):
+def set_tool_topleft_color(tool, rgba=[0.18, 0.18, 0.18, 1.0]):
     channels = ["Red", "Green", "Blue", "Alpha"]
     for channel, value in zip(channels, rgba):
-        node.SetInput(f"TopLeft{channel}", value)
+        tool.SetInput(f"TopLeft{channel}", value)
         # verify
-        if node.GetInput(f"TopLeft{channel}") != value:
+        if tool.GetInput(f"TopLeft{channel}") != value:
             msg = 'Failed to set_topleft_color()'
             raise TyResolveModuleError(False, msg)
     return True
 
 
-def dump_node_input_value(node):
-    print("=" * 80)
-    print(f" {node.Name} InputValue List")
-    print("=" * 80)
-    for key, value in node.GetInputList().items():
-        print(f"{value.ID} = {node.GetInput(value.ID)}")
+@log_return_value
+def set_tool_position(comp, tool, pos=(1, 1)):
+    flow = comp.CurrentFrame.FlowView
+    flow.SetPos(tool, pos[0], pos[1])
+
+    # verify
+    tolrerance = 0.1
+    verify_pos = flow.GetPosTable(tool).values()
+    is_same_value = all(abs(a - b) < tolrerance for a, b in zip(pos, verify_pos))
+
+    if is_same_value is not True:
+        msg = 'Failed to set_tool_position()'
+        raise TyResolveModuleError(is_same_value, msg)
+
+    return is_same_value
 
 
-def dump_node_main_input_value(node):
+#####################
+# Debug
+#####################
+
+def dump_tool_input_value(tool):
     print("=" * 80)
-    print(f" {node.Name} MainInput List")
+    print(f" {tool.Name} InputValue List")
+    print("=" * 80)
+    for key, value in tool.GetInputList().items():
+        print(f"{value.ID} = {tool.GetInput(value.ID)}")
+
+
+def compare_tool_input_value(aa, bb):
+    print("=" * 80)
+    print(f" {aa.Name} {bb.Name} Compare")
+    print("=" * 80)
+    aa_input = []
+    bb_input = []
+    for key, value in aa.GetInputList().items():
+        aa_input.append({"name": value.ID, "value": aa.GetInput(value.ID)})
+
+    for key, value in bb.GetInputList().items():
+        bb_input.append({"name": value.ID, "value": bb.GetInput(value.ID)})
+
+    for idx in range(len(aa_input)):
+        if aa_input[idx]["value"] != bb_input[idx]["value"]:
+            msg = f"{aa_input[idx]["name"]}: "
+            msg += f"{aa_input[idx]["value"]}, "
+            msg += f"{bb_input[idx]["value"]}, "
+            print(msg)
+
+
+def dump_tool_main_input_value(tool):
+    print("=" * 80)
+    print(f" {tool.Name} MainInput List")
     print("=" * 80)
     idx = 1
     while(True):
-        input_node = node.FindMainInput(idx)
-        if input_node is None:
+        input_tool = tool.FindMainInput(idx)
+        if input_tool is None:
             break
-        print(f"{idx}: Name = {input_node.Name}, ID = {input_node.ID}")
+        print(f"{idx}: Name = {input_tool.Name}, ID = {input_tool.ID}")
         idx += 1
 
 
@@ -892,14 +903,17 @@ def debug_code():
             break
 
     fusion_comp = timeline_item.GetFusionCompByIndex(1)
-    merge_node = get_comp_node_by_name(comp=fusion_comp, name="Merge1")
-    print(merge_node)
-    dump_node_input_value(node=merge_node)
-    dump_node_main_input_value(node=merge_node)
-    media_out = get_comp_node_by_name(comp=fusion_comp, name="MediaOut1")
-    dump_node_main_input_value(node=media_out)
+    merge_tool = get_comp_tool_by_name(comp=fusion_comp, name="Merge1")
+    print(merge_tool)
+    dump_tool_input_value(tool=merge_tool)
+    dump_tool_main_input_value(tool=merge_tool)
+    media_out = get_comp_tool_by_name(comp=fusion_comp, name="MediaOut1")
+    dump_tool_main_input_value(tool=media_out)
+    dump_tool_input_value(tool=merge_tool)
 
-    print(dir(merge_node))
+    set_tool_position(comp=fusion_comp, tool=media_out, pos=(10, 2))
+
+    # compare_tool_input_value(aa=ellipse_edit, bb=ellipse_base)
 
     import sys
     sys.exit(0)
@@ -907,7 +921,7 @@ def debug_code():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    debug_code()
+    # debug_code()
 
     ##################
     # Project Settings
@@ -943,9 +957,9 @@ if __name__ == '__main__':
     close_current_project()
     delete_project(project_name=project_name)
     project = create_project(project_name=project_name)
-    save_project()
-    close_current_project()
-    project = load_project(project_name=project_name)
+    # save_project()
+    # close_current_project()
+    # project = load_project(project_name=project_name)
 
     # set up the project settings
     setup_project_settings(params=project_settings_params)
@@ -968,48 +982,81 @@ if __name__ == '__main__':
         str(Path(x).resolve()) for x in relative_file_list
     ]
     print(file_path_list)
-    clip_hdr = add_file_to_media_pool(file_path=file_path_list[0])
-    clip_sdr = add_file_to_media_pool(
-        file_path=file_path_list[1], start_frame=24, end_frame=71
-    )
-    clip_seq = add_seq_file_to_media_pool(
-        file_path=file_path_list[2], start_idx=120, end_idx=179
-    )
-    clip_audio = add_file_to_media_pool(file_path=file_path_list[3])
+
+    # clip_hdr = add_file_to_media_pool(file_path=file_path_list[0])
+    # clip_sdr = add_file_to_media_pool(
+    #     file_path=file_path_list[1], start_frame=24, end_frame=71
+    # )
+    # clip_seq = add_seq_file_to_media_pool(
+    #     file_path=file_path_list[2], start_idx=120, end_idx=179
+    # )
+    # clip_audio = add_file_to_media_pool(file_path=file_path_list[3])
+
     clip_black = add_file_to_media_pool(
         file_path=file_path_list[4], start_frame=0, end_frame=119
     )
 
     # # add clips to the timeline
-    append_clip_to_timeline(clip=clip_hdr)
-    append_clip_to_timeline(clip=clip_sdr)
-    append_clip_to_timeline(
-        clip=clip_seq, media_type=1, pos_timecode="01:00:06:00")
-    tl_item_audio = append_clip_to_timeline(
-        clip=clip_audio,
-        media_type=2,
-        start_frame=24,
-        end_frame=24+60,
-        pos_timecode="01:00:06:00"
-    )
-    solid_color = insert_generator_into_timeline(
-        timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
-    )
-    tl_item_fusion_comp, fusion_comp =\
+    # append_clip_to_timeline(clip=clip_hdr)
+    # append_clip_to_timeline(clip=clip_sdr)
+    # append_clip_to_timeline(
+    #     clip=clip_seq, media_type=1, pos_timecode="01:00:06:00")
+    # tl_item_audio = append_clip_to_timeline(
+    #     clip=clip_audio,
+    #     media_type=2,
+    #     start_frame=24,
+    #     end_frame=24+60,
+    #     pos_timecode="01:00:06:00"
+    # )
+    # solid_color = insert_generator_into_timeline(
+    #     timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
+    # )
+    tl_item_fusion_comp, comp =\
         append_fusion_composition_to_timeline(
             num_of_frame=24,
-            pos_timecode="01:00:14:00"
+            pos_timecode="01:00:00:00"
         )
-
-    bg1 = add_fusion_node(comp=fusion_comp, name="Background")
-    set_topleft_color(node=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
-
-    circle_fg = add_fusion_node(comp=fusion_comp, name="Background")
-    set_topleft_color(node=circle_fg, rgba=[0.8, 0.05, 0.05, 1.0])
-
-    circle_merge = add_fusion_node(comp=fusion_comp, name="Merge")
     
-    media_out = get_media_out(comp=fusion_comp)
+    comp.Lock()
+
+    bg1 = add_comp_tool(comp=comp, name="Background", pos=(4,1))
+    set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
+
+    # countdown circle
+    circle_fg = add_comp_tool(comp=comp, name="Background", pos=(3, 2))
+    set_tool_topleft_color(tool=circle_fg, rgba=[0.8, 0.05, 0.05, 1.0])
+    circle_merge = add_comp_tool(comp=comp, name="Merge", pos=(4, 2))
+
+    radial_wipe = add_comp_tool(comp=comp, name="EllipseMask", pos=(1, 2))
+    circle_mask = add_comp_tool(comp=comp, name="EllipseMask", pos=(2, 2))
+    
+    # connect
+    media_out = get_comp_tool_by_name(comp=comp, name="MediaOut1")
+    set_tool_position(comp=comp, tool=media_out, pos=(10, 2))
+    connect_tool(a=circle_merge, b=media_out)
+    connect_merge_tool(
+        merge_tool=circle_merge, bg_tool=bg1, fg_tool=circle_fg)
+    circle_mask.SetInput("EffectMask", radial_wipe)
+    circle_fg.SetInput("EffectMask", circle_mask)
+
+    radial_wipe.SetInput("Invert", 1.0)
+    radial_wipe.SetInput("BorderWidth", 1.0)
+    radial_wipe.SetInput("Solid", 0.0)
+    radial_wipe.SetInput("CapStyle", 0.0)
+    radial_wipe.SetInput("Width", 1.0)
+    radial_wipe.SetInput("Height", 1.0)
+    radial_wipe.SetInput("Angle", 90)
+
+    circle_mask.SetInput("Invert", 1.0)
+    circle_mask.SetInput("PaintMode", "Subtract")
+
+    radial_wipe["WriteLength"] = comp.BezierSpline()
+    radial_wipe["WriteLength"][0] = 1.0
+    radial_wipe["WriteLength"][23] = 0.0
+
+    comp.Unlock()
+
+    open_page(page_name=drc.FUSION_PAGE_STR)
 
     # ###################
     # # encode
