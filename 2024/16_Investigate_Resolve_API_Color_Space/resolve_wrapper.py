@@ -365,11 +365,71 @@ def setup_project_settings(params):
             is_success = False
 
     if is_success is False:
-        msg = 'Project.SetSetting() was failed. '
+        msg = 'setup_project_settings() was failed. '
         msg += 'Please check your "params" parameters.'
         raise TyResolveModuleError(project, msg)
 
     return is_success
+
+
+def set_timeline_settings(timeline, params):
+    """
+    set timeline settings from the dictionary type parameters.
+
+    Parameters
+    ----------
+    timeline : Timeline
+        a Timeline instance
+    parames : dict
+        dictionary type parameters
+    """
+    is_success = True
+    print("Now this script is setting the timeline settings...")
+    result = set_timeline_setting(
+        timeline=timeline, name="useCustomSettings", value="1"
+    )
+    if result is False:
+        is_success = False
+
+    for name, value in params.items():
+        if name == "colorSpaceInput" or name == "colorSpaceInputGamma":
+            continue
+        result = set_timeline_setting(
+            timeline=timeline, name=name, value=value
+        )
+        if result is False:
+            is_success = False
+
+    if is_success is False:
+        msg = 'set_timeline_settings() was failed. '
+        msg += 'Please check your "params" parameters.'
+        raise TyResolveModuleError(project, msg)
+
+    return is_success
+
+
+def set_timeline_setting(timeline, name, value):
+    """
+    Parameters
+    ----------
+    timeline : Timeline
+        A Timeline
+    name : str
+        A project setting name
+    value : str
+        A project setting value
+
+    Returns
+    -------
+    Returns True if successful, and False otherwise.
+    """
+    result = timeline.SetSetting(name, value)
+    if result:
+        print(f'    Timeline.SetSetting("{name}", "{value}") -> Success')
+    else:
+        print(f'    Timeline.SetSetting("{name}", "{value}") -> Failed')
+
+    return result
 
 
 @log_return_value
@@ -1039,12 +1099,12 @@ if __name__ == '__main__':
         "timelineResolutionHeight": "1080",
         "videoMonitorFormat": "HD 1080p 60",
         "timelineFrameRate": "60",
-        # "timelinePlaybackFrameRate": "60",
         "videoMonitorUse444SDI": "0",
         "videoMonitorSDIConfiguration": "single_link",
         "videoDataLevels": "Video",
         "videoMonitorUseHDROverHDMI": "1",
         "colorScienceMode": "davinciYRGBColorManagedv2",
+        "isAutoColorManage": "0",
         "rcmPresetMode": "Custom",
         "separateColorSpaceAndGamma": "1",
         "colorSpaceInput": "Rec.2020",
@@ -1077,6 +1137,7 @@ if __name__ == '__main__':
     ###########################
     # create timelines
     timeline = create_empty_timeline(name="My_Timeline")
+    set_timeline_settings(timeline=timeline, params=project_settings_params)
 
     # add files to the media storage
     relative_file_list = [
