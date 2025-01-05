@@ -392,6 +392,7 @@ def set_timeline_settings(timeline, params):
         is_success = False
 
     for name, value in params.items():
+        # ignore settings for "Input" because they are not exist.
         if name == "colorSpaceInput" or name == "colorSpaceInputGamma":
             continue
         result = set_timeline_setting(
@@ -807,7 +808,6 @@ def append_fusion_composition_to_timeline(
     # Delete MediaIn1 (Because MediaIn is dummy data)
     get_comp_tool_by_name(comp=fusion_comp, name="MediaIn1").Delete()
 
-
     return timeline_item, fusion_comp
 
 
@@ -943,6 +943,33 @@ def set_tool_position(comp, tool, pos=(1, 1)):
     return is_same_value
 
 
+def _get_font_list():
+    font_list = fusion.FontManager
+    return font_list.GetFontList()
+
+
+@log_return_value
+def is_font_available(family, font_weight):
+    """
+    family : str
+        A font family.
+        Examples are "Nomo Sans Mono", "Barlow Condensed", and so on.
+    font_weight : str
+        A font weight.
+        Examples are "Light", "Regular", "Bold", and so on.
+    """
+    fonts = _get_font_list()
+    is_available = family in fonts and font_weight in fonts[family]
+
+    if is_available is not True:
+        font_path = str(Path("./fonts").resolve())
+        msg = f'Required font "{family} - {font_weight}" is not found.\n'
+        msg += f'Please install "{family}" font in the {font_path}'
+        raise TyResolveModuleError(is_available, msg)
+
+    return is_available
+
+
 #####################
 # Debug
 #####################
@@ -1011,6 +1038,9 @@ def debug_code():
 
     # compare_tool_input_value(aa=text, bb=text_base)
 
+    # font_list = fusion_comp.FontList()
+    is_font_available(family="Noto Sans Mono", font_weight="Black")
+
     import sys
     sys.exit(0)
 
@@ -1068,12 +1098,15 @@ def create_countdown_comp(comp, fps=24, count_str=3):
     countdown_text = add_comp_tool(comp=comp, name="TextPlus", pos=(5, 1))
     countdown_text_merge = add_comp_tool(comp=comp, name="Merge", pos=(5, 2))
 
+    font_family = "Noto Sans Mono"
+    font_weight = "Black"
     countdown_text_input = {
         "StyledText": f"{count_str}",
-        "Font": "Noto Sans Mono",
-        "Style": "Black",
+        "Font": font_family,
+        "Style": font_weight,
         "Size": 0.75,
     }
+    is_font_available(family=font_family, font_weight=font_weight)
     set_multiple_tool_input(
         tool=countdown_text, input_dict=countdown_text_input
     )
@@ -1088,7 +1121,7 @@ def create_countdown_comp(comp, fps=24, count_str=3):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # debug_code()
+    debug_code()
 
     ##################
     # Project Settings
