@@ -881,8 +881,10 @@ def connect_tool(a, b):
 
 @log_return_value
 def connect_merge_tool(merge_tool, bg_tool, fg_tool):
-    merge_tool.ConnectInput("Background", bg_tool)
-    merge_tool.ConnectInput("Foreground", fg_tool)
+    if bg_tool is not None:
+        merge_tool.ConnectInput("Background", bg_tool)
+    if fg_tool is not None:
+        merge_tool.ConnectInput("Foreground", fg_tool)
 
 
 @log_return_value
@@ -1032,14 +1034,14 @@ def debug_code():
     print(merge_tool)
     dump_tool_input_value(tool=merge_tool)
     dump_tool_main_input_value(tool=merge_tool)
-    text = get_comp_tool_by_name(comp=fusion_comp, name="Background2")
+    text = get_comp_tool_by_name(comp=fusion_comp, name="Text1")
     dump_tool_main_input_value(tool=text)
     dump_tool_input_value(tool=merge_tool)
 
-    # compare_tool_input_value(aa=text, bb=text_base)
+    text_base = add_comp_tool(comp=fusion_comp, name="TextPlus", pos=(10, 10))
+    compare_tool_input_value(aa=text, bb=text_base)
 
-    # font_list = fusion_comp.FontList()
-    is_font_available(family="Noto Sans Mono", font_weight="Black")
+    # is_font_available(family="Noto Sans Mono", font_weight="Black")
 
     import sys
     sys.exit(0)
@@ -1048,28 +1050,84 @@ def debug_code():
 #####################
 # Logic
 #####################
+def create_background_circle(
+        comp, bg_rgba=[0.0, 0.0, 0.0, 1.0],
+        size=[0.45, 0.45], merge_pos=(1, 1)
+    ):
+    """
+    Returns
+    -------
+    Merge
+        A output merge tool
+    """
+    circle_mask = add_comp_tool(
+        comp=comp, name="EllipseMask", pos=(merge_pos[0], merge_pos[1] - 2)
+    )
+    circle_mask_input = {
+        "Width": size[0],
+        "Height": size[1],
+    }
+    set_multiple_tool_input(tool=circle_mask, input_dict=circle_mask_input)
+
+    circle_bg = add_comp_tool(
+        comp=comp, name="Background", pos=(merge_pos[0], merge_pos[1] - 1)
+    )
+    circle_bg_input = {
+        "TopLeftRed": bg_rgba[0],
+        "TopLeftGreen": bg_rgba[1],
+        "TopLeftBlue": bg_rgba[2],
+        "TopLeftAlpha": bg_rgba[3],
+        "EffectMask": circle_mask,
+    }
+    set_multiple_tool_input(tool=circle_bg, input_dict=circle_bg_input)
+
+    merge = add_comp_tool(
+        comp=comp, name="Merge", pos=(merge_pos[0], merge_pos[1] + 0)
+    )
+    connect_merge_tool(merge_tool=merge, bg_tool=None, fg_tool=circle_bg)
+
+    return merge
+
+
 def create_countdown_comp(comp, fps=24, count_str=3):
     comp.Lock()
 
-    bg1 = add_comp_tool(comp=comp, name="Background", pos=(4,1))
+    bg1 = add_comp_tool(comp=comp, name="Background", pos=(1,3))
     set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
 
+    base_white_outline_merge = create_background_circle(
+        comp=comp,
+        bg_rgba=[0.5, 0.5, 0.5, 1.0], size=[0.5, 0.5], merge_pos=[2, 3]
+    )
+    base_black_edge_merge = create_background_circle(
+        comp=comp,
+        bg_rgba=[0.0, 0.0, 0.0, 1.0], size=[0.46, 0.46], merge_pos=[3, 3]
+    )
+    base_circle_bg_merge = create_background_circle(
+        comp=comp,
+        bg_rgba=[0.18, 0.18, 0.18, 1.0], size=[0.45, 0.45], merge_pos=[4, 3]
+    )
+
     # countdown circle
-    circle_fg = add_comp_tool(comp=comp, name="Background", pos=(3, 2))
-    set_tool_topleft_color(tool=circle_fg, rgba=[0.8, 0.05, 0.05, 1.0])
-    circle_merge = add_comp_tool(comp=comp, name="Merge", pos=(4, 2))
+    wipe_circle_fg = add_comp_tool(comp=comp, name="Background", pos=(6, 2))
+    wipe_circle_fg_input = {
+        "TopLeftRed": 0.0,
+        "TopLeftGreen": 0.0,
+        "TopLeftBlue": 0.0,
+        "TopLeftAlpha": 1.0,
+    }
+    set_multiple_tool_input(
+        tool=wipe_circle_fg, input_dict=wipe_circle_fg_input
+    )
+    wipe_circle_merge = add_comp_tool(comp=comp, name="Merge", pos=(6, 3))
 
-    radial_wipe = add_comp_tool(comp=comp, name="EllipseMask", pos=(1, 2))
-    circle_mask = add_comp_tool(comp=comp, name="EllipseMask", pos=(2, 2))
+    radial_wipe = add_comp_tool(comp=comp, name="EllipseMask", pos=(6, 0))
+    wipe_circle_mask = add_comp_tool(comp=comp, name="EllipseMask", pos=(6, 1))
     
-    # connect
-    media_out = get_comp_tool_by_name(comp=comp, name="MediaOut1")
-    set_tool_position(comp=comp, tool=media_out, pos=(10, 2))
-    connect_merge_tool(
-        merge_tool=circle_merge, bg_tool=bg1, fg_tool=circle_fg)
-
-    set_tool_input(tool=circle_mask, name="EffectMask", value=radial_wipe)
-    set_tool_input(tool=circle_fg, name="EffectMask", value=circle_mask)
+    set_tool_input(tool=wipe_circle_mask, name="EffectMask", value=radial_wipe)
+    set_tool_input(
+        tool=wipe_circle_fg, name="EffectMask", value=wipe_circle_mask
+    )
 
     radial_wipe_input = {
         "Invert": 1.0,
@@ -1088,15 +1146,15 @@ def create_countdown_comp(comp, fps=24, count_str=3):
         "Height": 0.45,
         "PaintMode": "Subtract",
     }
-    set_multiple_tool_input(tool=circle_mask, input_dict=circle_mask_input)
+    set_multiple_tool_input(tool=wipe_circle_mask, input_dict=circle_mask_input)
 
     radial_wipe["WriteLength"] = comp.BezierSpline()
     radial_wipe["WriteLength"][0] = 1.0
     radial_wipe["WriteLength"][fps] = 0.0
 
     # text
-    countdown_text = add_comp_tool(comp=comp, name="TextPlus", pos=(5, 1))
-    countdown_text_merge = add_comp_tool(comp=comp, name="Merge", pos=(5, 2))
+    countdown_text = add_comp_tool(comp=comp, name="TextPlus", pos=(7, 2))
+    countdown_text_merge = add_comp_tool(comp=comp, name="Merge", pos=(7, 3))
 
     font_family = "Noto Sans Mono"
     font_weight = "Black"
@@ -1105,15 +1163,40 @@ def create_countdown_comp(comp, fps=24, count_str=3):
         "Font": font_family,
         "Style": font_weight,
         "Size": 0.75,
+        "Red1": 0.5,
+        "Green1": 0.5,
+        "Blue1": 0.5,
     }
     is_font_available(family=font_family, font_weight=font_weight)
     set_multiple_tool_input(
         tool=countdown_text, input_dict=countdown_text_input
     )
+    # set_tool_topleft_color(tool=countdown_text, rgba=[0.0, 0.4, 0.4, 1.0])
+
+    # connect
+    media_out = get_comp_tool_by_name(comp=comp, name="MediaOut1")
+    set_tool_position(comp=comp, tool=media_out, pos=(12, 3))
+
     connect_tool(countdown_text_merge, media_out)
     connect_merge_tool(
         merge_tool=countdown_text_merge,
-        bg_tool=circle_merge, fg_tool=countdown_text
+        bg_tool=wipe_circle_merge, fg_tool=countdown_text
+    )
+    connect_merge_tool(
+        merge_tool=wipe_circle_merge,
+        bg_tool=base_circle_bg_merge, fg_tool=wipe_circle_fg
+    )
+    connect_merge_tool(
+        merge_tool=base_circle_bg_merge,
+        bg_tool=base_black_edge_merge, fg_tool=None
+    )
+    connect_merge_tool(
+        merge_tool=base_black_edge_merge,
+        bg_tool=base_white_outline_merge, fg_tool=None
+    )
+    connect_merge_tool(
+        merge_tool=base_white_outline_merge,
+        bg_tool=bg1, fg_tool=None
     )
 
     comp.Unlock()
@@ -1121,7 +1204,7 @@ def create_countdown_comp(comp, fps=24, count_str=3):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    debug_code()
+    # debug_code()
 
     ##################
     # Project Settings
@@ -1140,12 +1223,12 @@ if __name__ == '__main__':
         "isAutoColorManage": "0",
         "rcmPresetMode": "Custom",
         "separateColorSpaceAndGamma": "1",
-        "colorSpaceInput": "Rec.2020",
-        "colorSpaceInputGamma": "ST2084",
-        "colorSpaceTimeline": "Rec.2020",
-        "colorSpaceTimelineGamma": "ST2084",
-        "colorSpaceOutput": "Rec.2020",
-        "colorSpaceOutputGamma": "ST2084",
+        "colorSpaceInput": "Rec.709",
+        "colorSpaceInputGamma": "Gamma 2.4",
+        "colorSpaceTimeline": "Rec.709",
+        "colorSpaceTimelineGamma": "Gamma 2.4",
+        "colorSpaceOutput": "Rec.709",
+        "colorSpaceOutputGamma": "Gamma 2.4",
         "timelineWorkingLuminance": "10000",
         "timelineWorkingLuminanceMode": "Custom",
         "inputDRT": "None",
@@ -1216,6 +1299,7 @@ if __name__ == '__main__':
                 pos_timecode=f"01:00:{idx:02d}:00"
             )
         create_countdown_comp(comp, fps=fps, count_str=countdown_str)
+        break
 
     set_current_timecode(timecode="01:00:00:00")
 
