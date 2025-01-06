@@ -1089,46 +1089,63 @@ def create_background_circle(
     return merge
 
 
-def create_countdown_comp(comp, fps=24, count_str=3):
-    comp.Lock()
+def create_still_background_comp(base_pos):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
 
-    bg1 = add_comp_tool(comp=comp, name="Background", pos=(1,3))
+    bg1 = add_comp_tool(
+        comp=comp, name="Background", pos=(x_pos+0, y_pos+0)
+    )
     set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
 
-    base_white_outline_merge = create_background_circle(
-        comp=comp,
-        bg_rgba=[0.5, 0.5, 0.5, 1.0], size=[0.5, 0.5], merge_pos=[2, 3]
+    large_white_circle_merge = create_background_circle(
+        comp=comp, bg_rgba=[0.5, 0.5, 0.5, 1.0], size=[0.5, 0.5],
+        merge_pos=[x_pos+1, y_pos+0]
     )
-    base_black_edge_merge = create_background_circle(
-        comp=comp,
-        bg_rgba=[0.0, 0.0, 0.0, 1.0], size=[0.46, 0.46], merge_pos=[3, 3]
+    middle_black_circle_merge = create_background_circle(
+        comp=comp, bg_rgba=[0.0, 0.0, 0.0, 1.0], size=[0.46, 0.46],
+        merge_pos=[x_pos+2, y_pos+0]
     )
-    base_circle_bg_merge = create_background_circle(
-        comp=comp,
-        bg_rgba=[0.18, 0.18, 0.18, 1.0], size=[0.45, 0.45], merge_pos=[4, 3]
+    small_grey_circle_merge = create_background_circle(
+        comp=comp, bg_rgba=[0.18, 0.18, 0.18, 1.0], size=[0.45, 0.45],
+        merge_pos=[x_pos+3, y_pos+0]
     )
-
-    # countdown circle
-    wipe_circle_fg = add_comp_tool(comp=comp, name="Background", pos=(6, 2))
-    wipe_circle_fg_input = {
-        "TopLeftRed": 0.0,
-        "TopLeftGreen": 0.0,
-        "TopLeftBlue": 0.0,
-        "TopLeftAlpha": 1.0,
-    }
-    set_multiple_tool_input(
-        tool=wipe_circle_fg, input_dict=wipe_circle_fg_input
+    connect_merge_tool(
+        merge_tool=small_grey_circle_merge,
+        bg_tool=middle_black_circle_merge, fg_tool=None
     )
-    wipe_circle_merge = add_comp_tool(comp=comp, name="Merge", pos=(6, 3))
-
-    radial_wipe = add_comp_tool(comp=comp, name="EllipseMask", pos=(6, 0))
-    wipe_circle_mask = add_comp_tool(comp=comp, name="EllipseMask", pos=(6, 1))
-    
-    set_tool_input(tool=wipe_circle_mask, name="EffectMask", value=radial_wipe)
-    set_tool_input(
-        tool=wipe_circle_fg, name="EffectMask", value=wipe_circle_mask
+    connect_merge_tool(
+        merge_tool=middle_black_circle_merge,
+        bg_tool=large_white_circle_merge, fg_tool=None
+    )
+    connect_merge_tool(
+        merge_tool=large_white_circle_merge,
+        bg_tool=bg1, fg_tool=None
     )
 
+    out_tool = small_grey_circle_merge
+
+    return out_tool
+
+
+def create_countdown_animation_comp(count_str, fps, base_pos):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    radial_wipe = add_comp_tool(
+        comp=comp, name="EllipseMask", pos=(x_pos+0, y_pos-3)
+    )
+    wipe_circle_mask = add_comp_tool(
+        comp=comp, name="EllipseMask", pos=(x_pos+0, y_pos-2)
+    )
+    wipe_circle_fg = add_comp_tool(
+        comp=comp, name="Background", pos=(x_pos+0, y_pos-1)
+    )
+    wipe_circle_merge = add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+0, y_pos-0)
+    )
+
+    # wipe animation settings
     radial_wipe_input = {
         "Invert": 1.0,
         "BorderWidth": 1.0,
@@ -1139,22 +1156,41 @@ def create_countdown_comp(comp, fps=24, count_str=3):
         "Angle": 90,
     }
     set_multiple_tool_input(tool=radial_wipe, input_dict=radial_wipe_input)
-
-    circle_mask_input = {
-        "Invert": 1.0,
-        "Width": 0.45,
-        "Height": 0.45,
-        "PaintMode": "Subtract",
-    }
-    set_multiple_tool_input(tool=wipe_circle_mask, input_dict=circle_mask_input)
-
     radial_wipe["WriteLength"] = comp.BezierSpline()
     radial_wipe["WriteLength"][0] = 1.0
     radial_wipe["WriteLength"][fps] = 0.0
 
+    # mask settings for wipe animation
+    wipe_circle_mask_input = {
+        "Invert": 1.0,
+        "Width": 0.45,
+        "Height": 0.45,
+        "PaintMode": "Subtract",
+        "EffectMask": radial_wipe,
+    }
+    set_multiple_tool_input(
+        tool=wipe_circle_mask, input_dict=wipe_circle_mask_input
+    )
+
+    # color settings for wipe animation
+    wipe_circle_fg_input = {
+        "TopLeftRed": 0.0,
+        "TopLeftGreen": 0.0,
+        "TopLeftBlue": 0.0,
+        "TopLeftAlpha": 1.0,
+        "EffectMask": wipe_circle_mask,
+    }
+    set_multiple_tool_input(
+        tool=wipe_circle_fg, input_dict=wipe_circle_fg_input
+    )
+
     # text
-    countdown_text = add_comp_tool(comp=comp, name="TextPlus", pos=(7, 2))
-    countdown_text_merge = add_comp_tool(comp=comp, name="Merge", pos=(7, 3))
+    countdown_text = add_comp_tool(
+        comp=comp, name="TextPlus", pos=(x_pos+1, y_pos-1)
+    )
+    countdown_text_merge = add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+1, y_pos-0)
+    )
 
     font_family = "Noto Sans Mono"
     font_weight = "Black"
@@ -1171,32 +1207,42 @@ def create_countdown_comp(comp, fps=24, count_str=3):
     set_multiple_tool_input(
         tool=countdown_text, input_dict=countdown_text_input
     )
-    # set_tool_topleft_color(tool=countdown_text, rgba=[0.0, 0.4, 0.4, 1.0])
 
     # connect
-    media_out = get_comp_tool_by_name(comp=comp, name="MediaOut1")
-    set_tool_position(comp=comp, tool=media_out, pos=(12, 3))
-
-    connect_tool(countdown_text_merge, media_out)
     connect_merge_tool(
         merge_tool=countdown_text_merge,
         bg_tool=wipe_circle_merge, fg_tool=countdown_text
     )
     connect_merge_tool(
         merge_tool=wipe_circle_merge,
-        bg_tool=base_circle_bg_merge, fg_tool=wipe_circle_fg
+        bg_tool=None, fg_tool=wipe_circle_fg
     )
+
+    # output
+    input_merge = wipe_circle_merge
+    output_merge = countdown_text_merge
+
+    return input_merge, output_merge
+
+
+def create_countdown_comp(comp, fps=24, count_str=3):
+    comp.Lock()
+
+    still_bg_tool = create_still_background_comp(base_pos=(1, 3))
+    cntdown_anime_input_merge, cntdown_anime_output_merge\
+        = create_countdown_animation_comp(
+            count_str=count_str, fps=fps, base_pos=(8, 3))
+
+    # countdown circle
+
+    # connect
+    media_out = get_comp_tool_by_name(comp=comp, name="MediaOut1")
+    set_tool_position(comp=comp, tool=media_out, pos=(12, 3))
+
+    connect_tool(cntdown_anime_output_merge, media_out)
     connect_merge_tool(
-        merge_tool=base_circle_bg_merge,
-        bg_tool=base_black_edge_merge, fg_tool=None
-    )
-    connect_merge_tool(
-        merge_tool=base_black_edge_merge,
-        bg_tool=base_white_outline_merge, fg_tool=None
-    )
-    connect_merge_tool(
-        merge_tool=base_white_outline_merge,
-        bg_tool=bg1, fg_tool=None
+        merge_tool=cntdown_anime_input_merge,
+        bg_tool=still_bg_tool, fg_tool=None
     )
 
     comp.Unlock()
@@ -1213,8 +1259,8 @@ if __name__ == '__main__':
     project_settings_params = {
         "timelineResolutionWidth": "1920",
         "timelineResolutionHeight": "1080",
-        "videoMonitorFormat": "HD 1080p 60",
-        "timelineFrameRate": "60",
+        "videoMonitorFormat": "HD 1080p 24",
+        "timelineFrameRate": "24",
         "videoMonitorUse444SDI": "0",
         "videoMonitorSDIConfiguration": "single_link",
         "videoDataLevels": "Video",
@@ -1253,7 +1299,8 @@ if __name__ == '__main__':
     ###########################
     # create timelines
     timeline = create_empty_timeline(name="My_Timeline")
-    set_timeline_settings(timeline=timeline, params=project_settings_params)
+    # # Temporarily commented out because it is slow...
+    # set_timeline_settings(timeline=timeline, params=project_settings_params)
 
     # add files to the media storage
     relative_file_list = [
