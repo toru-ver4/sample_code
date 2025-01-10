@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
 
-"""
-方針: 
-"""
-
 import sys
 import os
 from pathlib import Path
@@ -288,6 +284,9 @@ def set_project_setting(name, value):
     -------
     Returns True if successful, and False otherwise.
     """
+    project_manager = get_project_manager()
+    project = project_manager.GetCurrentProject()
+
     result = project.SetSetting(name, value)
     if result:
         print(f'    Project.SetSetting("{name}", "{value}") -> Success')
@@ -310,6 +309,9 @@ def get_project_setting(name):
     str
         A project setting value
     """
+    project_manager = get_project_manager()
+    project = project_manager.GetCurrentProject()
+
     result = project.GetSetting(name)
     print(f'    Project.GetSetting("{name}") -> "{result}"')
 
@@ -370,6 +372,13 @@ def setup_project_settings(params):
         raise TyResolveModuleError(project, msg)
 
     return is_success
+
+
+def get_project_resolution():
+    width = get_project_setting(name="timelineResolutionWidth")
+    height = get_project_setting(name="timelineResolutionHeight")
+
+    return [int(width), int(height)]
 
 
 def set_timeline_settings(timeline, params):
@@ -1050,6 +1059,51 @@ def debug_code():
 #####################
 # Logic
 #####################
+class HeightBasedSize:
+    def __init__(self, size, hv_same=False, resolution=None):
+        """
+        Parameters
+        ----------
+        size: float
+            A size parameter
+        resolution : list or tuple
+            [width, height] or (width, height)
+        """
+        if resolution is None:
+            width, height = get_project_resolution()
+        else:
+            width, height = resolution
+        self._v_size = size
+
+        if hv_same:
+            self._h_size = size
+        else:    
+            self._h_size = (self._v_size * height) / width
+
+    @property
+    def v_size(self):
+        return self._v_size
+
+    @property
+    def h_size(self):
+        return self._h_size
+
+
+class FusionParams:
+    def __init__(self):
+        """
+        Parameters
+        ----------
+        resolution : list or tuple
+            [width, height] or (width, height)
+        """
+        self.cd_circle_ll = HeightBasedSize(0.58)
+        self.cd_circle_mm = HeightBasedSize(0.50)
+        self.cd_circle_ss = HeightBasedSize(0.485)
+        self.cd_line_width = HeightBasedSize(0.005)
+        self.cd_font_size = HeightBasedSize(0.85)
+
+
 def create_background_circle(
         comp, bg_rgba=[0.0, 0.0, 0.0, 1.0],
         size=[0.45, 0.45], merge_pos=(1, 1)
@@ -1089,9 +1143,19 @@ def create_background_circle(
     return merge
 
 
-def create_still_background_comp(base_pos):
-    x_pos = base_pos[0]
-    y_pos = base_pos[1]
+def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
+    """
+    Parameters
+    ----------
+    comp : Composition
+        A fusion Composition instance
+    ppp : FusionParams
+        A parameter set for fusion composition
+    tool_pos : list
+        [h_pos, v_pos] of the base tool (lower left)
+    """
+    x_pos = tool_pos[0]
+    y_pos = tool_pos[1]
 
     bg1 = add_comp_tool(
         comp=comp, name="Background", pos=(x_pos+0, y_pos+0)
@@ -1099,38 +1163,102 @@ def create_still_background_comp(base_pos):
     set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
 
     large_white_circle_merge = create_background_circle(
-        comp=comp, bg_rgba=[0.5, 0.5, 0.5, 1.0], size=[0.5, 0.5],
+        comp=comp, bg_rgba=[0.5, 0.5, 0.5, 1.0],
+        size=[ppp.cd_circle_ll.h_size, ppp.cd_circle_ll.h_size],
         merge_pos=[x_pos+1, y_pos+0]
     )
     middle_black_circle_merge = create_background_circle(
-        comp=comp, bg_rgba=[0.0, 0.0, 0.0, 1.0], size=[0.46, 0.46],
+        comp=comp, bg_rgba=[0.0, 0.0, 0.0, 1.0],
+        size=[ppp.cd_circle_mm.h_size, ppp.cd_circle_mm.h_size],
         merge_pos=[x_pos+2, y_pos+0]
     )
     small_grey_circle_merge = create_background_circle(
-        comp=comp, bg_rgba=[0.18, 0.18, 0.18, 1.0], size=[0.45, 0.45],
+        comp=comp, bg_rgba=[0.18, 0.18, 0.18, 1.0],
+        size=[ppp.cd_circle_ss.h_size, ppp.cd_circle_ss.h_size],
         merge_pos=[x_pos+3, y_pos+0]
     )
+    h_line = add_comp_tool(comp=comp, name="RectangleMask", pos=[x_pos+4, y_pos-2])
+    h_line_fg = add_comp_tool(comp=comp, name="Background", pos=[x_pos+4, y_pos-1])
+    h_line_merge = add_comp_tool(comp=comp, name="Merge", pos=[x_pos+4, y_pos+0])
+
+    v_line = add_comp_tool(comp=comp, name="RectangleMask", pos=[x_pos+5, y_pos-2])
+    v_line_fg = add_comp_tool(comp=comp, name="Background", pos=[x_pos+5, y_pos-1])
+    v_line_merge = add_comp_tool(comp=comp, name="Merge", pos=[x_pos+5, y_pos+0])
+
+    h_line_input = {
+        "Width": ppp.cd_circle_ll.h_size,
+        "Height": ppp.cd_line_width.h_size,
+    }
+    set_multiple_tool_input(tool=h_line, input_dict=h_line_input)
+    h_line_fg_input = {
+        "TopLeftRed": 0.0,
+        "TopLeftGreen": 0.0,
+        "TopLeftBlue": 0.0,
+        "TopLeftAlpha": 1.0,
+        "EffectMask": h_line,
+    }
+    set_multiple_tool_input(tool=h_line_fg, input_dict=h_line_fg_input)
+
+    v_line_input = {
+        "Width": ppp.cd_circle_ll.h_size,
+        "Height": ppp.cd_line_width.h_size,
+        "Angle": 90,
+    }
+    set_multiple_tool_input(tool=v_line, input_dict=v_line_input)
+    v_line_fg_input = {
+        "TopLeftRed": 0.0,
+        "TopLeftGreen": 0.0,
+        "TopLeftBlue": 0.0,
+        "TopLeftAlpha": 1.0,
+        "EffectMask": v_line,
+    }
+    set_multiple_tool_input(tool=v_line_fg, input_dict=v_line_fg_input)
+
     connect_merge_tool(
-        merge_tool=small_grey_circle_merge,
-        bg_tool=middle_black_circle_merge, fg_tool=None
+        merge_tool=large_white_circle_merge,
+        bg_tool=bg1, fg_tool=None
     )
     connect_merge_tool(
         merge_tool=middle_black_circle_merge,
         bg_tool=large_white_circle_merge, fg_tool=None
     )
     connect_merge_tool(
-        merge_tool=large_white_circle_merge,
-        bg_tool=bg1, fg_tool=None
+        merge_tool=small_grey_circle_merge,
+        bg_tool=middle_black_circle_merge, fg_tool=None
+    )
+    connect_merge_tool(
+        merge_tool=h_line_merge,
+        bg_tool=small_grey_circle_merge, fg_tool=h_line_fg
+    )
+    connect_merge_tool(
+        merge_tool=v_line_merge,
+        bg_tool=h_line_merge, fg_tool=v_line_fg
     )
 
-    out_tool = small_grey_circle_merge
+    out_tool = v_line_merge
 
     return out_tool
 
 
-def create_countdown_animation_comp(count_str, fps, base_pos):
-    x_pos = base_pos[0]
-    y_pos = base_pos[1]
+def create_countdown_animation_comp(
+    comp, ppp: FusionParams, count_str, fps, tool_pos
+):
+    """
+    Parameters
+    ----------
+    comp : Composition
+        A fusion Composition instance
+    ppp : FusionParams
+        A parameter set for fusion composition
+    count_str : int
+        A number indicate the countdown
+    fps : int
+        framerate
+    tool_pos : list
+        [h_pos, v_pos] of the base tool (lower left)
+    """
+    x_pos = tool_pos[0]
+    y_pos = tool_pos[1]
 
     radial_wipe = add_comp_tool(
         comp=comp, name="EllipseMask", pos=(x_pos+0, y_pos-3)
@@ -1163,8 +1291,8 @@ def create_countdown_animation_comp(count_str, fps, base_pos):
     # mask settings for wipe animation
     wipe_circle_mask_input = {
         "Invert": 1.0,
-        "Width": 0.45,
-        "Height": 0.45,
+        "Width": ppp.cd_circle_ss.h_size,
+        "Height": ppp.cd_circle_ss.h_size,
         "PaintMode": "Subtract",
         "EffectMask": radial_wipe,
     }
@@ -1198,7 +1326,7 @@ def create_countdown_animation_comp(count_str, fps, base_pos):
         "StyledText": f"{count_str}",
         "Font": font_family,
         "Style": font_weight,
-        "Size": 0.75,
+        "Size": ppp.cd_font_size.h_size,
         "Red1": 0.5,
         "Green1": 0.5,
         "Blue1": 0.5,
@@ -1225,15 +1353,42 @@ def create_countdown_animation_comp(count_str, fps, base_pos):
     return input_merge, output_merge
 
 
-def create_countdown_comp(comp, fps=24, count_str=3):
+def create_countdown_comp():
+    ppp = FusionParams()
+    fps = int(get_project_setting(name="timelineFrameRate"))
+    for idx, countdown_str in enumerate([3, 2, 1, 0]):
+        tl_item_fusion_comp, comp =\
+            append_fusion_composition_to_timeline(
+                num_of_frame=fps,
+                pos_timecode=f"01:00:{idx:02d}:00"
+            )
+        create_countdown_comp_each_sec(
+            comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
+        break
+
+
+def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
+    """
+    Parameters
+    ----------
+    comp : Composition
+        A fusion Composition instance
+    ppp : FusionParams
+        A parameter set for fusion composition
+    fps : int
+        framerate
+    count_str : int
+        A character indicate the number of the count down.
+    """
     comp.Lock()
 
-    still_bg_tool = create_still_background_comp(base_pos=(1, 3))
+    still_bg_tool = create_still_background_comp(
+        comp=comp, ppp=ppp, tool_pos=(1, 3)
+    )
     cntdown_anime_input_merge, cntdown_anime_output_merge\
         = create_countdown_animation_comp(
-            count_str=count_str, fps=fps, base_pos=(8, 3))
-
-    # countdown circle
+            comp=comp, ppp=ppp, count_str=count_str, fps=fps, tool_pos=(8, 3)
+        )
 
     # connect
     media_out = get_comp_tool_by_name(comp=comp, name="MediaOut1")
@@ -1299,7 +1454,10 @@ if __name__ == '__main__':
     ###########################
     # create timelines
     timeline = create_empty_timeline(name="My_Timeline")
+
+    ####################################################
     # # Temporarily commented out because it is slow...
+    ####################################################
     # set_timeline_settings(timeline=timeline, params=project_settings_params)
 
     # add files to the media storage
@@ -1338,16 +1496,8 @@ if __name__ == '__main__':
     # solid_color = insert_generator_into_timeline(
     #     timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
     # )
-    fps = int(get_project_setting(name="timelineFrameRate"))
-    for idx, countdown_str in enumerate([3, 2, 1, 0]):
-        tl_item_fusion_comp, comp =\
-            append_fusion_composition_to_timeline(
-                num_of_frame=fps,
-                pos_timecode=f"01:00:{idx:02d}:00"
-            )
-        create_countdown_comp(comp, fps=fps, count_str=countdown_str)
-        break
 
+    create_countdown_comp()
     set_current_timecode(timecode="01:00:00:00")
 
     open_page(page_name=drc.EDIT_PAGE_STR)
