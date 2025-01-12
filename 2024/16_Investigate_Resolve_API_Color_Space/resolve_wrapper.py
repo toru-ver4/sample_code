@@ -909,7 +909,7 @@ def set_tool_input(tool, name, value):
             msg = 'Failed to set_tool_input()\n'
             msg += f"Verification failed for {name}: expected {value}, got {verify_value}"
             raise TyResolveModuleError(False, msg)
-    elif isinstance(value, str) or isinstance(value, int):
+    elif isinstance(value, str) or isinstance(value, int) or isinstance(value, dict):
         if value != verify_value:
             msg = 'Failed to set_tool_input()\n'
             msg += f"Verification failed for {name}: expected {value}, got {verify_value}"
@@ -1043,12 +1043,12 @@ def debug_code():
     print(merge_tool)
     dump_tool_input_value(tool=merge_tool)
     dump_tool_main_input_value(tool=merge_tool)
-    text = get_comp_tool_by_name(comp=fusion_comp, name="Text1")
+    text = get_comp_tool_by_name(comp=fusion_comp, name="Text2")
     dump_tool_main_input_value(tool=text)
     dump_tool_input_value(tool=merge_tool)
 
-    text_base = add_comp_tool(comp=fusion_comp, name="TextPlus", pos=(10, 10))
-    compare_tool_input_value(aa=text, bb=text_base)
+    text_base = add_comp_tool(comp=fusion_comp, name="RectangleMask", pos=(10, 10))
+    # compare_tool_input_value(aa=text, bb=text_base)
 
     # is_font_available(family="Noto Sans Mono", font_weight="Black")
 
@@ -1101,6 +1101,7 @@ class FusionParams:
         self.cd_circle_mm = HeightBasedSize(0.54)
         self.cd_circle_ss = HeightBasedSize(0.525)
         self.cd_line_width = HeightBasedSize(0.005)
+        self.cd_line_color = [0.0, 0.0, 0.0, 1.0]
         self.cd_font_size = HeightBasedSize(0.85)
         self.cross_line_width = self.cd_line_width
         self.cross_line_color = [235/255, 235/255, 235/255, 1.0]
@@ -1146,8 +1147,164 @@ def create_background_circle(
     return merge
 
 
-# def draw_line(comp, color, width, height, angle=0, base_pos=[0, 0]):
+def draw_line_comp(comp, rgba, width, height, angle=0, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
 
+    line = add_comp_tool(comp=comp, name="RectangleMask", pos=[x_pos, y_pos-2])
+    line_fg = add_comp_tool(comp=comp, name="Background", pos=[x_pos, y_pos-1])
+    line_merge = add_comp_tool(comp=comp, name="Merge", pos=[x_pos, y_pos+0])
+
+    line_input = {
+        "Width": width,
+        "Height": height,
+        "Angle": angle,
+    }
+    set_multiple_tool_input(tool=line, input_dict=line_input)
+    line_fg_input = {
+        "TopLeftRed": rgba[0],
+        "TopLeftGreen": rgba[1],
+        "TopLeftBlue": rgba[2],
+        "TopLeftAlpha": rgba[3],
+        "EffectMask": line,
+    }
+    set_multiple_tool_input(tool=line_fg, input_dict=line_fg_input)
+
+    connect_merge_tool(
+        merge_tool=line_merge,
+        bg_tool=None, fg_tool=line_fg
+    )
+
+    return line_merge
+
+
+def draw_info_comp(
+        comp, font_size, bg_rgba, fg_rgba, height, base_pos=[0, 0]):
+    """
+    ================================================================================
+     Rectangle5 Rectangle6 Compare
+    ================================================================================
+    Center: {1: 0.5, 2: 0.025, 3: 0.0}, {1: 0.5, 2: 0.5, 3: 0.0}, 
+    Width: 1.0, 0.5, 
+    Height: 0.05, 0.5,
+    StartRenderScripts: 1.0, 0.0,
+
+    ================================================================================
+     Right_Text Text3 Compare
+    ================================================================================
+    Center: {1: 1.0, 2: 0.0, 3: 0.0}, {1: 0.5, 2: 0.5, 3: 0.0}, 
+    TransformPivot: 1.0, 0.0, 
+    TransformShear: 1.0, 0.0,
+    TransformSize: 1.0, 0.0,
+    ShadingGradient1: Gradient (0x000001894249FD00) [App: 'Resolve' on 127.0.0.1, UUID: 2c54ce48-1cc6-474a-8f19-b46acd4737b5], Gradient (0x00000189491ABD00) [App: 'Resolve' on 127.0.0.1, UUID: 2c54ce48-1cc6-474a-8f19-b46acd4737b5],
+    StyledText: Revision 01, ,
+    Font: Noto Sans, Open Sans,
+    Style: Regular, Bold,
+    Size: 0.040999999999999995, 0.08,
+    VerticalTopCenterBottom: 1.5, 0.0,
+    HorizontalLeftCenterRight: 1.05, 0.0,
+    AdvancedFontControls: 1.0, 0.0,
+
+    ================================================================================
+     Left_Text Text4 Compare
+    ================================================================================
+    Center: {1: 0.0, 2: 0.0, 3: 0.0}, {1: 0.5, 2: 0.5, 3: 0.0}, 
+    TransformPivot: 1.0, 0.0, 
+    TransformShear: 1.0, 0.0,
+    TransformSize: 1.0, 0.0,
+    ShadingGradient1: Gradient (0x0000018954BFFD00) [App: 'Resolve' on 127.0.0.1, UUID: 2c54ce48-1cc6-474a-8f19-b46acd4737b5], Gradient (0x00000189491AB400) [App: 'Resolve' on 127.0.0.1, UUID: 2c54ce48-1cc6-474a-8f19-b46acd4737b5],
+    StyledText: Countdown V2 , ,
+    Font: Noto Sans, Open Sans,
+    Style: Regular, Bold,
+    Size: 0.0418, 0.08,
+    VerticalTopCenterBottom: 1.5, 0.0,
+    HorizontalLeftCenterRight: -1.05, 0.0,
+    AdvancedFontControls: 1.0, 0.0,
+    
+    """
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    rectangle_mask = add_comp_tool(
+        comp=comp, name="RectangleMask", pos=(x_pos+0, y_pos-2)
+    )
+    rectangle_mask_input = {
+        "Center": {1: 0.5, 2: height/2.0, 3: 0.0},
+        "Width": 1.0,
+        "Height": height,
+    }
+    set_multiple_tool_input(
+        tool=rectangle_mask, input_dict=rectangle_mask_input
+    )
+    rectangle_fg = add_comp_tool(
+        comp=comp, name="Background", pos=(x_pos+0, y_pos-1)
+    )
+    set_tool_topleft_color(tool=rectangle_fg, rgba=bg_rgba)
+    set_tool_input(tool=rectangle_fg, name="EffectMask", value=rectangle_mask)
+    rectangle_merge = add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+0, y_pos+0)
+    )
+    connect_merge_tool(
+        merge_tool=rectangle_merge, bg_tool=None, fg_tool=rectangle_fg
+    )
+
+    # info text
+    info_text = add_comp_tool(
+        comp=comp, name="TextPlus", pos=(x_pos+1, y_pos-1)
+    )
+    info_text_merge = add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+1, y_pos-0)
+    )
+    font_family = "Noto Sans"
+    font_weight = "Regular"
+    info_text_input = {
+        "Center": {1: 0.0, 2: 0.0, 3: 0.0},
+        "StyledText": "  Countdown v2, 1920x1080, 24 fps, Gamma 2.4, ITU-R BT.709",
+        "Font": font_family,
+        "Style": font_weight,
+        "Size": font_size,
+        "Red1": fg_rgba[0],
+        "Green1": fg_rgba[1],
+        "Blue1": fg_rgba[2],
+        "VerticalTopCenterBottom": 1.75,
+        "HorizontalLeftCenterRight": -1.0,
+        "AdvancedFontControls": 1.0,
+    }
+    is_font_available(family=font_family, font_weight=font_weight)
+    set_multiple_tool_input(tool=info_text, input_dict=info_text_input)
+    connect_merge_tool(
+        merge_tool=info_text_merge, bg_tool=rectangle_merge, fg_tool=info_text
+    )
+
+    # rev text
+    rev_text = add_comp_tool(
+        comp=comp, name="TextPlus", pos=(x_pos+2, y_pos-1)
+    )
+    rev_text_merge = add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+2, y_pos-0)
+    )
+    rev_text_input = {
+        "Center": {1: 1.0, 2: 0.0, 3: 0.0},
+        "StyledText": "Revision 00  ",
+        "Font": font_family,
+        "Style": font_weight,
+        "Size": font_size,
+        "Red1": fg_rgba[0],
+        "Green1": fg_rgba[1],
+        "Blue1": fg_rgba[2],
+        "VerticalTopCenterBottom": 1.75,
+        "HorizontalLeftCenterRight": 1.0,
+        "AdvancedFontControls": 1.0,
+    }
+    set_multiple_tool_input(tool=rev_text, input_dict=rev_text_input)
+    connect_merge_tool(
+        merge_tool=rev_text_merge, bg_tool=info_text_merge, fg_tool=rev_text
+    )
+
+    in_merge = rectangle_merge
+    out_merge = rev_text_merge
+
+    return in_merge, out_merge
 
 
 def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
@@ -1169,105 +1326,51 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
     )
     set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
 
-    cross_h_line = add_comp_tool(comp=comp, name="RectangleMask", pos=[x_pos+1, y_pos-2])
-    cross_h_line_fg = add_comp_tool(comp=comp, name="Background", pos=[x_pos+1, y_pos-1])
-    cross_h_line_merge = add_comp_tool(comp=comp, name="Merge", pos=[x_pos+1, y_pos+0])
-
-    cross_v_line = add_comp_tool(comp=comp, name="RectangleMask", pos=[x_pos+2, y_pos-2])
-    cross_v_line_fg = add_comp_tool(comp=comp, name="Background", pos=[x_pos+2, y_pos-1])
-    cross_v_line_merge = add_comp_tool(comp=comp, name="Merge", pos=[x_pos+2, y_pos+0])
-
+    cross_h_line_merge = draw_line_comp(
+        comp=comp, rgba=ppp.cross_line_color, width=1.0, angle=0,
+        height=ppp.cross_line_width.h_size, base_pos=[x_pos+1, y_pos]
+    )
+    cross_v_line_merge = draw_line_comp(
+        comp=comp, rgba=ppp.cross_line_color, width=1.0, angle=90,
+        height=ppp.cross_line_width.h_size, base_pos=[x_pos+2, y_pos]
+    )
     large_white_circle_merge = create_background_circle(
         comp=comp, bg_rgba=[0.5, 0.5, 0.5, 1.0],
         size=[ppp.cd_circle_ll.h_size, ppp.cd_circle_ll.h_size],
-        merge_pos=[x_pos+3, y_pos+0]
+        merge_pos=[x_pos+3, y_pos]
     )
     middle_black_circle_merge = create_background_circle(
         comp=comp, bg_rgba=[0.0, 0.0, 0.0, 1.0],
         size=[ppp.cd_circle_mm.h_size, ppp.cd_circle_mm.h_size],
-        merge_pos=[x_pos+4, y_pos+0]
+        merge_pos=[x_pos+4, y_pos]
     )
     small_grey_circle_merge = create_background_circle(
         comp=comp, bg_rgba=[0.18, 0.18, 0.18, 1.0],
         size=[ppp.cd_circle_ss.h_size, ppp.cd_circle_ss.h_size],
-        merge_pos=[x_pos+5, y_pos+0]
+        merge_pos=[x_pos+5, y_pos]
     )
-    h_line = add_comp_tool(comp=comp, name="RectangleMask", pos=[x_pos+6, y_pos-2])
-    h_line_fg = add_comp_tool(comp=comp, name="Background", pos=[x_pos+6, y_pos-1])
-    h_line_merge = add_comp_tool(comp=comp, name="Merge", pos=[x_pos+6, y_pos+0])
-
-    v_line = add_comp_tool(comp=comp, name="RectangleMask", pos=[x_pos+7, y_pos-2])
-    v_line_fg = add_comp_tool(comp=comp, name="Background", pos=[x_pos+7, y_pos-1])
-    v_line_merge = add_comp_tool(comp=comp, name="Merge", pos=[x_pos+7, y_pos+0])
-
-    cross_h_line_input = {
-        "Width": 1.0,
-        "Height": ppp.cross_line_width.h_size,
-    }
-    set_multiple_tool_input(tool=cross_h_line, input_dict=cross_h_line_input)
-    cross_h_line_fg_input = {
-        "TopLeftRed": ppp.cross_line_color[0],
-        "TopLeftGreen": ppp.cross_line_color[1],
-        "TopLeftBlue": ppp.cross_line_color[2],
-        "TopLeftAlpha": ppp.cross_line_color[3],
-        "EffectMask": cross_h_line,
-    }
-    set_multiple_tool_input(tool=cross_h_line_fg, input_dict=cross_h_line_fg_input)
-
-    cross_v_line_input = {
-        "Width": 1.0,
-        "Height": ppp.cross_line_width.h_size,
-        "Angle": 90, 
-    }
-    set_multiple_tool_input(tool=cross_v_line, input_dict=cross_v_line_input)
-    cross_v_line_fg_input = {
-        "TopLeftRed": ppp.cross_line_color[0],
-        "TopLeftGreen": ppp.cross_line_color[1],
-        "TopLeftBlue": ppp.cross_line_color[2],
-        "TopLeftAlpha": ppp.cross_line_color[3],
-        "EffectMask": cross_v_line,
-    }
-    set_multiple_tool_input(tool=cross_v_line_fg, input_dict=cross_v_line_fg_input)
-
-    h_line_input = {
-        "Width": ppp.cd_circle_ll.h_size,
-        "Height": ppp.cd_line_width.h_size,
-    }
-    set_multiple_tool_input(tool=h_line, input_dict=h_line_input)
-    h_line_fg_input = {
-        "TopLeftRed": 0.0,
-        "TopLeftGreen": 0.0,
-        "TopLeftBlue": 0.0,
-        "TopLeftAlpha": 1.0,
-        "EffectMask": h_line,
-    }
-    set_multiple_tool_input(tool=h_line_fg, input_dict=h_line_fg_input)
-
-    v_line_input = {
-        "Width": ppp.cd_circle_ll.h_size,
-        "Height": ppp.cd_line_width.h_size,
-        "Angle": 90,
-    }
-    set_multiple_tool_input(tool=v_line, input_dict=v_line_input)
-    v_line_fg_input = {
-        "TopLeftRed": 0.0,
-        "TopLeftGreen": 0.0,
-        "TopLeftBlue": 0.0,
-        "TopLeftAlpha": 1.0,
-        "EffectMask": v_line,
-    }
-    set_multiple_tool_input(tool=v_line_fg, input_dict=v_line_fg_input)
+    h_line_merge = draw_line_comp(
+        comp=comp, rgba=ppp.cd_line_color, angle=0,
+        width=ppp.cd_circle_ll.h_size,
+        height=ppp.cd_line_width.h_size, base_pos=[x_pos+6, y_pos]
+    )
+    v_line_merge = draw_line_comp(
+        comp=comp, rgba=ppp.cd_line_color, angle=90,
+        width=ppp.cd_circle_ll.h_size,
+        height=ppp.cd_line_width.h_size, base_pos=[x_pos+7, y_pos]
+    )
+    info_in_merge, info_out_merge = draw_info_comp(
+        comp=comp, font_size=0.025, bg_rgba=[0.0, 0.0, 0.0, 1.0],
+        fg_rgba=[0.5, 0.5, 0.5, 1.0], height=0.035, base_pos=[x_pos+8, y_pos])
 
     connect_merge_tool(
         merge_tool=cross_h_line_merge,
-        bg_tool=bg1, fg_tool=cross_h_line_fg
+        bg_tool=bg1, fg_tool=None
     )
-
     connect_merge_tool(
         merge_tool=cross_v_line_merge,
-        bg_tool=cross_h_line_merge, fg_tool=cross_v_line_fg
+        bg_tool=cross_h_line_merge, fg_tool=None
     )
-
     connect_merge_tool(
         merge_tool=large_white_circle_merge,
         bg_tool=cross_v_line_merge, fg_tool=None
@@ -1282,14 +1385,18 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
     )
     connect_merge_tool(
         merge_tool=h_line_merge,
-        bg_tool=small_grey_circle_merge, fg_tool=h_line_fg
+        bg_tool=small_grey_circle_merge, fg_tool=None
     )
     connect_merge_tool(
         merge_tool=v_line_merge,
-        bg_tool=h_line_merge, fg_tool=v_line_fg
+        bg_tool=h_line_merge, fg_tool=None
     )
-
-    out_tool = v_line_merge
+    connect_merge_tool(
+        merge_tool=info_in_merge,
+        bg_tool=v_line_merge, fg_tool=None
+    )
+    
+    out_tool = info_out_merge
 
     return out_tool
 
@@ -1441,12 +1548,12 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     )
     cntdown_anime_input_merge, cntdown_anime_output_merge\
         = create_countdown_animation_comp(
-            comp=comp, ppp=ppp, count_str=count_str, fps=fps, tool_pos=(12, 3)
+            comp=comp, ppp=ppp, count_str=count_str, fps=fps, tool_pos=(16, 3)
         )
 
     # connect
     media_out = get_comp_tool_by_name(comp=comp, name="MediaOut1")
-    set_tool_position(comp=comp, tool=media_out, pos=(16, 3))
+    set_tool_position(comp=comp, tool=media_out, pos=(20, 3))
 
     connect_tool(cntdown_anime_output_merge, media_out)
     connect_merge_tool(
