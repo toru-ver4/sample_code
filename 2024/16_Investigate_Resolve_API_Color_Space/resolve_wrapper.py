@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import functools
 import resolve_constants as drc
+import time
 from pprint import pprint
 
 if sys.platform == "darwin":  # macOS
@@ -165,7 +166,7 @@ def save_project():
     if ret_val is None:
         msg = 'Failed to save project. '
         msg += 'Please save project manually.'
-        raise TyResolveModuleError(project, msg)
+        raise TyResolveModuleError(ret_val, msg)
 
     return ret_val
 
@@ -227,9 +228,9 @@ def open_page(page_name="edit"):
     if ret_val is not True:
         msg = f'Failed to open "{page_name}" page. '
         msg += 'Please verify that the `page_name` is correct.'
-        raise TyResolveModuleError(project, msg)
+        raise TyResolveModuleError(ret_val, msg)
 
-    return project
+    return ret_val
 
 
 @log_return_value
@@ -266,7 +267,7 @@ def create_empty_timeline(name="timeline_x"):
     if timeline is None:
         msg = f'The Timeline "{name}" already exists. '
         msg += "Please provide a different name."
-        raise TyResolveModuleError(project, msg)
+        raise TyResolveModuleError(timeline, msg)
 
     return timeline
 
@@ -369,7 +370,7 @@ def setup_project_settings(params):
     if is_success is False:
         msg = 'setup_project_settings() was failed. '
         msg += 'Please check your "params" parameters.'
-        raise TyResolveModuleError(project, msg)
+        raise TyResolveModuleError(is_success, msg)
 
     return is_success
 
@@ -379,6 +380,23 @@ def get_project_resolution():
     height = get_project_setting(name="timelineResolutionHeight")
 
     return [int(width), int(height)]
+
+
+def make_videoMonitorFormat_str(width, height, framerate):
+    if str(width) == "1920":
+        prefix = "HD"
+    elif str(width) == "2048":
+        prefix = "2K"
+    elif str(width) == "3840":
+        prefix = "UHD"
+    elif str(width) == "4096":
+        prefix = "4K"
+    else:
+        raise ValueError("invalid width parameter")
+    
+    out_str = f"{prefix} {height}p {framerate}"
+
+    return out_str
 
 
 def set_timeline_settings(timeline, params):
@@ -413,7 +431,7 @@ def set_timeline_settings(timeline, params):
     if is_success is False:
         msg = 'set_timeline_settings() was failed. '
         msg += 'Please check your "params" parameters.'
-        raise TyResolveModuleError(project, msg)
+        raise TyResolveModuleError(is_success, msg)
 
     return is_success
 
@@ -762,6 +780,24 @@ def import_render_preset(preset_path):
     return result
 
 
+def is_rendering_in_progress():
+    projectManager = resolve.GetProjectManager()
+    project = projectManager.GetCurrentProject()
+    if not project:
+        return False
+
+    return project.IsRenderingInProgress()
+
+
+def run_rendering_and_wait_until_finish(project):
+    project.AddRenderJob()
+    project.StartRendering()
+    project.DeleteAllRenderJobs()
+    while is_rendering_in_progress():
+        time.sleep(1)
+    return
+
+
 @log_return_value
 def add_fusion_comp(timeline_item):
     """
@@ -1026,7 +1062,13 @@ def dump_tool_main_input_value(tool):
         idx += 1
 
 
-def debug_code():
+def debug_resolve():
+    print(get_project_setting("videoMonitorFormat"))
+    import sys
+    sys.exit(0)
+
+
+def debug_fusion():
     print("Debug Start")
     target_track_name = "dummy_video_1920x1080_24P.mp4"
     timeline = get_current_timeline()
@@ -1257,9 +1299,16 @@ def draw_info_comp(
     )
     font_family = "Noto Sans"
     font_weight = "Regular"
+    fps = int(get_project_setting("timelineFrameRate"))
+    gamut = get_project_setting("colorSpaceOutput")
+    gamma = get_project_setting("colorSpaceOutputGamma")
+    project_width, project_height = get_project_resolution()
+    info_text_str = f"  Countdown v2, {project_width}x{project_height}, "
+    info_text_str += f"{fps} fps, {gamma}, {gamut}"
+    print(f"info_text = {info_text}")
     info_text_input = {
         "Center": {1: 0.0, 2: 0.0, 3: 0.0},
-        "StyledText": "  Countdown v2, 1920x1080, 24 fps, Gamma 2.4, ITU-R BT.709",
+        "StyledText": info_text_str,
         "Font": font_family,
         "Style": font_weight,
         "Size": font_size,
@@ -1452,8 +1501,8 @@ def create_countdown_animation_comp(
     # mask settings for wipe animation
     wipe_circle_mask_input = {
         "Invert": 1.0,
-        "Width": ppp.cd_circle_ss.h_size,
-        "Height": ppp.cd_circle_ss.h_size,
+        "Width": ppp.cd_circle_mm.h_size,
+        "Height": ppp.cd_circle_mm.h_size,
         "PaintMode": "Subtract",
         "EffectMask": radial_wipe,
     }
@@ -1517,7 +1566,7 @@ def create_countdown_animation_comp(
 def create_countdown_comp():
     ppp = FusionParams()
     fps = int(get_project_setting(name="timelineFrameRate"))
-    for idx, countdown_str in enumerate([3, 2, 1, 0]):
+    for idx, countdown_str in enumerate([4, 3, 2, 1]):
         tl_item_fusion_comp, comp =\
             append_fusion_composition_to_timeline(
                 num_of_frame=fps,
@@ -1525,7 +1574,7 @@ def create_countdown_comp():
             )
         create_countdown_comp_each_sec(
             comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
-        break
+        # break
 
 
 def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
@@ -1564,19 +1613,20 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     comp.Unlock()
 
 
-if __name__ == '__main__':
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # debug_code()
-
+def create_countdown_video_each_spec(
+        width, height, framerate, gamut, gamma):
     ##################
     # Project Settings
     ##################
     project_name = "Hello World3"
+    video_monitor_format = make_videoMonitorFormat_str(
+        width=width, height=height, framerate=framerate
+    )
     project_settings_params = {
-        "timelineResolutionWidth": "1920",
-        "timelineResolutionHeight": "1080",
-        "videoMonitorFormat": "HD 1080p 24",
-        "timelineFrameRate": "24",
+        "timelineResolutionWidth": f"{width}",
+        "timelineResolutionHeight": f"{height}",
+        "videoMonitorFormat": video_monitor_format,
+        "timelineFrameRate": f"{framerate}",
         "videoMonitorUse444SDI": "0",
         "videoMonitorSDIConfiguration": "single_link",
         "videoDataLevels": "Video",
@@ -1585,12 +1635,12 @@ if __name__ == '__main__':
         "isAutoColorManage": "0",
         "rcmPresetMode": "Custom",
         "separateColorSpaceAndGamma": "1",
-        "colorSpaceInput": "Rec.709",
-        "colorSpaceInputGamma": "Gamma 2.4",
-        "colorSpaceTimeline": "Rec.709",
-        "colorSpaceTimelineGamma": "Gamma 2.4",
-        "colorSpaceOutput": "Rec.709",
-        "colorSpaceOutputGamma": "Gamma 2.4",
+        "colorSpaceInput": f"{gamut}",
+        "colorSpaceInputGamma": f"{gamma}",
+        "colorSpaceTimeline": f"{gamut}",
+        "colorSpaceTimelineGamma": f"{gamma}",
+        "colorSpaceOutput": f"{gamut}",
+        "colorSpaceOutputGamma": f"{gamma}",
         "timelineWorkingLuminance": "10000",
         "timelineWorkingLuminanceMode": "Custom",
         "inputDRT": "None",
@@ -1619,7 +1669,7 @@ if __name__ == '__main__':
     ####################################################
     # # Temporarily commented out because it is slow...
     ####################################################
-    # set_timeline_settings(timeline=timeline, params=project_settings_params)
+    set_timeline_settings(timeline=timeline, params=project_settings_params)
 
     # add files to the media storage
     relative_file_list = [
@@ -1663,58 +1713,96 @@ if __name__ == '__main__':
 
     open_page(page_name=drc.EDIT_PAGE_STR)
 
-    # ###################
-    # # encode
-    # ###################
-    # preset_path = str(
-    #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
-    # )
-    # # preset_path = None
+    ###################
+    # encode
+    ###################
+    preset_path = str(
+        Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
+    )
+    # preset_path = None
 
-    # format_extension = drc.OUT_FILE_EXTENSTION_MOV
-    # # codec = drc.CODEC_H265_NVIDIA
-    # codec = drc.CODEC_APPLE_PRORES_422_HQ
-    # # format_extension = drc.OUT_FILE_EXTENSTION_EXR
-    # # codec = drc.CODEC_EXR_RGB_HALF
-    # output_fname = "./render_out/dummy_out" + "." + format_extension
-    # target_dir = str(Path(output_fname).resolve().parent)
-    # custom_name = str(Path(output_fname).resolve().name)
+    format_extension = drc.OUT_FILE_EXTENSTION_MOV
+    # codec = drc.CODEC_H265_NVIDIA
+    codec = drc.CODEC_APPLE_PRORES_422_HQ
+    # format_extension = drc.OUT_FILE_EXTENSTION_EXR
+    # codec = drc.CODEC_EXR_RGB_HALF
+    basename = f"{width}x{height}_{framerate}_{gamma}_{gamut}"
+    output_fname = f"./render_out/{basename}" + "." + format_extension
+    target_dir = str(Path(output_fname).resolve().parent)
+    custom_name = str(Path(output_fname).resolve().name)
 
-    # render_settings = {
-    #     # "SelectAllFrames": True,
-    #     # "MarkIn": _timecode_to_frame_index("01:00:00:00"),
-    #     # "MarkOut": _timecode_to_frame_index("01:00:08:12"),
-    #     "TargetDir": target_dir,
-    #     "CustomName": custom_name,
-    #     # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
-    #     # "ExportVideo": True,
-    #     # "ExportAudio": True,
-    #     # "FormatWidth": 3840,
-    #     # "FormatHeight": 2160,
-    #     # "FrameRate": 23.976,
-    #     # "PixelAspectRatio": "square",
-    #     # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
-    #     # "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
-    #     # "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
-    #     # "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
-    #     # "ColorSpaceTag": "Same as Project",
-    #     # "GammaTag": "Same as Project",
-    #     # "ExportAlpha": False,
-    #     # "EncodingProfile": "Main10",
-    #     # "MultiPassEncode": True,
-    #     # "AlphaMode": 
-    #     # "NetworkOptimization": True,
-    #     # "ClipStartFrame": 0,
-    #     # "TimelineStartTimecode": "01:00:00:00",
-    #     # "ReplaceExistingFilesInPlace": True,
-    # }
+    render_settings = {
+        # "SelectAllFrames": True,
+        # "MarkIn": _timecode_to_frame_index("01:00:00:00"),
+        # "MarkOut": _timecode_to_frame_index("01:00:08:12"),
+        "TargetDir": target_dir,
+        "CustomName": custom_name,
+        # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
+        # "ExportVideo": True,
+        # "ExportAudio": True,
+        # "FormatWidth": 3840,
+        # "FormatHeight": 2160,
+        # "FrameRate": 23.976,
+        # "PixelAspectRatio": "square",
+        # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
+        # "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
+        # "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
+        # "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
+        # "ColorSpaceTag": "Same as Project",
+        # "GammaTag": "Same as Project",
+        # "ExportAlpha": False,
+        # "EncodingProfile": "Main10",
+        # "MultiPassEncode": True,
+        # "AlphaMode": 
+        # "NetworkOptimization": True,
+        # "ClipStartFrame": 0,
+        # "TimelineStartTimecode": "01:00:00:00",
+        # "ReplaceExistingFilesInPlace": True,
+    }
 
-    # if preset_path is not None:
-    #     import_render_preset(preset_path=preset_path)
-    # else:
-    #     set_render_format_codec_settings(format=format_extension, codec=codec)
+    if preset_path is not None:
+        import_render_preset(preset_path=preset_path)
+    else:
+        set_render_format_codec_settings(format=format_extension, codec=codec)
 
-    # set_render_settings(setting_dict=render_settings)
-    # project.AddRenderJob()
-    # project.StartRendering()
-    # project.DeleteAllRenderJobs()
+    set_render_settings(setting_dict=render_settings)
+    run_rendering_and_wait_until_finish(project=project)
+
+
+if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # debug_resolve()
+    # debug_fusion()
+
+    from itertools import product
+    resolution_list = [
+        "1920x1080",
+        # "2048x1080",
+        # "3840x2160",
+        # "4096x2160",
+    ]
+    framerate_list = [
+        24,
+        # 25,
+        30,
+        # 50,
+        60
+    ]
+    gamut_list = [
+        drc.PRJ_COLOR_SPACE_REC709,
+        # drc.PRJ_COLOR_SPACE_P3D65,
+        # drc.PRJ_COLOR_SPACE_REC2020
+    ]
+    gamma_list = [
+        drc.PRJ_GAMMA_STR_GAMMA24,
+        # drc.PRJ_GAMMA_STR_ST2084
+    ]
+
+    for resolution, framerate, gamut, gamma in product(
+        resolution_list, framerate_list, gamut_list, gamma_list
+    ):
+        width, height = resolution.split("x")
+        create_countdown_video_each_spec(
+            width=width, height=height, framerate=framerate,
+            gamut=gamut, gamma=gamma
+        )
