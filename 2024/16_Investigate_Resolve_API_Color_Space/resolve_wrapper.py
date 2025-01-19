@@ -14,15 +14,22 @@ if sys.platform == "darwin":  # macOS
         "Developer/Scripting"
     )
     sys.path.append(os.path.join(resolve_script_api, "Modules"))
+    resolve_lut_path = \
+        "/Library/Application Support/Blackmagic Design/DaVinci Resolve/LUT/"
 elif sys.platform == "win32":  # Windows
     resolve_script_api = os.path.expandvars(
         r"%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Support"
         r"\Developer\Scripting"
     )
     sys.path.append(os.path.join(resolve_script_api, "Modules"))
+    resolve_lut_path = os.path.expandvars(
+        r"%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Support\LUT"
+    )
 elif sys.platform == "linux":  # Linux
     resolve_script_api = "/opt/resolve/Developer/Scripting"
     sys.path.append(os.path.join(resolve_script_api, "Modules"))
+    resolve_lut_path = "/home/resolve/LUT"
+    ValueError("Linux platform is not supported")
 
 import DaVinciResolveScript as dvr_script
 
@@ -1021,6 +1028,34 @@ def _get_font_list():
     return font_list.GetFontList()
 
 
+def add_dctl_comp(comp, dctl_path, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    dctl = add_comp_tool(
+        comp=comp,
+        name="ofx.com.blackmagicdesign.resolvefx.DCTL",
+        pos=(x_pos+1, y_pos-0)
+    )
+
+    # check if the dctl file exist
+    target_file = Path(resolve_lut_path) / Path(dctl_path)
+    if not target_file.is_file():
+        msg = f"{target_file} does not exist."
+        raise TyResolveModuleError(False, msg)
+
+    # modify delimitter based on the platform (OS)
+    dctl_os_path = str(Path(dctl_path))
+
+    dctl_input = {
+        "DCTLs": dctl_os_path,
+        "reloadDCTLButton": 1.0,
+    }
+    set_multiple_tool_input(tool=dctl, input_dict=dctl_input)
+
+    return dctl
+
+
 @log_return_value
 def is_font_available(family, font_weight):
     """
@@ -1363,25 +1398,6 @@ def draw_info_comp(
     return in_merge, out_merge
 
 
-def create_dctl_comp(comp, dctl_path, base_pos=[0, 0]):
-    x_pos = base_pos[0]
-    y_pos = base_pos[1]
-
-    dctl = add_comp_tool(
-        comp=comp,
-        name="ofx.com.blackmagicdesign.resolvefx.DCTL",
-        pos=(x_pos+1, y_pos-0)
-    )
-
-    dctl_input = {
-        "DCTLs": dctl_path,
-        "reloadDCTLButton": 1.0,
-    }
-    set_multiple_tool_input(tool=dctl, input_dict=dctl_input)
-
-    return dctl
-
-
 def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
     """
     Parameters
@@ -1437,7 +1453,7 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
     info_in_merge, info_out_merge = draw_info_comp(
         comp=comp, font_size=0.025, bg_rgba=[0.0, 0.0, 0.0, 1.0],
         fg_rgba=[0.5, 0.5, 0.5, 1.0], height=0.035, base_pos=[x_pos+8, y_pos])
-    border_dctl = create_dctl_comp(
+    border_dctl = add_dctl_comp(
         comp=comp, dctl_path="TY_DCTL/draw_border.dctl", base_pos=[x_pos+10, y_pos]
     )
 

@@ -5,7 +5,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
 {
     float3 xx = to_float3(p_X, p_X, p_X);
 
-    float3 st2084 = eotf_st2084_f3(xx / (float)(p_Width - 1));
+    float3 st2084 = eotf_st2084_f3(xx / 1023.0);
 
     return st2084;
 }
