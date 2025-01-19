@@ -254,6 +254,7 @@ temporary/**/**
 !2024/16_Investigate_Resolve_API_Color_Space/fonts/*.ttf
 2024/16_Investigate_Resolve_API_Color_Space/render_out/*.mov
 2024/16_Investigate_Resolve_API_Color_Space/render_out/*.mp4
+2024/16_Investigate_Resolve_API_Color_Space/render_out/*.dpx
 
 [Dd]ebug/
 [Rr]elease/

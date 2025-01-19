@@ -1,0 +1,11 @@
+#include "color_processing.h"
+
+// main function
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+    float3 xx = to_float3(p_X, p_X, p_X);
+
+    float3 st2084 = eotf_st2084_f3(xx / (float)p_Width);
+
+    return st2084;
+}
