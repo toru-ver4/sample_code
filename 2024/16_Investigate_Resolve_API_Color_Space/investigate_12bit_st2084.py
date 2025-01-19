@@ -89,7 +89,7 @@ def create_12bit_s2084_dpx_using_fusion():
     bg1 = drw.add_comp_tool(comp=comp, name="Background", pos=(0, 1))
     drw.set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
     dctl = drw.add_dctl_comp(
-        comp=comp, dctl_path="TY_DCTL\draw_st2084_12bit_ramp.dctl",
+        comp=comp, dctl_path="TY_DCTL/draw_st2084_12bit_ramp.dctl",
         base_pos=(1, 1)
     )
     media_out = drw.get_comp_tool_by_name(comp=comp, name="MediaOut1")
