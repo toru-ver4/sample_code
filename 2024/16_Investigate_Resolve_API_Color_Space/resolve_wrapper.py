@@ -234,6 +234,18 @@ def open_page(page_name="edit"):
 
 
 @log_return_value
+def refresh_lut_list():
+    project = get_current_project()
+    ret_val = project.RefreshLUTList()
+
+    if ret_val is not True:
+        msg = 'Failed to call "refresh_lut_list()"'
+        raise TyResolveModuleError(ret_val, msg)
+
+    return ret_val
+
+
+@log_return_value
 def get_media_pool():
     """
     Returns
@@ -925,6 +937,20 @@ def connect_tool(a, b):
 
 
 @log_return_value
+def connect_dctl(dctl, source):
+    """
+    Connect source to dctl's input.
+    """
+    result = dctl.ConnectInput("Source", source)
+
+    if result is not True:
+        msg = 'Failed to connect_dctl() '
+        raise TyResolveModuleError(result, msg)
+
+    return result
+
+
+@log_return_value
 def connect_merge_tool(merge_tool, bg_tool, fg_tool):
     if bg_tool is not None:
         merge_tool.ConnectInput("Background", bg_tool)
@@ -1062,14 +1088,23 @@ def dump_tool_main_input_value(tool):
         idx += 1
 
 
+def dump_tool_list(comp):
+    print("=" * 80)
+    print(f" Tool List")
+    print("=" * 80)
+    for _, value in comp.GetToolList().items():
+        print(f"tool id = {value.ID}, tool name = {value.Name}")
+
+
 def debug_resolve():
-    print(get_project_setting("videoMonitorFormat"))
+    # print(get_project_setting("videoMonitorFormat"))
+    pprint(get_project_setting(name=None))
+    refresh_lut_list()
     import sys
     sys.exit(0)
 
 
 def debug_fusion():
-    print("Debug Start")
     target_track_name = "dummy_video_1920x1080_24P.mp4"
     timeline = get_current_timeline()
     timeline_item_list = get_timeline_items_in_track(
@@ -1093,6 +1128,20 @@ def debug_fusion():
     # compare_tool_input_value(aa=text, bb=text_base)
 
     # is_font_available(family="Noto Sans Mono", font_weight="Black")
+
+    dump_tool_list(comp=fusion_comp)
+
+    dctl2 = add_comp_tool(
+        comp=fusion_comp,
+        name="ofx.com.blackmagicdesign.resolvefx.DCTL", pos=(3, 7)
+    )
+    dctl_modiry = get_comp_tool_by_name(comp=fusion_comp, name="DCTL1")
+    set_tool_input(tool=dctl_modiry, name="reloadDCTLButton", value=1)
+    # compare_tool_input_value(aa=dctl_modiry, bb=dctl2)
+    dump_tool_input_value(tool=dctl_modiry)
+    dump_tool_main_input_value(tool=dctl_modiry)
+    dump_tool_main_input_value(tool=merge_tool)
+    # refresh_lut_list()
 
     import sys
     sys.exit(0)
@@ -1222,48 +1271,6 @@ def draw_line_comp(comp, rgba, width, height, angle=0, base_pos=[0, 0]):
 
 def draw_info_comp(
         comp, font_size, bg_rgba, fg_rgba, height, base_pos=[0, 0]):
-    """
-    ================================================================================
-     Rectangle5 Rectangle6 Compare
-    ================================================================================
-    Center: {1: 0.5, 2: 0.025, 3: 0.0}, {1: 0.5, 2: 0.5, 3: 0.0}, 
-    Width: 1.0, 0.5, 
-    Height: 0.05, 0.5,
-    StartRenderScripts: 1.0, 0.0,
-
-    ================================================================================
-     Right_Text Text3 Compare
-    ================================================================================
-    Center: {1: 1.0, 2: 0.0, 3: 0.0}, {1: 0.5, 2: 0.5, 3: 0.0}, 
-    TransformPivot: 1.0, 0.0, 
-    TransformShear: 1.0, 0.0,
-    TransformSize: 1.0, 0.0,
-    ShadingGradient1: Gradient (0x000001894249FD00) [App: 'Resolve' on 127.0.0.1, UUID: 2c54ce48-1cc6-474a-8f19-b46acd4737b5], Gradient (0x00000189491ABD00) [App: 'Resolve' on 127.0.0.1, UUID: 2c54ce48-1cc6-474a-8f19-b46acd4737b5],
-    StyledText: Revision 01, ,
-    Font: Noto Sans, Open Sans,
-    Style: Regular, Bold,
-    Size: 0.040999999999999995, 0.08,
-    VerticalTopCenterBottom: 1.5, 0.0,
-    HorizontalLeftCenterRight: 1.05, 0.0,
-    AdvancedFontControls: 1.0, 0.0,
-
-    ================================================================================
-     Left_Text Text4 Compare
-    ================================================================================
-    Center: {1: 0.0, 2: 0.0, 3: 0.0}, {1: 0.5, 2: 0.5, 3: 0.0}, 
-    TransformPivot: 1.0, 0.0, 
-    TransformShear: 1.0, 0.0,
-    TransformSize: 1.0, 0.0,
-    ShadingGradient1: Gradient (0x0000018954BFFD00) [App: 'Resolve' on 127.0.0.1, UUID: 2c54ce48-1cc6-474a-8f19-b46acd4737b5], Gradient (0x00000189491AB400) [App: 'Resolve' on 127.0.0.1, UUID: 2c54ce48-1cc6-474a-8f19-b46acd4737b5],
-    StyledText: Countdown V2 , ,
-    Font: Noto Sans, Open Sans,
-    Style: Regular, Bold,
-    Size: 0.0418, 0.08,
-    VerticalTopCenterBottom: 1.5, 0.0,
-    HorizontalLeftCenterRight: -1.05, 0.0,
-    AdvancedFontControls: 1.0, 0.0,
-    
-    """
     x_pos = base_pos[0]
     y_pos = base_pos[1]
 
@@ -1356,6 +1363,25 @@ def draw_info_comp(
     return in_merge, out_merge
 
 
+def create_dctl_comp(comp, dctl_path, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    dctl = add_comp_tool(
+        comp=comp,
+        name="ofx.com.blackmagicdesign.resolvefx.DCTL",
+        pos=(x_pos+1, y_pos-0)
+    )
+
+    dctl_input = {
+        "DCTLs": dctl_path,
+        "reloadDCTLButton": 1.0,
+    }
+    set_multiple_tool_input(tool=dctl, input_dict=dctl_input)
+
+    return dctl
+
+
 def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
     """
     Parameters
@@ -1411,6 +1437,9 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
     info_in_merge, info_out_merge = draw_info_comp(
         comp=comp, font_size=0.025, bg_rgba=[0.0, 0.0, 0.0, 1.0],
         fg_rgba=[0.5, 0.5, 0.5, 1.0], height=0.035, base_pos=[x_pos+8, y_pos])
+    border_dctl = create_dctl_comp(
+        comp=comp, dctl_path="TY_DCTL/draw_border.dctl", base_pos=[x_pos+10, y_pos]
+    )
 
     connect_merge_tool(
         merge_tool=cross_h_line_merge,
@@ -1444,8 +1473,9 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
         merge_tool=info_in_merge,
         bg_tool=v_line_merge, fg_tool=None
     )
+    connect_dctl(dctl=border_dctl, source=info_out_merge)
     
-    out_tool = info_out_merge
+    out_tool = border_dctl
 
     return out_tool
 
@@ -1574,7 +1604,7 @@ def create_countdown_comp():
             )
         create_countdown_comp_each_sec(
             comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
-        # break
+        break
 
 
 def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
@@ -1618,6 +1648,8 @@ def create_countdown_video_each_spec(
     ##################
     # Project Settings
     ##################
+    refresh_lut_list()
+
     project_name = "Hello World3"
     video_monitor_format = make_videoMonitorFormat_str(
         width=width, height=height, framerate=framerate
@@ -1667,9 +1699,9 @@ def create_countdown_video_each_spec(
     timeline = create_empty_timeline(name="My_Timeline")
 
     ####################################################
-    # # Temporarily commented out because it is slow...
+    # Temporarily commented out because it is slow...
     ####################################################
-    set_timeline_settings(timeline=timeline, params=project_settings_params)
+    # set_timeline_settings(timeline=timeline, params=project_settings_params)
 
     # add files to the media storage
     relative_file_list = [
@@ -1711,62 +1743,62 @@ def create_countdown_video_each_spec(
     create_countdown_comp()
     set_current_timecode(timecode="01:00:00:00")
 
-    open_page(page_name=drc.EDIT_PAGE_STR)
+    open_page(page_name=drc.FUSION_PAGE_STR)
 
-    ###################
-    # encode
-    ###################
-    preset_path = str(
-        Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
-    )
-    # preset_path = None
+#     ###################
+#     # encode
+#     ###################
+#     preset_path = str(
+#         Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
+#     )
+#     # preset_path = None
 
-    format_extension = drc.OUT_FILE_EXTENSTION_MOV
-    # codec = drc.CODEC_H265_NVIDIA
-    codec = drc.CODEC_APPLE_PRORES_422_HQ
-    # format_extension = drc.OUT_FILE_EXTENSTION_EXR
-    # codec = drc.CODEC_EXR_RGB_HALF
-    basename = f"{width}x{height}_{framerate}_{gamma}_{gamut}"
-    output_fname = f"./render_out/{basename}" + "." + format_extension
-    target_dir = str(Path(output_fname).resolve().parent)
-    custom_name = str(Path(output_fname).resolve().name)
+#     format_extension = drc.OUT_FILE_EXTENSTION_MOV
+#     # codec = drc.CODEC_H265_NVIDIA
+#     codec = drc.CODEC_APPLE_PRORES_422_HQ
+#     # format_extension = drc.OUT_FILE_EXTENSTION_EXR
+#     # codec = drc.CODEC_EXR_RGB_HALF
+#     basename = f"{width}x{height}_{framerate}_{gamma}_{gamut}"
+#     output_fname = f"./render_out/{basename}" + "." + format_extension
+#     target_dir = str(Path(output_fname).resolve().parent)
+#     custom_name = str(Path(output_fname).resolve().name)
 
-    render_settings = {
-        # "SelectAllFrames": True,
-        # "MarkIn": _timecode_to_frame_index("01:00:00:00"),
-        # "MarkOut": _timecode_to_frame_index("01:00:08:12"),
-        "TargetDir": target_dir,
-        "CustomName": custom_name,
-        # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
-        # "ExportVideo": True,
-        # "ExportAudio": True,
-        # "FormatWidth": 3840,
-        # "FormatHeight": 2160,
-        # "FrameRate": 23.976,
-        # "PixelAspectRatio": "square",
-        # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
-        # "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
-        # "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
-        # "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
-        # "ColorSpaceTag": "Same as Project",
-        # "GammaTag": "Same as Project",
-        # "ExportAlpha": False,
-        # "EncodingProfile": "Main10",
-        # "MultiPassEncode": True,
-        # "AlphaMode": 
-        # "NetworkOptimization": True,
-        # "ClipStartFrame": 0,
-        # "TimelineStartTimecode": "01:00:00:00",
-        # "ReplaceExistingFilesInPlace": True,
-    }
+#     render_settings = {
+#         # "SelectAllFrames": True,
+#         # "MarkIn": _timecode_to_frame_index("01:00:00:00"),
+#         # "MarkOut": _timecode_to_frame_index("01:00:08:12"),
+#         "TargetDir": target_dir,
+#         "CustomName": custom_name,
+#         # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
+#         # "ExportVideo": True,
+#         # "ExportAudio": True,
+#         # "FormatWidth": 3840,
+#         # "FormatHeight": 2160,
+#         # "FrameRate": 23.976,
+#         # "PixelAspectRatio": "square",
+#         # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
+#         # "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
+#         # "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
+#         # "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
+#         # "ColorSpaceTag": "Same as Project",
+#         # "GammaTag": "Same as Project",
+#         # "ExportAlpha": False,
+#         # "EncodingProfile": "Main10",
+#         # "MultiPassEncode": True,
+#         # "AlphaMode": 
+#         # "NetworkOptimization": True,
+#         # "ClipStartFrame": 0,
+#         # "TimelineStartTimecode": "01:00:00:00",
+#         # "ReplaceExistingFilesInPlace": True,
+#     }
 
-    if preset_path is not None:
-        import_render_preset(preset_path=preset_path)
-    else:
-        set_render_format_codec_settings(format=format_extension, codec=codec)
+#     if preset_path is not None:
+#         import_render_preset(preset_path=preset_path)
+#     else:
+#         set_render_format_codec_settings(format=format_extension, codec=codec)
 
-    set_render_settings(setting_dict=render_settings)
-    run_rendering_and_wait_until_finish(project=project)
+#     set_render_settings(setting_dict=render_settings)
+#     run_rendering_and_wait_until_finish(project=project)
 
 
 if __name__ == '__main__':
@@ -1784,9 +1816,9 @@ if __name__ == '__main__':
     framerate_list = [
         24,
         # 25,
-        30,
+        # 30,
         # 50,
-        60
+        # 60
     ]
     gamut_list = [
         drc.PRJ_COLOR_SPACE_REC709,

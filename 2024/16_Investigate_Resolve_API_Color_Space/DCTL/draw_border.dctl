@@ -1,0 +1,42 @@
+#include "drawing.h"
+
+#define NUM_OF_LINES   (12)
+
+// main function
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+    float3 rgb = to_float3(p_R, p_G, p_B);
+    float3 fill_color = {0.5, 0.5, 0.5};
+    int h_line_length = (int)(_round(p_Width / 5.0));
+    int v_line_length = (int)(_round(p_Height / 5.0));
+    int h_center = p_Width / 2;
+    int v_center = p_Height / 2;
+    int line_width = 1;
+
+    int2 pos_list[NUM_OF_LINES][2] = {
+        // st_pos, ed_pos
+        {{0, 0}, {v_line_length, line_width}},
+        {{h_center - h_line_length / 2, 0}, {h_center + h_line_length / 2, line_width}},
+        {{p_Width - v_line_length, 0}, {p_Width, 1}},
+        {{p_Width - line_width, 0}, {p_Width, v_line_length}},
+        {{p_Width - line_width, v_center - v_line_length / 2}, {p_Width, v_center + v_line_length / 2}},
+        {{p_Width - line_width, p_Height - v_line_length}, {p_Width, p_Height}},
+        {{p_Width - v_line_length, p_Height - line_width}, {p_Width, p_Height}},
+        {{h_center - h_line_length / 2, p_Height - line_width}, {h_center + h_line_length / 2, p_Height}},
+        {{0, p_Height - 1}, {v_line_length, p_Height}},
+        {{0, p_Height - v_line_length}, {line_width, p_Height}},
+        {{0, v_center - v_line_length / 2}, {line_width, v_center + v_line_length / 2}},
+        {{0, 0}, {line_width, v_line_length}}
+    };
+    for(int ii=0; ii<NUM_OF_LINES; ii++){
+        draw_rectangle(
+            p_Width, p_Height,
+            p_X, p_Y,
+            &rgb,
+            pos_list[ii][0], pos_list[ii][1], &fill_color);
+    }
+
+    float3 out = rgb;
+
+    return out;
+}
