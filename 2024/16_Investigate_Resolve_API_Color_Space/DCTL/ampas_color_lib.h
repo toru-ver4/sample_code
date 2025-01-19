@@ -58,14 +58,13 @@
 // Base functions from SMPTE ST 2084-2014
 
 // Constants from SMPTE ST 2084-2014
-const float pq_m1 = 0.1593017578125; // ( 2610.0 / 4096.0 ) / 4.0;
-const float pq_m2 = 78.84375; // ( 2523.0 / 4096.0 ) * 128.0;
-const float pq_c1 = 0.8359375; // 3424.0 / 4096.0 or pq_c3 - pq_c2 + 1.0;
-const float pq_c2 = 18.8515625; // ( 2413.0 / 4096.0 ) * 32.0;
-const float pq_c3 = 18.6875; // ( 2392.0 / 4096.0 ) * 32.0;
-
-const float pq_C = 10000.0;
-const float pq_Linear = 100.0;
+__CONSTANT__ float pq_m1 = 0.1593017578125; // ( 2610.0 / 4096.0 ) / 4.0;
+__CONSTANT__ float pq_m2 = 78.84375; // ( 2523.0 / 4096.0 ) * 128.0;
+__CONSTANT__ float pq_c1 = 0.8359375; // 3424.0 / 4096.0 or pq_c3 - pq_c2 + 1.0;
+__CONSTANT__ float pq_c2 = 18.8515625; // ( 2413.0 / 4096.0 ) * 32.0;
+__CONSTANT__ float pq_c3 = 18.6875; // ( 2392.0 / 4096.0 ) * 32.0;
+__CONSTANT__ float pq_C = 10000.0;
+__CONSTANT__ float pq_Linear = 100.0;
 
 // Converts from the non-linear perceptually quantized space to linear cd/m^2
 // Note that this is in float, and assumes normalization from 0 - 1
