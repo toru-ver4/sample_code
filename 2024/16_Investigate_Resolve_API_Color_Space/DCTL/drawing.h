@@ -22,17 +22,13 @@ __DEVICE__ float3 draw_rectangle(
     float3 rgb_in,
     int2 st_pos, int2 ed_pos, float3 fill_color)
 {
-    float3 rgb_out;
+    float3 rgb_out = rgb_in;
+
     if((st_pos.x <= p_X) && (p_X < ed_pos.x)){
         if((st_pos.y <= p_Y) && (p_Y < ed_pos.y)){
             rgb_out.x = fill_color.x;
             rgb_out.y = fill_color.y;
             rgb_out.z = fill_color.z;
-        }
-        else{
-            rgb_out.x = rgb_in.x;
-            rgb_out.y = rgb_in.y;
-            rgb_out.z = rgb_in.z;
         }
     }
     return rgb_out;
