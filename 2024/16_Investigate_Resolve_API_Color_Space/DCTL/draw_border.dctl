@@ -6,6 +6,7 @@
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
 {
     float3 rgb = to_float3(p_R, p_G, p_B);
+    float3 out_rgb;
     float3 fill_color = {0.5, 0.5, 0.5};
     int h_line_length = (int)(_round(p_Width / 5.0));
     int v_line_length = (int)(_round(p_Height / 5.0));
@@ -44,14 +45,12 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
         {line_width, v_line_length},
     };
     for(int ii=0; ii<NUM_OF_LINES; ii++){
-        draw_rectangle(
+        out_rgb = draw_rectangle(
             p_Width, p_Height,
             p_X, p_Y,
-            &rgb,
-            st_pos_list[ii], ed_pos_list[ii], &fill_color);
+            rgb,
+            st_pos_list[ii], ed_pos_list[ii], fill_color);
     }
 
-    float3 out = rgb;
-
-    return out;
+    return out_rgb;
 }
