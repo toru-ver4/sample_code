@@ -1072,7 +1072,7 @@ def is_font_available(family, font_weight):
     if is_available is not True:
         font_path = str(Path("./fonts").resolve())
         msg = f'Required font "{family} - {font_weight}" is not found.\n'
-        msg += f'{" "*21}Please install "{family}" font in the {font_path}'
+        msg += f'{" "*22}Please install "{family}" font in the {font_path}'
         raise TyResolveModuleError(is_available, msg)
 
     return is_available
