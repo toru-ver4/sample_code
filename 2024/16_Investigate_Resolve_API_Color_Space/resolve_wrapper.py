@@ -893,14 +893,14 @@ def get_comp_tool_by_name(comp, name):
     
     """
     tool = None
-    for _, value in comp.GetToolList().items():
+    for value in comp.GetToolList().values():
         if value.Name == name:
             tool = value
             pass
 
     if tool is None:
-        msg = 'Failed to get_media_out() '
-        msg += 'Please check if the media_out tool name is "MediaOut1".'
+        msg = 'Failed to get_comp_tool_by_name() '
+        msg += f'"{name}" was not found'
         raise TyResolveModuleError(tool, msg)
 
     return tool
@@ -938,6 +938,20 @@ def connect_tool(a, b):
 
     if result is not True:
         msg = 'Failed to connect_tool() '
+        raise TyResolveModuleError(result, msg)
+
+    return result
+
+
+@log_return_value
+def connect_mediaout(mediaout, source):
+    """
+    Connect source to MediaOut.
+    """
+    result = mediaout.ConnectInput("Input", source)
+
+    if result is not True:
+        msg = 'Failed to connect_mediaout() '
         raise TyResolveModuleError(result, msg)
 
     return result
@@ -1125,7 +1139,7 @@ def dump_tool_main_input_value(tool):
 
 def dump_tool_list(comp):
     print("=" * 80)
-    print(f" Tool List")
+    print(" Tool List")
     print("=" * 80)
     for _, value in comp.GetToolList().items():
         print(f"tool id = {value.ID}, tool name = {value.Name}")
@@ -1152,31 +1166,24 @@ def debug_fusion():
 
     fusion_comp = timeline_item.GetFusionCompByIndex(1)
     merge_tool = get_comp_tool_by_name(comp=fusion_comp, name="Merge1")
+    media_out = get_comp_tool_by_name(comp=fusion_comp, name="MediaOut1")
     print(merge_tool)
     dump_tool_input_value(tool=merge_tool)
     dump_tool_main_input_value(tool=merge_tool)
     text = get_comp_tool_by_name(comp=fusion_comp, name="Text2")
-    dump_tool_main_input_value(tool=text)
-    dump_tool_input_value(tool=merge_tool)
+    dump_tool_main_input_value(tool=media_out)
+    dump_tool_input_value(tool=media_out)
 
     text_base = add_comp_tool(comp=fusion_comp, name="RectangleMask", pos=(10, 10))
     # compare_tool_input_value(aa=text, bb=text_base)
 
     # is_font_available(family="Noto Sans Mono", font_weight="Black")
 
-    dump_tool_list(comp=fusion_comp)
+    # dump_tool_list(comp=fusion_comp)
 
-    dctl2 = add_comp_tool(
-        comp=fusion_comp,
-        name="ofx.com.blackmagicdesign.resolvefx.DCTL", pos=(3, 7)
-    )
-    dctl_modiry = get_comp_tool_by_name(comp=fusion_comp, name="DCTL1")
-    set_tool_input(tool=dctl_modiry, name="reloadDCTLButton", value=1)
-    # compare_tool_input_value(aa=dctl_modiry, bb=dctl2)
-    dump_tool_input_value(tool=dctl_modiry)
-    dump_tool_main_input_value(tool=dctl_modiry)
-    dump_tool_main_input_value(tool=merge_tool)
-    # refresh_lut_list()
+    bg2 = add_comp_tool(comp=fusion_comp, name="Background", pos=(10, 5))
+    dctl2 = add_comp_tool(comp=fusion_comp, name="ofx.com.blackmagicdesign.resolvefx.DCTL", pos=(11, 5))
+    connect_mediaout(mediaout=media_out, source=dctl2)
 
     import sys
     sys.exit(0)
@@ -1620,7 +1627,7 @@ def create_countdown_comp():
             )
         create_countdown_comp_each_sec(
             comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
-        break
+        # break
 
 
 def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
@@ -1643,14 +1650,14 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     )
     cntdown_anime_input_merge, cntdown_anime_output_merge\
         = create_countdown_animation_comp(
-            comp=comp, ppp=ppp, count_str=count_str, fps=fps, tool_pos=(16, 3)
+            comp=comp, ppp=ppp, count_str=count_str, fps=fps, tool_pos=(13, 3)
         )
 
     # connect
     media_out = get_comp_tool_by_name(comp=comp, name="MediaOut1")
-    set_tool_position(comp=comp, tool=media_out, pos=(20, 3))
+    set_tool_position(comp=comp, tool=media_out, pos=(15, 3))
 
-    connect_tool(cntdown_anime_output_merge, media_out)
+    connect_mediaout(source=cntdown_anime_output_merge, mediaout=media_out)
     connect_merge_tool(
         merge_tool=cntdown_anime_input_merge,
         bg_tool=still_bg_tool, fg_tool=None
@@ -1685,8 +1692,8 @@ def create_countdown_video_each_spec(
         "separateColorSpaceAndGamma": "1",
         "colorSpaceInput": f"{gamut}",
         "colorSpaceInputGamma": f"{gamma}",
-        "colorSpaceTimeline": f"{gamut}",
-        "colorSpaceTimelineGamma": f"{gamma}",
+        "colorSpaceTimeline": drc.PRJ_COLOR_SPACE_P3D65,
+        "colorSpaceTimelineGamma": drc.PRJ_GAMMA_STR_ST2084,
         "colorSpaceOutput": f"{gamut}",
         "colorSpaceOutputGamma": f"{gamma}",
         "timelineWorkingLuminance": "10000",
