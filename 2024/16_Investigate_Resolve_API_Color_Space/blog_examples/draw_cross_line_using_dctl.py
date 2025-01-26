@@ -67,4 +67,34 @@ media_in = next(
 )
 media_in.Delete()
 
+# add background node (tool)
+x_pos = 1
+y_pos = 1
+background = fusion_comp.AddTool("Background", x_pos, y_pos)
+background.SetInput("TopLeftRed", 0.614)
+background.SetInput("TopLeftGreen", 0.433)
+background.SetInput("TopLeftBlue", 0.252)
+
+# add dctl node (tool)
+x_pos = 3
+y_pos = 1
+dctl_path = "TY_DCTL/draw_cross_lines.dctl"  # LUTフォルダからの相対パスで記述
+dctl_os_path = str(Path(dctl_path))          # Windows と macOS のパス記述の差異を吸収
+dctl = fusion_comp.AddTool(
+    "ofx.com.blackmagicdesign.resolvefx.DCTL", x_pos, y_pos
+)
+dctl.SetInput("DCTLs", dctl_os_path)
+
+# get MediaOut1
+tool_name = "MediaOut1"
+media_out = next(
+    (vv for vv in fusion_comp.GetToolList().values() if vv.Name == tool_name), None
+)
+
+# connect
+dctl.ConnectInput("Source", background)
+media_out.ConnectInput("Input", dctl)
+
 fusion_comp.Unlock()
+
+resolve.OpenPage("fusion")

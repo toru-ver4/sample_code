@@ -67,4 +67,37 @@ media_in = next(
 )
 media_in.Delete()
 
+# add background node (tool)
+x_pos = 1
+y_pos = 1
+background = fusion_comp.AddTool("Background", x_pos, y_pos)
+background.SetInput("TopLeftRed", 0.614)
+background.SetInput("TopLeftGreen", 0.433)
+background.SetInput("TopLeftBlue", 0.252)
+
+# add merge node (tool)
+x_pos = 3
+y_pos = 1
+merge = fusion_comp.AddTool("Merge", x_pos, y_pos)
+
+# add text node (tool)
+x_pos = 3
+y_pos = -1
+text_plus = fusion_comp.AddTool("TextPlus", x_pos, y_pos)
+text_plus.SetInput("StyledText", "Test Text")
+
+# get MediaOut1
+tool_name = "MediaOut1"
+media_out = next(
+    (vv for vv in fusion_comp.GetToolList().values() if vv.Name == tool_name), None
+)
+
+# connect tools
+merge.ConnectInput("Background", background)
+merge.ConnectInput("Foreground", text_plus)
+media_out.ConnectInput("Input", merge)
+
 fusion_comp.Unlock()
+
+resolve.OpenPage("fusion")
+

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
+import itertools
 
 if sys.platform == "darwin":  # macOS
     resolve_script_api = (
@@ -40,13 +41,37 @@ timeline_item_list = timeline.GetItemListInTrack(track_type, track_idx)
 timeline_item = timeline_item_list[0]
 fusion_comp = timeline_item.GetFusionCompByIndex(1)
 
-# get Background1 node (tool)
-tool_name = "Background1"
-target_tool = next(
+# get Merge1 and MediaOut1 node (tool)
+tool_name = "Merge1"
+merge = next(
+    (tool for tool in fusion_comp.GetToolList().values() if tool.Name == tool_name),
+    None
+)
+tool_name = "MediaOut1"
+media_out = next(
     (tool for tool in fusion_comp.GetToolList().values() if tool.Name == tool_name),
     None
 )
 
-# dump parameters
-for input in target_tool.GetInputList().values():
-    print(f"{input.ID} = {target_tool.GetInput(input.ID)}")
+# dump Merge1 MainInputs
+separator = "=" * 80
+print(separator)
+print(f" {merge.Name} MainInput List")
+print(separator)
+for idx in itertools.count(1):
+    main_input = merge.FindMainInput(idx)
+    if main_input is None:
+        break
+    print(f"{idx}: Name = {main_input.Name}, ID = {main_input.ID}")
+
+# dump MediaOut1 MainInputs
+print("")
+separator = "=" * 80
+print(separator)
+print(f" {media_out.Name} MainInput List")
+print(separator)
+for idx in itertools.count(1):
+    main_input = media_out.FindMainInput(idx)
+    if main_input is None:
+        break
+    print(f"{idx}: Name = {main_input.Name}, ID = {main_input.ID}")

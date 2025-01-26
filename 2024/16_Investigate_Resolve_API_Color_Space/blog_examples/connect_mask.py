@@ -67,4 +67,31 @@ media_in = next(
 )
 media_in.Delete()
 
+# add RectangleMask node (tool)
+x_pos = 3
+y_pos = -1
+rectangle_mask = fusion_comp.AddTool("RectangleMask", x_pos, y_pos)
+rectangle_mask.SetInput("Width", 0.4)
+rectangle_mask.SetInput("Haight", 0.4)
+
+# add background node (tool)
+x_pos = 3
+y_pos = 1
+background = fusion_comp.AddTool("Background", x_pos, y_pos)
+background.SetInput("TopLeftRed", 0.75)
+background.SetInput("TopLeftGreen", 0.5)
+background.SetInput("TopLeftBlue", 0.25)
+background.SetInput("EffectMask", rectangle_mask)
+
+# get MediaOut1
+tool_name = "MediaOut1"
+media_out = next(
+    (vv for vv in fusion_comp.GetToolList().values() if vv.Name == tool_name), None
+)
+
+media_out.ConnectInput("Input", background)
+
 fusion_comp.Unlock()
+
+resolve.OpenPage("fusion")
+

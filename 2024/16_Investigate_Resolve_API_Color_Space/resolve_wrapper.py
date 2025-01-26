@@ -1100,7 +1100,7 @@ def dump_tool_input_value(tool):
     print("=" * 80)
     print(f" {tool.Name} InputValue List")
     print("=" * 80)
-    for key, value in tool.GetInputList().items():
+    for value in tool.GetInputList().values():
         print(f"{value.ID} = {tool.GetInput(value.ID)}")
 
 
@@ -1141,7 +1141,7 @@ def dump_tool_list(comp):
     print("=" * 80)
     print(" Tool List")
     print("=" * 80)
-    for _, value in comp.GetToolList().items():
+    for value in comp.GetToolList().values():
         print(f"tool id = {value.ID}, tool name = {value.Name}")
 
 

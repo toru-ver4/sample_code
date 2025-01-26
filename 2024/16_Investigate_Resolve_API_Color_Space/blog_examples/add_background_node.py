@@ -58,6 +58,8 @@ timeline_items = media_pool.AppendToTimeline([clip_info])
 timeline_item = timeline_items[0]
 fusion_comp = timeline_item.AddFusionComp()
 
+fusion_comp.Lock()
+
 # remove MediaIn1
 tool_name = "MediaIn1"
 media_in = next(
@@ -72,4 +74,7 @@ background = fusion_comp.AddTool("Background", x_pos, y_pos)
 background.SetInput("TopLeftRed", 0.614)
 background.SetInput("TopLeftGreen", 0.433)
 background.SetInput("TopLeftBlue", 0.252)
+
+fusion_comp.Unlock()
+
 resolve.OpenPage("fusion")
