@@ -1768,60 +1768,60 @@ def create_countdown_video_each_spec(
 
     open_page(page_name=drc.FUSION_PAGE_STR)
 
-#     ###################
-#     # encode
-#     ###################
-#     preset_path = str(
-#         Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
-#     )
-#     # preset_path = None
+    # ###################
+    # # encode
+    # ###################
+    # preset_path = str(
+    #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
+    # )
+    # # preset_path = None
 
-#     format_extension = drc.OUT_FILE_EXTENSTION_MOV
-#     # codec = drc.CODEC_H265_NVIDIA
-#     codec = drc.CODEC_APPLE_PRORES_422_HQ
-#     # format_extension = drc.OUT_FILE_EXTENSTION_EXR
-#     # codec = drc.CODEC_EXR_RGB_HALF
-#     basename = f"{width}x{height}_{framerate}_{gamma}_{gamut}"
-#     output_fname = f"./render_out/{basename}" + "." + format_extension
-#     target_dir = str(Path(output_fname).resolve().parent)
-#     custom_name = str(Path(output_fname).resolve().name)
+    # format_extension = drc.OUT_FILE_EXTENSTION_MOV
+    # # codec = drc.CODEC_H265_NVIDIA
+    # codec = drc.CODEC_APPLE_PRORES_422_HQ
+    # # format_extension = drc.OUT_FILE_EXTENSTION_EXR
+    # # codec = drc.CODEC_EXR_RGB_HALF
+    # basename = f"{width}x{height}_{framerate}_{gamma}_{gamut}"
+    # output_fname = f"./render_out/{basename}" + "." + format_extension
+    # target_dir = str(Path(output_fname).resolve().parent)
+    # custom_name = str(Path(output_fname).resolve().name)
 
-#     render_settings = {
-#         # "SelectAllFrames": True,
-#         # "MarkIn": _timecode_to_frame_index("01:00:00:00"),
-#         # "MarkOut": _timecode_to_frame_index("01:00:08:12"),
-#         "TargetDir": target_dir,
-#         "CustomName": custom_name,
-#         # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
-#         # "ExportVideo": True,
-#         # "ExportAudio": True,
-#         # "FormatWidth": 3840,
-#         # "FormatHeight": 2160,
-#         # "FrameRate": 23.976,
-#         # "PixelAspectRatio": "square",
-#         # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
-#         # "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
-#         # "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
-#         # "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
-#         # "ColorSpaceTag": "Same as Project",
-#         # "GammaTag": "Same as Project",
-#         # "ExportAlpha": False,
-#         # "EncodingProfile": "Main10",
-#         # "MultiPassEncode": True,
-#         # "AlphaMode": 
-#         # "NetworkOptimization": True,
-#         # "ClipStartFrame": 0,
-#         # "TimelineStartTimecode": "01:00:00:00",
-#         # "ReplaceExistingFilesInPlace": True,
-#     }
+    # render_settings = {
+    #     # "SelectAllFrames": True,
+    #     # "MarkIn": _timecode_to_frame_index("01:00:00:00"),
+    #     # "MarkOut": _timecode_to_frame_index("01:00:08:12"),
+    #     "TargetDir": target_dir,
+    #     "CustomName": custom_name,
+    #     # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
+    #     # "ExportVideo": True,
+    #     # "ExportAudio": True,
+    #     # "FormatWidth": 3840,
+    #     # "FormatHeight": 2160,
+    #     # "FrameRate": 23.976,
+    #     # "PixelAspectRatio": "square",
+    #     # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
+    #     # "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
+    #     # "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
+    #     # "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
+    #     # "ColorSpaceTag": "Same as Project",
+    #     # "GammaTag": "Same as Project",
+    #     # "ExportAlpha": False,
+    #     # "EncodingProfile": "Main10",
+    #     # "MultiPassEncode": True,
+    #     # "AlphaMode": 
+    #     # "NetworkOptimization": True,
+    #     # "ClipStartFrame": 0,
+    #     # "TimelineStartTimecode": "01:00:00:00",
+    #     # "ReplaceExistingFilesInPlace": True,
+    # }
 
-#     if preset_path is not None:
-#         import_render_preset(preset_path=preset_path)
-#     else:
-#         set_render_format_codec_settings(format=format_extension, codec=codec)
+    # if preset_path is not None:
+    #     import_render_preset(preset_path=preset_path)
+    # else:
+    #     set_render_format_codec_settings(format=format_extension, codec=codec)
 
-#     set_render_settings(setting_dict=render_settings)
-#     run_rendering_and_wait_until_finish(project=project)
+    # set_render_settings(setting_dict=render_settings)
+    # run_rendering_and_wait_until_finish(project=project)
 
 
 if __name__ == '__main__':
