@@ -250,6 +250,11 @@ temporary/**/**
 2024/13_HEIF_HDR_Image/debug/**
 2024/15_Investigate_Rec709-A/**/*.exr
 2024/15_Investigate_Rec709-A/**/*.tif
+2024/16_Investigate_Resolve_API_Color_Space/**/*.run
+!2024/16_Investigate_Resolve_API_Color_Space/fonts/*.ttf
+2024/16_Investigate_Resolve_API_Color_Space/render_out/*.mov
+2024/16_Investigate_Resolve_API_Color_Space/render_out/*.mp4
+2024/16_Investigate_Resolve_API_Color_Space/render_out/*.dpx
 
 [Dd]ebug/
 [Rr]elease/
