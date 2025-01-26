@@ -227,7 +227,7 @@ def verify_10bit_st2084_dpx():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # create_12bit_s2084_dpx_using_fusion()
+    create_12bit_s2084_dpx_using_fusion()
     create_10bit_s2084_dpx_using_fusion()
     # verify_12bit_st2084_dpx()
     # verify_10bit_st2084_dpx()
