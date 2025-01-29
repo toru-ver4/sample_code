@@ -1,0 +1,18 @@
+opencv-python
+cycler
+scipy
+colour-science
+colour-datasets
+pillow
+sphinx_rtd_theme
+sympy
+matplotlib
+flake8
+pytest
+jupyter
+ipywidgets
+pysimplegui
+jupyterlab
+# wavio
+pyside2
+conan
