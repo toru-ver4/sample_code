@@ -156,9 +156,10 @@ class FusionParams:
         self.frame_marker_h_pos\
             = self.linspace(frame_marker_h_st_pos, frame_marker_h_ed_pos, fps + 1)
         self.frame_marker_v_pos = 0.14
+        self.frame_marker_v_pos2 = 0.09
         self.frame_marker_width\
             = (frame_marker_h_ed_pos - frame_marker_h_st_pos) / (fps * 2 + 1)
-        self.frame_marker_height = 0.05
+        self.frame_marker_height = 0.04
 
     def linspace(self, start, stop, num):
         if num == 1:
@@ -542,7 +543,7 @@ def create_countdown_animation_comp(
     return input_merge, output_merge
 
 
-def create_frame_marker_core(comp, ppp, idx, tool_pos=(1, 3)):
+def create_frame_marker_core(comp, ppp, idx, fps, tool_pos=(1, 3)):
     x_pos = tool_pos[0]
     y_pos = tool_pos[1]
 
@@ -556,13 +557,13 @@ def create_frame_marker_core(comp, ppp, idx, tool_pos=(1, 3)):
         comp=comp, name="Merge", pos=(x_pos+0, y_pos)
     )
 
-    fg = dcl.add_comp_tool(
+    inv_bg = dcl.add_comp_tool(
         comp=comp, name="Background", pos=(x_pos+1, y_pos-1)
     )
-    fg_mask = dcl.add_comp_tool(
+    inv_bg_mask = dcl.add_comp_tool(
         comp=comp, name="RectangleMask", pos=(x_pos+1, y_pos-2)
     )
-    fg_merge = dcl.add_comp_tool(
+    inv_bg_merge = dcl.add_comp_tool(
         comp=comp, name="Merge", pos=(x_pos+1, y_pos)
     )
 
@@ -576,17 +577,6 @@ def create_frame_marker_core(comp, ppp, idx, tool_pos=(1, 3)):
         "Width": ppp.frame_marker_width,
         "Height": ppp.frame_marker_height,
     }
-    fg_mask_input = {
-        "Filter": "Box",
-        "CapStyle": 0.0,
-        "Center": {
-            1: ppp.frame_marker_h_pos[idx],
-            2: ppp.frame_marker_v_pos, 3: 0.0
-        },
-        "Width": ppp.frame_marker_width,
-        "Height": ppp.frame_marker_height,
-    }
-
     bg_input = {
         "TopLeftRed": 0.0,
         "TopLeftGreen": 0.0,
@@ -594,23 +584,52 @@ def create_frame_marker_core(comp, ppp, idx, tool_pos=(1, 3)):
         "TopLeftAlpha": 1.0,
         "EffectMask": bg_mask,
     }
-    fg_input = {
-        "TopLeftRed": 0.5,
-        "TopLeftGreen": 0.5,
-        "TopLeftBlue": 0.5,
-        "TopLeftAlpha": 1.0,
-        "EffectMask": fg_mask,
+
+    inv_bg_mask_input = {
+        "Filter": "Box",
+        "CapStyle": 0.0,
+        "Center": {
+            1: ppp.frame_marker_h_pos[idx],
+            2: ppp.frame_marker_v_pos2, 3: 0.0
+        },
+        "Width": ppp.frame_marker_width,
+        "Height": ppp.frame_marker_height,
     }
 
-    dcl.set_multiple_tool_input(tool=fg, input_dict=fg_input)
+    inv_bg_input = {
+        "TopLeftRed": 0.0,
+        "TopLeftGreen": 0.0,
+        "TopLeftBlue": 0.0,
+        "TopLeftAlpha": 1.0,
+        "EffectMask": inv_bg_mask,
+    }
+
     dcl.set_multiple_tool_input(tool=bg, input_dict=bg_input)
-    dcl.set_multiple_tool_input(tool=fg_mask, input_dict=fg_mask_input)
     dcl.set_multiple_tool_input(tool=bg_mask, input_dict=bg_mask_input)
+    dcl.set_multiple_tool_input(tool=inv_bg, input_dict=inv_bg_input)
+    dcl.set_multiple_tool_input(tool=inv_bg_mask, input_dict=inv_bg_mask_input)
 
-    dcl.connect_merge_tool(merge_tool=fg_merge, bg_tool=bg_merge, fg_tool=fg)
+    # set keyframe
+    color_list = ["TopLeftRed", "TopLeftGreen", "TopLeftBlue"]
+    for color in color_list:
+        base_idx = (idx + fps//2) % fps
+        bg[color] = comp.BezierSpline()
+        bg[color][base_idx] = 0.5
+        bg[color][base_idx + 1] = 0.0
+        bg[color][base_idx - 1] = 0.0
+
+        inv_bg[color] = comp.BezierSpline()
+        inv_idx = (fps - 0) - idx
+        inv_base_idx = (inv_idx + fps//2) % fps
+        inv_bg[color][inv_base_idx] = 0.5
+        inv_bg[color][inv_base_idx + 1] = 0.0
+        inv_bg[color][inv_base_idx - 1] = 0.0
+
     dcl.connect_merge_tool(merge_tool=bg_merge, bg_tool=None, fg_tool=bg)
+    dcl.connect_merge_tool(merge_tool=inv_bg_merge, bg_tool=None, fg_tool=inv_bg)
+    dcl.connect_merge_tool(merge_tool=inv_bg_merge, bg_tool=bg_merge, fg_tool=None)
 
-    return bg_merge, fg_merge
+    return bg_merge, inv_bg_merge
 
 
 def create_frame_marker(comp, ppp, fps, tool_pos=(1, 3)):
@@ -618,10 +637,10 @@ def create_frame_marker(comp, ppp, fps, tool_pos=(1, 3)):
     y_pos = tool_pos[1]
     merge_list = []
     for idx in range(fps+1):
-        bg_merge, fg_merge = create_frame_marker_core(
-            comp=comp, ppp=ppp, idx=idx, tool_pos=(x_pos+2*idx, y_pos)
+        bg_merge, inv_bg_merge = create_frame_marker_core(
+            comp=comp, ppp=ppp, idx=idx, fps=fps, tool_pos=(x_pos+2*idx, y_pos)
         )
-        merge_list.append([bg_merge, fg_merge])
+        merge_list.append([bg_merge, inv_bg_merge])
 
     for idx in range(1, fps+1):
         dcl.connect_merge_tool(
@@ -643,7 +662,7 @@ def create_countdown_comp():
             )
         create_countdown_comp_each_sec(
             comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
-        break
+        # break
 
 
 def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
