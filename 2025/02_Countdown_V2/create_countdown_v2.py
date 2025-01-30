@@ -89,16 +89,13 @@ def debug_fusion():
     dump_tool_main_input_value(tool=media_out)
     dump_tool_input_value(tool=media_out)
 
-    text_base = dcl.add_comp_tool(comp=fusion_comp, name="RectangleMask", pos=(10, 10))
-    # compare_tool_input_value(aa=text, bb=text_base)
+    rec6 = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Rectangle6")
+    rec_mask = dcl.add_comp_tool(comp=fusion_comp, name="RectangleMask", pos=(20, 20))
+    compare_tool_input_value(aa=rec6, bb=rec_mask)
 
     # is_font_available(family="Noto Sans Mono", font_weight="Black")
 
     # dump_tool_list(comp=fusion_comp)
-
-    bg2 = dcl.add_comp_tool(comp=fusion_comp, name="Background", pos=(10, 5))
-    dctl2 = dcl.add_comp_tool(comp=fusion_comp, name="ofx.com.blackmagicdesign.resolvefx.DCTL", pos=(11, 5))
-    dcl.connect_mediaout(mediaout=media_out, source=dctl2)
 
     import sys
     sys.exit(0)
@@ -138,7 +135,7 @@ class HeightBasedSize:
 
 
 class FusionParams:
-    def __init__(self):
+    def __init__(self, fps):
         """
         Parameters
         ----------
@@ -154,6 +151,20 @@ class FusionParams:
         self.cross_line_width = self.cd_line_width
         self.cross_line_color = [235/255, 235/255, 235/255, 1.0]
         self.info_area_height = HeightBasedSize(0.1)
+        frame_marker_h_st_pos = 0.08
+        frame_marker_h_ed_pos = 1 - frame_marker_h_st_pos
+        self.frame_marker_h_pos\
+            = self.linspace(frame_marker_h_st_pos, frame_marker_h_ed_pos, fps + 1)
+        self.frame_marker_v_pos = 0.14
+        self.frame_marker_width\
+            = (frame_marker_h_ed_pos - frame_marker_h_st_pos) / (fps * 2 + 1)
+        self.frame_marker_height = 0.05
+
+    def linspace(self, start, stop, num):
+        if num == 1:
+            return [start]
+        step = (stop - start) / (num - 1)
+        return [start + step * i for i in range(num)]
 
 
 def create_background_circle(
@@ -531,9 +542,99 @@ def create_countdown_animation_comp(
     return input_merge, output_merge
 
 
+def create_frame_marker_core(comp, ppp, idx, tool_pos=(1, 3)):
+    x_pos = tool_pos[0]
+    y_pos = tool_pos[1]
+
+    bg = dcl.add_comp_tool(
+        comp=comp, name="Background", pos=(x_pos+0, y_pos-1)
+    )
+    bg_mask = dcl.add_comp_tool(
+        comp=comp, name="RectangleMask", pos=(x_pos+0, y_pos-2)
+    )
+    bg_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+0, y_pos)
+    )
+
+    fg = dcl.add_comp_tool(
+        comp=comp, name="Background", pos=(x_pos+1, y_pos-1)
+    )
+    fg_mask = dcl.add_comp_tool(
+        comp=comp, name="RectangleMask", pos=(x_pos+1, y_pos-2)
+    )
+    fg_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+1, y_pos)
+    )
+
+    bg_mask_input = {
+        "Filter": "Box",
+        "CapStyle": 0.0,
+        "Center": {
+            1: ppp.frame_marker_h_pos[idx],
+            2: ppp.frame_marker_v_pos, 3: 0.0
+        },
+        "Width": ppp.frame_marker_width,
+        "Height": ppp.frame_marker_height,
+    }
+    fg_mask_input = {
+        "Filter": "Box",
+        "CapStyle": 0.0,
+        "Center": {
+            1: ppp.frame_marker_h_pos[idx],
+            2: ppp.frame_marker_v_pos, 3: 0.0
+        },
+        "Width": ppp.frame_marker_width,
+        "Height": ppp.frame_marker_height,
+    }
+
+    bg_input = {
+        "TopLeftRed": 0.0,
+        "TopLeftGreen": 0.0,
+        "TopLeftBlue": 0.0,
+        "TopLeftAlpha": 1.0,
+        "EffectMask": bg_mask,
+    }
+    fg_input = {
+        "TopLeftRed": 0.5,
+        "TopLeftGreen": 0.5,
+        "TopLeftBlue": 0.5,
+        "TopLeftAlpha": 1.0,
+        "EffectMask": fg_mask,
+    }
+
+    dcl.set_multiple_tool_input(tool=fg, input_dict=fg_input)
+    dcl.set_multiple_tool_input(tool=bg, input_dict=bg_input)
+    dcl.set_multiple_tool_input(tool=fg_mask, input_dict=fg_mask_input)
+    dcl.set_multiple_tool_input(tool=bg_mask, input_dict=bg_mask_input)
+
+    dcl.connect_merge_tool(merge_tool=fg_merge, bg_tool=bg_merge, fg_tool=fg)
+    dcl.connect_merge_tool(merge_tool=bg_merge, bg_tool=None, fg_tool=bg)
+
+    return bg_merge, fg_merge
+
+
+def create_frame_marker(comp, ppp, fps, tool_pos=(1, 3)):
+    x_pos = tool_pos[0]
+    y_pos = tool_pos[1]
+    merge_list = []
+    for idx in range(fps+1):
+        bg_merge, fg_merge = create_frame_marker_core(
+            comp=comp, ppp=ppp, idx=idx, tool_pos=(x_pos+2*idx, y_pos)
+        )
+        merge_list.append([bg_merge, fg_merge])
+
+    for idx in range(1, fps+1):
+        dcl.connect_merge_tool(
+            merge_tool=merge_list[idx][0],
+            bg_tool=merge_list[idx-1][1], fg_tool=None
+        )
+
+    return merge_list[0][0], merge_list[-1][1]
+
+
 def create_countdown_comp():
-    ppp = FusionParams()
     fps = int(dcl.get_project_setting(name="timelineFrameRate"))
+    ppp = FusionParams(fps=fps)
     for idx, countdown_str in enumerate([4, 3, 2, 1]):
         tl_item_fusion_comp, comp =\
             dcl.append_fusion_composition_to_timeline(
@@ -542,7 +643,7 @@ def create_countdown_comp():
             )
         create_countdown_comp_each_sec(
             comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
-        # break
+        break
 
 
 def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
@@ -567,15 +668,21 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
         = create_countdown_animation_comp(
             comp=comp, ppp=ppp, count_str=count_str, fps=fps, tool_pos=(13, 3)
         )
+    frame_marker_input_merge, frame_marker_output_merge\
+        = create_frame_marker(comp=comp, ppp=ppp, fps=fps, tool_pos=(15, 3))
 
     # connect
     media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
-    dcl.set_tool_position(comp=comp, tool=media_out, pos=(15, 3))
+    dcl.set_tool_position(comp=comp, tool=media_out, pos=(80, 3))
 
-    dcl.connect_mediaout(source=cntdown_anime_output_merge, mediaout=media_out)
+    dcl.connect_mediaout(source=frame_marker_output_merge, mediaout=media_out)
     dcl.connect_merge_tool(
         merge_tool=cntdown_anime_input_merge,
         bg_tool=still_bg_tool, fg_tool=None
+    )
+    dcl.connect_merge_tool(
+        merge_tool=frame_marker_input_merge,
+        bg_tool=cntdown_anime_output_merge, fg_tool=None
     )
 
     comp.Unlock()
