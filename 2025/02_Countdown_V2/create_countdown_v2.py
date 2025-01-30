@@ -1,0 +1,778 @@
+# -*- coding: utf-8 -*-
+
+import sys
+import os
+from pathlib import Path
+import ty_davinci_constants as drc
+import ty_davinci_control_lib_2 as dcl
+from pprint import pprint
+
+
+#####################
+# Debug
+#####################
+
+def dump_tool_input_value(tool):
+    print("=" * 80)
+    print(f" {tool.Name} InputValue List")
+    print("=" * 80)
+    for value in tool.GetInputList().values():
+        print(f"{value.ID} = {tool.GetInput(value.ID)}")
+
+
+def compare_tool_input_value(aa, bb):
+    print("=" * 80)
+    print(f" {aa.Name} {bb.Name} Compare")
+    print("=" * 80)
+    aa_input = []
+    bb_input = []
+    for key, value in aa.GetInputList().items():
+        aa_input.append({"name": value.ID, "value": aa.GetInput(value.ID)})
+
+    for key, value in bb.GetInputList().items():
+        bb_input.append({"name": value.ID, "value": bb.GetInput(value.ID)})
+
+    for idx in range(len(aa_input)):
+        if aa_input[idx]["value"] != bb_input[idx]["value"]:
+            msg = f"{aa_input[idx]["name"]}: "
+            msg += f"{aa_input[idx]["value"]}, "
+            msg += f"{bb_input[idx]["value"]}, "
+            print(msg)
+
+
+def dump_tool_main_input_value(tool):
+    print("=" * 80)
+    print(f" {tool.Name} MainInput List")
+    print("=" * 80)
+    idx = 1
+    while(True):
+        input_tool = tool.FindMainInput(idx)
+        if input_tool is None:
+            break
+        print(f"{idx}: Name = {input_tool.Name}, ID = {input_tool.ID}")
+        idx += 1
+
+
+def dump_tool_list(comp):
+    print("=" * 80)
+    print(" Tool List")
+    print("=" * 80)
+    for value in comp.GetToolList().values():
+        print(f"tool id = {value.ID}, tool name = {value.Name}")
+
+
+def debug_resolve():
+    # print(get_project_setting("videoMonitorFormat"))
+    pprint(dcl.get_project_setting(name=None))
+    dcl.refresh_lut_list()
+    sys.exit(0)
+
+
+def debug_fusion():
+    target_track_name = "dummy_video_1920x1080_24P.mp4"
+    timeline = dcl.get_current_timeline()
+    timeline_item_list = dcl.get_timeline_items_in_track(
+        timeline=timeline, track_type="video", track_idx=1
+    )
+    
+    for timeline_item in timeline_item_list:
+        if timeline_item.GetName() == target_track_name:
+            break
+
+    fusion_comp = timeline_item.GetFusionCompByIndex(1)
+    merge_tool = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Merge1")
+    media_out = dcl.get_comp_tool_by_name(comp=fusion_comp, name="MediaOut1")
+    print(merge_tool)
+    dump_tool_input_value(tool=merge_tool)
+    dump_tool_main_input_value(tool=merge_tool)
+    text = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Text2")
+    dump_tool_main_input_value(tool=media_out)
+    dump_tool_input_value(tool=media_out)
+
+    text_base = dcl.add_comp_tool(comp=fusion_comp, name="RectangleMask", pos=(10, 10))
+    # compare_tool_input_value(aa=text, bb=text_base)
+
+    # is_font_available(family="Noto Sans Mono", font_weight="Black")
+
+    # dump_tool_list(comp=fusion_comp)
+
+    bg2 = dcl.add_comp_tool(comp=fusion_comp, name="Background", pos=(10, 5))
+    dctl2 = dcl.add_comp_tool(comp=fusion_comp, name="ofx.com.blackmagicdesign.resolvefx.DCTL", pos=(11, 5))
+    dcl.connect_mediaout(mediaout=media_out, source=dctl2)
+
+    import sys
+    sys.exit(0)
+
+
+#####################
+# Logic
+#####################
+class HeightBasedSize:
+    def __init__(self, size, hv_same=False, resolution=None):
+        """
+        Parameters
+        ----------
+        size: float
+            A size parameter
+        resolution : list or tuple
+            [width, height] or (width, height)
+        """
+        if resolution is None:
+            width, height = dcl.get_project_resolution()
+        else:
+            width, height = resolution
+        self._v_size = size
+
+        if hv_same:
+            self._h_size = size
+        else:    
+            self._h_size = (self._v_size * height) / width
+
+    @property
+    def v_size(self):
+        return self._v_size
+
+    @property
+    def h_size(self):
+        return self._h_size
+
+
+class FusionParams:
+    def __init__(self):
+        """
+        Parameters
+        ----------
+        resolution : list or tuple
+            [width, height] or (width, height)
+        """
+        self.cd_circle_ll = HeightBasedSize(0.61)
+        self.cd_circle_mm = HeightBasedSize(0.54)
+        self.cd_circle_ss = HeightBasedSize(0.525)
+        self.cd_line_width = HeightBasedSize(0.005)
+        self.cd_line_color = [0.0, 0.0, 0.0, 1.0]
+        self.cd_font_size = HeightBasedSize(0.85)
+        self.cross_line_width = self.cd_line_width
+        self.cross_line_color = [235/255, 235/255, 235/255, 1.0]
+        self.info_area_height = HeightBasedSize(0.1)
+
+
+def create_background_circle(
+        comp, bg_rgba=[0.0, 0.0, 0.0, 1.0],
+        size=[0.45, 0.45], merge_pos=(1, 1)
+    ):
+    """
+    Returns
+    -------
+    Merge
+        A output merge tool
+    """
+    circle_mask = dcl.add_comp_tool(
+        comp=comp, name="EllipseMask", pos=(merge_pos[0], merge_pos[1] - 2)
+    )
+    circle_mask_input = {
+        "Width": size[0],
+        "Height": size[1],
+    }
+    dcl.set_multiple_tool_input(tool=circle_mask, input_dict=circle_mask_input)
+
+    circle_bg = dcl.add_comp_tool(
+        comp=comp, name="Background", pos=(merge_pos[0], merge_pos[1] - 1)
+    )
+    circle_bg_input = {
+        "TopLeftRed": bg_rgba[0],
+        "TopLeftGreen": bg_rgba[1],
+        "TopLeftBlue": bg_rgba[2],
+        "TopLeftAlpha": bg_rgba[3],
+        "EffectMask": circle_mask,
+    }
+    dcl.set_multiple_tool_input(tool=circle_bg, input_dict=circle_bg_input)
+
+    merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(merge_pos[0], merge_pos[1] + 0)
+    )
+    dcl.connect_merge_tool(merge_tool=merge, bg_tool=None, fg_tool=circle_bg)
+
+    return merge
+
+
+def draw_line_comp(comp, rgba, width, height, angle=0, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    line = dcl.add_comp_tool(comp=comp, name="RectangleMask", pos=[x_pos, y_pos-2])
+    line_fg = dcl.add_comp_tool(comp=comp, name="Background", pos=[x_pos, y_pos-1])
+    line_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=[x_pos, y_pos+0])
+
+    line_input = {
+        "Width": width,
+        "Height": height,
+        "Angle": angle,
+    }
+    dcl.set_multiple_tool_input(tool=line, input_dict=line_input)
+    line_fg_input = {
+        "TopLeftRed": rgba[0],
+        "TopLeftGreen": rgba[1],
+        "TopLeftBlue": rgba[2],
+        "TopLeftAlpha": rgba[3],
+        "EffectMask": line,
+    }
+    dcl.set_multiple_tool_input(tool=line_fg, input_dict=line_fg_input)
+
+    dcl.connect_merge_tool(
+        merge_tool=line_merge,
+        bg_tool=None, fg_tool=line_fg
+    )
+
+    return line_merge
+
+
+def draw_info_comp(
+        comp, font_size, bg_rgba, fg_rgba, height, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    rectangle_mask = dcl.add_comp_tool(
+        comp=comp, name="RectangleMask", pos=(x_pos+0, y_pos-2)
+    )
+    rectangle_mask_input = {
+        "Center": {1: 0.5, 2: height/2.0, 3: 0.0},
+        "Width": 1.0,
+        "Height": height,
+    }
+    dcl.set_multiple_tool_input(
+        tool=rectangle_mask, input_dict=rectangle_mask_input
+    )
+    rectangle_fg = dcl.add_comp_tool(
+        comp=comp, name="Background", pos=(x_pos+0, y_pos-1)
+    )
+    dcl.set_tool_topleft_color(tool=rectangle_fg, rgba=bg_rgba)
+    dcl.set_tool_input(tool=rectangle_fg, name="EffectMask", value=rectangle_mask)
+    rectangle_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+0, y_pos+0)
+    )
+    dcl.connect_merge_tool(
+        merge_tool=rectangle_merge, bg_tool=None, fg_tool=rectangle_fg
+    )
+
+    # info text
+    info_text = dcl.add_comp_tool(
+        comp=comp, name="TextPlus", pos=(x_pos+1, y_pos-1)
+    )
+    info_text_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+1, y_pos-0)
+    )
+    font_family = "Noto Sans"
+    font_weight = "Regular"
+    fps = int(dcl.get_project_setting("timelineFrameRate"))
+    gamut = dcl.get_project_setting("colorSpaceOutput")
+    gamma = dcl.get_project_setting("colorSpaceOutputGamma")
+    project_width, project_height = dcl.get_project_resolution()
+    info_text_str = f"  Countdown v2, {project_width}x{project_height}, "
+    info_text_str += f"{fps} fps, {gamma}, {gamut}"
+    print(f"info_text = {info_text}")
+    info_text_input = {
+        "Center": {1: 0.0, 2: 0.0, 3: 0.0},
+        "StyledText": info_text_str,
+        "Font": font_family,
+        "Style": font_weight,
+        "Size": font_size,
+        "Red1": fg_rgba[0],
+        "Green1": fg_rgba[1],
+        "Blue1": fg_rgba[2],
+        "VerticalTopCenterBottom": 1.75,
+        "HorizontalLeftCenterRight": -1.0,
+        "AdvancedFontControls": 1.0,
+    }
+    dcl.is_font_available(family=font_family, font_weight=font_weight)
+    dcl.set_multiple_tool_input(tool=info_text, input_dict=info_text_input)
+    dcl.connect_merge_tool(
+        merge_tool=info_text_merge, bg_tool=rectangle_merge, fg_tool=info_text
+    )
+
+    # rev text
+    rev_text = dcl.add_comp_tool(
+        comp=comp, name="TextPlus", pos=(x_pos+2, y_pos-1)
+    )
+    rev_text_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+2, y_pos-0)
+    )
+    rev_text_input = {
+        "Center": {1: 1.0, 2: 0.0, 3: 0.0},
+        "StyledText": "Revision 00  ",
+        "Font": font_family,
+        "Style": font_weight,
+        "Size": font_size,
+        "Red1": fg_rgba[0],
+        "Green1": fg_rgba[1],
+        "Blue1": fg_rgba[2],
+        "VerticalTopCenterBottom": 1.75,
+        "HorizontalLeftCenterRight": 1.0,
+        "AdvancedFontControls": 1.0,
+    }
+    dcl.set_multiple_tool_input(tool=rev_text, input_dict=rev_text_input)
+    dcl.connect_merge_tool(
+        merge_tool=rev_text_merge, bg_tool=info_text_merge, fg_tool=rev_text
+    )
+
+    in_merge = rectangle_merge
+    out_merge = rev_text_merge
+
+    return in_merge, out_merge
+
+
+def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
+    """
+    Parameters
+    ----------
+    comp : Composition
+        A fusion Composition instance
+    ppp : FusionParams
+        A parameter set for fusion composition
+    tool_pos : list
+        [h_pos, v_pos] of the base tool (lower left)
+    """
+    x_pos = tool_pos[0]
+    y_pos = tool_pos[1]
+
+    bg1 = dcl.add_comp_tool(
+        comp=comp, name="Background", pos=(x_pos+0, y_pos+0)
+    )
+    dcl.set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
+
+    cross_h_line_merge = draw_line_comp(
+        comp=comp, rgba=ppp.cross_line_color, width=1.0, angle=0,
+        height=ppp.cross_line_width.h_size, base_pos=[x_pos+1, y_pos]
+    )
+    cross_v_line_merge = draw_line_comp(
+        comp=comp, rgba=ppp.cross_line_color, width=1.0, angle=90,
+        height=ppp.cross_line_width.h_size, base_pos=[x_pos+2, y_pos]
+    )
+    large_white_circle_merge = create_background_circle(
+        comp=comp, bg_rgba=[0.5, 0.5, 0.5, 1.0],
+        size=[ppp.cd_circle_ll.h_size, ppp.cd_circle_ll.h_size],
+        merge_pos=[x_pos+3, y_pos]
+    )
+    middle_black_circle_merge = create_background_circle(
+        comp=comp, bg_rgba=[0.0, 0.0, 0.0, 1.0],
+        size=[ppp.cd_circle_mm.h_size, ppp.cd_circle_mm.h_size],
+        merge_pos=[x_pos+4, y_pos]
+    )
+    small_grey_circle_merge = create_background_circle(
+        comp=comp, bg_rgba=[0.18, 0.18, 0.18, 1.0],
+        size=[ppp.cd_circle_ss.h_size, ppp.cd_circle_ss.h_size],
+        merge_pos=[x_pos+5, y_pos]
+    )
+    h_line_merge = draw_line_comp(
+        comp=comp, rgba=ppp.cd_line_color, angle=0,
+        width=ppp.cd_circle_ll.h_size,
+        height=ppp.cd_line_width.h_size, base_pos=[x_pos+6, y_pos]
+    )
+    v_line_merge = draw_line_comp(
+        comp=comp, rgba=ppp.cd_line_color, angle=90,
+        width=ppp.cd_circle_ll.h_size,
+        height=ppp.cd_line_width.h_size, base_pos=[x_pos+7, y_pos]
+    )
+    info_in_merge, info_out_merge = draw_info_comp(
+        comp=comp, font_size=0.025, bg_rgba=[0.0, 0.0, 0.0, 1.0],
+        fg_rgba=[0.5, 0.5, 0.5, 1.0], height=0.035, base_pos=[x_pos+8, y_pos])
+    border_dctl = dcl.add_dctl_comp(
+        comp=comp, dctl_path="TY_DCTL/draw_border.dctl", base_pos=[x_pos+10, y_pos]
+    )
+
+    dcl.connect_merge_tool(
+        merge_tool=cross_h_line_merge,
+        bg_tool=bg1, fg_tool=None
+    )
+    dcl.connect_merge_tool(
+        merge_tool=cross_v_line_merge,
+        bg_tool=cross_h_line_merge, fg_tool=None
+    )
+    dcl.connect_merge_tool(
+        merge_tool=large_white_circle_merge,
+        bg_tool=cross_v_line_merge, fg_tool=None
+    )
+    dcl.connect_merge_tool(
+        merge_tool=middle_black_circle_merge,
+        bg_tool=large_white_circle_merge, fg_tool=None
+    )
+    dcl.connect_merge_tool(
+        merge_tool=small_grey_circle_merge,
+        bg_tool=middle_black_circle_merge, fg_tool=None
+    )
+    dcl.connect_merge_tool(
+        merge_tool=h_line_merge,
+        bg_tool=small_grey_circle_merge, fg_tool=None
+    )
+    dcl.connect_merge_tool(
+        merge_tool=v_line_merge,
+        bg_tool=h_line_merge, fg_tool=None
+    )
+    dcl.connect_merge_tool(
+        merge_tool=info_in_merge,
+        bg_tool=v_line_merge, fg_tool=None
+    )
+    dcl.connect_dctl(dctl=border_dctl, source=info_out_merge)
+    
+    out_tool = border_dctl
+
+    return out_tool
+
+
+def create_countdown_animation_comp(
+    comp, ppp: FusionParams, count_str, fps, tool_pos
+):
+    """
+    Parameters
+    ----------
+    comp : Composition
+        A fusion Composition instance
+    ppp : FusionParams
+        A parameter set for fusion composition
+    count_str : int
+        A number indicate the countdown
+    fps : int
+        framerate
+    tool_pos : list
+        [h_pos, v_pos] of the base tool (lower left)
+    """
+    x_pos = tool_pos[0]
+    y_pos = tool_pos[1]
+
+    radial_wipe = dcl.add_comp_tool(
+        comp=comp, name="EllipseMask", pos=(x_pos+0, y_pos-3)
+    )
+    wipe_circle_mask = dcl.add_comp_tool(
+        comp=comp, name="EllipseMask", pos=(x_pos+0, y_pos-2)
+    )
+    wipe_circle_fg = dcl.add_comp_tool(
+        comp=comp, name="Background", pos=(x_pos+0, y_pos-1)
+    )
+    wipe_circle_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+0, y_pos-0)
+    )
+
+    # wipe animation settings
+    radial_wipe_input = {
+        "Invert": 1.0,
+        "BorderWidth": 1.0,
+        "Solid": 0.0,
+        "CapStyle": 0.0,
+        "Width": 1.0,
+        "Height": 1.0,
+        "Angle": 90,
+    }
+    dcl.set_multiple_tool_input(tool=radial_wipe, input_dict=radial_wipe_input)
+    radial_wipe["WriteLength"] = comp.BezierSpline()
+    radial_wipe["WriteLength"][0] = 1.0
+    radial_wipe["WriteLength"][fps] = 0.0
+
+    # mask settings for wipe animation
+    wipe_circle_mask_input = {
+        "Invert": 1.0,
+        "Width": ppp.cd_circle_mm.h_size,
+        "Height": ppp.cd_circle_mm.h_size,
+        "PaintMode": "Subtract",
+        "EffectMask": radial_wipe,
+    }
+    dcl.set_multiple_tool_input(
+        tool=wipe_circle_mask, input_dict=wipe_circle_mask_input
+    )
+
+    # color settings for wipe animation
+    wipe_circle_fg_input = {
+        "TopLeftRed": 0.0,
+        "TopLeftGreen": 0.0,
+        "TopLeftBlue": 0.0,
+        "TopLeftAlpha": 1.0,
+        "EffectMask": wipe_circle_mask,
+    }
+    dcl.set_multiple_tool_input(
+        tool=wipe_circle_fg, input_dict=wipe_circle_fg_input
+    )
+
+    # text
+    countdown_text = dcl.add_comp_tool(
+        comp=comp, name="TextPlus", pos=(x_pos+1, y_pos-1)
+    )
+    countdown_text_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+1, y_pos-0)
+    )
+
+    font_family = "Noto Sans Mono"
+    font_weight = "Black"
+    countdown_text_input = {
+        "StyledText": f"{count_str}",
+        "Font": font_family,
+        "Style": font_weight,
+        "Size": ppp.cd_font_size.h_size,
+        "Red1": 0.5,
+        "Green1": 0.5,
+        "Blue1": 0.5,
+    }
+    dcl.is_font_available(family=font_family, font_weight=font_weight)
+    dcl.set_multiple_tool_input(
+        tool=countdown_text, input_dict=countdown_text_input
+    )
+
+    # connect
+    dcl.connect_merge_tool(
+        merge_tool=countdown_text_merge,
+        bg_tool=wipe_circle_merge, fg_tool=countdown_text
+    )
+    dcl.connect_merge_tool(
+        merge_tool=wipe_circle_merge,
+        bg_tool=None, fg_tool=wipe_circle_fg
+    )
+
+    # output
+    input_merge = wipe_circle_merge
+    output_merge = countdown_text_merge
+
+    return input_merge, output_merge
+
+
+def create_countdown_comp():
+    ppp = FusionParams()
+    fps = int(dcl.get_project_setting(name="timelineFrameRate"))
+    for idx, countdown_str in enumerate([4, 3, 2, 1]):
+        tl_item_fusion_comp, comp =\
+            dcl.append_fusion_composition_to_timeline(
+                num_of_frame=fps,
+                pos_timecode=f"01:00:{idx:02d}:00"
+            )
+        create_countdown_comp_each_sec(
+            comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
+        # break
+
+
+def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
+    """
+    Parameters
+    ----------
+    comp : Composition
+        A fusion Composition instance
+    ppp : FusionParams
+        A parameter set for fusion composition
+    fps : int
+        framerate
+    count_str : int
+        A character indicate the number of the count down.
+    """
+    comp.Lock()
+
+    still_bg_tool = create_still_background_comp(
+        comp=comp, ppp=ppp, tool_pos=(1, 3)
+    )
+    cntdown_anime_input_merge, cntdown_anime_output_merge\
+        = create_countdown_animation_comp(
+            comp=comp, ppp=ppp, count_str=count_str, fps=fps, tool_pos=(13, 3)
+        )
+
+    # connect
+    media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
+    dcl.set_tool_position(comp=comp, tool=media_out, pos=(15, 3))
+
+    dcl.connect_mediaout(source=cntdown_anime_output_merge, mediaout=media_out)
+    dcl.connect_merge_tool(
+        merge_tool=cntdown_anime_input_merge,
+        bg_tool=still_bg_tool, fg_tool=None
+    )
+
+    comp.Unlock()
+
+
+def create_countdown_video_each_spec(
+        width, height, framerate, gamut, gamma):
+    ##################
+    # Project Settings
+    ##################
+    dcl.refresh_lut_list()
+
+    project_name = "Countdown_v2_Rev01"
+    video_monitor_format = dcl.make_videoMonitorFormat_str(
+        width=width, height=height, framerate=framerate
+    )
+    project_settings_params = {
+        "timelineResolutionWidth": f"{width}",
+        "timelineResolutionHeight": f"{height}",
+        "videoMonitorFormat": video_monitor_format,
+        "timelineFrameRate": f"{framerate}",
+        "videoMonitorUse444SDI": "0",
+        "videoMonitorSDIConfiguration": "single_link",
+        "videoDataLevels": "Video",
+        "videoMonitorUseHDROverHDMI": "1",
+        "colorScienceMode": "davinciYRGBColorManagedv2",
+        "isAutoColorManage": "0",
+        "rcmPresetMode": "Custom",
+        "separateColorSpaceAndGamma": "1",
+        "colorSpaceInput": f"{gamut}",
+        "colorSpaceInputGamma": f"{gamma}",
+        "colorSpaceTimeline": drc.PRJ_COLOR_SPACE_P3D65,
+        "colorSpaceTimelineGamma": drc.PRJ_GAMMA_STR_ST2084,
+        "colorSpaceOutput": f"{gamut}",
+        "colorSpaceOutputGamma": f"{gamma}",
+        "timelineWorkingLuminance": "10000",
+        "timelineWorkingLuminanceMode": "Custom",
+        "inputDRT": "None",
+        "outputDRT": "None",
+        "hdrMasteringLuminanceMax": "1000",
+        "hdrMasteringOn": "1",
+    }
+
+    # control the project
+    dcl.close_current_project()
+    dcl.delete_project(project_name=project_name)
+    project = dcl.create_project(project_name=project_name)
+    # save_project()
+    # close_current_project()
+    # project = load_project(project_name=project_name)
+
+    # set up the project settings
+    dcl.setup_project_settings(params=project_settings_params)
+
+    ###########################
+    # Add files to the timeline
+    ###########################
+    # create timelines
+    timeline = dcl.create_empty_timeline(name="My_Timeline")
+
+    ####################################################
+    # Temporarily commented out because it is slow...
+    ####################################################
+    # set_timeline_settings(timeline=timeline, params=project_settings_params)
+
+    # add files to the media storage
+    relative_file_list = [
+        "./videos/countdown_HDR_24fps_hevc_yuv420p10le.mov",
+        "./videos/countdown_SDR_24fps_hevc_yuv420p10le.mov",
+        "./videos/countdown_SDR_60P_%04d.png",
+        "./videos/countdown.wav",
+    ]
+    file_path_list = [
+        str(Path(x).resolve()) for x in relative_file_list
+    ]
+    print(file_path_list)
+
+    # clip_hdr = add_file_to_media_pool(file_path=file_path_list[0])
+    # clip_sdr = add_file_to_media_pool(
+    #     file_path=file_path_list[1], start_frame=24, end_frame=71
+    # )
+    # clip_seq = add_seq_file_to_media_pool(
+    #     file_path=file_path_list[2], start_idx=120, end_idx=179
+    # )
+    # clip_audio = add_file_to_media_pool(file_path=file_path_list[3])
+
+    # # add clips to the timeline
+    # append_clip_to_timeline(clip=clip_hdr)
+    # append_clip_to_timeline(clip=clip_sdr)
+    # append_clip_to_timeline(
+    #     clip=clip_seq, media_type=1, pos_timecode="01:00:06:00")
+    # tl_item_audio = append_clip_to_timeline(
+    #     clip=clip_audio,
+    #     media_type=2,
+    #     start_frame=24,
+    #     end_frame=24+60,
+    #     pos_timecode="01:00:06:00"
+    # )
+    # solid_color = insert_generator_into_timeline(
+    #     timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
+    # )
+
+    create_countdown_comp()
+    dcl.set_current_timecode(timecode="01:00:00:00")
+
+    dcl.open_page(page_name=drc.FUSION_PAGE_STR)
+
+    # ###################
+    # # encode
+    # ###################
+    # preset_path = str(
+    #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
+    # )
+    # # preset_path = None
+
+    # format_extension = drc.OUT_FILE_EXTENSTION_MOV
+    # # codec = drc.CODEC_H265_NVIDIA
+    # codec = drc.CODEC_APPLE_PRORES_422_HQ
+    # # format_extension = drc.OUT_FILE_EXTENSTION_EXR
+    # # codec = drc.CODEC_EXR_RGB_HALF
+    # basename = f"{width}x{height}_{framerate}_{gamma}_{gamut}"
+    # output_fname = f"./render_out/{basename}" + "." + format_extension
+    # target_dir = str(Path(output_fname).resolve().parent)
+    # custom_name = str(Path(output_fname).resolve().name)
+
+    # render_settings = {
+    #     # "SelectAllFrames": True,
+    #     # "MarkIn": _timecode_to_frame_index("01:00:00:00"),
+    #     # "MarkOut": _timecode_to_frame_index("01:00:08:12"),
+    #     "TargetDir": target_dir,
+    #     "CustomName": custom_name,
+    #     # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
+    #     # "ExportVideo": True,
+    #     # "ExportAudio": True,
+    #     # "FormatWidth": 3840,
+    #     # "FormatHeight": 2160,
+    #     # "FrameRate": 23.976,
+    #     # "PixelAspectRatio": "square",
+    #     # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
+    #     # "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
+    #     # "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
+    #     # "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
+    #     # "ColorSpaceTag": "Same as Project",
+    #     # "GammaTag": "Same as Project",
+    #     # "ExportAlpha": False,
+    #     # "EncodingProfile": "Main10",
+    #     # "MultiPassEncode": True,
+    #     # "AlphaMode": 
+    #     # "NetworkOptimization": True,
+    #     # "ClipStartFrame": 0,
+    #     # "TimelineStartTimecode": "01:00:00:00",
+    #     # "ReplaceExistingFilesInPlace": True,
+    # }
+
+    # if preset_path is not None:
+    #     import_render_preset(preset_path=preset_path)
+    # else:
+    #     set_render_format_codec_settings(format=format_extension, codec=codec)
+
+    # set_render_settings(setting_dict=render_settings)
+    # run_rendering_and_wait_until_finish(project=project)
+
+
+if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # debug_resolve()
+    # debug_fusion()
+
+    from itertools import product
+    resolution_list = [
+        "1920x1080",
+        # "2048x1080",
+        # "3840x2160",
+        # "4096x2160",
+    ]
+    framerate_list = [
+        24,
+        # 25,
+        # 30,
+        # 50,
+        # 60
+    ]
+    gamut_list = [
+        drc.PRJ_COLOR_SPACE_REC709,
+        # drc.PRJ_COLOR_SPACE_P3D65,
+        # drc.PRJ_COLOR_SPACE_REC2020
+    ]
+    gamma_list = [
+        drc.PRJ_GAMMA_STR_GAMMA24,
+        # drc.PRJ_GAMMA_STR_ST2084
+    ]
+
+    for resolution, framerate, gamut, gamma in product(
+        resolution_list, framerate_list, gamut_list, gamma_list
+    ):
+        width, height = resolution.split("x")
+        create_countdown_video_each_spec(
+            width=width, height=height, framerate=framerate,
+            gamut=gamut, gamma=gamma
+        )
