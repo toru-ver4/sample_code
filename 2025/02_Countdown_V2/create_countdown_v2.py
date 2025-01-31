@@ -149,7 +149,9 @@ class FusionParams:
         self.cd_line_color = [0.0, 0.0, 0.0, 1.0]
         self.cd_font_size = HeightBasedSize(0.85)
         self.cross_line_width = self.cd_line_width
-        self.cross_line_color = [235/255, 235/255, 235/255, 1.0]
+        self.gray90 = 0.8
+        self.gray80 = 0.7
+        self.cross_line_color = [self.gray90, self.gray90, self.gray90, 1.0]
         self.info_area_height = HeightBasedSize(0.1)
         frame_marker_h_st_pos = 0.06
         frame_marker_h_ed_pos = 1 - frame_marker_h_st_pos
@@ -161,7 +163,7 @@ class FusionParams:
             = (frame_marker_h_ed_pos - frame_marker_h_st_pos) / (fps * 2 + 1)
         self.frame_marker_height = 0.03
         self.frame_marker_outline_width\
-            = (frame_marker_h_ed_pos - frame_marker_h_st_pos) * (fps * 2 + 4) / (fps * 2 + 1)
+            = self.frame_marker_width * ((fps + 2) * 2 + 1)
         self.frame_marker_outline_height = self.frame_marker_height * 3
         self.frame_marker_outline_v_pos\
             = (self.frame_marker_v_pos - self.frame_marker_v_pos2) / 2.0\
@@ -367,7 +369,7 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
         height=ppp.cross_line_width.h_size, base_pos=[x_pos+2, y_pos]
     )
     large_white_circle_merge = create_background_circle(
-        comp=comp, bg_rgba=[0.5, 0.5, 0.5, 1.0],
+        comp=comp, bg_rgba=[ppp.gray80, ppp.gray80, ppp.gray80, 1.0],
         size=[ppp.cd_circle_ll.h_size, ppp.cd_circle_ll.h_size],
         merge_pos=[x_pos+3, y_pos]
     )
@@ -395,7 +397,7 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
         comp=comp, font_size=0.025, bg_rgba=[0.0, 0.0, 0.0, 1.0],
         fg_rgba=[0.5, 0.5, 0.5, 1.0], height=0.035, base_pos=[x_pos+8, y_pos])
     border_dctl = dcl.add_dctl_comp(
-        comp=comp, dctl_path="TY_DCTL/draw_border.dctl", base_pos=[x_pos+10, y_pos]
+        comp=comp, dctl_path="TY_DCTL/draw_countdown_border.dctl", base_pos=[x_pos+10, y_pos]
     )
 
     dcl.connect_merge_tool(
@@ -524,9 +526,9 @@ def create_countdown_animation_comp(
         "Font": font_family,
         "Style": font_weight,
         "Size": ppp.cd_font_size.h_size,
-        "Red1": 0.5,
-        "Green1": 0.5,
-        "Blue1": 0.5,
+        "Red1": ppp.gray80,
+        "Green1": ppp.gray80,
+        "Blue1": ppp.gray80,
     }
     dcl.is_font_available(family=font_family, font_weight=font_weight)
     dcl.set_multiple_tool_input(
@@ -621,14 +623,14 @@ def create_frame_marker_core(comp, ppp, idx, fps, tool_pos=(1, 3)):
     for color in color_list:
         base_idx = (idx + fps//2) % fps
         bg[color] = comp.BezierSpline()
-        bg[color][base_idx] = 0.5
+        bg[color][base_idx] = ppp.gray80
         bg[color][base_idx + 1] = 0.0
         bg[color][base_idx - 1] = 0.0
 
         inv_bg[color] = comp.BezierSpline()
         inv_idx = (fps - 0) - idx
         inv_base_idx = (inv_idx + fps//2) % fps
-        inv_bg[color][inv_base_idx] = 0.5
+        inv_bg[color][inv_base_idx] = ppp.gray80
         inv_bg[color][inv_base_idx + 1] = 0.0
         inv_bg[color][inv_base_idx - 1] = 0.0
 
@@ -656,13 +658,13 @@ def create_frame_marker(comp, ppp, fps, tool_pos=(1, 3)):
         )
 
     outline_rect = dcl.add_comp_tool(
-        comp=comp, name="RectangleMask", pos=(x_pos+2*(fps+2), y_pos-2)
+        comp=comp, name="RectangleMask", pos=(x_pos+2*(fps+1), y_pos-2)
     )
     outline_bg = dcl.add_comp_tool(
-        comp=comp, name="Background", pos=((x_pos+2*(fps+2), y_pos-1))
+        comp=comp, name="Background", pos=((x_pos+2*(fps+1), y_pos-1))
     )
     outline_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=((x_pos+2*(fps+2), y_pos-0))
+        comp=comp, name="Merge", pos=((x_pos+2*(fps+1), y_pos-0))
     )
     outline_bg_input = {
         "TopLeftRed": 0.0,
@@ -687,6 +689,17 @@ def create_frame_marker(comp, ppp, fps, tool_pos=(1, 3)):
     )
 
     return merge_list[0][0], outline_merge
+
+
+def create_ramp(comp, tool_pos=(1, 3)):
+    x_pos = tool_pos[0]
+    y_pos = tool_pos[1]
+
+    ramp_dctl = dcl.add_dctl_comp(
+        comp=comp, dctl_path="TY_DCTL/draw_countdown_ramp.dctl", base_pos=[x_pos, y_pos]
+    )
+
+    return ramp_dctl
 
 
 def create_countdown_comp():
@@ -727,12 +740,14 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
         )
     frame_marker_input_merge, frame_marker_output_merge\
         = create_frame_marker(comp=comp, ppp=ppp, fps=fps, tool_pos=(15, 11))
+    ramp_dctl = create_ramp(comp, tool_pos=(15+2*(fps+1), 15))
 
     # connect
     media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
-    dcl.set_tool_position(comp=comp, tool=media_out, pos=(76, 11))
+    dcl.set_tool_position(comp=comp, tool=media_out, pos=(15+2*(fps+1)+2, 15))
 
-    dcl.connect_mediaout(source=frame_marker_output_merge, mediaout=media_out)
+    dcl.connect_mediaout(source=ramp_dctl, mediaout=media_out)
+    dcl.connect_dctl(dctl=ramp_dctl, source=frame_marker_output_merge)
     dcl.connect_merge_tool(
         merge_tool=cntdown_anime_input_merge,
         bg_tool=still_bg_tool, fg_tool=None

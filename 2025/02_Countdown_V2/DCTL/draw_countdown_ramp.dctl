@@ -1,0 +1,29 @@
+#include "drawing.h"
+
+#define NUM_OF_LINES   (12)
+
+// main function
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+    float3 rgb = to_float3(p_R, p_G, p_B);
+    float3 out_rgb = rgb;
+    float cv = 0;
+
+    int h_center = p_Width / 2;
+    int ramp_width = _round(p_Height * 1.5);
+    int ramp_height = _round(p_Height * 0.1);
+    int st_pos_h_10bit = h_center - ramp_width / 2;
+    int ed_pos_h_10bit = st_pos_h_10bit + ramp_width;
+    int st_pos_v_10bit = _round(0.05 * p_Height);
+    int ed_pos_v_10bit = st_pos_v_10bit + ramp_height;
+
+    if( (p_X >= st_pos_h_10bit) && (p_X < ed_pos_h_10bit) ) {
+        if( (p_Y >= st_pos_v_10bit) && (p_Y < ed_pos_v_10bit) ){
+            cv = _powf((p_X - st_pos_h_10bit) / float(ramp_width), 2.4);
+            out_rgb.x = cv;
+            out_rgb.y = cv;
+            out_rgb.z = cv;
+        }
+    }
+    return out_rgb;
+}
