@@ -89,9 +89,9 @@ def debug_fusion():
     dump_tool_main_input_value(tool=media_out)
     dump_tool_input_value(tool=media_out)
 
-    rec6 = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Rectangle6")
+    rec56 = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Rectangle56")
     rec_mask = dcl.add_comp_tool(comp=fusion_comp, name="RectangleMask", pos=(20, 20))
-    compare_tool_input_value(aa=rec6, bb=rec_mask)
+    compare_tool_input_value(aa=rec56, bb=rec_mask)
 
     # is_font_available(family="Noto Sans Mono", font_weight="Black")
 
@@ -142,24 +142,31 @@ class FusionParams:
         resolution : list or tuple
             [width, height] or (width, height)
         """
-        self.cd_circle_ll = HeightBasedSize(0.61)
-        self.cd_circle_mm = HeightBasedSize(0.54)
-        self.cd_circle_ss = HeightBasedSize(0.525)
+        self.cd_circle_ll = HeightBasedSize(0.58)
+        self.cd_circle_mm = HeightBasedSize(0.515)
+        self.cd_circle_ss = HeightBasedSize(0.495)
         self.cd_line_width = HeightBasedSize(0.005)
         self.cd_line_color = [0.0, 0.0, 0.0, 1.0]
         self.cd_font_size = HeightBasedSize(0.85)
         self.cross_line_width = self.cd_line_width
         self.cross_line_color = [235/255, 235/255, 235/255, 1.0]
         self.info_area_height = HeightBasedSize(0.1)
-        frame_marker_h_st_pos = 0.08
+        frame_marker_h_st_pos = 0.06
         frame_marker_h_ed_pos = 1 - frame_marker_h_st_pos
         self.frame_marker_h_pos\
             = self.linspace(frame_marker_h_st_pos, frame_marker_h_ed_pos, fps + 1)
-        self.frame_marker_v_pos = 0.14
-        self.frame_marker_v_pos2 = 0.09
+        self.frame_marker_v_pos = 0.1295 + 0.005
+        self.frame_marker_v_pos2 = 0.0998 + 0.005
         self.frame_marker_width\
             = (frame_marker_h_ed_pos - frame_marker_h_st_pos) / (fps * 2 + 1)
-        self.frame_marker_height = 0.04
+        self.frame_marker_height = 0.03
+        self.frame_marker_outline_width\
+            = (frame_marker_h_ed_pos - frame_marker_h_st_pos) * (fps * 2 + 4) / (fps * 2 + 1)
+        self.frame_marker_outline_height = self.frame_marker_height * 3
+        self.frame_marker_outline_v_pos\
+            = (self.frame_marker_v_pos - self.frame_marker_v_pos2) / 2.0\
+            + self.frame_marker_v_pos2
+        self.frame_marker_outline_line_width = 0.004
 
     def linspace(self, start, stop, num):
         if num == 1:
@@ -648,7 +655,38 @@ def create_frame_marker(comp, ppp, fps, tool_pos=(1, 3)):
             bg_tool=merge_list[idx-1][1], fg_tool=None
         )
 
-    return merge_list[0][0], merge_list[-1][1]
+    outline_rect = dcl.add_comp_tool(
+        comp=comp, name="RectangleMask", pos=(x_pos+2*(fps+2), y_pos-2)
+    )
+    outline_bg = dcl.add_comp_tool(
+        comp=comp, name="Background", pos=((x_pos+2*(fps+2), y_pos-1))
+    )
+    outline_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=((x_pos+2*(fps+2), y_pos-0))
+    )
+    outline_bg_input = {
+        "TopLeftRed": 0.0,
+        "TopLeftGreen": 0.0,
+        "TopLeftBlue": 0.0,
+        "TopLeftAlpha": 1.0,
+        "EffectMask": outline_rect,
+    }
+    dcl.set_multiple_tool_input(tool=outline_bg, input_dict=outline_bg_input)
+
+    outline_rect_input = {
+        "BorderWidth": ppp.frame_marker_outline_line_width,
+        "Solid": 0.0,
+        "Center": {1: 0.5, 2: ppp.frame_marker_outline_v_pos, 3: 0.0},
+        "Width": ppp.frame_marker_outline_width,
+        "Height": ppp.frame_marker_outline_height,
+    }
+    dcl.set_multiple_tool_input(tool=outline_rect, input_dict=outline_rect_input)
+    dcl.connect_merge_tool(
+        merge_tool=outline_merge,
+        bg_tool=merge_list[-1][1], fg_tool=outline_bg
+    )
+
+    return merge_list[0][0], outline_merge
 
 
 def create_countdown_comp():
@@ -662,7 +700,7 @@ def create_countdown_comp():
             )
         create_countdown_comp_each_sec(
             comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
-        # break
+        break
 
 
 def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
@@ -685,14 +723,14 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     )
     cntdown_anime_input_merge, cntdown_anime_output_merge\
         = create_countdown_animation_comp(
-            comp=comp, ppp=ppp, count_str=count_str, fps=fps, tool_pos=(13, 3)
+            comp=comp, ppp=ppp, count_str=count_str, fps=fps, tool_pos=(13, 7)
         )
     frame_marker_input_merge, frame_marker_output_merge\
-        = create_frame_marker(comp=comp, ppp=ppp, fps=fps, tool_pos=(15, 3))
+        = create_frame_marker(comp=comp, ppp=ppp, fps=fps, tool_pos=(15, 11))
 
     # connect
     media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
-    dcl.set_tool_position(comp=comp, tool=media_out, pos=(80, 3))
+    dcl.set_tool_position(comp=comp, tool=media_out, pos=(76, 11))
 
     dcl.connect_mediaout(source=frame_marker_output_merge, mediaout=media_out)
     dcl.connect_merge_tool(
