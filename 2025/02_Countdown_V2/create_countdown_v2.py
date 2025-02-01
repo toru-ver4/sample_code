@@ -89,8 +89,8 @@ def debug_fusion():
     dump_tool_main_input_value(tool=media_out)
     dump_tool_input_value(tool=media_out)
 
-    rec56 = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Rectangle56")
-    rec_mask = dcl.add_comp_tool(comp=fusion_comp, name="RectangleMask", pos=(20, 20))
+    rec56 = dcl.get_comp_tool_by_name(comp=fusion_comp, name="DCTL2")
+    rec_mask = dcl.add_comp_tool(comp=fusion_comp, name="ofx.com.blackmagicdesign.resolvefx.DCTL", pos=(20, 20))
     compare_tool_input_value(aa=rec56, bb=rec_mask)
 
     # is_font_available(family="Noto Sans Mono", font_weight="Black")
@@ -696,7 +696,8 @@ def create_ramp(comp, tool_pos=(1, 3)):
     y_pos = tool_pos[1]
 
     ramp_dctl = dcl.add_dctl_comp(
-        comp=comp, dctl_path="TY_DCTL/draw_countdown_ramp.dctl", base_pos=[x_pos, y_pos]
+        comp=comp, dctl_path="TY_DCTL/draw_countdown_ramp.dctl", base_pos=[x_pos, y_pos],
+        option={"valueBoxParam0": 0.9}
     )
 
     return ramp_dctl

@@ -1041,7 +1041,7 @@ def _get_font_list():
     return font_list.GetFontList()
 
 
-def add_dctl_comp(comp, dctl_path, base_pos=[0, 0]):
+def add_dctl_comp(comp, dctl_path, option=None, base_pos=[0, 0]):
     x_pos = base_pos[0]
     y_pos = base_pos[1]
 
@@ -1064,6 +1064,9 @@ def add_dctl_comp(comp, dctl_path, base_pos=[0, 0]):
         "DCTLs": dctl_os_path,
         "reloadDCTLButton": 1.0,
     }
+    if option is not None:
+        dctl_input.update(option)
+
     set_multiple_tool_input(tool=dctl, input_dict=dctl_input)
 
     return dctl
