@@ -89,8 +89,8 @@ def debug_fusion():
     dump_tool_main_input_value(tool=media_out)
     dump_tool_input_value(tool=media_out)
 
-    rec56 = dcl.get_comp_tool_by_name(comp=fusion_comp, name="DCTL2")
-    rec_mask = dcl.add_comp_tool(comp=fusion_comp, name="ofx.com.blackmagicdesign.resolvefx.DCTL", pos=(20, 20))
+    rec56 = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Text4")
+    rec_mask = dcl.add_comp_tool(comp=fusion_comp, name="TextPlus", pos=(20, 20))
     compare_tool_input_value(aa=rec56, bb=rec_mask)
 
     # is_font_available(family="Noto Sans Mono", font_weight="Black")
@@ -697,7 +697,9 @@ def create_ramp(comp, tool_pos=(1, 3)):
 
     ramp_dctl = dcl.add_dctl_comp(
         comp=comp, dctl_path="TY_DCTL/draw_countdown_ramp.dctl", base_pos=[x_pos, y_pos],
-        option={"valueBoxParam0": 0.9}
+        option={
+            "sliderFloatParam0": 0.9,
+            "sliderIntParam0": 4}
     )
 
     return ramp_dctl
@@ -922,7 +924,7 @@ def create_countdown_video_each_spec(
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_resolve()
-    # debug_fusion()
+    debug_fusion()
 
     from itertools import product
     resolution_list = [

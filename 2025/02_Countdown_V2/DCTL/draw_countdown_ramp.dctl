@@ -1,7 +1,10 @@
 #include "drawing.h"
+#include "ampas_color_lib.h"
 
-// DEFINE_UI_PARAMS(ramp_width_float, Ramp Width, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.000001)
-DEFINE_UI_PARAMS(ramp_width_float, Ramp Width, DCTLUI_VALUE_BOX, 0.5)
+#define NUM_OF_LUMINANCE   (7)
+
+DEFINE_UI_PARAMS(ramp_width_float, Ramp Width, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.000001)
+DEFINE_UI_PARAMS(line_width, Border Width, DCTLUI_SLIDER_INT, 4, 0, 32, 1)
 
 // main function
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
@@ -10,31 +13,57 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
     float3 ramp_rgb = rgb;
     float3 out_rgb = rgb;
     float3 fill_color = {0.0, 0.0, 0.0};
-    float cv = 0;
+    float linear = 0;
+    float ramp_height_ratio = 0.1;
+    float ramp_st_v_pos_ratio = 0.05;
+    float luminance_list[NUM_OF_LUMINANCE] = {
+        100 / 100.0,
+        300 / 100.0,
+        600 / 100.0,
+        1000 / 100.0,
+        2000 / 100.0,
+        4000 / 100.0,
+        10000 / 100.0,
+    };
 
     int h_center = p_Width / 2;
     int ramp_width = _round(p_Width * ramp_width_float);
-    int ramp_height = _round(p_Height * 0.1);
+    int ramp_height = _round(p_Height * ramp_height_ratio);
+    int ruler_height = _round(ramp_height * 1.2);
     int st_pos_h_10bit = h_center - ramp_width / 2;
     int ed_pos_h_10bit = st_pos_h_10bit + ramp_width;
-    int st_pos_v_10bit = _round(0.05 * p_Height);
+    int st_pos_v_10bit = _round(ramp_st_v_pos_ratio * p_Height);
     int ed_pos_v_10bit = st_pos_v_10bit + ramp_height;
-    int line_width = 4;
+    int ramp_center_v = (ed_pos_v_10bit - st_pos_v_10bit) / 2 + st_pos_v_10bit;
+    int ruler_st_pos_v = ramp_center_v - ruler_height / 2;
+    int ruler_ed_pos_v = ramp_center_v + ruler_height / 2;
 
     int2 inner_st_pos = {st_pos_h_10bit, st_pos_v_10bit};
     int2 inner_ed_pos = {ed_pos_h_10bit, ed_pos_v_10bit};
 
+    for(int ii=0; ii<NUM_OF_LUMINANCE; ii++){
+        float cv = Linear_2_ST2084(luminance_list[ii]);
+        int ruler_pos_h = _round(cv * ramp_width) + st_pos_h_10bit;
+        int2 ruler_st_pos = {ruler_pos_h - 1, ruler_st_pos_v};
+        int2 ruler_ed_pos = {ruler_pos_h + 1, ruler_ed_pos_v};
+        out_rgb = draw_rectangle(
+            p_Width, p_Height, p_X, p_Y,
+            out_rgb,
+            ruler_st_pos, ruler_ed_pos, fill_color
+        );
+    }
+
     if( (p_X >= st_pos_h_10bit) && (p_X < ed_pos_h_10bit) ) {
         if( (p_Y >= st_pos_v_10bit) && (p_Y < ed_pos_v_10bit) ){
-            cv = _powf((p_X - st_pos_h_10bit) / float(ramp_width), 2.4);
-            ramp_rgb.x = cv;
-            ramp_rgb.y = cv;
-            ramp_rgb.z = cv;
+            linear = ST2084_2_Linear((p_X - st_pos_h_10bit) / float(ramp_width - 1));
+            out_rgb.x = linear;
+            out_rgb.y = linear;
+            out_rgb.z = linear;
         }
     }
     out_rgb = draw_rectangle_outline(
         p_Width, p_Height, p_X, p_Y,
-        ramp_rgb,
+        out_rgb,
         inner_st_pos, inner_ed_pos, line_width, fill_color
     );
 
