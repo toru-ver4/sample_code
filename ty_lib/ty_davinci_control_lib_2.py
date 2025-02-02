@@ -1048,7 +1048,7 @@ def add_dctl_comp(comp, dctl_path, option=None, base_pos=[0, 0]):
     dctl = add_comp_tool(
         comp=comp,
         name="ofx.com.blackmagicdesign.resolvefx.DCTL",
-        pos=(x_pos+1, y_pos-0)
+        pos=(x_pos+0, y_pos-0)
     )
 
     # check if the dctl file exist

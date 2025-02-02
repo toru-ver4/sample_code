@@ -1,11 +1,19 @@
 # -*- coding: utf-8 -*-
 
+# import standard libraries
 import sys
 import os
 from pathlib import Path
+from pprint import pprint
+import copy
+
+# import third-party libraries
+import numpy as np
+
+# import my libraries
 import ty_davinci_constants as drc
 import ty_davinci_control_lib_2 as dcl
-from pprint import pprint
+import transfer_functions as tf
 
 
 #####################
@@ -91,10 +99,10 @@ def debug_fusion():
 
     rec56 = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Text4")
     rec_mask = dcl.add_comp_tool(comp=fusion_comp, name="TextPlus", pos=(20, 20))
-    compare_tool_input_value(aa=rec56, bb=rec_mask)
+    # compare_tool_input_value(aa=rec56, bb=rec_mask)
 
     # is_font_available(family="Noto Sans Mono", font_weight="Black")
-
+    
     # dump_tool_list(comp=fusion_comp)
 
     import sys
@@ -153,7 +161,8 @@ class FusionParams:
         self.gray80 = 0.7
         self.cross_line_color = [self.gray90, self.gray90, self.gray90, 1.0]
         self.info_area_height = HeightBasedSize(0.1)
-        frame_marker_h_st_pos = 0.06
+
+        frame_marker_h_st_pos = 0.07
         frame_marker_h_ed_pos = 1 - frame_marker_h_st_pos
         self.frame_marker_h_pos\
             = self.linspace(frame_marker_h_st_pos, frame_marker_h_ed_pos, fps + 1)
@@ -162,13 +171,26 @@ class FusionParams:
         self.frame_marker_width\
             = (frame_marker_h_ed_pos - frame_marker_h_st_pos) / (fps * 2 + 1)
         self.frame_marker_height = 0.03
-        self.frame_marker_outline_width\
-            = self.frame_marker_width * ((fps + 2) * 2 + 1)
+        self.frame_marker_outline_width = self.calc_frame_marker_outline_width(
+            h_pos_list=self.frame_marker_h_pos,
+            each_marker_width=self.frame_marker_width
+        )
         self.frame_marker_outline_height = self.frame_marker_height * 3
         self.frame_marker_outline_v_pos\
             = (self.frame_marker_v_pos - self.frame_marker_v_pos2) / 2.0\
             + self.frame_marker_v_pos2
-        self.frame_marker_outline_line_width = 0.004
+        self.frame_marker_outline_line_width = 0.003
+
+        self.ramp_height = 0.09
+        self.lumi_text_v_pos = 0.829
+        self.cv_text_v_pos = 0.968
+
+    def calc_frame_marker_outline_width(self, h_pos_list, each_marker_width):
+        margin = h_pos_list[1] - h_pos_list[0]
+        st_pos = h_pos_list[0] - margin + (each_marker_width / 2)
+        ed_pos = h_pos_list[-1] + margin - (each_marker_width / 2)
+
+        return ed_pos - st_pos
 
     def linspace(self, start, stop, num):
         if num == 1:
@@ -397,7 +419,7 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
         comp=comp, font_size=0.025, bg_rgba=[0.0, 0.0, 0.0, 1.0],
         fg_rgba=[0.5, 0.5, 0.5, 1.0], height=0.035, base_pos=[x_pos+8, y_pos])
     border_dctl = dcl.add_dctl_comp(
-        comp=comp, dctl_path="TY_DCTL/draw_countdown_border.dctl", base_pos=[x_pos+10, y_pos]
+        comp=comp, dctl_path="TY_DCTL/draw_countdown_border.dctl", base_pos=[x_pos+11, y_pos]
     )
 
     dcl.connect_merge_tool(
@@ -691,18 +713,99 @@ def create_frame_marker(comp, ppp, fps, tool_pos=(1, 3)):
     return merge_list[0][0], outline_merge
 
 
-def create_ramp(comp, tool_pos=(1, 3)):
+def add_ramp_info_text(
+        comp, ppp, t_idx, luminance, st2084_cv, st_pos, ramp_width, x_pos, y_pos
+    ):
+    x_pos_offset = 1 + t_idx * 2
+    lumi_text = dcl.add_comp_tool(
+        comp=comp, name="TextPlus", pos=(x_pos+x_pos_offset, y_pos-1)
+    )
+    lumi_text_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+x_pos_offset, y_pos-0)
+    )
+    cv_text = dcl.add_comp_tool(
+        comp=comp, name="TextPlus", pos=(x_pos+x_pos_offset+1, y_pos-1)
+    )
+    cv_text_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+x_pos_offset+1, y_pos-0)
+    )
+    text_input_base = {
+        "Center": {1: 0.949, 2: 0.975, 3: 0.0},
+        "StyledText": "dummy",
+        "Font": "Noto Sans",
+        "Style": "Regular",
+        "Size": 0.022,
+        "Red1": ppp.gray80,
+        "Green1": ppp.gray80,
+        "Blue1": ppp.gray80,
+        "Enabled2": 1,
+        "Thickness2": 0.12,
+        "Red2": 0.0,
+        "Green2": 0.0,
+        "Blue2": 0.0,
+    }
+    text_center_pos = st_pos + ramp_width * st2084_cv
+    lumi_text_input = copy.deepcopy(text_input_base)
+    lumi_text_input["Center"] = {1: text_center_pos, 2: ppp.lumi_text_v_pos, 3: 0.0}
+    lumi_text_input["StyledText"] = f"{luminance}"
+    dcl.set_multiple_tool_input(tool=lumi_text, input_dict=lumi_text_input)
+    cv_text_input = copy.deepcopy(text_input_base)
+    cv_text_input["Center"] = {1: text_center_pos, 2: ppp.cv_text_v_pos, 3: 0.0}
+    cv_text_input["StyledText"] = str(int(round(1023 * st2084_cv)))
+    dcl.set_multiple_tool_input(tool=cv_text, input_dict=cv_text_input)
+    dcl.connect_merge_tool(
+        merge_tool=cv_text_merge,
+        bg_tool=lumi_text_merge, fg_tool=cv_text
+    )
+    dcl.connect_merge_tool(
+        merge_tool=lumi_text_merge,
+        bg_tool=None, fg_tool=lumi_text
+    )
+    st_merge = lumi_text_merge
+    ed_merge = cv_text_merge
+
+    return st_merge, ed_merge
+
+
+def create_ramp(comp, ppp: FusionParams, tool_pos=(1, 3)):
     x_pos = tool_pos[0]
     y_pos = tool_pos[1]
 
     ramp_dctl = dcl.add_dctl_comp(
         comp=comp, dctl_path="TY_DCTL/draw_countdown_ramp.dctl", base_pos=[x_pos, y_pos],
         option={
-            "sliderFloatParam0": 0.9,
-            "sliderIntParam0": 4}
+            "sliderFloatParam0": ppp.frame_marker_outline_width,
+            "sliderFloatParam1": ppp.ramp_height * 0.93,
+            "sliderIntParam0": 4
+        }
     )
 
-    return ramp_dctl
+    # info text
+    st_merge = None
+    ed_merge = None
+    prev_ed_merge = None
+    luminance_list = [0, 0.1, 1, 10, 100, 1000, 10000]
+    st2084_cv_list = tf.oetf_from_luminance(np.array(luminance_list), tf.ST2084)
+    ramp_width = ppp.frame_marker_outline_width
+    st_pos = (1 - ppp.frame_marker_outline_width) / 2.0
+    for t_idx, st2084_cv in enumerate(st2084_cv_list):
+        st_merge_temp, ed_merge_temp = add_ramp_info_text(
+            comp=comp, ppp=ppp, t_idx=t_idx,
+            luminance=luminance_list[t_idx], st2084_cv=st2084_cv,
+            st_pos=st_pos, ramp_width=ramp_width, x_pos=x_pos, y_pos=y_pos
+        )
+        ed_merge = ed_merge_temp
+        if st_merge is None:
+            st_merge = st_merge_temp
+
+        if prev_ed_merge is not None:
+            dcl.connect_merge_tool(
+                merge_tool=st_merge_temp, bg_tool=prev_ed_merge, fg_tool=None
+            )
+        prev_ed_merge = ed_merge_temp
+    dcl.connect_merge_tool(merge_tool=st_merge, bg_tool=ramp_dctl, fg_tool=None)
+
+    return ramp_dctl, ed_merge
 
 
 def create_countdown_comp():
@@ -734,23 +837,44 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     """
     comp.Lock()
 
+    # basic background
+    x_pos = 1
+    y_pos = 3
     still_bg_tool = create_still_background_comp(
-        comp=comp, ppp=ppp, tool_pos=(1, 3)
+        comp=comp, ppp=ppp, tool_pos=(x_pos, y_pos)
     )
+
+    # countdown animation
+    x_pos = 13
+    y_pos += 4
     cntdown_anime_input_merge, cntdown_anime_output_merge\
         = create_countdown_animation_comp(
-            comp=comp, ppp=ppp, count_str=count_str, fps=fps, tool_pos=(13, 7)
+            comp=comp, ppp=ppp, count_str=count_str, fps=fps,
+            tool_pos=(x_pos, y_pos)
         )
+    
+    # frame marker
+    x_pos = 15
+    y_pos += 4
     frame_marker_input_merge, frame_marker_output_merge\
-        = create_frame_marker(comp=comp, ppp=ppp, fps=fps, tool_pos=(15, 11))
-    ramp_dctl = create_ramp(comp, tool_pos=(15+2*(fps+1), 15))
+        = create_frame_marker(
+            comp=comp, ppp=ppp, fps=fps, tool_pos=(x_pos, y_pos)
+        )
+    
+    # ramp pattern
+    x_pos += 2*(fps+1) + 1
+    y_pos += 2
+    st_ramp_dctl, ed_ramp_dctl\
+        = create_ramp(comp, ppp=ppp, tool_pos=(x_pos, y_pos))
+
+    media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
+    x_pos += 2 * 7 + 1
+    y_pos += 0
+    dcl.set_tool_position(comp=comp, tool=media_out, pos=(x_pos, y_pos))
 
     # connect
-    media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
-    dcl.set_tool_position(comp=comp, tool=media_out, pos=(15+2*(fps+1)+2, 15))
-
-    dcl.connect_mediaout(source=ramp_dctl, mediaout=media_out)
-    dcl.connect_dctl(dctl=ramp_dctl, source=frame_marker_output_merge)
+    dcl.connect_mediaout(source=ed_ramp_dctl, mediaout=media_out)
+    dcl.connect_dctl(dctl=st_ramp_dctl, source=frame_marker_output_merge)
     dcl.connect_merge_tool(
         merge_tool=cntdown_anime_input_merge,
         bg_tool=still_bg_tool, fg_tool=None
@@ -805,9 +929,6 @@ def create_countdown_video_each_spec(
     dcl.close_current_project()
     dcl.delete_project(project_name=project_name)
     project = dcl.create_project(project_name=project_name)
-    # save_project()
-    # close_current_project()
-    # project = load_project(project_name=project_name)
 
     # set up the project settings
     dcl.setup_project_settings(params=project_settings_params)
@@ -835,31 +956,6 @@ def create_countdown_video_each_spec(
     ]
     print(file_path_list)
 
-    # clip_hdr = add_file_to_media_pool(file_path=file_path_list[0])
-    # clip_sdr = add_file_to_media_pool(
-    #     file_path=file_path_list[1], start_frame=24, end_frame=71
-    # )
-    # clip_seq = add_seq_file_to_media_pool(
-    #     file_path=file_path_list[2], start_idx=120, end_idx=179
-    # )
-    # clip_audio = add_file_to_media_pool(file_path=file_path_list[3])
-
-    # # add clips to the timeline
-    # append_clip_to_timeline(clip=clip_hdr)
-    # append_clip_to_timeline(clip=clip_sdr)
-    # append_clip_to_timeline(
-    #     clip=clip_seq, media_type=1, pos_timecode="01:00:06:00")
-    # tl_item_audio = append_clip_to_timeline(
-    #     clip=clip_audio,
-    #     media_type=2,
-    #     start_frame=24,
-    #     end_frame=24+60,
-    #     pos_timecode="01:00:06:00"
-    # )
-    # solid_color = insert_generator_into_timeline(
-    #     timeline=timeline, generator_name=drc.GENERATOR_SOLID_COLOR
-    # )
-
     create_countdown_comp()
     dcl.set_current_timecode(timecode="01:00:00:00")
 
@@ -868,14 +964,14 @@ def create_countdown_video_each_spec(
     # ###################
     # # encode
     # ###################
-    # preset_path = str(
-    #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
-    # )
-    # # preset_path = None
+    # # preset_path = str(
+    # #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
+    # # )
+    # preset_path = None
 
     # format_extension = drc.OUT_FILE_EXTENSTION_MOV
     # # codec = drc.CODEC_H265_NVIDIA
-    # codec = drc.CODEC_APPLE_PRORES_422_HQ
+    # codec = drc.CODEC_APPLE_PRORES_4444
     # # format_extension = drc.OUT_FILE_EXTENSTION_EXR
     # # codec = drc.CODEC_EXR_RGB_HALF
     # basename = f"{width}x{height}_{framerate}_{gamma}_{gamut}"
@@ -884,47 +980,23 @@ def create_countdown_video_each_spec(
     # custom_name = str(Path(output_fname).resolve().name)
 
     # render_settings = {
-    #     # "SelectAllFrames": True,
-    #     # "MarkIn": _timecode_to_frame_index("01:00:00:00"),
-    #     # "MarkOut": _timecode_to_frame_index("01:00:08:12"),
     #     "TargetDir": target_dir,
     #     "CustomName": custom_name,
-    #     # "UniqueFilenameStyle": drc.UNIQUE_FILENAME_STYLE_SUFFIX,
-    #     # "ExportVideo": True,
-    #     # "ExportAudio": True,
-    #     # "FormatWidth": 3840,
-    #     # "FormatHeight": 2160,
-    #     # "FrameRate": 23.976,
-    #     # "PixelAspectRatio": "square",
-    #     # "VideoQuality": drc.VIDEO_QUALITY_AUTOMATIC,
-    #     # "AudioCodec": drc.AUDIO_CODEC_LINEAR_PCM,
-    #     # "AudioBitDepth": drc.AUDIO_BIT_DEPTH_24,
-    #     # "AudioSampleRate": drc.AUDIO_SAMPLE_RATE_480,
-    #     # "ColorSpaceTag": "Same as Project",
-    #     # "GammaTag": "Same as Project",
-    #     # "ExportAlpha": False,
-    #     # "EncodingProfile": "Main10",
-    #     # "MultiPassEncode": True,
-    #     # "AlphaMode": 
-    #     # "NetworkOptimization": True,
-    #     # "ClipStartFrame": 0,
-    #     # "TimelineStartTimecode": "01:00:00:00",
-    #     # "ReplaceExistingFilesInPlace": True,
     # }
 
     # if preset_path is not None:
-    #     import_render_preset(preset_path=preset_path)
+    #     dcl.import_render_preset(preset_path=preset_path)
     # else:
-    #     set_render_format_codec_settings(format=format_extension, codec=codec)
+    #     dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
 
-    # set_render_settings(setting_dict=render_settings)
-    # run_rendering_and_wait_until_finish(project=project)
+    # dcl.set_render_settings(setting_dict=render_settings)
+    # # run_rendering_and_wait_until_finish(project=project)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_resolve()
-    debug_fusion()
+    # debug_fusion()
 
     from itertools import product
     resolution_list = [
@@ -946,8 +1018,8 @@ if __name__ == '__main__':
         # drc.PRJ_COLOR_SPACE_REC2020
     ]
     gamma_list = [
-        drc.PRJ_GAMMA_STR_GAMMA24,
-        # drc.PRJ_GAMMA_STR_ST2084
+        # drc.PRJ_GAMMA_STR_GAMMA24,
+        drc.PRJ_GAMMA_STR_ST2084
     ]
 
     for resolution, framerate, gamut, gamma in product(
