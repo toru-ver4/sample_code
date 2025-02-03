@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from pprint import pprint
 import copy
+from collections import OrderedDict
 
 # import third-party libraries
 import numpy as np
@@ -93,13 +94,16 @@ def debug_fusion():
     print(merge_tool)
     dump_tool_input_value(tool=merge_tool)
     dump_tool_main_input_value(tool=merge_tool)
-    text = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Text2")
-    dump_tool_main_input_value(tool=media_out)
-    dump_tool_input_value(tool=media_out)
+    transform = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Transform1")
+    dump_tool_main_input_value(tool=transform)
+    # dump_tool_input_value(tool=media_out)
 
     rec56 = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Text4")
     rec_mask = dcl.add_comp_tool(comp=fusion_comp, name="TextPlus", pos=(20, 20))
     # compare_tool_input_value(aa=rec56, bb=rec_mask)
+
+    transform = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Transform1")
+    pprint(transform.UserControls)
 
     # is_font_available(family="Noto Sans Mono", font_weight="Black")
     
@@ -184,6 +188,15 @@ class FusionParams:
         self.ramp_height = 0.09
         self.lumi_text_v_pos = 0.829
         self.cv_text_v_pos = 0.968
+
+        self.motion_blur_mask_size = HeightBasedSize(0.075)
+        self.motion_blur_bg_color = (192/255.0) ** 2.4
+        self.motion_blur_text_color = (64/255.0) ** 2.4
+        self.motion_blur_color_mask = [
+            [1.0, 1.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]
+        ]
+        self.motion_blur_text = ["@", "@", "@", "@"]
+        self.motion_blur_text_size = 0.06
 
     def calc_frame_marker_outline_width(self, h_pos_list, each_marker_width):
         margin = h_pos_list[1] - h_pos_list[0]
@@ -808,6 +821,172 @@ def create_ramp(comp, ppp: FusionParams, tool_pos=(1, 3)):
     return ramp_dctl, ed_merge
 
 
+def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(1, 3)):
+    x_pos = tool_pos[0]
+    y_pos = tool_pos[1]
+
+    output_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+0, y_pos-0)
+    )
+    transform = dcl.add_comp_tool(
+        comp=comp, name="Transform", pos=(x_pos+0, y_pos-1)
+    )
+    text_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+0, y_pos-2)
+    )
+    text = dcl.add_comp_tool(
+        comp=comp, name="TextPlus", pos=(x_pos+1, y_pos-2)
+    )
+    bg = dcl.add_comp_tool(
+        comp=comp, name="Background", pos=(x_pos+0, y_pos-3)
+    )
+    mask = dcl.add_comp_tool(
+        comp=comp, name="RectangleMask", pos=(x_pos+0, y_pos-4)
+    )
+
+    # input
+    mask_input = {
+        "Width": ppp.motion_blur_mask_size.h_size,
+        "Height": ppp.motion_blur_mask_size.v_size,
+    }
+
+    bg_input = {
+        "TopLeftRed": ppp.motion_blur_bg_color * ppp.motion_blur_color_mask[c_idx][0],
+        "TopLeftGreen": ppp.motion_blur_bg_color * ppp.motion_blur_color_mask[c_idx][1],
+        "TopLeftBlue": ppp.motion_blur_bg_color * ppp.motion_blur_color_mask[c_idx][2],
+        "TopLeftAlpha": 1.0,
+        "EffectMask": mask,
+    }
+
+    text_input = {
+        "Center": {1: 0.5, 2: 0.5, 3: 0.0},
+        "StyledText": ppp.motion_blur_text[c_idx],
+        "Font": "Noto Sans",
+        "Style": "Bold",
+        "Size": ppp.motion_blur_text_size,
+        "Red1": ppp.motion_blur_text_color,
+        "Green1": ppp.motion_blur_text_color,
+        "Blue1": ppp.motion_blur_text_color,
+    }
+
+    user_control = OrderedDict()
+    user_control["CircleC"] = {
+        "ICS_ControlPage": "Controls",
+        "INPID_PreviewControl": "PointControl",
+        "LINKID_DataType": "Point",
+        "LINKS_Name": "CircleCenter",
+    }
+    user_control["CircleCenter"] = {
+        "INPID_PreviewControl": "PointControl",
+        "LINKID_DataType": "Point",
+        "ICS_ControlPage": "Controls",
+        "INPID_InputControl": "OffsetControl",
+        "LINKS_Name": "CircleCenter",
+    }
+    user_control["CircleAngle"] = {
+        "ICS_ControlPage": "Controls",
+        "INPID_PreviewControl": "AngleControl",
+        "INP_SplineType": "Default",
+        "LINKID_DataType": "Number",
+        "INPID_InputControl": "SliderControl",
+        "INP_Integer": False,
+        "INP_MaxScale": 360,
+        "LINKS_Name": "CircleAngle",
+    }
+    user_control["Radius"] = {
+        "INP_Integer": False,
+        "INPID_InputControl": "SliderControl",
+        "INP_SplineType": "Default",
+        "PC_ControlID": 0,
+        "INPID_PreviewControl": "EllipseControl",
+        "LINKID_DataType": "Number",
+        "PC_ControlGroup": 3,
+        "ICS_ControlPage": "Controls",
+        "LINKS_Name": "Radius",
+    }
+
+    user_control = OrderedDict([
+        # ('__flags', 3145984),
+        ('CircleC', {
+            'ICS_ControlPage': 'Controls',
+            'INPID_PreviewControl': 'PointControl',
+            'LINKID_DataType': 'Point',
+            'LINKS_Name': 'CircleCenter',
+            # '__flags': 1048832,
+        }),
+        ('CircleCenter', {
+            'ICS_ControlPage': 'Controls',
+            'INPID_InputControl': 'OffsetControl',
+            'INPID_PreviewControl': 'PointControl',
+            'LINKID_DataType': 'Point',
+            'LINKS_Name': 'CircleCenter',
+            # '__flags': 1048832,
+        }),
+        ('CircleAngle', {
+            'ICS_ControlPage': 'Controls',
+            'INPID_InputControl': 'SliderControl',
+            'INPID_PreviewControl': 'AngleControl',
+            'INP_Integer': False,
+            'INP_MaxScale': 360.0,
+            'INP_SplineType': 'Default',
+            'LINKID_DataType': 'Number',
+            'LINKS_Name': 'CircleAngle',
+            # '__flags': 1048832,
+        }),
+        ('Radius', {
+            'ICS_ControlPage': 'Controls',
+            'INPID_InputControl': 'SliderControl',
+            'INPID_PreviewControl': 'EllipseControl',
+            'INP_Integer': False,
+            'INP_SplineType': 'Default',
+            'LINKID_DataType': 'Number',
+            'LINKS_Name': 'Radius',
+            'PC_ControlGroup': 3.0,
+            'PC_ControlID': 0.0,
+            # '__flags': 1048832,
+        }),
+    ])
+
+    # print("="*80)
+    # pprint(transform.UserControls.items())
+    # print("="*80)
+    transform.UserControls = user_control
+
+    # set input
+    dcl.set_multiple_tool_input(tool=mask, input_dict=mask_input)
+    dcl.set_multiple_tool_input(tool=bg, input_dict=bg_input)
+    dcl.set_multiple_tool_input(tool=text, input_dict=text_input)
+
+    # connect
+    dcl.connect_merge_tool(merge_tool=output_merge, bg_tool=None, fg_tool=transform)
+    dcl.connect_merge_tool(merge_tool=text_merge, bg_tool=bg, fg_tool=text)
+    dcl.connect_tool(text_merge, transform)
+
+    return output_merge
+
+
+def create_motion_blur_animation(comp, ppp: FusionParams, tool_pos=(1, 3)):
+    x_pos = tool_pos[0]
+    y_pos = tool_pos[1]
+
+    input_merge = None
+    output_merge = None
+    pre_merge = None
+
+    for c_idx in range(4):
+        merge = create_motion_blur_animation_core(
+            comp=comp, c_idx=c_idx, ppp=ppp, tool_pos=(x_pos + 2 * c_idx, y_pos)
+        )
+        if input_merge is None:
+            input_merge = merge
+        if c_idx > 0:
+            dcl.connect_merge_tool(merge_tool=merge, bg_tool=pre_merge, fg_tool=None)
+        pre_merge = merge
+        output_merge = merge
+
+    return input_merge, output_merge
+
+
 def create_countdown_comp():
     fps = int(dcl.get_project_setting(name="timelineFrameRate"))
     ppp = FusionParams(fps=fps)
@@ -867,13 +1046,20 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     st_ramp_dctl, ed_ramp_dctl\
         = create_ramp(comp, ppp=ppp, tool_pos=(x_pos, y_pos))
 
-    media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
+    # motion blur animation
     x_pos += 2 * 7 + 1
+    y_pos += 0
+    st_motion_blur, ed_motion_blur\
+        = create_motion_blur_animation(comp=comp, ppp=ppp, tool_pos=(x_pos, y_pos))
+
+    media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
+    x_pos += 3 * 4
     y_pos += 0
     dcl.set_tool_position(comp=comp, tool=media_out, pos=(x_pos, y_pos))
 
     # connect
-    dcl.connect_mediaout(source=ed_ramp_dctl, mediaout=media_out)
+    dcl.connect_mediaout(source=ed_motion_blur, mediaout=media_out)
+    dcl.connect_merge_tool(merge_tool=st_motion_blur, bg_tool=ed_ramp_dctl, fg_tool=None)
     dcl.connect_dctl(dctl=st_ramp_dctl, source=frame_marker_output_merge)
     dcl.connect_merge_tool(
         merge_tool=cntdown_anime_input_merge,
@@ -913,7 +1099,7 @@ def create_countdown_video_each_spec(
         "separateColorSpaceAndGamma": "1",
         "colorSpaceInput": f"{gamut}",
         "colorSpaceInputGamma": f"{gamma}",
-        "colorSpaceTimeline": drc.PRJ_COLOR_SPACE_P3D65,
+        "colorSpaceTimeline": drc.PRJ_COLOR_SPACE_REC709,
         "colorSpaceTimelineGamma": drc.PRJ_GAMMA_STR_ST2084,
         "colorSpaceOutput": f"{gamut}",
         "colorSpaceOutputGamma": f"{gamma}",
@@ -1018,8 +1204,8 @@ if __name__ == '__main__':
         # drc.PRJ_COLOR_SPACE_REC2020
     ]
     gamma_list = [
-        # drc.PRJ_GAMMA_STR_GAMMA24,
-        drc.PRJ_GAMMA_STR_ST2084
+        drc.PRJ_GAMMA_STR_GAMMA24,
+        # drc.PRJ_GAMMA_STR_ST2084
     ]
 
     for resolution, framerate, gamut, gamma in product(
