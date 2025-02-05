@@ -905,52 +905,19 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         "LINKS_Name": "Radius",
     }
 
-    user_control = OrderedDict([
-        # ('__flags', 3145984),
-        ('CircleC', {
-            'ICS_ControlPage': 'Controls',
-            'INPID_PreviewControl': 'PointControl',
-            'LINKID_DataType': 'Point',
-            'LINKS_Name': 'CircleCenter',
-            # '__flags': 1048832,
-        }),
-        ('CircleCenter', {
-            'ICS_ControlPage': 'Controls',
-            'INPID_InputControl': 'OffsetControl',
-            'INPID_PreviewControl': 'PointControl',
-            'LINKID_DataType': 'Point',
-            'LINKS_Name': 'CircleCenter',
-            # '__flags': 1048832,
-        }),
-        ('CircleAngle', {
-            'ICS_ControlPage': 'Controls',
-            'INPID_InputControl': 'SliderControl',
-            'INPID_PreviewControl': 'AngleControl',
-            'INP_Integer': False,
-            'INP_MaxScale': 360.0,
-            'INP_SplineType': 'Default',
-            'LINKID_DataType': 'Number',
-            'LINKS_Name': 'CircleAngle',
-            # '__flags': 1048832,
-        }),
-        ('Radius', {
-            'ICS_ControlPage': 'Controls',
-            'INPID_InputControl': 'SliderControl',
-            'INPID_PreviewControl': 'EllipseControl',
-            'INP_Integer': False,
-            'INP_SplineType': 'Default',
-            'LINKID_DataType': 'Number',
-            'LINKS_Name': 'Radius',
-            'PC_ControlGroup': 3.0,
-            'PC_ControlID': 0.0,
-            # '__flags': 1048832,
-        }),
-    ])
+    ctrl = {}
+    ctrl['RENAME2'] = {
+        'ICD_Width': 0.5,
+        'INP_Default': 0,
+        'ICS_ControlPage': "File",
+        'BTNCS_Execute': " tool:SetAttrs({TOOLS_Name = 'w_' .. tool.Input:GetConnectedOutput():GetTool():GetAttrs()['TOOLS_Name']}) ",
+        'INPID_InputControl': "ButtonControl",
+        'LINKID_DataType': "Number",
+        'LINKS_Name': "Rename2"
+    }
 
-    # print("="*80)
-    # pprint(transform.UserControls.items())
-    # print("="*80)
     transform.UserControls = user_control
+    transform = transform.Refresh()
 
     # set input
     dcl.set_multiple_tool_input(tool=mask, input_dict=mask_input)
