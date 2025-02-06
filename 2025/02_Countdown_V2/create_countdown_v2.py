@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 from pprint import pprint
 import copy
-from collections import OrderedDict
 
 # import third-party libraries
 import numpy as np
@@ -869,52 +868,42 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         "Blue1": ppp.motion_blur_text_color,
     }
 
-    user_control = OrderedDict()
-    user_control["CircleC"] = {
-        "ICS_ControlPage": "Controls",
-        "INPID_PreviewControl": "PointControl",
-        "LINKID_DataType": "Point",
-        "LINKS_Name": "CircleCenter",
-    }
-    user_control["CircleCenter"] = {
-        "INPID_PreviewControl": "PointControl",
-        "LINKID_DataType": "Point",
-        "ICS_ControlPage": "Controls",
-        "INPID_InputControl": "OffsetControl",
-        "LINKS_Name": "CircleCenter",
-    }
-    user_control["CircleAngle"] = {
-        "ICS_ControlPage": "Controls",
-        "INPID_PreviewControl": "AngleControl",
-        "INP_SplineType": "Default",
-        "LINKID_DataType": "Number",
-        "INPID_InputControl": "SliderControl",
-        "INP_Integer": False,
-        "INP_MaxScale": 360,
-        "LINKS_Name": "CircleAngle",
-    }
-    user_control["Radius"] = {
-        "INP_Integer": False,
-        "INPID_InputControl": "SliderControl",
-        "INP_SplineType": "Default",
-        "PC_ControlID": 0,
-        "INPID_PreviewControl": "EllipseControl",
-        "LINKID_DataType": "Number",
-        "PC_ControlGroup": 3,
-        "ICS_ControlPage": "Controls",
-        "LINKS_Name": "Radius",
-    }
-
-    ctrl = {}
-    ctrl['RENAME2'] = {
-        'ICD_Width': 0.5,
-        'INP_Default': 0,
-        'ICS_ControlPage': "File",
-        'BTNCS_Execute': " tool:SetAttrs({TOOLS_Name = 'w_' .. tool.Input:GetConnectedOutput():GetTool():GetAttrs()['TOOLS_Name']}) ",
-        'INPID_InputControl': "ButtonControl",
-        'LINKID_DataType': "Number",
-        'LINKS_Name': "Rename2"
-    }
+    user_control = dict(
+        CircleC=dict(
+            ICS_ControlPage="Controls",
+            INPID_PreviewControl="PointControl",
+            LINKID_DataType="Point",
+            LINKS_Name="CircleCenter",
+        ),
+        CircleCenter=dict(
+            INPID_PreviewControl="PointControl",
+            LINKID_DataType="Point",
+            ICS_ControlPage="Controls",
+            INPID_InputControl="OffsetControl",
+            LINKS_Name="CircleCenter",
+        ),
+        CircleAngle=dict(
+            ICS_ControlPage="Controls",
+            INPID_PreviewControl="AngleControl",
+            INP_SplineType="Default",
+            LINKID_DataType="Number",
+            INPID_InputControl="SliderControl",
+            INP_Integer=False,
+            INP_MaxScale=360,
+            LINKS_Name="CircleAngle",
+        ),
+        Radius=dict(
+            INP_Integer=False,
+            INPID_InputControl="SliderControl",
+            INP_SplineType="Default",
+            PC_ControlID=0,
+            INPID_PreviewControl="EllipseControl",
+            LINKID_DataType="Number",
+            PC_ControlGroup=3,
+            ICS_ControlPage="Controls",
+            LINKS_Name="Radius",
+        ),
+    )
 
     transform.UserControls = user_control
     transform = transform.Refresh()
