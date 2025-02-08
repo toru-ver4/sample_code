@@ -519,17 +519,29 @@ def create_countdown_animation_comp(
     x_pos = tool_pos[0]
     y_pos = tool_pos[1]
 
+    base_bg = dcl.create_transparent_background(
+        comp=comp, pos=(x_pos+0, y_pos-1)
+    )
     radial_wipe = dcl.add_comp_tool(
-        comp=comp, name="EllipseMask", pos=(x_pos+0, y_pos-3)
+        comp=comp, name="EllipseMask", pos=(x_pos+1, y_pos-4)
     )
     wipe_circle_mask = dcl.add_comp_tool(
-        comp=comp, name="EllipseMask", pos=(x_pos+0, y_pos-2)
+        comp=comp, name="EllipseMask", pos=(x_pos+1, y_pos-3)
     )
     wipe_circle_fg = dcl.add_comp_tool(
-        comp=comp, name="Background", pos=(x_pos+0, y_pos-1)
+        comp=comp, name="Background", pos=(x_pos+1, y_pos-2)
     )
     wipe_circle_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=(x_pos+0, y_pos-0)
+        comp=comp, name="Merge", pos=(x_pos+1, y_pos-1)
+    )
+    countdown_text = dcl.add_comp_tool(
+        comp=comp, name="TextPlus", pos=(x_pos+2, y_pos-2)
+    )
+    countdown_text_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+2, y_pos-1)
+    )
+    output_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+2, y_pos-0)
     )
 
     # wipe animation settings
@@ -571,14 +583,6 @@ def create_countdown_animation_comp(
         tool=wipe_circle_fg, input_dict=wipe_circle_fg_input
     )
 
-    # text
-    countdown_text = dcl.add_comp_tool(
-        comp=comp, name="TextPlus", pos=(x_pos+1, y_pos-1)
-    )
-    countdown_text_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=(x_pos+1, y_pos-0)
-    )
-
     font_family = "Noto Sans Mono"
     font_weight = "Black"
     countdown_text_input = {
@@ -596,19 +600,19 @@ def create_countdown_animation_comp(
 
     # connect
     dcl.connect_merge_tool(
+        merge_tool=wipe_circle_merge,
+        bg_tool=base_bg, fg_tool=wipe_circle_fg
+    )
+    dcl.connect_merge_tool(
         merge_tool=countdown_text_merge,
         bg_tool=wipe_circle_merge, fg_tool=countdown_text
     )
     dcl.connect_merge_tool(
-        merge_tool=wipe_circle_merge,
-        bg_tool=None, fg_tool=wipe_circle_fg
+        merge_tool=output_merge,
+        bg_tool=None, fg_tool=countdown_text_merge
     )
 
-    # output
-    input_merge = wipe_circle_merge
-    output_merge = countdown_text_merge
-
-    return input_merge, output_merge
+    return output_merge
 
 
 def create_frame_marker_core(comp, ppp, idx, fps, tool_pos=(1, 3)):
@@ -1029,15 +1033,20 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
 
     # countdown animation
     x_pos = 13
-    y_pos += 4
-    cntdown_anime_input_merge, cntdown_anime_output_merge\
+    y_pos += 0
+    # cntdown_anime_input_merge, cntdown_anime_output_merge\
+    #     = create_countdown_animation_comp(
+    #         comp=comp, ppp=ppp, count_str=count_str, fps=fps,
+    #         tool_pos=(x_pos, y_pos)
+    #     )
+    cntdown_anime_output_merge\
         = create_countdown_animation_comp(
             comp=comp, ppp=ppp, count_str=count_str, fps=fps,
             tool_pos=(x_pos, y_pos)
         )
     
     # frame marker
-    x_pos = 15
+    x_pos += 4
     y_pos += 4
     frame_marker_input_merge, frame_marker_output_merge\
         = create_frame_marker(
@@ -1066,7 +1075,7 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     dcl.connect_merge_tool(merge_tool=st_motion_blur, bg_tool=ed_ramp_dctl, fg_tool=None)
     dcl.connect_dctl(dctl=st_ramp_dctl, source=frame_marker_output_merge)
     dcl.connect_merge_tool(
-        merge_tool=cntdown_anime_input_merge,
+        merge_tool=cntdown_anime_output_merge,
         bg_tool=still_bg_tool, fg_tool=None
     )
     dcl.connect_merge_tool(

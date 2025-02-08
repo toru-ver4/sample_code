@@ -1101,5 +1101,27 @@ def is_font_available(family, font_weight):
     return is_available
 
 
+def create_transparent_background(comp, pos):
+    """
+    Create transparent background node.
+    """
+    x_pos = pos[0]
+    y_pos = pos[1]
+    base_bg = add_comp_tool(
+        comp=comp, name="Background", pos=(x_pos, y_pos)
+    )
+    base_bg_input = {
+        "TopLeftRed": 0.0,
+        "TopLeftGreen": 0.0,
+        "TopLeftBlue": 0.0,
+        "TopLeftAlpha": 0.0,
+    }
+    set_multiple_tool_input(
+        tool=base_bg, input_dict=base_bg_input
+    )
+
+    return base_bg
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
