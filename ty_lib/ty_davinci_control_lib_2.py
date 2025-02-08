@@ -1008,6 +1008,12 @@ def set_tool_input(tool, name, value):
 
 
 def set_multiple_tool_input(tool, input_dict):
+    if "Font" in input_dict and "Style" in input_dict:
+        is_font_available(
+            family=input_dict["Font"],
+            font_weight=input_dict["Style"]
+        )
+
     for name, value in input_dict.items():
         set_tool_input(tool=tool, name=name, value=value)
 
@@ -1086,9 +1092,9 @@ def is_font_available(family, font_weight):
     is_available = family in fonts and font_weight in fonts[family]
 
     if is_available is not True:
-        font_path = str(Path("./fonts").resolve())
-        msg = f'Required font "{family} - {font_weight}" is not found.\n'
-        msg += f'{" "*22}Please install "{family}" font in the {font_path}'
+        font_path = str((Path(__file__).parent / "fonts").resolve())
+        msg = f'\n    Required font "{family} - {font_weight}" is not found.\n'
+        msg += f'    Please install "{family}" font in the {font_path}'
         raise TyResolveModuleError(is_available, msg)
 
     return is_available

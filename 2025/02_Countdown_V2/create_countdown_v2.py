@@ -123,8 +123,6 @@ def debug_fusion():
     bezier_spline.SetKeyFrames(key_frame)
     print(bezier_spline.GetKeyFrames())
 
-    # is_font_available(family="Noto Sans Mono", font_weight="Black")
-    
     # dump_tool_list(comp=fusion_comp)
 
     import sys
@@ -367,7 +365,6 @@ def draw_info_comp(
         "HorizontalLeftCenterRight": -1.0,
         "AdvancedFontControls": 1.0,
     }
-    dcl.is_font_available(family=font_family, font_weight=font_weight)
     dcl.set_multiple_tool_input(tool=info_text, input_dict=info_text_input)
     dcl.connect_merge_tool(
         merge_tool=info_text_merge, bg_tool=rectangle_merge, fg_tool=info_text
@@ -593,7 +590,6 @@ def create_countdown_animation_comp(
         "Green1": ppp.gray80,
         "Blue1": ppp.gray80,
     }
-    dcl.is_font_available(family=font_family, font_weight=font_weight)
     dcl.set_multiple_tool_input(
         tool=countdown_text, input_dict=countdown_text_input
     )
