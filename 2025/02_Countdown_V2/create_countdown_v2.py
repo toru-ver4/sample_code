@@ -416,48 +416,52 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
     y_pos = tool_pos[1]
 
     bg1 = dcl.add_comp_tool(
-        comp=comp, name="Background", pos=(x_pos+0, y_pos+0)
+        comp=comp, name="Background", pos=(x_pos+0, y_pos-1)
     )
     dcl.set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
 
     cross_h_line_merge = draw_line_comp(
         comp=comp, rgba=ppp.cross_line_color, width=1.0, angle=0,
-        height=ppp.cross_line_width.h_size, base_pos=[x_pos+1, y_pos]
+        height=ppp.cross_line_width.h_size, base_pos=[x_pos+1, y_pos-1]
     )
     cross_v_line_merge = draw_line_comp(
         comp=comp, rgba=ppp.cross_line_color, width=1.0, angle=90,
-        height=ppp.cross_line_width.h_size, base_pos=[x_pos+2, y_pos]
+        height=ppp.cross_line_width.h_size, base_pos=[x_pos+2, y_pos-1]
     )
     large_white_circle_merge = create_background_circle(
         comp=comp, bg_rgba=[ppp.gray80, ppp.gray80, ppp.gray80, 1.0],
         size=[ppp.cd_circle_ll.h_size, ppp.cd_circle_ll.h_size],
-        merge_pos=[x_pos+3, y_pos]
+        merge_pos=[x_pos+3, y_pos-1]
     )
     middle_black_circle_merge = create_background_circle(
         comp=comp, bg_rgba=[0.0, 0.0, 0.0, 1.0],
         size=[ppp.cd_circle_mm.h_size, ppp.cd_circle_mm.h_size],
-        merge_pos=[x_pos+4, y_pos]
+        merge_pos=[x_pos+4, y_pos-1]
     )
     small_grey_circle_merge = create_background_circle(
         comp=comp, bg_rgba=[0.18, 0.18, 0.18, 1.0],
         size=[ppp.cd_circle_ss.h_size, ppp.cd_circle_ss.h_size],
-        merge_pos=[x_pos+5, y_pos]
+        merge_pos=[x_pos+5, y_pos-1]
     )
     h_line_merge = draw_line_comp(
         comp=comp, rgba=ppp.cd_line_color, angle=0,
         width=ppp.cd_circle_ll.h_size,
-        height=ppp.cd_line_width.h_size, base_pos=[x_pos+6, y_pos]
+        height=ppp.cd_line_width.h_size, base_pos=[x_pos+6, y_pos-1]
     )
     v_line_merge = draw_line_comp(
         comp=comp, rgba=ppp.cd_line_color, angle=90,
         width=ppp.cd_circle_ll.h_size,
-        height=ppp.cd_line_width.h_size, base_pos=[x_pos+7, y_pos]
+        height=ppp.cd_line_width.h_size, base_pos=[x_pos+7, y_pos-1]
     )
     info_in_merge, info_out_merge = draw_info_comp(
         comp=comp, font_size=0.025, bg_rgba=[0.0, 0.0, 0.0, 1.0],
-        fg_rgba=[0.5, 0.5, 0.5, 1.0], height=0.035, base_pos=[x_pos+8, y_pos])
+        fg_rgba=[0.5, 0.5, 0.5, 1.0], height=0.035, base_pos=[x_pos+8, y_pos-1])
     border_dctl = dcl.add_dctl_comp(
-        comp=comp, dctl_path="TY_DCTL/draw_countdown_border.dctl", base_pos=[x_pos+11, y_pos]
+        comp=comp, dctl_path="TY_DCTL/draw_countdown_border.dctl",
+        base_pos=[x_pos+11, y_pos-1]
+    )
+    output_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+11, y_pos)
     )
 
     dcl.connect_merge_tool(
@@ -493,10 +497,9 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
         bg_tool=v_line_merge, fg_tool=None
     )
     dcl.connect_dctl(dctl=border_dctl, source=info_out_merge)
+    dcl.connect_merge_tool(merge_tool=output_merge, bg_tool=None, fg_tool=border_dctl)
     
-    out_tool = border_dctl
-
-    return out_tool
+    return output_merge
 
 
 def create_countdown_animation_comp(
@@ -519,7 +522,7 @@ def create_countdown_animation_comp(
     x_pos = tool_pos[0]
     y_pos = tool_pos[1]
 
-    base_bg = dcl.create_transparent_background(
+    base_bg = dcl.add_transparent_background(
         comp=comp, pos=(x_pos+0, y_pos-1)
     )
     radial_wipe = dcl.add_comp_tool(
@@ -1024,21 +1027,20 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     """
     comp.Lock()
 
+    x_pos = 0
+    y_pos = 3
+    pseudo_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos))
+
     # basic background
     x_pos = 1
-    y_pos = 3
-    still_bg_tool = create_still_background_comp(
+    y_pos += 0
+    still_background_merge = create_still_background_comp(
         comp=comp, ppp=ppp, tool_pos=(x_pos, y_pos)
     )
 
     # countdown animation
-    x_pos = 13
+    x_pos += 13
     y_pos += 0
-    # cntdown_anime_input_merge, cntdown_anime_output_merge\
-    #     = create_countdown_animation_comp(
-    #         comp=comp, ppp=ppp, count_str=count_str, fps=fps,
-    #         tool_pos=(x_pos, y_pos)
-    #     )
     cntdown_anime_output_merge\
         = create_countdown_animation_comp(
             comp=comp, ppp=ppp, count_str=count_str, fps=fps,
@@ -1071,17 +1073,20 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     dcl.set_tool_position(comp=comp, tool=media_out, pos=(x_pos, y_pos))
 
     # connect
-    dcl.connect_mediaout(source=ed_motion_blur, mediaout=media_out)
-    dcl.connect_merge_tool(merge_tool=st_motion_blur, bg_tool=ed_ramp_dctl, fg_tool=None)
-    dcl.connect_dctl(dctl=st_ramp_dctl, source=frame_marker_output_merge)
+    dcl.connect_merge_tool(
+        merge_tool=still_background_merge, bg_tool=pseudo_bg, fg_tool=None
+    )
     dcl.connect_merge_tool(
         merge_tool=cntdown_anime_output_merge,
-        bg_tool=still_bg_tool, fg_tool=None
+        bg_tool=still_background_merge, fg_tool=None
     )
     dcl.connect_merge_tool(
         merge_tool=frame_marker_input_merge,
         bg_tool=cntdown_anime_output_merge, fg_tool=None
     )
+    dcl.connect_dctl(dctl=st_ramp_dctl, source=frame_marker_output_merge)
+    dcl.connect_merge_tool(merge_tool=st_motion_blur, bg_tool=ed_ramp_dctl, fg_tool=None)
+    dcl.connect_mediaout(source=ed_motion_blur, mediaout=media_out)
 
     comp.Unlock()
 

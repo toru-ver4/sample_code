@@ -1101,7 +1101,7 @@ def is_font_available(family, font_weight):
     return is_available
 
 
-def create_transparent_background(comp, pos):
+def add_transparent_background(comp, pos):
     """
     Create transparent background node.
     """
