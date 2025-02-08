@@ -1196,11 +1196,11 @@ if __name__ == '__main__':
         # "4096x2160",
     ]
     framerate_list = [
-        # 24,
+        24,
         # 25,
         # 30,
         # 50,
-        60
+        # 60
     ]
     gamut_list = [
         drc.PRJ_COLOR_SPACE_REC709,
