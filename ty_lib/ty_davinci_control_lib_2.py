@@ -1094,7 +1094,8 @@ def is_font_available(family, font_weight):
     if is_available is not True:
         font_path = str((Path(__file__).parent / "fonts").resolve())
         msg = f'\n    Required font "{family} - {font_weight}" is not found.\n'
-        msg += f'    Please install "{family}" font in the {font_path}'
+        msg += f'    Please install "{family}" font in the {font_path}\n'
+        msg += '    And reboot DaVinci Resolve to refresh the font list.'
         raise TyResolveModuleError(is_available, msg)
 
     return is_available
