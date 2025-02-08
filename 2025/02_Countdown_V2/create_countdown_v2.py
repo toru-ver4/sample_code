@@ -710,10 +710,13 @@ def create_frame_marker_core(comp, ppp, idx, fps, tool_pos=(1, 3)):
 def create_frame_marker(comp, ppp, fps, tool_pos=(1, 3)):
     x_pos = tool_pos[0]
     y_pos = tool_pos[1]
+
+    base_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos-1))
+
     merge_list = []
     for idx in range(fps+1):
         bg_merge, inv_bg_merge = create_frame_marker_core(
-            comp=comp, ppp=ppp, idx=idx, fps=fps, tool_pos=(x_pos+2*idx, y_pos)
+            comp=comp, ppp=ppp, idx=idx, fps=fps,tool_pos=(x_pos+2*idx+1, y_pos-1)
         )
         merge_list.append([bg_merge, inv_bg_merge])
 
@@ -722,16 +725,23 @@ def create_frame_marker(comp, ppp, fps, tool_pos=(1, 3)):
             merge_tool=merge_list[idx][0],
             bg_tool=merge_list[idx-1][1], fg_tool=None
         )
+    dcl.connect_merge_tool(
+        merge_tool=merge_list[0][0], bg_tool=base_bg, fg_tool=None
+    )
 
     outline_rect = dcl.add_comp_tool(
-        comp=comp, name="RectangleMask", pos=(x_pos+2*(fps+1), y_pos-2)
+        comp=comp, name="RectangleMask", pos=(x_pos+2*(fps+1)+1, y_pos-3)
     )
     outline_bg = dcl.add_comp_tool(
-        comp=comp, name="Background", pos=((x_pos+2*(fps+1), y_pos-1))
+        comp=comp, name="Background", pos=((x_pos+2*(fps+1)+1, y_pos-2))
     )
     outline_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=((x_pos+2*(fps+1), y_pos-0))
+        comp=comp, name="Merge", pos=((x_pos+2*(fps+1)+1, y_pos-1))
     )
+    output_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=((x_pos+2*(fps+1)+1, y_pos-0))
+    )
+
     outline_bg_input = {
         "TopLeftRed": 0.0,
         "TopLeftGreen": 0.0,
@@ -753,8 +763,12 @@ def create_frame_marker(comp, ppp, fps, tool_pos=(1, 3)):
         merge_tool=outline_merge,
         bg_tool=merge_list[-1][1], fg_tool=outline_bg
     )
+    dcl.connect_merge_tool(
+        merge_tool=output_merge,
+        bg_tool=None, fg_tool=outline_merge
+    )
 
-    return merge_list[0][0], outline_merge
+    return output_merge
 
 
 def add_ramp_info_text(
@@ -816,7 +830,7 @@ def create_ramp(comp, ppp: FusionParams, tool_pos=(1, 3)):
     y_pos = tool_pos[1]
 
     ramp_dctl = dcl.add_dctl_comp(
-        comp=comp, dctl_path="TY_DCTL/draw_countdown_ramp.dctl", base_pos=[x_pos, y_pos],
+        comp=comp, dctl_path="TY_DCTL/draw_countdown_ramp.dctl", base_pos=[x_pos, y_pos-1],
         option={
             "sliderFloatParam0": ppp.frame_marker_outline_width,
             "sliderFloatParam1": ppp.ramp_height * 0.93,
@@ -836,7 +850,7 @@ def create_ramp(comp, ppp: FusionParams, tool_pos=(1, 3)):
         st_merge_temp, ed_merge_temp = add_ramp_info_text(
             comp=comp, ppp=ppp, t_idx=t_idx,
             luminance=luminance_list[t_idx], st2084_cv=st2084_cv,
-            st_pos=st_pos, ramp_width=ramp_width, x_pos=x_pos, y_pos=y_pos
+            st_pos=st_pos, ramp_width=ramp_width, x_pos=x_pos, y_pos=y_pos-1
         )
         ed_merge = ed_merge_temp
         if st_merge is None:
@@ -849,7 +863,12 @@ def create_ramp(comp, ppp: FusionParams, tool_pos=(1, 3)):
         prev_ed_merge = ed_merge_temp
     dcl.connect_merge_tool(merge_tool=st_merge, bg_tool=ramp_dctl, fg_tool=None)
 
-    return ramp_dctl, ed_merge
+    output_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+len(luminance_list)*2, y_pos)
+    )
+    dcl.connect_merge_tool(merge_tool=output_merge, bg_tool=None, fg_tool=ed_merge)
+
+    return ramp_dctl, output_merge
 
 
 def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(1, 3)):
@@ -981,21 +1000,27 @@ def create_motion_blur_animation(comp, ppp: FusionParams, tool_pos=(1, 3)):
     y_pos = tool_pos[1]
 
     input_merge = None
-    output_merge = None
     pre_merge = None
+    num_of_blur_obj = 4
 
-    for c_idx in range(4):
+    base_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos-1))
+    output_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+2*(num_of_blur_obj-1)+1, y_pos))
+
+    for c_idx in range(num_of_blur_obj):
         merge = create_motion_blur_animation_core(
-            comp=comp, c_idx=c_idx, ppp=ppp, tool_pos=(x_pos + 2 * c_idx, y_pos)
+            comp=comp, c_idx=c_idx, ppp=ppp, tool_pos=(x_pos+2*c_idx+1, y_pos-1)
         )
         if input_merge is None:
             input_merge = merge
         if c_idx > 0:
             dcl.connect_merge_tool(merge_tool=merge, bg_tool=pre_merge, fg_tool=None)
         pre_merge = merge
-        output_merge = merge
 
-    return input_merge, output_merge
+    dcl.connect_merge_tool(merge_tool=input_merge, bg_tool=base_bg, fg_tool=None)
+    dcl.connect_merge_tool(merge_tool=output_merge, bg_tool=None, fg_tool=pre_merge)
+
+    return output_merge
 
 
 def create_countdown_comp():
@@ -1049,22 +1074,22 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     
     # frame marker
     x_pos += 4
-    y_pos += 4
-    frame_marker_input_merge, frame_marker_output_merge\
+    y_pos += 0
+    frame_marker_output_merge\
         = create_frame_marker(
             comp=comp, ppp=ppp, fps=fps, tool_pos=(x_pos, y_pos)
         )
     
     # ramp pattern
-    x_pos += 2*(fps+1) + 1
-    y_pos += 2
-    st_ramp_dctl, ed_ramp_dctl\
+    x_pos += 2*(fps+1) + 3
+    y_pos += 0
+    ramp_dctl, ramp_output_merge\
         = create_ramp(comp, ppp=ppp, tool_pos=(x_pos, y_pos))
 
     # motion blur animation
-    x_pos += 2 * 7 + 1
+    x_pos += 2 * 7 + 2
     y_pos += 0
-    st_motion_blur, ed_motion_blur\
+    motion_blur_output_merge\
         = create_motion_blur_animation(comp=comp, ppp=ppp, tool_pos=(x_pos, y_pos))
 
     media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
@@ -1081,12 +1106,17 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
         bg_tool=still_background_merge, fg_tool=None
     )
     dcl.connect_merge_tool(
-        merge_tool=frame_marker_input_merge,
+        merge_tool=frame_marker_output_merge,
         bg_tool=cntdown_anime_output_merge, fg_tool=None
     )
-    dcl.connect_dctl(dctl=st_ramp_dctl, source=frame_marker_output_merge)
-    dcl.connect_merge_tool(merge_tool=st_motion_blur, bg_tool=ed_ramp_dctl, fg_tool=None)
-    dcl.connect_mediaout(source=ed_motion_blur, mediaout=media_out)
+    dcl.connect_dctl(dctl=ramp_dctl, source=frame_marker_output_merge)
+    dcl.connect_merge_tool(
+        merge_tool=ramp_output_merge, bg_tool=frame_marker_output_merge, fg_tool=None
+    )
+    dcl.connect_merge_tool(
+        merge_tool=motion_blur_output_merge, bg_tool=ramp_output_merge, fg_tool=None
+    )
+    dcl.connect_mediaout(source=motion_blur_output_merge, mediaout=media_out)
 
     comp.Unlock()
 
