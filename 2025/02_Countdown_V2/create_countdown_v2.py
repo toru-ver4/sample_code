@@ -102,7 +102,26 @@ def debug_fusion():
     # compare_tool_input_value(aa=rec56, bb=rec_mask)
 
     transform = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Transform1")
-    pprint(transform.UserControls)
+    circle_angle_splineout = transform["CircleAngle"].GetConnectedOutput()
+    if circle_angle_splineout:
+        spline = circle_angle_splineout.GetTool()
+        splinedata = spline.GetKeyFrames()
+        print(f"splinedata type = {type(splinedata)}")
+        print(f"splinedata = {splinedata}")
+
+    print(type(transform["CircleAngle"]))
+    print(dir(transform["CircleAngle"]))
+
+    bezier_spline = fusion_comp.BezierSpline()
+    print(bezier_spline)
+    print(dir(bezier_spline))
+
+    key_frame = {
+        -1.0: {1: 0.0, 'RH': {1: 15.8166666666667, 2: 0.0}},
+        25.0: {1: 360.0, 'LH': {1: -14.3, 2: 0.0}}
+    }
+    bezier_spline.SetKeyFrames(key_frame)
+    print(bezier_spline.GetKeyFrames())
 
     # is_font_available(family="Noto Sans Mono", font_weight="Black")
     
@@ -153,6 +172,8 @@ class FusionParams:
         resolution : list or tuple
             [width, height] or (width, height)
         """
+        self.fps = fps
+        self.fps_int = int(round(fps))
         self.cd_circle_ll = HeightBasedSize(0.58)
         self.cd_circle_mm = HeightBasedSize(0.515)
         self.cd_circle_ss = HeightBasedSize(0.495)
@@ -196,6 +217,14 @@ class FusionParams:
         ]
         self.motion_blur_text = ["@", "@", "@", "@"]
         self.motion_blur_text_size = 0.06
+        circle_center_x = 0.15
+        circle_center_y = 0.34
+        self.motion_blue_circle_center_list = [
+            { 1: 1 - circle_center_x, 2: 1 - circle_center_y, 3: 0.0 },
+            { 1: circle_center_x, 2: 1 - circle_center_y, 3: 0.0 },
+            { 1: circle_center_x, 2: circle_center_y, 3: 0.0 },
+            { 1: 1 - circle_center_x, 2: circle_center_y, 3: 0.0 },
+        ]
 
     def calc_frame_marker_outline_width(self, h_pos_list, each_marker_width):
         margin = h_pos_list[1] - h_pos_list[0]
@@ -868,6 +897,11 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         "Blue1": ppp.motion_blur_text_color,
     }
 
+    transform_input = {
+        "CircleCenter": ppp.motion_blue_circle_center_list[c_idx],
+        "Radius": 0.11
+    }
+
     user_control = dict(
         CircleC=dict(
             ICS_ControlPage="Controls",
@@ -908,10 +942,28 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
     transform.UserControls = user_control
     transform = transform.Refresh()
 
+    expression = (
+        "Point("
+        "Radius * comp:GetPrefs(\"Comp.FrameFormat.Height\") / "
+        "comp:GetPrefs(\"Comp.FrameFormat.Width\") * sin(CircleAngle/180*pi) + "
+        "CircleCenter.X, "
+        "Radius * cos(CircleAngle/180*pi) + CircleCenter.Y)"
+    )
+    transform["Center"].SetExpression(expression)
+
     # set input
     dcl.set_multiple_tool_input(tool=mask, input_dict=mask_input)
     dcl.set_multiple_tool_input(tool=bg, input_dict=bg_input)
     dcl.set_multiple_tool_input(tool=text, input_dict=text_input)
+    dcl.set_multiple_tool_input(tool=transform, input_dict=transform_input)
+
+    bezier_spline = comp.BezierSpline()
+    key_frame = {
+        -1: {1: 0.0, 'RH': {1: ppp.fps/2.0, 2: 0.0}},
+        ppp.fps_int+1: {1: 360.0, 'LH': {1: -ppp.fps/2, 2: 0.0}}
+    }
+    bezier_spline.SetKeyFrames(key_frame)
+    transform["CircleAngle"] = bezier_spline
 
     # connect
     dcl.connect_merge_tool(merge_tool=output_merge, bg_tool=None, fg_tool=transform)
@@ -1084,7 +1136,7 @@ def create_countdown_video_each_spec(
     ####################################################
     # Temporarily commented out because it is slow...
     ####################################################
-    # set_timeline_settings(timeline=timeline, params=project_settings_params)
+    dcl.set_timeline_settings(timeline=timeline, params=project_settings_params)
 
     # add files to the media storage
     relative_file_list = [
@@ -1148,11 +1200,11 @@ if __name__ == '__main__':
         # "4096x2160",
     ]
     framerate_list = [
-        24,
+        # 24,
         # 25,
         # 30,
         # 50,
-        # 60
+        60
     ]
     gamut_list = [
         drc.PRJ_COLOR_SPACE_REC709,
