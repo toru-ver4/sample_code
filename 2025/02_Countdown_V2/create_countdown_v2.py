@@ -87,21 +87,21 @@ def debug_fusion():
         if timeline_item.GetName() == target_track_name:
             break
 
-    fusion_comp = timeline_item.GetFusionCompByIndex(1)
-    merge_tool = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Merge1")
-    media_out = dcl.get_comp_tool_by_name(comp=fusion_comp, name="MediaOut1")
+    comp = timeline_item.GetFusionCompByIndex(1)
+    merge_tool = dcl.get_comp_tool_by_name(comp=comp, name="Merge1")
+    media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
     print(merge_tool)
     dump_tool_input_value(tool=merge_tool)
     dump_tool_main_input_value(tool=merge_tool)
-    transform = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Transform1")
+    transform = dcl.get_comp_tool_by_name(comp=comp, name="Transform1")
     dump_tool_main_input_value(tool=transform)
     # dump_tool_input_value(tool=media_out)
 
-    rec56 = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Text4")
-    rec_mask = dcl.add_comp_tool(comp=fusion_comp, name="TextPlus", pos=(20, 20))
+    rec56 = dcl.get_comp_tool_by_name(comp=comp, name="Text4")
+    rec_mask = dcl.add_comp_tool(comp=comp, name="TextPlus", pos=(20, 20))
     # compare_tool_input_value(aa=rec56, bb=rec_mask)
 
-    transform = dcl.get_comp_tool_by_name(comp=fusion_comp, name="Transform1")
+    transform = dcl.get_comp_tool_by_name(comp=comp, name="Transform1")
     circle_angle_splineout = transform["CircleAngle"].GetConnectedOutput()
     if circle_angle_splineout:
         spline = circle_angle_splineout.GetTool()
@@ -112,18 +112,11 @@ def debug_fusion():
     print(type(transform["CircleAngle"]))
     print(dir(transform["CircleAngle"]))
 
-    bezier_spline = fusion_comp.BezierSpline()
-    print(bezier_spline)
-    print(dir(bezier_spline))
-
-    key_frame = {
-        -1.0: {1: 0.0, 'RH': {1: 15.8166666666667, 2: 0.0}},
-        25.0: {1: 360.0, 'LH': {1: -14.3, 2: 0.0}}
-    }
-    bezier_spline.SetKeyFrames(key_frame)
-    print(bezier_spline.GetKeyFrames())
-
     # dump_tool_list(comp=fusion_comp)
+
+    pipe_router = dcl.add_comp_tool(comp=comp, name="PipeRouter", pos=(1, 5))
+    dump_tool_input_value(tool=pipe_router)
+    dump_tool_main_input_value(tool=pipe_router)
 
     import sys
     sys.exit(0)
@@ -183,6 +176,8 @@ class FusionParams:
         self.gray80 = 0.7
         self.cross_line_color = [self.gray90, self.gray90, self.gray90, 1.0]
         self.info_area_height = HeightBasedSize(0.1)
+        self.info_font_size = 0.021
+        self.info_vanchor = 2.3
 
         frame_marker_h_st_pos = 0.07
         frame_marker_h_ed_pos = 1 - frame_marker_h_st_pos
@@ -208,12 +203,13 @@ class FusionParams:
         self.cv_text_v_pos = 0.968
 
         self.motion_blur_mask_size = HeightBasedSize(0.075)
+        self.motion_blur_mask_corner_radius = 0.6
         self.motion_blur_bg_color = (192/255.0) ** 2.4
         self.motion_blur_text_color = (64/255.0) ** 2.4
         self.motion_blur_color_mask = [
             [1.0, 1.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]
         ]
-        self.motion_blur_text = ["@", "@", "@", "@"]
+        self.motion_blur_text = ["X", "+", "@", "&"]
         self.motion_blur_text_size = 0.06
         circle_center_x = 0.15
         circle_center_y = 0.34
@@ -222,6 +218,12 @@ class FusionParams:
             { 1: circle_center_x, 2: 1 - circle_center_y, 3: 0.0 },
             { 1: circle_center_x, 2: circle_center_y, 3: 0.0 },
             { 1: 1 - circle_center_x, 2: circle_center_y, 3: 0.0 },
+        ]
+        self.motion_blur_angle_st_ed_list = [
+            [-180, 180, 540.0],
+            [540.0, 180.0, -180],
+            [540.0, 180.0, -180],
+            [-180, 180, 540.0],
         ]
 
     def calc_frame_marker_outline_width(self, h_pos_list, each_marker_width):
@@ -309,7 +311,7 @@ def draw_line_comp(comp, rgba, width, height, angle=0, base_pos=[0, 0]):
 
 
 def draw_info_comp(
-        comp, font_size, bg_rgba, fg_rgba, height, base_pos=[0, 0]):
+        comp, font_size, vanchor, bg_rgba, fg_rgba, height, base_pos=[0, 0]):
     x_pos = base_pos[0]
     y_pos = base_pos[1]
 
@@ -361,7 +363,7 @@ def draw_info_comp(
         "Red1": fg_rgba[0],
         "Green1": fg_rgba[1],
         "Blue1": fg_rgba[2],
-        "VerticalTopCenterBottom": 1.75,
+        "VerticalTopCenterBottom": vanchor,
         "HorizontalLeftCenterRight": -1.0,
         "AdvancedFontControls": 1.0,
     }
@@ -386,7 +388,7 @@ def draw_info_comp(
         "Red1": fg_rgba[0],
         "Green1": fg_rgba[1],
         "Blue1": fg_rgba[2],
-        "VerticalTopCenterBottom": 1.75,
+        "VerticalTopCenterBottom": vanchor,
         "HorizontalLeftCenterRight": 1.0,
         "AdvancedFontControls": 1.0,
     }
@@ -454,8 +456,9 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
         height=ppp.cd_line_width.h_size, base_pos=[x_pos+7, y_pos-1]
     )
     info_in_merge, info_out_merge = draw_info_comp(
-        comp=comp, font_size=0.025, bg_rgba=[0.0, 0.0, 0.0, 1.0],
-        fg_rgba=[0.5, 0.5, 0.5, 1.0], height=0.035, base_pos=[x_pos+8, y_pos-1])
+        comp=comp, font_size=ppp.info_font_size, vanchor=ppp.info_vanchor,
+        bg_rgba=[0.0, 0.0, 0.0, 1.0], fg_rgba=[0.5, 0.5, 0.5, 1.0],
+        height=0.035, base_pos=[x_pos+8, y_pos-1])
     border_dctl = dcl.add_dctl_comp(
         comp=comp, dctl_path="TY_DCTL/draw_countdown_border.dctl",
         base_pos=[x_pos+11, y_pos-1]
@@ -898,6 +901,7 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
     mask_input = {
         "Width": ppp.motion_blur_mask_size.h_size,
         "Height": ppp.motion_blur_mask_size.v_size,
+        "CornerRadius": ppp.motion_blur_mask_corner_radius,
     }
 
     bg_input = {
@@ -945,7 +949,7 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
             LINKID_DataType="Number",
             INPID_InputControl="SliderControl",
             INP_Integer=False,
-            INP_MaxScale=360,
+            INP_MaxScale=720,
             LINKS_Name="CircleAngle",
         ),
         Radius=dict(
@@ -969,7 +973,8 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         "Radius * comp:GetPrefs(\"Comp.FrameFormat.Height\") / "
         "comp:GetPrefs(\"Comp.FrameFormat.Width\") * sin(CircleAngle/180*pi) + "
         "CircleCenter.X, "
-        "Radius * cos(CircleAngle/180*pi) + CircleCenter.Y)"
+        "Radius * cos(CircleAngle/180*pi) + CircleCenter.Y"
+        ")"
     )
     transform["Center"].SetExpression(expression)
 
@@ -981,8 +986,21 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
 
     bezier_spline = comp.BezierSpline()
     key_frame = {
-        -1: {1: 0.0, 'RH': {1: ppp.fps/2.0, 2: 0.0}},
-        ppp.fps_int+1: {1: 360.0, 'LH': {1: -ppp.fps/2, 2: 0.0}}
+        -ppp.fps//2: {
+            1: ppp.motion_blur_angle_st_ed_list[c_idx][0],
+            'LH': {1: -ppp.fps/2.0, 2: 0.0},
+            'RH': {1: ppp.fps/2.0, 2: 0.0}
+        },
+        ppp.fps//2: {
+            1: ppp.motion_blur_angle_st_ed_list[c_idx][1],
+            'LH': {1: -ppp.fps/2.0, 2: 0.0},
+            'RH': {1: ppp.fps/2.0, 2: 0.0}
+        },
+        ppp.fps_int + (ppp.fps//2): {
+            1: ppp.motion_blur_angle_st_ed_list[c_idx][2],
+            'LH': {1: -ppp.fps/2.0, 2: 0.0},
+            'RH': {1: ppp.fps/2.0, 2: 0.0}
+        }
     }
     bezier_spline.SetKeyFrames(key_frame)
     transform["CircleAngle"] = bezier_spline
@@ -1176,7 +1194,7 @@ def create_countdown_video_each_spec(
     ####################################################
     # Temporarily commented out because it is slow...
     ####################################################
-    dcl.set_timeline_settings(timeline=timeline, params=project_settings_params)
+    # dcl.set_timeline_settings(timeline=timeline, params=project_settings_params)
 
     # add files to the media storage
     relative_file_list = [
