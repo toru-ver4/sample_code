@@ -1123,5 +1123,45 @@ def add_transparent_background(comp, pos):
     return base_bg
 
 
+def add_line_comp(
+        comp, rgba, width, height, angle=0, pos=[0, 0], connect_fg=True,
+        center={ 1: 0.5, 2: 0.5, 3: 0.0 }):
+    x_pos = pos[0]
+    y_pos = pos[1]
+
+    line = add_comp_tool(comp=comp, name="RectangleMask", pos=[x_pos, y_pos-2])
+    line_fg = add_comp_tool(comp=comp, name="Background", pos=[x_pos, y_pos-1])
+    line_merge = add_comp_tool(comp=comp, name="Merge", pos=[x_pos, y_pos+0])
+
+    line_input = {
+        "Width": width,
+        "Height": height,
+        "Angle": angle,
+        "Center": center,
+    }
+    set_multiple_tool_input(tool=line, input_dict=line_input)
+    line_fg_input = {
+        "TopLeftRed": rgba[0],
+        "TopLeftGreen": rgba[1],
+        "TopLeftBlue": rgba[2],
+        "TopLeftAlpha": rgba[3],
+        "EffectMask": line,
+    }
+    set_multiple_tool_input(tool=line_fg, input_dict=line_fg_input)
+
+    if connect_fg:
+        connect_merge_tool(
+            merge_tool=line_merge,
+            bg_tool=None, fg_tool=line_fg
+        )
+    else:
+        connect_merge_tool(
+            merge_tool=line_merge,
+            bg_tool=line_fg, fg_tool=None
+        )
+
+    return line_merge
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))

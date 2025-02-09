@@ -101,22 +101,21 @@ def debug_fusion():
     rec_mask = dcl.add_comp_tool(comp=comp, name="TextPlus", pos=(20, 20))
     # compare_tool_input_value(aa=rec56, bb=rec_mask)
 
-    transform = dcl.get_comp_tool_by_name(comp=comp, name="Transform1")
-    circle_angle_splineout = transform["CircleAngle"].GetConnectedOutput()
-    if circle_angle_splineout:
-        spline = circle_angle_splineout.GetTool()
-        splinedata = spline.GetKeyFrames()
-        print(f"splinedata type = {type(splinedata)}")
-        print(f"splinedata = {splinedata}")
+    # transform = dcl.get_comp_tool_by_name(comp=comp, name="Transform1")
+    # circle_angle_splineout = transform["CircularAngle"].GetConnectedOutput()
+    # if circle_angle_splineout:
+    #     spline = circle_angle_splineout.GetTool()
+    #     splinedata = spline.GetKeyFrames()
+    #     print(f"splinedata type = {type(splinedata)}")
+    #     print(f"splinedata = {splinedata}")
 
-    print(type(transform["CircleAngle"]))
-    print(dir(transform["CircleAngle"]))
+    # print(type(transform["CircularAngle"]))
+    # print(dir(transform["CircularAngle"]))
 
     # dump_tool_list(comp=fusion_comp)
 
-    pipe_router = dcl.add_comp_tool(comp=comp, name="PipeRouter", pos=(1, 5))
-    dump_tool_input_value(tool=pipe_router)
-    dump_tool_main_input_value(tool=pipe_router)
+    rectangle61 = dcl.get_comp_tool_by_name(comp=comp, name="Rectangle61")
+    dump_tool_input_value(tool=rectangle61)
 
     import sys
     sys.exit(0)
@@ -126,7 +125,7 @@ def debug_fusion():
 # Logic
 #####################
 class HeightBasedSize:
-    def __init__(self, size, hv_same=False, resolution=None):
+    def __init__(self, size, hv_same=False, inverse=False, resolution=None):
         """
         Parameters
         ----------
@@ -139,12 +138,18 @@ class HeightBasedSize:
             width, height = dcl.get_project_resolution()
         else:
             width, height = resolution
-        self._v_size = size
-
-        if hv_same:
+        if not inverse:
+            self._v_size = size
+            if hv_same:
+                self._h_size = size
+            else:    
+                self._h_size = self._v_size * height / width
+        else:
             self._h_size = size
-        else:    
-            self._h_size = (self._v_size * height) / width
+            if hv_same:
+                self._v_size = size
+            else:
+                self._v_size = self._h_size * width / height
 
     @property
     def v_size(self):
@@ -165,17 +170,16 @@ class FusionParams:
         """
         self.fps = fps
         self.fps_int = int(round(fps))
-        self.cd_circle_ll = HeightBasedSize(0.58)
-        self.cd_circle_mm = HeightBasedSize(0.515)
-        self.cd_circle_ss = HeightBasedSize(0.495)
-        self.cd_line_width = HeightBasedSize(0.005)
+        self.cd_circle_ll = HeightBasedSize(0.58).h_size
+        self.cd_circle_mm = HeightBasedSize(0.515).h_size
+        self.cd_circle_ss = HeightBasedSize(0.495).h_size
+        self.cd_line_width = HeightBasedSize(0.005).h_size
         self.cd_line_color = [0.0, 0.0, 0.0, 1.0]
-        self.cd_font_size = HeightBasedSize(0.85)
+        self.cd_font_size = HeightBasedSize(0.85).h_size
         self.cross_line_width = self.cd_line_width
         self.gray90 = 0.8
         self.gray80 = 0.7
         self.cross_line_color = [self.gray90, self.gray90, self.gray90, 1.0]
-        self.info_area_height = HeightBasedSize(0.1)
         self.info_font_size = 0.021
         self.info_vanchor = 2.3
 
@@ -202,6 +206,7 @@ class FusionParams:
         self.lumi_text_v_pos = 0.829
         self.cv_text_v_pos = 0.968
 
+        self.motion_blur_radius = HeightBasedSize(0.2).h_size
         self.motion_blur_mask_size = HeightBasedSize(0.075)
         self.motion_blur_mask_corner_radius = 0.6
         self.motion_blur_bg_color = (192/255.0) ** 2.4
@@ -212,7 +217,7 @@ class FusionParams:
         self.motion_blur_text = ["X", "+", "@", "&"]
         self.motion_blur_text_size = 0.06
         circle_center_x = 0.15
-        circle_center_y = 0.34
+        circle_center_y = 0.33
         self.motion_blue_circle_center_list = [
             { 1: 1 - circle_center_x, 2: 1 - circle_center_y, 3: 0.0 },
             { 1: circle_center_x, 2: 1 - circle_center_y, 3: 0.0 },
@@ -225,6 +230,13 @@ class FusionParams:
             [540.0, 180.0, -180],
             [-180, 180, 540.0],
         ]
+        self.motion_blur_line_length = self.motion_blur_radius * 1.2
+        self.motion_blur_line_width = HeightBasedSize(0.005).h_size
+        self.motion_blur_line_mask_size = HeightBasedSize(
+            self.motion_blur_radius - (self.motion_blur_line_length - self.motion_blur_radius),
+            inverse=True
+        )
+        self.motion_blur_line_color = [0.0, 0.0, 0.0, 1.0]
 
     def calc_frame_marker_outline_width(self, h_pos_list, each_marker_width):
         margin = h_pos_list[1] - h_pos_list[0]
@@ -277,37 +289,6 @@ def create_background_circle(
     dcl.connect_merge_tool(merge_tool=merge, bg_tool=None, fg_tool=circle_bg)
 
     return merge
-
-
-def draw_line_comp(comp, rgba, width, height, angle=0, base_pos=[0, 0]):
-    x_pos = base_pos[0]
-    y_pos = base_pos[1]
-
-    line = dcl.add_comp_tool(comp=comp, name="RectangleMask", pos=[x_pos, y_pos-2])
-    line_fg = dcl.add_comp_tool(comp=comp, name="Background", pos=[x_pos, y_pos-1])
-    line_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=[x_pos, y_pos+0])
-
-    line_input = {
-        "Width": width,
-        "Height": height,
-        "Angle": angle,
-    }
-    dcl.set_multiple_tool_input(tool=line, input_dict=line_input)
-    line_fg_input = {
-        "TopLeftRed": rgba[0],
-        "TopLeftGreen": rgba[1],
-        "TopLeftBlue": rgba[2],
-        "TopLeftAlpha": rgba[3],
-        "EffectMask": line,
-    }
-    dcl.set_multiple_tool_input(tool=line_fg, input_dict=line_fg_input)
-
-    dcl.connect_merge_tool(
-        merge_tool=line_merge,
-        bg_tool=None, fg_tool=line_fg
-    )
-
-    return line_merge
 
 
 def draw_info_comp(
@@ -422,38 +403,42 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
     )
     dcl.set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
 
-    cross_h_line_merge = draw_line_comp(
+    cross_h_line_merge = dcl.add_line_comp(
         comp=comp, rgba=ppp.cross_line_color, width=1.0, angle=0,
-        height=ppp.cross_line_width.h_size, base_pos=[x_pos+1, y_pos-1]
+        height=ppp.cross_line_width, pos=[x_pos+1, y_pos-1],
+        connect_fg=True
     )
-    cross_v_line_merge = draw_line_comp(
+    cross_v_line_merge = dcl.add_line_comp(
         comp=comp, rgba=ppp.cross_line_color, width=1.0, angle=90,
-        height=ppp.cross_line_width.h_size, base_pos=[x_pos+2, y_pos-1]
+        height=ppp.cross_line_width, pos=[x_pos+2, y_pos-1],
+        connect_fg=True
     )
     large_white_circle_merge = create_background_circle(
         comp=comp, bg_rgba=[ppp.gray80, ppp.gray80, ppp.gray80, 1.0],
-        size=[ppp.cd_circle_ll.h_size, ppp.cd_circle_ll.h_size],
+        size=[ppp.cd_circle_ll, ppp.cd_circle_ll],
         merge_pos=[x_pos+3, y_pos-1]
     )
     middle_black_circle_merge = create_background_circle(
         comp=comp, bg_rgba=[0.0, 0.0, 0.0, 1.0],
-        size=[ppp.cd_circle_mm.h_size, ppp.cd_circle_mm.h_size],
+        size=[ppp.cd_circle_mm, ppp.cd_circle_mm],
         merge_pos=[x_pos+4, y_pos-1]
     )
     small_grey_circle_merge = create_background_circle(
         comp=comp, bg_rgba=[0.18, 0.18, 0.18, 1.0],
-        size=[ppp.cd_circle_ss.h_size, ppp.cd_circle_ss.h_size],
+        size=[ppp.cd_circle_ss, ppp.cd_circle_ss],
         merge_pos=[x_pos+5, y_pos-1]
     )
-    h_line_merge = draw_line_comp(
+    h_line_merge = dcl.add_line_comp(
         comp=comp, rgba=ppp.cd_line_color, angle=0,
-        width=ppp.cd_circle_ll.h_size,
-        height=ppp.cd_line_width.h_size, base_pos=[x_pos+6, y_pos-1]
+        width=ppp.cd_circle_ll,
+        height=ppp.cd_line_width, pos=[x_pos+6, y_pos-1],
+        connect_fg=True
     )
-    v_line_merge = draw_line_comp(
+    v_line_merge = dcl.add_line_comp(
         comp=comp, rgba=ppp.cd_line_color, angle=90,
-        width=ppp.cd_circle_ll.h_size,
-        height=ppp.cd_line_width.h_size, base_pos=[x_pos+7, y_pos-1]
+        width=ppp.cd_circle_ll,
+        height=ppp.cd_line_width, pos=[x_pos+7, y_pos-1],
+        connect_fg=True
     )
     info_in_merge, info_out_merge = draw_info_comp(
         comp=comp, font_size=ppp.info_font_size, vanchor=ppp.info_vanchor,
@@ -568,8 +553,8 @@ def create_countdown_animation_comp(
     # mask settings for wipe animation
     wipe_circle_mask_input = {
         "Invert": 1.0,
-        "Width": ppp.cd_circle_mm.h_size,
-        "Height": ppp.cd_circle_mm.h_size,
+        "Width": ppp.cd_circle_mm,
+        "Height": ppp.cd_circle_mm,
         "PaintMode": "Subtract",
         "EffectMask": radial_wipe,
     }
@@ -595,7 +580,7 @@ def create_countdown_animation_comp(
         "StyledText": f"{count_str}",
         "Font": font_family,
         "Style": font_weight,
-        "Size": ppp.cd_font_size.h_size,
+        "Size": ppp.cd_font_size,
         "Red1": ppp.gray80,
         "Green1": ppp.gray80,
         "Blue1": ppp.gray80,
@@ -878,32 +863,84 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
     x_pos = tool_pos[0]
     y_pos = tool_pos[1]
 
+    h_line_merge = dcl.add_line_comp(
+        comp=comp, rgba=ppp.cd_line_color, angle=0,
+        width=ppp.motion_blur_line_length,
+        height=ppp.motion_blur_line_width,
+        center=ppp.motion_blue_circle_center_list[c_idx],
+        pos=[x_pos+0, y_pos-3],
+        connect_fg=False
+    )
+    v_line_merge = dcl.add_line_comp(
+        comp=comp, rgba=ppp.cd_line_color, angle=90,
+        width=ppp.motion_blur_line_length,
+        height=ppp.motion_blur_line_width,
+        center=ppp.motion_blue_circle_center_list[c_idx],
+        pos=[x_pos+1, y_pos-3],
+    )
+    dummy_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos-2))
+    cross_line_mask_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos+1, y_pos-2))
+    cross_line_mask = dcl.add_comp_tool(comp=comp, name="RectangleMask", pos=(x_pos+1, y_pos-1))
+    circle_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos+2, y_pos-2))
+    circle_bg = dcl.add_comp_tool(comp=comp, name="Background", pos=(x_pos+2, y_pos-4))
+    circle_mask = dcl.add_comp_tool(comp=comp, name="EllipseMask", pos=(x_pos+2, y_pos-5))
+
     output_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=(x_pos+0, y_pos-0)
+        comp=comp, name="Merge", pos=(x_pos+3, y_pos-0)
+    )
+    second_last_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos+3, y_pos-2)
     )
     transform = dcl.add_comp_tool(
-        comp=comp, name="Transform", pos=(x_pos+0, y_pos-1)
+        comp=comp, name="Transform", pos=(x_pos+3, y_pos-3)
     )
     text_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=(x_pos+0, y_pos-2)
+        comp=comp, name="Merge", pos=(x_pos+3, y_pos-4)
     )
     text = dcl.add_comp_tool(
-        comp=comp, name="TextPlus", pos=(x_pos+1, y_pos-2)
+        comp=comp, name="TextPlus", pos=(x_pos+4, y_pos-4)
     )
     bg = dcl.add_comp_tool(
-        comp=comp, name="Background", pos=(x_pos+0, y_pos-3)
+        comp=comp, name="Background", pos=(x_pos+3, y_pos-5)
     )
     mask = dcl.add_comp_tool(
-        comp=comp, name="RectangleMask", pos=(x_pos+0, y_pos-4)
+        comp=comp, name="RectangleMask", pos=(x_pos+3, y_pos-6)
     )
 
     # input
+    cross_line_mask_input = {
+        "Filter": "Box",
+        "CapStyle": 0.0,
+        "Invert": 1,
+        "Center": ppp.motion_blue_circle_center_list[c_idx],
+        "Width": ppp.motion_blur_line_mask_size.h_size,
+        "Height": ppp.motion_blur_line_mask_size.v_size,
+    }
+    circle_mask_input = {
+        "Filter": "Box",
+        "CapStyle": 0.0,
+        "Solid": 0,
+        "BorderWidth": ppp.motion_blur_line_width,
+        "Center": ppp.motion_blue_circle_center_list[c_idx],
+        "Width": ppp.motion_blur_radius,
+        "Height": ppp.motion_blur_radius,
+    }
+    circle_bg_input = {
+        "TopLeftRed": ppp.motion_blur_line_color[0],
+        "TopLeftGreen": ppp.motion_blur_line_color[1],
+        "TopLeftBlue": ppp.motion_blur_line_color[2],
+        "TopLeftAlpha": ppp.motion_blur_line_color[3],
+        "EffectMask": circle_mask,
+    }
+    cross_line_mask_merge_input = {
+        "EffectMask": cross_line_mask
+    }
+
     mask_input = {
         "Width": ppp.motion_blur_mask_size.h_size,
         "Height": ppp.motion_blur_mask_size.v_size,
         "CornerRadius": ppp.motion_blur_mask_corner_radius,
     }
-
     bg_input = {
         "TopLeftRed": ppp.motion_blur_bg_color * ppp.motion_blur_color_mask[c_idx][0],
         "TopLeftGreen": ppp.motion_blur_bg_color * ppp.motion_blur_color_mask[c_idx][1],
@@ -911,7 +948,6 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         "TopLeftAlpha": 1.0,
         "EffectMask": mask,
     }
-
     text_input = {
         "Center": {1: 0.5, 2: 0.5, 3: 0.0},
         "StyledText": ppp.motion_blur_text[c_idx],
@@ -922,10 +958,9 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         "Green1": ppp.motion_blur_text_color,
         "Blue1": ppp.motion_blur_text_color,
     }
-
     transform_input = {
         "CircleCenter": ppp.motion_blue_circle_center_list[c_idx],
-        "Radius": 0.11
+        "Radius": ppp.motion_blur_radius
     }
 
     user_control = dict(
@@ -942,7 +977,7 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
             INPID_InputControl="OffsetControl",
             LINKS_Name="CircleCenter",
         ),
-        CircleAngle=dict(
+        CircularAngle=dict(
             ICS_ControlPage="Controls",
             INPID_PreviewControl="AngleControl",
             INP_SplineType="Default",
@@ -950,7 +985,7 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
             INPID_InputControl="SliderControl",
             INP_Integer=False,
             INP_MaxScale=720,
-            LINKS_Name="CircleAngle",
+            LINKS_Name="CircularAngle",
         ),
         Radius=dict(
             INP_Integer=False,
@@ -971,14 +1006,21 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
     expression = (
         "Point("
         "Radius * comp:GetPrefs(\"Comp.FrameFormat.Height\") / "
-        "comp:GetPrefs(\"Comp.FrameFormat.Width\") * sin(CircleAngle/180*pi) + "
+        "comp:GetPrefs(\"Comp.FrameFormat.Width\") * sin(CircularAngle/180*pi) + "
         "CircleCenter.X, "
-        "Radius * cos(CircleAngle/180*pi) + CircleCenter.Y"
+        "Radius * cos(CircularAngle/180*pi) + CircleCenter.Y"
         ")"
     )
     transform["Center"].SetExpression(expression)
 
     # set input
+    dcl.set_multiple_tool_input(tool=cross_line_mask, input_dict=cross_line_mask_input)
+    dcl.set_multiple_tool_input(tool=circle_mask, input_dict=circle_mask_input)
+    dcl.set_multiple_tool_input(tool=circle_bg, input_dict=circle_bg_input)
+    dcl.set_multiple_tool_input(
+        tool=cross_line_mask_merge, input_dict=cross_line_mask_merge_input
+    )
+
     dcl.set_multiple_tool_input(tool=mask, input_dict=mask_input)
     dcl.set_multiple_tool_input(tool=bg, input_dict=bg_input)
     dcl.set_multiple_tool_input(tool=text, input_dict=text_input)
@@ -1003,12 +1045,25 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         }
     }
     bezier_spline.SetKeyFrames(key_frame)
-    transform["CircleAngle"] = bezier_spline
+    transform["CircularAngle"] = bezier_spline
 
     # connect
-    dcl.connect_merge_tool(merge_tool=output_merge, bg_tool=None, fg_tool=transform)
+    dcl.connect_merge_tool(merge_tool=v_line_merge, bg_tool=h_line_merge, fg_tool=None)
+    dcl.connect_merge_tool(
+        merge_tool=cross_line_mask_merge, bg_tool=dummy_bg, fg_tool=v_line_merge
+    )
+    dcl.connect_merge_tool(
+        merge_tool=circle_merge, bg_tool=cross_line_mask_merge, fg_tool=circle_bg
+    )
+
     dcl.connect_merge_tool(merge_tool=text_merge, bg_tool=bg, fg_tool=text)
     dcl.connect_tool(text_merge, transform)
+    dcl.connect_merge_tool(
+        merge_tool=second_last_merge, bg_tool=circle_merge, fg_tool=transform
+    )
+    dcl.connect_merge_tool(
+        merge_tool=output_merge, bg_tool=None, fg_tool=second_last_merge
+    )
 
     return output_merge
 
@@ -1022,12 +1077,13 @@ def create_motion_blur_animation(comp, ppp: FusionParams, tool_pos=(1, 3)):
     num_of_blur_obj = 4
 
     base_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos-1))
+
     output_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=(x_pos+2*(num_of_blur_obj-1)+1, y_pos))
+        comp=comp, name="Merge", pos=(x_pos+5*(num_of_blur_obj)-2, y_pos))
 
     for c_idx in range(num_of_blur_obj):
         merge = create_motion_blur_animation_core(
-            comp=comp, c_idx=c_idx, ppp=ppp, tool_pos=(x_pos+2*c_idx+1, y_pos-1)
+            comp=comp, c_idx=c_idx, ppp=ppp, tool_pos=(x_pos+5*c_idx, y_pos-1)
         )
         if input_merge is None:
             input_merge = merge
@@ -1052,7 +1108,7 @@ def create_countdown_comp():
             )
         create_countdown_comp_each_sec(
             comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
-        break
+        # break
 
 
 def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
@@ -1111,7 +1167,7 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
         = create_motion_blur_animation(comp=comp, ppp=ppp, tool_pos=(x_pos, y_pos))
 
     media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
-    x_pos += 3 * 4
+    x_pos += 10 * 4
     y_pos += 0
     dcl.set_tool_position(comp=comp, tool=media_out, pos=(x_pos, y_pos))
 
