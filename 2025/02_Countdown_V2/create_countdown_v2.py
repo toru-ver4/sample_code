@@ -124,6 +124,32 @@ def debug_fusion():
 #####################
 # Logic
 #####################
+class HdBasedSize:
+    def __init__(self, px, hv_same=False, inverse=False, resolution=None):
+        """
+        Parameters
+        ----------
+        size: float
+            HD based size. unit is pixel (0 to 1080).
+        inverse: bool
+            horizontal vertical inversion.
+        resolution : list or tuple
+            [width, height] or (width, height)
+        """
+        val = px / (1080.0)
+        self.height_based_size = HeightBasedSize(
+            val, hv_same=hv_same, inverse=inverse, resolution=resolution
+        )
+
+    @property
+    def v_size(self):
+        return self.height_based_size.v_size
+
+    @property
+    def h_size(self):
+        return self.height_based_size.h_size
+
+
 class HeightBasedSize:
     def __init__(self, size, hv_same=False, inverse=False, resolution=None):
         """
@@ -161,19 +187,25 @@ class HeightBasedSize:
 
 
 class FusionParams:
-    def __init__(self, fps):
+    def __init__(self, fps, width, height):
         """
         Parameters
         ----------
-        resolution : list or tuple
-            [width, height] or (width, height)
+        fps: float
+            framerate
+        width: int
+            project canvas size (h)
+        height: int
+            project canvas size (v)
         """
         self.fps = fps
+        self.width = width
+        self.height = height
         self.fps_int = int(round(fps))
         self.cd_circle_ll = HeightBasedSize(0.58).h_size
         self.cd_circle_mm = HeightBasedSize(0.515).h_size
         self.cd_circle_ss = HeightBasedSize(0.495).h_size
-        self.cd_line_width = HeightBasedSize(0.005).h_size
+        self.cd_line_width = HdBasedSize(4).v_size
         self.cd_line_color = [0.0, 0.0, 0.0, 1.0]
         self.cd_font_size = HeightBasedSize(0.85).h_size
         self.cross_line_width = self.cd_line_width
@@ -186,21 +218,29 @@ class FusionParams:
         frame_marker_h_st_pos = 0.07
         frame_marker_h_ed_pos = 1 - frame_marker_h_st_pos
         self.frame_marker_h_pos\
-            = self.linspace(frame_marker_h_st_pos, frame_marker_h_ed_pos, fps + 1)
-        self.frame_marker_v_pos = 0.1295 + 0.005
-        self.frame_marker_v_pos2 = 0.0998 + 0.005
-        self.frame_marker_width\
+            = self.linspace(
+                frame_marker_h_st_pos, frame_marker_h_ed_pos, fps + 1, width=self.width
+            )
+        self.frame_marker_v_pos = HdBasedSize(140).v_size
+        self.frame_marker_v_pos2 = HdBasedSize(108).v_size
+        frame_marker_width\
             = (frame_marker_h_ed_pos - frame_marker_h_st_pos) / (fps * 2 + 1)
-        self.frame_marker_height = 0.03
-        self.frame_marker_outline_width = self.calc_frame_marker_outline_width(
+        self.frame_marker_width = int(frame_marker_width * self.width + 0.5) / self.width
+        self.frame_marker_height = HdBasedSize(140-108).v_size
+
+        frame_marker_outline_width = self.calc_frame_marker_outline_width(
             h_pos_list=self.frame_marker_h_pos,
             each_marker_width=self.frame_marker_width
         )
+        self.frame_marker_outline_width\
+            = int(frame_marker_outline_width * self.width + 0.5) / self.width
+
         self.frame_marker_outline_height = self.frame_marker_height * 3
         self.frame_marker_outline_v_pos\
             = (self.frame_marker_v_pos - self.frame_marker_v_pos2) / 2.0\
             + self.frame_marker_v_pos2
-        self.frame_marker_outline_line_width = 0.003
+        # self.frame_marker_outline_line_width = 0.003
+        self.frame_marker_outline_line_width = 4 / (self.frame_marker_outline_width * 1080 * 2)
 
         self.ramp_height = 0.09
         self.lumi_text_v_pos = 0.829
@@ -245,11 +285,11 @@ class FusionParams:
 
         return ed_pos - st_pos
 
-    def linspace(self, start, stop, num):
+    def linspace(self, start, stop, num, width):
         if num == 1:
             return [start]
         step = (stop - start) / (num - 1)
-        return [start + step * i for i in range(num)]
+        return [int((start + step * i) * width + 0.5) / width for i in range(num)]
 
 
 def create_background_circle(
@@ -1099,7 +1139,8 @@ def create_motion_blur_animation(comp, ppp: FusionParams, tool_pos=(1, 3)):
 
 def create_countdown_comp():
     fps = int(dcl.get_project_setting(name="timelineFrameRate"))
-    ppp = FusionParams(fps=fps)
+    width, height = dcl.get_project_resolution()
+    ppp = FusionParams(fps=fps, width=width, height=height)
     for idx, countdown_str in enumerate([4, 3, 2, 1]):
         tl_item_fusion_comp, comp =\
             dcl.append_fusion_composition_to_timeline(
@@ -1108,7 +1149,7 @@ def create_countdown_comp():
             )
         create_countdown_comp_each_sec(
             comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
-        # break
+        break
 
 
 def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
@@ -1279,10 +1320,11 @@ def create_countdown_video_each_spec(
 
     # format_extension = drc.OUT_FILE_EXTENSTION_MOV
     # # codec = drc.CODEC_H265_NVIDIA
-    # codec = drc.CODEC_APPLE_PRORES_4444
+    # codec = drc.CODEC_H264_NVIDIA
+    # # codec = drc.CODEC_APPLE_PRORES_4444
     # # format_extension = drc.OUT_FILE_EXTENSTION_EXR
     # # codec = drc.CODEC_EXR_RGB_HALF
-    # basename = f"{width}x{height}_{framerate}_{gamma}_{gamut}"
+    # basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
     # output_fname = f"./render_out/{basename}" + "." + format_extension
     # target_dir = str(Path(output_fname).resolve().parent)
     # custom_name = str(Path(output_fname).resolve().name)
@@ -1298,7 +1340,7 @@ def create_countdown_video_each_spec(
     #     dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
 
     # dcl.set_render_settings(setting_dict=render_settings)
-    # # run_rendering_and_wait_until_finish(project=project)
+    # # dcl.run_rendering_and_wait_until_finish(project=project)
 
 
 if __name__ == '__main__':
@@ -1308,8 +1350,8 @@ if __name__ == '__main__':
 
     from itertools import product
     resolution_list = [
-        "1920x1080",
-        # "2048x1080",
+        # "1920x1080",
+        "2048x1080",
         # "3840x2160",
         # "4096x2160",
     ]

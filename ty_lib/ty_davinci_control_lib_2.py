@@ -52,8 +52,8 @@ class TyResolveModuleError(Exception):
 # =====================
 # for Debug
 # =====================
-DEBUG_ON = True
-# DEBUG_ON = False
+# DEBUG_ON = True
+DEBUG_ON = False
 
 
 def log_return_value(func):
