@@ -124,6 +124,15 @@ def debug_fusion():
 #####################
 # Logic
 #####################
+class HDBasedMaskBorderSize:
+    def __init__(self, px, canvas_width):
+        self._size = px / (canvas_width)
+
+    @property
+    def size(self):
+        return self._size
+
+
 class HdBasedSize:
     def __init__(self, px, hv_same=False, inverse=False, resolution=None):
         """
@@ -240,7 +249,8 @@ class FusionParams:
             = (self.frame_marker_v_pos - self.frame_marker_v_pos2) / 2.0\
             + self.frame_marker_v_pos2
         # self.frame_marker_outline_line_width = 0.003
-        self.frame_marker_outline_line_width = 4 / (self.frame_marker_outline_width * 1080 * 2)
+        self.frame_marker_outline_line_width\
+            = HDBasedMaskBorderSize(6, canvas_width=self.width).size
 
         self.ramp_height = 0.09
         self.lumi_text_v_pos = 0.829
@@ -256,8 +266,8 @@ class FusionParams:
         ]
         self.motion_blur_text = ["X", "+", "@", "&"]
         self.motion_blur_text_size = 0.06
-        circle_center_x = 0.15
-        circle_center_y = 0.33
+        circle_center_x = round(0.15 * self.width) / self.width
+        circle_center_y = round(0.33 * self.height) / self.height
         self.motion_blue_circle_center_list = [
             { 1: 1 - circle_center_x, 2: 1 - circle_center_y, 3: 0.0 },
             { 1: circle_center_x, 2: 1 - circle_center_y, 3: 0.0 },
@@ -270,12 +280,15 @@ class FusionParams:
             [540.0, 180.0, -180],
             [-180, 180, 540.0],
         ]
-        self.motion_blur_line_length = self.motion_blur_radius * 1.2
-        self.motion_blur_line_width = HeightBasedSize(0.005).h_size
+        self.motion_blur_line_length\
+            = round(self.motion_blur_radius * 1.2 * self.width) / self.width
+        self.motion_blur_line_width = HdBasedSize(4).v_size
         self.motion_blur_line_mask_size = HeightBasedSize(
             self.motion_blur_radius - (self.motion_blur_line_length - self.motion_blur_radius),
             inverse=True
         )
+        self.motion_blur_circle_line_width\
+            = HDBasedMaskBorderSize(4, canvas_width=self.width).size
         self.motion_blur_line_color = [0.0, 0.0, 0.0, 1.0]
 
     def calc_frame_marker_outline_width(self, h_pos_list, each_marker_width):
@@ -960,7 +973,7 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         "Filter": "Box",
         "CapStyle": 0.0,
         "Solid": 0,
-        "BorderWidth": ppp.motion_blur_line_width,
+        "BorderWidth": ppp.motion_blur_circle_line_width,
         "Center": ppp.motion_blue_circle_center_list[c_idx],
         "Width": ppp.motion_blur_radius,
         "Height": ppp.motion_blur_radius,
@@ -1149,7 +1162,7 @@ def create_countdown_comp():
             )
         create_countdown_comp_each_sec(
             comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
-        break
+        # break
 
 
 def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
@@ -1310,37 +1323,37 @@ def create_countdown_video_each_spec(
 
     dcl.open_page(page_name=drc.FUSION_PAGE_STR)
 
-    # ###################
-    # # encode
-    # ###################
-    # # preset_path = str(
-    # #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
-    # # )
-    # preset_path = None
+    ###################
+    # encode
+    ###################
+    # preset_path = str(
+    #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
+    # )
+    preset_path = None
 
-    # format_extension = drc.OUT_FILE_EXTENSTION_MOV
-    # # codec = drc.CODEC_H265_NVIDIA
-    # codec = drc.CODEC_H264_NVIDIA
-    # # codec = drc.CODEC_APPLE_PRORES_4444
-    # # format_extension = drc.OUT_FILE_EXTENSTION_EXR
-    # # codec = drc.CODEC_EXR_RGB_HALF
-    # basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
-    # output_fname = f"./render_out/{basename}" + "." + format_extension
-    # target_dir = str(Path(output_fname).resolve().parent)
-    # custom_name = str(Path(output_fname).resolve().name)
+    format_extension = drc.OUT_FILE_EXTENSTION_MOV
+    # codec = drc.CODEC_H265_NVIDIA
+    codec = drc.CODEC_H264_NVIDIA
+    # codec = drc.CODEC_APPLE_PRORES_4444
+    # format_extension = drc.OUT_FILE_EXTENSTION_EXR
+    # codec = drc.CODEC_EXR_RGB_HALF
+    basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
+    output_fname = f"./render_out/{basename}" + "." + format_extension
+    target_dir = str(Path(output_fname).resolve().parent)
+    custom_name = str(Path(output_fname).resolve().name)
 
-    # render_settings = {
-    #     "TargetDir": target_dir,
-    #     "CustomName": custom_name,
-    # }
+    render_settings = {
+        "TargetDir": target_dir,
+        "CustomName": custom_name,
+    }
 
-    # if preset_path is not None:
-    #     dcl.import_render_preset(preset_path=preset_path)
-    # else:
-    #     dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
+    if preset_path is not None:
+        dcl.import_render_preset(preset_path=preset_path)
+    else:
+        dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
 
-    # dcl.set_render_settings(setting_dict=render_settings)
-    # # dcl.run_rendering_and_wait_until_finish(project=project)
+    dcl.set_render_settings(setting_dict=render_settings)
+    dcl.run_rendering_and_wait_until_finish(project=project)
 
 
 if __name__ == '__main__':
@@ -1350,15 +1363,15 @@ if __name__ == '__main__':
 
     from itertools import product
     resolution_list = [
-        # "1920x1080",
+        "1920x1080",
         "2048x1080",
         # "3840x2160",
         # "4096x2160",
     ]
     framerate_list = [
-        24,
+        # 24,
         # 25,
-        # 30,
+        30,
         # 50,
         # 60
     ]
