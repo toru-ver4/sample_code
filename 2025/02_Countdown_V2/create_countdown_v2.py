@@ -133,22 +133,24 @@ class HDBasedMaskBorderSize:
         return self._size
 
 
-class HdBasedSize:
-    def __init__(self, px, hv_same=False, inverse=False, resolution=None):
+class HdPixelBasedSize:
+    def __init__(self, px, hv_same=False, inverse=False):
         """
+        Calculate the size parameters based on Full HD vertical pixel units.
+
         Parameters
         ----------
         size: float
-            HD based size. unit is pixel (0 to 1080).
+            Full HD based size. unit is pixel (0 to 1080).
+        hv_same : bool
+            If true, return `h_size` as the `v_size`
         inverse: bool
-            horizontal vertical inversion.
+            If true, calculate `v_size` based on horizontal size.
         resolution : list or tuple
             [width, height] or (width, height)
         """
         val = px / (1080.0)
-        self.height_based_size = HeightBasedSize(
-            val, hv_same=hv_same, inverse=inverse, resolution=resolution
-        )
+        self.height_based_size = HeightBasedSize(val, hv_same=hv_same, inverse=inverse)
 
     @property
     def v_size(self):
@@ -160,19 +162,20 @@ class HdBasedSize:
 
 
 class HeightBasedSize:
-    def __init__(self, size, hv_same=False, inverse=False, resolution=None):
+    def __init__(self, size, hv_same=False, inverse=False):
         """
+        Calculate the size parameters based on vertical relative parmaeters.
+
         Parameters
         ----------
-        size: float
-            A size parameter
-        resolution : list or tuple
-            [width, height] or (width, height)
+        size : float
+            A size parameter based on vertical size (0.0 to 1.0)
+        hv_same : bool
+            If true, return `h_size` as the `v_size`
+        inverse : bool
+            If true, calculate `v_size` based on horizontal size.
         """
-        if resolution is None:
-            width, height = dcl.get_project_resolution()
-        else:
-            width, height = resolution
+        width, height = dcl.get_project_resolution()
         if not inverse:
             self._v_size = size
             if hv_same:
@@ -207,14 +210,17 @@ class FusionParams:
         height: int
             project canvas size (v)
         """
+        # basic parameters
         self.fps = fps
+        self.fps_int = int(round(fps))
         self.width = width
         self.height = height
-        self.fps_int = int(round(fps))
+
+        # basic background parameters
         self.cd_circle_ll = HeightBasedSize(0.58).h_size
         self.cd_circle_mm = HeightBasedSize(0.515).h_size
         self.cd_circle_ss = HeightBasedSize(0.495).h_size
-        self.cd_line_width = HdBasedSize(4).v_size
+        self.cd_line_width = HdPixelBasedSize(4).v_size
         self.cd_line_color = [0.0, 0.0, 0.0, 1.0]
         self.cd_font_size = HeightBasedSize(0.85).h_size
         self.cross_line_width = self.cd_line_width
@@ -223,19 +229,23 @@ class FusionParams:
         self.cross_line_color = [self.gray90, self.gray90, self.gray90, 1.0]
         self.info_font_size = 0.021
         self.info_vanchor = 2.3
+        self.deg45_line_color = (72/255) ** 2.4
+        self.deg45_line_margin = 192
+        self.deg45_line_width = 1
 
+        # frame marker parameters
         frame_marker_h_st_pos = 0.07
         frame_marker_h_ed_pos = 1 - frame_marker_h_st_pos
         self.frame_marker_h_pos\
             = self.linspace(
                 frame_marker_h_st_pos, frame_marker_h_ed_pos, fps + 1, width=self.width
             )
-        self.frame_marker_v_pos = HdBasedSize(140).v_size
-        self.frame_marker_v_pos2 = HdBasedSize(108).v_size
+        self.frame_marker_v_pos = HdPixelBasedSize(140).v_size
+        self.frame_marker_v_pos2 = HdPixelBasedSize(108).v_size
         frame_marker_width\
             = (frame_marker_h_ed_pos - frame_marker_h_st_pos) / (fps * 2 + 1)
         self.frame_marker_width = int(frame_marker_width * self.width + 0.5) / self.width
-        self.frame_marker_height = HdBasedSize(140-108).v_size
+        self.frame_marker_height = HdPixelBasedSize(140-108).v_size
 
         frame_marker_outline_width = self.calc_frame_marker_outline_width(
             h_pos_list=self.frame_marker_h_pos,
@@ -252,10 +262,12 @@ class FusionParams:
         self.frame_marker_outline_line_width\
             = HDBasedMaskBorderSize(6, canvas_width=self.width).size
 
+        # ramp pattern parameters
         self.ramp_height = 0.09
         self.lumi_text_v_pos = 0.829
         self.cv_text_v_pos = 0.968
 
+        # motion blur parameters
         self.motion_blur_radius = HeightBasedSize(0.2).h_size
         self.motion_blur_mask_size = HeightBasedSize(0.075)
         self.motion_blur_mask_corner_radius = 0.6
@@ -268,7 +280,7 @@ class FusionParams:
         self.motion_blur_text_size = 0.06
         circle_center_x = round(0.15 * self.width) / self.width
         circle_center_y = round(0.33 * self.height) / self.height
-        self.motion_blue_circle_center_list = [
+        self.motion_blur_circle_center_list = [
             { 1: 1 - circle_center_x, 2: 1 - circle_center_y, 3: 0.0 },
             { 1: circle_center_x, 2: 1 - circle_center_y, 3: 0.0 },
             { 1: circle_center_x, 2: circle_center_y, 3: 0.0 },
@@ -282,7 +294,7 @@ class FusionParams:
         ]
         self.motion_blur_line_length\
             = round(self.motion_blur_radius * 1.2 * self.width) / self.width
-        self.motion_blur_line_width = HdBasedSize(4).v_size
+        self.motion_blur_line_width = HdPixelBasedSize(4).v_size
         self.motion_blur_line_mask_size = HeightBasedSize(
             self.motion_blur_radius - (self.motion_blur_line_length - self.motion_blur_radius),
             inverse=True
@@ -456,58 +468,70 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
     )
     dcl.set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
 
+    draw_45deg_line_dctl = dcl.add_dctl_comp(
+        comp=comp, dctl_path="TY_DCTL/draw_45deg_lines.dctl",
+        base_pos=[x_pos+1, y_pos-1],
+        option={
+            "sliderIntParam0": ppp.deg45_line_margin,
+            "sliderIntParam1": ppp.deg45_line_width,
+            "sliderFloatParam0": ppp.deg45_line_color,
+        }
+    )
+
     cross_h_line_merge = dcl.add_line_comp(
         comp=comp, rgba=ppp.cross_line_color, width=1.0, angle=0,
-        height=ppp.cross_line_width, pos=[x_pos+1, y_pos-1],
+        height=ppp.cross_line_width, pos=[x_pos+2, y_pos-1],
         connect_fg=True
     )
     cross_v_line_merge = dcl.add_line_comp(
         comp=comp, rgba=ppp.cross_line_color, width=1.0, angle=90,
-        height=ppp.cross_line_width, pos=[x_pos+2, y_pos-1],
+        height=ppp.cross_line_width, pos=[x_pos+3, y_pos-1],
         connect_fg=True
     )
     large_white_circle_merge = create_background_circle(
         comp=comp, bg_rgba=[ppp.gray80, ppp.gray80, ppp.gray80, 1.0],
         size=[ppp.cd_circle_ll, ppp.cd_circle_ll],
-        merge_pos=[x_pos+3, y_pos-1]
+        merge_pos=[x_pos+4, y_pos-1]
     )
     middle_black_circle_merge = create_background_circle(
         comp=comp, bg_rgba=[0.0, 0.0, 0.0, 1.0],
         size=[ppp.cd_circle_mm, ppp.cd_circle_mm],
-        merge_pos=[x_pos+4, y_pos-1]
+        merge_pos=[x_pos+5, y_pos-1]
     )
     small_grey_circle_merge = create_background_circle(
         comp=comp, bg_rgba=[0.18, 0.18, 0.18, 1.0],
         size=[ppp.cd_circle_ss, ppp.cd_circle_ss],
-        merge_pos=[x_pos+5, y_pos-1]
+        merge_pos=[x_pos+6, y_pos-1]
     )
     h_line_merge = dcl.add_line_comp(
         comp=comp, rgba=ppp.cd_line_color, angle=0,
         width=ppp.cd_circle_ll,
-        height=ppp.cd_line_width, pos=[x_pos+6, y_pos-1],
+        height=ppp.cd_line_width, pos=[x_pos+7, y_pos-1],
         connect_fg=True
     )
     v_line_merge = dcl.add_line_comp(
         comp=comp, rgba=ppp.cd_line_color, angle=90,
         width=ppp.cd_circle_ll,
-        height=ppp.cd_line_width, pos=[x_pos+7, y_pos-1],
+        height=ppp.cd_line_width, pos=[x_pos+8, y_pos-1],
         connect_fg=True
     )
     info_in_merge, info_out_merge = draw_info_comp(
         comp=comp, font_size=ppp.info_font_size, vanchor=ppp.info_vanchor,
         bg_rgba=[0.0, 0.0, 0.0, 1.0], fg_rgba=[0.5, 0.5, 0.5, 1.0],
-        height=0.035, base_pos=[x_pos+8, y_pos-1])
+        height=0.035, base_pos=[x_pos+9, y_pos-1])
     border_dctl = dcl.add_dctl_comp(
         comp=comp, dctl_path="TY_DCTL/draw_countdown_border.dctl",
-        base_pos=[x_pos+11, y_pos-1]
+        base_pos=[x_pos+12, y_pos-1]
     )
     output_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=(x_pos+11, y_pos)
+        comp=comp, name="Merge", pos=(x_pos+12, y_pos)
     )
+
+    dcl.connect_dctl(dctl=draw_45deg_line_dctl, source=bg1)
 
     dcl.connect_merge_tool(
         merge_tool=cross_h_line_merge,
-        bg_tool=bg1, fg_tool=None
+        bg_tool=draw_45deg_line_dctl, fg_tool=None
     )
     dcl.connect_merge_tool(
         merge_tool=cross_v_line_merge,
@@ -920,7 +944,7 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         comp=comp, rgba=ppp.cd_line_color, angle=0,
         width=ppp.motion_blur_line_length,
         height=ppp.motion_blur_line_width,
-        center=ppp.motion_blue_circle_center_list[c_idx],
+        center=ppp.motion_blur_circle_center_list[c_idx],
         pos=[x_pos+0, y_pos-3],
         connect_fg=False
     )
@@ -928,7 +952,7 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         comp=comp, rgba=ppp.cd_line_color, angle=90,
         width=ppp.motion_blur_line_length,
         height=ppp.motion_blur_line_width,
-        center=ppp.motion_blue_circle_center_list[c_idx],
+        center=ppp.motion_blur_circle_center_list[c_idx],
         pos=[x_pos+1, y_pos-3],
     )
     dummy_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos-2))
@@ -965,7 +989,7 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         "Filter": "Box",
         "CapStyle": 0.0,
         "Invert": 1,
-        "Center": ppp.motion_blue_circle_center_list[c_idx],
+        "Center": ppp.motion_blur_circle_center_list[c_idx],
         "Width": ppp.motion_blur_line_mask_size.h_size,
         "Height": ppp.motion_blur_line_mask_size.v_size,
     }
@@ -974,7 +998,7 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         "CapStyle": 0.0,
         "Solid": 0,
         "BorderWidth": ppp.motion_blur_circle_line_width,
-        "Center": ppp.motion_blue_circle_center_list[c_idx],
+        "Center": ppp.motion_blur_circle_center_list[c_idx],
         "Width": ppp.motion_blur_radius,
         "Height": ppp.motion_blur_radius,
     }
@@ -1012,7 +1036,7 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         "Blue1": ppp.motion_blur_text_color,
     }
     transform_input = {
-        "CircleCenter": ppp.motion_blue_circle_center_list[c_idx],
+        "CircleCenter": ppp.motion_blur_circle_center_list[c_idx],
         "Radius": ppp.motion_blur_radius
     }
 
@@ -1162,7 +1186,7 @@ def create_countdown_comp():
             )
         create_countdown_comp_each_sec(
             comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
-        # break
+        break
 
 
 def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
@@ -1192,7 +1216,7 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     )
 
     # countdown animation
-    x_pos += 13
+    x_pos += 14
     y_pos += 0
     cntdown_anime_output_merge\
         = create_countdown_animation_comp(
@@ -1323,37 +1347,37 @@ def create_countdown_video_each_spec(
 
     dcl.open_page(page_name=drc.FUSION_PAGE_STR)
 
-    ###################
-    # encode
-    ###################
-    # preset_path = str(
-    #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
-    # )
-    preset_path = None
+    # ###################
+    # # encode
+    # ###################
+    # # preset_path = str(
+    # #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
+    # # )
+    # preset_path = None
 
-    format_extension = drc.OUT_FILE_EXTENSTION_MOV
-    # codec = drc.CODEC_H265_NVIDIA
-    codec = drc.CODEC_H264_NVIDIA
-    # codec = drc.CODEC_APPLE_PRORES_4444
-    # format_extension = drc.OUT_FILE_EXTENSTION_EXR
-    # codec = drc.CODEC_EXR_RGB_HALF
-    basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
-    output_fname = f"./render_out/{basename}" + "." + format_extension
-    target_dir = str(Path(output_fname).resolve().parent)
-    custom_name = str(Path(output_fname).resolve().name)
+    # format_extension = drc.OUT_FILE_EXTENSTION_MOV
+    # # codec = drc.CODEC_H265_NVIDIA
+    # codec = drc.CODEC_H264_NVIDIA
+    # # codec = drc.CODEC_APPLE_PRORES_4444
+    # # format_extension = drc.OUT_FILE_EXTENSTION_EXR
+    # # codec = drc.CODEC_EXR_RGB_HALF
+    # basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
+    # output_fname = f"./render_out/{basename}" + "." + format_extension
+    # target_dir = str(Path(output_fname).resolve().parent)
+    # custom_name = str(Path(output_fname).resolve().name)
 
-    render_settings = {
-        "TargetDir": target_dir,
-        "CustomName": custom_name,
-    }
+    # render_settings = {
+    #     "TargetDir": target_dir,
+    #     "CustomName": custom_name,
+    # }
 
-    if preset_path is not None:
-        dcl.import_render_preset(preset_path=preset_path)
-    else:
-        dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
+    # if preset_path is not None:
+    #     dcl.import_render_preset(preset_path=preset_path)
+    # else:
+    #     dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
 
-    dcl.set_render_settings(setting_dict=render_settings)
-    dcl.run_rendering_and_wait_until_finish(project=project)
+    # dcl.set_render_settings(setting_dict=render_settings)
+    # dcl.run_rendering_and_wait_until_finish(project=project)
 
 
 if __name__ == '__main__':
@@ -1363,15 +1387,15 @@ if __name__ == '__main__':
 
     from itertools import product
     resolution_list = [
-        "1920x1080",
+        # "1920x1080",
         "2048x1080",
         # "3840x2160",
         # "4096x2160",
     ]
     framerate_list = [
-        # 24,
+        24,
         # 25,
-        30,
+        # 30,
         # 50,
         # 60
     ]

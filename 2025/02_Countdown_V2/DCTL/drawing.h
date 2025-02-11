@@ -10,7 +10,7 @@
  * 
  * @param p_Width canvas width
  * @param p_Height canvas height
- * @param p_x current horizontal position
+ * @param p_X current horizontal position
  * @param p_Y current vertical position
  * @param rgb_in input data
  * @param st_pos start position
@@ -42,7 +42,7 @@ __DEVICE__ float3 draw_rectangle(
  * 
  * @param p_Width canvas width
  * @param p_Height canvas height
- * @param p_x current horizontal position
+ * @param p_X current horizontal position
  * @param p_Y current vertical position
  * @param rgb_in input data
  * @param inner_st_pos start position
@@ -72,7 +72,7 @@ __DEVICE__ float3 draw_rectangle_outline(
         {inner_ed_pos.x + line_width, inner_ed_pos.y + line_width}
     };
 
-    for(int ii=0; ii<NUM_OF_OUTLINE_POS; ii++){
+    for(int ii=0; ii<NUM_OF_OUTLINE_POS; ++ii){
         out_rgb = draw_rectangle(
             p_Width, p_Height,
             p_X, p_Y,
@@ -81,5 +81,53 @@ __DEVICE__ float3 draw_rectangle_outline(
     }
     return out_rgb;
 }
+
+
+/**
+ * @brief Draw cross 45degree line
+ * 
+ * @param p_Width canvas width
+ * @param p_Height canvas height
+ * @param p_X current horizontal position
+ * @param p_Y current vertical position
+ * @param rgb_in input data
+ * @param offset horizontal offset from center position
+ * @param v_center center position w/o offset
+ * @param h_center center position w/o offset
+ * @param line_width line width
+ * @param fill_color fill color
+ * @return rgb pixel data
+ */
+__DEVICE__ float3 draw_45deg_line(
+    int p_Width, int p_Height,
+    int p_X, int p_Y,
+    float3 rgb_in,
+    int offset, int h_center, int v_center,
+    int line_width, float3 fill_color)
+{
+    float3 rgb_out = rgb_in;
+    int local_offset;
+    int h_pos_1;
+    int h_pos_2;
+
+    for(int ii=0; ii<line_width; ++ii){
+        local_offset = -line_width/2 + ii;
+        h_pos_1 = h_center - (p_Y - v_center) + offset + local_offset;
+        h_pos_2 = h_center + (p_Y - v_center) + offset + local_offset;
+        if(p_X == h_pos_1){
+            rgb_out.x = fill_color.x;
+            rgb_out.y = fill_color.y;
+            rgb_out.z = fill_color.z;
+        }
+        if(p_X == h_pos_2){
+            rgb_out.x = fill_color.x;
+            rgb_out.y = fill_color.y;
+            rgb_out.z = fill_color.z;
+        }
+    }
+
+    return rgb_out;
+}
+
 
 #endif

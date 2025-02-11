@@ -1048,6 +1048,30 @@ def _get_font_list():
 
 
 def add_dctl_comp(comp, dctl_path, option=None, base_pos=[0, 0]):
+    """
+    Parameters
+    ----------
+    comp : Fusion Compsition
+        A composition instance
+    dctl_path : str
+        A relative dctl path from the DaVinci Resolve's LUT path.
+    option : dect
+        Options
+    base_pos : list
+        Tool position on the node editor.
+
+    Examples
+    --------
+    >>> dcl.add_dctl_comp(
+    >>>     comp=comp, dctl_path="TY_DCTL/draw_45deg_lines.dctl",
+    >>>     base_pos=[x_pos+1, y_pos-1],
+    >>>     option={
+    >>>         "sliderFloatParam0": ppp.frame_marker_outline_width,
+    >>>         "sliderFloatParam1": ppp.ramp_height * 0.93,
+    >>>         "sliderIntParam0": 4
+    >>>     }
+    >>> )    
+    """
     x_pos = base_pos[0]
     y_pos = base_pos[1]
 
