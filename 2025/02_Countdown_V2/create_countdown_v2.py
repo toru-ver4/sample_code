@@ -217,6 +217,7 @@ class FusionParams:
         self.height = height
 
         # basic background parameters
+        self.base_bg_color = [0.18, 0.18, 0.18, 1.0]
         self.cd_circle_ll = HeightBasedSize(0.58).h_size
         self.cd_circle_mm = HeightBasedSize(0.515).h_size
         self.cd_circle_ss = HeightBasedSize(0.495).h_size
@@ -466,7 +467,8 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
     bg1 = dcl.add_comp_tool(
         comp=comp, name="Background", pos=(x_pos+0, y_pos-1)
     )
-    dcl.set_tool_topleft_color(tool=bg1, rgba=[0.18, 0.18, 0.18, 1.0])
+    dcl.set_tool_topleft_color(
+        tool=bg1, rgba=ppp.base_bg_color)
 
     draw_45deg_line_dctl = dcl.add_dctl_comp(
         comp=comp, dctl_path="TY_DCTL/draw_45deg_lines.dctl",
@@ -772,16 +774,38 @@ def create_frame_marker_core(comp, ppp, idx, fps, tool_pos=(1, 3)):
     return bg_merge, inv_bg_merge
 
 
-def create_frame_marker(comp, ppp, fps, tool_pos=(1, 3)):
+def create_frame_marker(comp, ppp: FusionParams, fps, tool_pos=(1, 3)):
     x_pos = tool_pos[0]
     y_pos = tool_pos[1]
 
     base_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos-1))
 
+    # Add aditional background to mask the deg45 lines.
+    frame_bg_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=[x_pos+1, y_pos-1])
+    frame_bg = dcl.add_comp_tool(comp=comp, name="Background", pos=[x_pos+1, y_pos-2])
+    frame_bg_mask = dcl.add_comp_tool(
+        comp=comp, name="RectangleMask", pos=[x_pos+1, y_pos-3]
+    )
+    frame_bg_input = {
+        "TopLeftRed": ppp.base_bg_color[0],
+        "TopLeftGreen": ppp.base_bg_color[1],
+        "TopLeftBlue": ppp.base_bg_color[2],
+        "TopLeftAlpha": ppp.base_bg_color[3],
+        "EffectMask": frame_bg_mask,
+    }
+    dcl.set_multiple_tool_input(tool=frame_bg, input_dict=frame_bg_input)
+    frame_bg_mask_input = {
+        "Center": {1: 0.5, 2: ppp.frame_marker_outline_v_pos, 3: 0.0},
+        "Width": ppp.frame_marker_outline_width,
+        "Height": ppp.frame_marker_outline_height,
+    }
+    dcl.set_multiple_tool_input(tool=frame_bg_mask, input_dict=frame_bg_mask_input)
+    dcl.connect_merge_tool(merge_tool=frame_bg_merge, bg_tool=base_bg, fg_tool=frame_bg)
+
     merge_list = []
     for idx in range(fps+1):
         bg_merge, inv_bg_merge = create_frame_marker_core(
-            comp=comp, ppp=ppp, idx=idx, fps=fps,tool_pos=(x_pos+2*idx+1, y_pos-1)
+            comp=comp, ppp=ppp, idx=idx, fps=fps,tool_pos=(x_pos+2*idx+2, y_pos-1)
         )
         merge_list.append([bg_merge, inv_bg_merge])
 
@@ -791,20 +815,20 @@ def create_frame_marker(comp, ppp, fps, tool_pos=(1, 3)):
             bg_tool=merge_list[idx-1][1], fg_tool=None
         )
     dcl.connect_merge_tool(
-        merge_tool=merge_list[0][0], bg_tool=base_bg, fg_tool=None
+        merge_tool=merge_list[0][0], bg_tool=frame_bg_merge, fg_tool=None
     )
 
     outline_rect = dcl.add_comp_tool(
-        comp=comp, name="RectangleMask", pos=(x_pos+2*(fps+1)+1, y_pos-3)
+        comp=comp, name="RectangleMask", pos=(x_pos+2*(fps+1)+2, y_pos-3)
     )
     outline_bg = dcl.add_comp_tool(
-        comp=comp, name="Background", pos=((x_pos+2*(fps+1)+1, y_pos-2))
+        comp=comp, name="Background", pos=((x_pos+2*(fps+1)+2, y_pos-2))
     )
     outline_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=((x_pos+2*(fps+1)+1, y_pos-1))
+        comp=comp, name="Merge", pos=((x_pos+2*(fps+1)+2, y_pos-1))
     )
     output_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=((x_pos+2*(fps+1)+1, y_pos-0))
+        comp=comp, name="Merge", pos=((x_pos+2*(fps+1)+2, y_pos-0))
     )
 
     outline_bg_input = {
@@ -1233,7 +1257,7 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
         )
     
     # ramp pattern
-    x_pos += 2*(fps+1) + 3
+    x_pos += 2*(fps+1) + 4
     y_pos += 0
     ramp_dctl, ramp_output_merge\
         = create_ramp(comp, ppp=ppp, tool_pos=(x_pos, y_pos))
