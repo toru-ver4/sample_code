@@ -149,9 +149,9 @@ def make_countdown_sound(sampling_rate=48000):
     beep_sec = 0.06
     fade_in_out_sec = 0.0065
     total_sample = count_down_sec * sampling_rate
-    left_st_sec = 1 - beep_sec / 2.0
-    right_st_sec = 2 - beep_sec / 2.0
-    center_st_sec = 3 - beep_sec / 2.0
+    left_st_sec = 1 - beep_sec / 8.0
+    right_st_sec = 2 - beep_sec / 8.0
+    center_st_sec = 3 - beep_sec / 8.0
 
     # 無音ファイル
     np.zeros((total_sample), dtype=np.int16)

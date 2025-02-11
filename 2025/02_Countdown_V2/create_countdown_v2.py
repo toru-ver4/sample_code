@@ -1526,19 +1526,19 @@ if __name__ == '__main__':
 
     from itertools import product
     resolution_list = [
-        # "1280x720",
+        "1280x720",
         "1920x1080",
-        # "2048x1080",
-        # "2560x1440",
-        # "3840x2160",
-        # "4096x2160",
+        "2048x1080",
+        "2560x1440",
+        "3840x2160",
+        "4096x2160",
     ]
     framerate_list = [
-        # 24,
-        # 25,
+        24,
+        25,
         30,
-        # 50,
-        # 60
+        50,
+        60
     ]
     gamut_list = [
         drc.PRJ_COLOR_SPACE_REC709,
