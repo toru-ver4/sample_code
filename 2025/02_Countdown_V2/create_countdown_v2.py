@@ -310,7 +310,7 @@ class FusionParams:
         self.motion_blur_color_mask = [
             [1.0, 1.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]
         ]
-        self.motion_blur_text = ["X", "+", "@", "&"]
+        self.motion_blur_text = ["X", "X", "X", "X"]
         self.motion_blur_text_size = 0.06
         circle_center_x = round(0.15 * self.width) / self.width
         circle_center_y = round(0.33 * self.height) / self.height
@@ -469,7 +469,7 @@ def draw_info_comp(
     )
     rev_text_input = {
         "Center": {1: 1.0, 2: 0.0, 3: 0.0},
-        "StyledText": "Revision 00  ",
+        "StyledText": "Revision 01  ",
         "Font": font_family,
         "Style": font_weight,
         "Size": font_size,
@@ -709,7 +709,7 @@ def create_countdown_animation_comp(
     font_family = "Noto Sans Mono"
     font_weight = "Black"
     countdown_text_input = {
-        "StyledText": f"{count_str}",
+        "StyledText": f"{count_str}" if count_str != 1 else "",
         "Font": font_family,
         "Style": font_weight,
         "Size": ppp.cd_font_size,
@@ -1366,8 +1366,24 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     motion_blur_output_merge\
         = create_motion_blur_animation(comp=comp, ppp=ppp, tool_pos=(x_pos, y_pos))
 
+    # motion blur animation
+    x_pos += 5 * 4
+    y_pos += 0
+    color_gain\
+        = dcl.add_comp_tool(comp=comp, name="ColorGain", pos=[x_pos, y_pos])
+    if count_str == 1:
+        color_gain["GainRed"] = comp.BezierSpline()
+        color_gain["GainGreen"] = comp.BezierSpline()
+        color_gain["GainBlue"] = comp.BezierSpline()
+        color_gain["GainRed"][0] = 1.0
+        color_gain["GainGreen"][0] = 1.0
+        color_gain["GainBlue"][0] = 1.0
+        color_gain["GainRed"][1] = 0.0
+        color_gain["GainGreen"][1] = 0.0
+        color_gain["GainBlue"][1] = 0.0
+
     media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
-    x_pos += 10 * 4
+    x_pos += 3
     y_pos += 0
     dcl.set_tool_position(comp=comp, tool=media_out, pos=(x_pos, y_pos))
 
@@ -1390,7 +1406,8 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     dcl.connect_merge_tool(
         merge_tool=motion_blur_output_merge, bg_tool=ramp_output_merge, fg_tool=None
     )
-    dcl.connect_mediaout(source=motion_blur_output_merge, mediaout=media_out)
+    dcl.connect_tool(a=motion_blur_output_merge, b=color_gain)
+    dcl.connect_mediaout(source=color_gain, mediaout=media_out)
 
     comp.Unlock()
 
@@ -1469,37 +1486,37 @@ def create_countdown_video_each_spec(
 
     dcl.open_page(page_name=drc.FUSION_PAGE_STR)
 
-    # ###################
-    # # encode
-    # ###################
-    # # preset_path = str(
-    # #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
-    # # )
-    # preset_path = None
+    ###################
+    # encode
+    ###################
+    # preset_path = str(
+    #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
+    # )
+    preset_path = None
 
-    # format_extension = drc.OUT_FILE_EXTENSTION_MOV
-    # # codec = drc.CODEC_H265_NVIDIA
-    # codec = drc.CODEC_H264_NVIDIA
-    # # codec = drc.CODEC_APPLE_PRORES_4444
-    # # format_extension = drc.OUT_FILE_EXTENSTION_EXR
-    # # codec = drc.CODEC_EXR_RGB_HALF
-    # basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
-    # output_fname = f"./render_out/{basename}" + "." + format_extension
-    # target_dir = str(Path(output_fname).resolve().parent)
-    # custom_name = str(Path(output_fname).resolve().name)
+    format_extension = drc.OUT_FILE_EXTENSTION_MOV
+    # codec = drc.CODEC_H265_NVIDIA
+    codec = drc.CODEC_H264_NVIDIA
+    # codec = drc.CODEC_APPLE_PRORES_4444
+    # format_extension = drc.OUT_FILE_EXTENSTION_EXR
+    # codec = drc.CODEC_EXR_RGB_HALF
+    basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
+    output_fname = f"./render_out/{basename}" + "." + format_extension
+    target_dir = str(Path(output_fname).resolve().parent)
+    custom_name = str(Path(output_fname).resolve().name)
 
-    # render_settings = {
-    #     "TargetDir": target_dir,
-    #     "CustomName": custom_name,
-    # }
+    render_settings = {
+        "TargetDir": target_dir,
+        "CustomName": custom_name,
+    }
 
-    # if preset_path is not None:
-    #     dcl.import_render_preset(preset_path=preset_path)
-    # else:
-    #     dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
+    if preset_path is not None:
+        dcl.import_render_preset(preset_path=preset_path)
+    else:
+        dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
 
-    # dcl.set_render_settings(setting_dict=render_settings)
-    # dcl.run_rendering_and_wait_until_finish(project=project)
+    dcl.set_render_settings(setting_dict=render_settings)
+    dcl.run_rendering_and_wait_until_finish(project=project)
 
 
 if __name__ == '__main__':
