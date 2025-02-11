@@ -1220,6 +1220,14 @@ def create_motion_blur_animation(comp, ppp: FusionParams, tool_pos=(1, 3)):
     return output_merge
 
 
+def add_beep_sound():
+    wav_file_path = str(Path("./wav/countdown.wav").resolve())
+    clip = dcl.add_file_to_media_pool(file_path=wav_file_path)
+    dcl.append_clip_to_timeline(
+        clip=clip, pos_timecode="01:00:00:00",
+        media_type=2
+    )
+
 def create_countdown_comp():
     fps = int(dcl.get_project_setting(name="timelineFrameRate"))
     width, height = dcl.get_project_resolution()
@@ -1232,7 +1240,9 @@ def create_countdown_comp():
             )
         create_countdown_comp_each_sec(
             comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
-        break
+        # break
+
+    add_beep_sound()
 
 
 def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
@@ -1374,7 +1384,7 @@ def create_countdown_video_each_spec(
     ####################################################
     # Temporarily commented out because it is slow...
     ####################################################
-    # dcl.set_timeline_settings(timeline=timeline, params=project_settings_params)
+    dcl.set_timeline_settings(timeline=timeline, params=project_settings_params)
 
     # add files to the media storage
     relative_file_list = [
