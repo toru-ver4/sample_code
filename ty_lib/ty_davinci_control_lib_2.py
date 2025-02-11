@@ -52,8 +52,8 @@ class TyResolveModuleError(Exception):
 # =====================
 # for Debug
 # =====================
-# DEBUG_ON = True
-DEBUG_ON = False
+DEBUG_ON = True
+# DEBUG_ON = False
 
 
 def log_return_value(func):
@@ -383,6 +383,7 @@ def setup_project_settings(params):
         result = set_project_setting(name, value)
         if result is False:
             is_success = False
+            print(f"    {name} = {value} was failed.")
 
     if is_success is False:
         msg = 'setup_project_settings() was failed. '
@@ -400,8 +401,14 @@ def get_project_resolution():
 
 
 def make_videoMonitorFormat_str(width, height, framerate):
-    if str(width) == "1920":
+    if str(width) == "1280":
         prefix = "HD"
+        height = 720
+    elif str(width) == "1920":
+        prefix = "HD"
+    elif str(width) == "2560":
+        prefix = "HD"
+        height = 1080
     elif str(width) == "2048":
         prefix = "2K"
     elif str(width) == "3840":

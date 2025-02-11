@@ -72,7 +72,6 @@ def dump_tool_list(comp):
 def debug_resolve():
     # print(get_project_setting("videoMonitorFormat"))
     pprint(dcl.get_project_setting(name=None))
-    dcl.refresh_lut_list()
     sys.exit(0)
 
 
@@ -125,8 +124,11 @@ def debug_fusion():
 # Logic
 #####################
 class HDBasedMaskBorderSize:
-    def __init__(self, px, canvas_width):
-        self._size = px / (canvas_width)
+    def __init__(self, px):
+        canvas_width, _ = dcl.get_project_resolution()
+        val = px / 1920
+        current_canvas_px = int(round(val * canvas_width))
+        self._size = current_canvas_px / (canvas_width)
 
     @property
     def size(self):
@@ -144,13 +146,24 @@ class HdPixelBasedSize:
             Full HD based size. unit is pixel (0 to 1080).
         hv_same : bool
             If true, return `h_size` as the `v_size`
+        height : int
+            Canvas height (720, 1080, 1440, 2160, ...)
         inverse: bool
             If true, calculate `v_size` based on horizontal size.
         resolution : list or tuple
             [width, height] or (width, height)
         """
-        val = px / (1080.0)
-        self.height_based_size = HeightBasedSize(val, hv_same=hv_same, inverse=inverse)
+        _, height = dcl.get_project_resolution()
+        if height != 1080:
+            val = px / (1080.0)
+            current_canvas_pixel = self.to_even(int(round(val * height)))
+            current_canvas_val = current_canvas_pixel / height
+        else:
+            val = self.to_even(int(px)) / (1080.0)
+            current_canvas_val = val
+
+        self.height_based_size\
+            = HeightBasedSize(current_canvas_val, hv_same=hv_same, inverse=inverse)
 
     @property
     def v_size(self):
@@ -159,6 +172,9 @@ class HdPixelBasedSize:
     @property
     def h_size(self):
         return self.height_based_size.h_size
+    
+    def to_even(self, n: int) -> int:
+        return n - (n % 2)
 
 
 class HeightBasedSize:
@@ -245,7 +261,7 @@ class FusionParams:
         self.frame_marker_v_pos2 = HdPixelBasedSize(108).v_size
         frame_marker_width\
             = (frame_marker_h_ed_pos - frame_marker_h_st_pos) / (fps * 2 + 1)
-        self.frame_marker_width = int(frame_marker_width * self.width + 0.5) / self.width
+        self.frame_marker_width = self.conv_to_width_base_pixel_size(frame_marker_width)
         self.frame_marker_height = HdPixelBasedSize(140-108).v_size
 
         frame_marker_outline_width = self.calc_frame_marker_outline_width(
@@ -253,20 +269,19 @@ class FusionParams:
             each_marker_width=self.frame_marker_width
         )
         self.frame_marker_outline_width\
-            = int(frame_marker_outline_width * self.width + 0.5) / self.width
+            = self.conv_to_width_base_pixel_size(frame_marker_outline_width)
 
         self.frame_marker_outline_height = self.frame_marker_height * 3
         self.frame_marker_outline_v_pos\
             = (self.frame_marker_v_pos - self.frame_marker_v_pos2) / 2.0\
             + self.frame_marker_v_pos2
-        # self.frame_marker_outline_line_width = 0.003
-        self.frame_marker_outline_line_width\
-            = HDBasedMaskBorderSize(6, canvas_width=self.width).size
+        self.frame_marker_outline_line_width = HDBasedMaskBorderSize(6).size
 
         # ramp pattern parameters
         self.ramp_height = 0.09
         self.lumi_text_v_pos = 0.829
         self.cv_text_v_pos = 0.968
+        self.ramp_border_width = int(round(4 / 1080.0 * self.height))
 
         # motion blur parameters
         self.motion_blur_radius = HeightBasedSize(0.2).h_size
@@ -293,15 +308,17 @@ class FusionParams:
             [540.0, 180.0, -180],
             [-180, 180, 540.0],
         ]
+        self.motion_blur_magic_number = 1.1
         self.motion_blur_line_length\
-            = round(self.motion_blur_radius * 1.2 * self.width) / self.width
+            = self.conv_to_width_base_pixel_size(
+                self.motion_blur_radius * 1.15 * self.motion_blur_magic_number)
         self.motion_blur_line_width = HdPixelBasedSize(4).v_size
         self.motion_blur_line_mask_size = HeightBasedSize(
-            self.motion_blur_radius - (self.motion_blur_line_length - self.motion_blur_radius),
+            self.motion_blur_radius * self.motion_blur_magic_number
+            - (self.motion_blur_line_length - self.motion_blur_radius * self.motion_blur_magic_number),
             inverse=True
         )
-        self.motion_blur_circle_line_width\
-            = HDBasedMaskBorderSize(4, canvas_width=self.width).size
+        self.motion_blur_circle_line_width = HDBasedMaskBorderSize(4).size
         self.motion_blur_line_color = [0.0, 0.0, 0.0, 1.0]
 
     def calc_frame_marker_outline_width(self, h_pos_list, each_marker_width):
@@ -316,6 +333,12 @@ class FusionParams:
             return [start]
         step = (stop - start) / (num - 1)
         return [int((start + step * i) * width + 0.5) / width for i in range(num)]
+    
+    def conv_to_width_base_pixel_size(self, val):
+        val2 = int(round(val * self.width))
+        val3 = val2 if val2 % 2 == 0 else val2 - 1
+
+        return val3 / self.width
 
 
 def create_background_circle(
@@ -923,7 +946,7 @@ def create_ramp(comp, ppp: FusionParams, tool_pos=(1, 3)):
         option={
             "sliderFloatParam0": ppp.frame_marker_outline_width,
             "sliderFloatParam1": ppp.ramp_height * 0.93,
-            "sliderIntParam0": 4
+            "sliderIntParam0": ppp.ramp_border_width
         }
     )
 
@@ -1023,8 +1046,8 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
         "Solid": 0,
         "BorderWidth": ppp.motion_blur_circle_line_width,
         "Center": ppp.motion_blur_circle_center_list[c_idx],
-        "Width": ppp.motion_blur_radius,
-        "Height": ppp.motion_blur_radius,
+        "Width": ppp.motion_blur_radius * 1.1,
+        "Height": ppp.motion_blur_radius * 1.1,
     }
     circle_bg_input = {
         "TopLeftRed": ppp.motion_blur_line_color[0],
@@ -1104,16 +1127,6 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
     transform.UserControls = user_control
     transform = transform.Refresh()
 
-    expression = (
-        "Point("
-        "Radius * comp:GetPrefs(\"Comp.FrameFormat.Height\") / "
-        "comp:GetPrefs(\"Comp.FrameFormat.Width\") * sin(CircularAngle/180*pi) + "
-        "CircleCenter.X, "
-        "Radius * cos(CircularAngle/180*pi) + CircleCenter.Y"
-        ")"
-    )
-    transform["Center"].SetExpression(expression)
-
     # set input
     dcl.set_multiple_tool_input(tool=cross_line_mask, input_dict=cross_line_mask_input)
     dcl.set_multiple_tool_input(tool=circle_mask, input_dict=circle_mask_input)
@@ -1126,6 +1139,15 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
     dcl.set_multiple_tool_input(tool=bg, input_dict=bg_input)
     dcl.set_multiple_tool_input(tool=text, input_dict=text_input)
     dcl.set_multiple_tool_input(tool=transform, input_dict=transform_input)
+    expression = (
+        "Point("
+        "Radius * comp:GetPrefs(\"Comp.FrameFormat.Height\") / "
+        "comp:GetPrefs(\"Comp.FrameFormat.Width\") * sin(CircularAngle/180*pi) + "
+        "CircleCenter.X, "
+        "Radius * cos(CircularAngle/180*pi) + CircleCenter.Y"
+        ")"
+    )
+    transform["Center"].SetExpression(expression)
 
     bezier_spline = comp.BezierSpline()
     key_frame = {
@@ -1411,15 +1433,17 @@ if __name__ == '__main__':
 
     from itertools import product
     resolution_list = [
-        # "1920x1080",
-        "2048x1080",
+        # "1280x720",
+        "1920x1080",
+        # "2048x1080",
+        # "2560x1440",
         # "3840x2160",
         # "4096x2160",
     ]
     framerate_list = [
-        24,
+        # 24,
         # 25,
-        # 30,
+        30,
         # 50,
         # 60
     ]
