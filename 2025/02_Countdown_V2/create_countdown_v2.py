@@ -243,12 +243,30 @@ class FusionParams:
         self.cross_line_width = self.cd_line_width
         self.gray90 = 0.8
         self.gray80 = 0.7
+        self.gray40 = 0.4
+        self.gray30 = 0.3
+        self.gray28 = 0.28
         self.cross_line_color = [self.gray90, self.gray90, self.gray90, 1.0]
         self.info_font_size = 0.021
         self.info_vanchor = 2.3
         self.deg45_line_color = (72/255) ** 2.4
         self.deg45_line_margin = 192
         self.deg45_line_width = 1
+        self.audio_font_size = HeightBasedSize(0.33).h_size
+        self.audio_pos_h = 0.19
+        self.audio_pos_v = 0.27
+        self.audio_text_list = {
+            4: ["L", "L", "", ""],
+            3: ["", "", "R", "R"],
+            2: ["C", "C", "C", "C"],
+            1: ["", "", "", ""],
+        }
+        self.audio_pos = [
+            {1: 0.5 - self.audio_pos_h, 2: 1 - self.audio_pos_v, 3: 0.0},
+            {1: 0.5 - self.audio_pos_h, 2: self.audio_pos_v, 3: 0.0},
+            {1: 0.5 + self.audio_pos_h, 2: 1 - self.audio_pos_v, 3: 0.0},
+            {1: 0.5 + self.audio_pos_h, 2: self.audio_pos_v, 3: 0.0},
+        ]
 
         # frame marker parameters
         frame_marker_h_st_pos = 0.07
@@ -633,8 +651,20 @@ def create_countdown_animation_comp(
     countdown_text_merge = dcl.add_comp_tool(
         comp=comp, name="Merge", pos=(x_pos+2, y_pos-1)
     )
+
+    audio_channel_text_merge_list = []
+    audio_channel_text_list = []
+    for t_idx in range(4):
+        audio_channel_text_merge = dcl.add_comp_tool(
+            comp=comp, name="Merge", pos=(x_pos+3+t_idx, y_pos-1)
+        )
+        audio_channel_text_merge_list.append(audio_channel_text_merge)
+        audio_channel_text = dcl.add_comp_tool(
+            comp=comp, name="TextPlus", pos=(x_pos+3+t_idx, y_pos-2)
+        )
+        audio_channel_text_list.append(audio_channel_text)
     output_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=(x_pos+2, y_pos-0)
+        comp=comp, name="Merge", pos=(x_pos+3+3, y_pos-0)
     )
 
     # wipe animation settings
@@ -691,18 +721,54 @@ def create_countdown_animation_comp(
         tool=countdown_text, input_dict=countdown_text_input
     )
 
+    audio_channel_text_input_base = {
+        "Font": font_family,
+        "Style": font_weight,
+        "Size": ppp.audio_font_size,
+        "Red1": ppp.gray28,
+        "Green1": ppp.gray28,
+        "Blue1": ppp.gray28,
+    }
+
+    for t_idx in range(4):
+        audio_channel_text_input = copy.deepcopy(audio_channel_text_input_base)
+        audio_channel_text_input["Center"] = ppp.audio_pos[t_idx]
+        audio_channel_text_input["StyledText"] = ppp.audio_text_list[count_str][t_idx]
+        dcl.set_multiple_tool_input(
+            tool=audio_channel_text_list[t_idx], input_dict=audio_channel_text_input
+        )
+        audio_channel_text_list[t_idx]["Opacity1"] = comp.BezierSpline()
+        audio_channel_text_list[t_idx]["Opacity1"][0] = 0.0
+        audio_channel_text_list[t_idx]["Opacity1"][(ppp.fps_int//2)-1] = 0.0
+        audio_channel_text_list[t_idx]["Opacity1"][ppp.fps_int//2] = 1.0
+
     # connect
     dcl.connect_merge_tool(
-        merge_tool=wipe_circle_merge,
-        bg_tool=base_bg, fg_tool=wipe_circle_fg
+        merge_tool=wipe_circle_merge, bg_tool=base_bg, fg_tool=wipe_circle_fg
     )
     dcl.connect_merge_tool(
         merge_tool=countdown_text_merge,
         bg_tool=wipe_circle_merge, fg_tool=countdown_text
     )
     dcl.connect_merge_tool(
+        merge_tool=audio_channel_text_merge_list[0],
+        bg_tool=countdown_text_merge, fg_tool=audio_channel_text_list[0]
+    )
+    dcl.connect_merge_tool(
+        merge_tool=audio_channel_text_merge_list[1],
+        bg_tool=audio_channel_text_merge_list[0], fg_tool=audio_channel_text_list[1]
+    )
+    dcl.connect_merge_tool(
+        merge_tool=audio_channel_text_merge_list[2],
+        bg_tool=audio_channel_text_merge_list[1], fg_tool=audio_channel_text_list[2]
+    )
+    dcl.connect_merge_tool(
+        merge_tool=audio_channel_text_merge_list[3],
+        bg_tool=audio_channel_text_merge_list[2], fg_tool=audio_channel_text_list[3]
+    )
+    dcl.connect_merge_tool(
         merge_tool=output_merge,
-        bg_tool=None, fg_tool=countdown_text_merge
+        bg_tool=None, fg_tool=audio_channel_text_merge_list[3]
     )
 
     return output_merge
@@ -1281,7 +1347,7 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
         )
     
     # frame marker
-    x_pos += 4
+    x_pos += 8
     y_pos += 0
     frame_marker_output_merge\
         = create_frame_marker(
