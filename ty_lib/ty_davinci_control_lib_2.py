@@ -450,7 +450,12 @@ def set_timeline_settings(timeline, params):
             timeline=timeline, name=name, value=value
         )
         if result is False:
-            is_success = False
+            if name == "timelineFrameRate" and value == "29.97":
+                pass
+            elif name == "timelineFrameRate" and value == "59.94":
+                pass
+            else:
+                is_success = False
 
     if is_success is False:
         msg = 'set_timeline_settings() was failed. '
@@ -567,16 +572,15 @@ def add_seq_file_to_media_pool(file_path, start_idx, end_idx):
 
 @log_return_value
 def append_clip_to_timeline(
-        clip, pos_timecode=None,
+        clip, pos_frame_idx=None,
         start_frame=None, end_frame=None, media_type=None, track_index=1):
     """
     Parameters
     ----------
     clip : MediaPoolItem
         clip
-    pos_timecode : str
-        clip start position (timecode).
-        example -> `pos_timecode="01:00:00:12"`
+    pos_frame_idx : float
+        clip start position.
     start_frame : int or float
         start frame number
     end_frame : int or float
@@ -597,8 +601,8 @@ def append_clip_to_timeline(
         "mediaPoolItem": clip
     }
 
-    if pos_timecode is not None:
-        frame_idx = _timecode_to_frame_index(timecode=pos_timecode)
+    if pos_frame_idx is not None:
+        frame_idx = pos_frame_idx
         clip_info.update({'recordFrame': frame_idx})
     if (start_frame is not None) and (end_frame is not None):
         clip_info.update({'startFrame': start_frame})
@@ -627,6 +631,13 @@ def insert_generator_into_timeline(timeline, generator_name):
         raise TyResolveModuleError(False, msg)
 
     return timeline_item
+
+
+def sec_to_frame_idx(sec: float) -> float:
+    fps = int(round(get_project_setting(name="timelineFrameRate")))
+    frame_idx = fps * sec
+
+    return frame_idx
 
 
 def _frame_index_to_timecode(
@@ -845,18 +856,19 @@ def add_fusion_comp(timeline_item):
 
 
 def _create_dummy_video_relative_path():
-    fps_str = int(get_project_setting(name="timelineFrameRate"))
+    fps_float = float(get_project_setting(name="timelineFrameRate"))
+    fps = int(fps_float) if fps_float.is_integer() else fps_float
     width = int(get_project_setting(name="timelineResolutionWidth"))
     height = int(get_project_setting(name="timelineResolutionHeight"))
     directory = Path(__file__).resolve().parent
-    dummy_video_path = directory / f"videos/dummy_video_{width}x{height}_{fps_str}P.mp4"
+    dummy_video_path = directory / f"videos/dummy_video_{width}x{height}_{fps}P.mp4"
 
     return str(dummy_video_path)
 
 
 @log_return_value
 def append_fusion_composition_to_timeline(
-        num_of_frame: int, pos_timecode: str | None = None):
+        num_of_frame: float, pos_frame_idx: float | None = None):
     """
     Note
     ----
@@ -872,7 +884,8 @@ def append_fusion_composition_to_timeline(
         media_type=1,
         start_frame=0,
         end_frame=num_of_frame,  # specify the frame length
-        pos_timecode=pos_timecode)
+        pos_frame_idx=pos_frame_idx
+    )
     fusion_comp = add_fusion_comp(timeline_item)
 
     # Delete MediaIn1 (Because MediaIn is dummy data)

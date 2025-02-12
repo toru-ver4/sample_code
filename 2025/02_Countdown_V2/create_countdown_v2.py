@@ -273,12 +273,13 @@ class FusionParams:
         frame_marker_h_ed_pos = 1 - frame_marker_h_st_pos
         self.frame_marker_h_pos\
             = self.linspace(
-                frame_marker_h_st_pos, frame_marker_h_ed_pos, fps + 1, width=self.width
+                frame_marker_h_st_pos, frame_marker_h_ed_pos,
+                self.fps_int + 1, width=self.width
             )
         self.frame_marker_v_pos = HdPixelBasedSize(140).v_size
         self.frame_marker_v_pos2 = HdPixelBasedSize(108).v_size
         frame_marker_width\
-            = (frame_marker_h_ed_pos - frame_marker_h_st_pos) / (fps * 2 + 1)
+            = (frame_marker_h_ed_pos - frame_marker_h_st_pos) / (self.fps_int * 2 + 1)
         self.frame_marker_width = self.conv_to_width_base_pixel_size(frame_marker_width)
         self.frame_marker_height = HdPixelBasedSize(140-108).v_size
 
@@ -435,7 +436,8 @@ def draw_info_comp(
     )
     font_family = "Noto Sans"
     font_weight = "Regular"
-    fps = int(dcl.get_project_setting("timelineFrameRate"))
+    fps = float(dcl.get_project_setting("timelineFrameRate"))
+    fps = int(fps) if fps.is_integer() else fps
     gamut = dcl.get_project_setting("colorSpaceOutput")
     gamma = dcl.get_project_setting("colorSpaceOutputGamma")
     project_width, project_height = dcl.get_project_resolution()
@@ -469,7 +471,7 @@ def draw_info_comp(
     )
     rev_text_input = {
         "Center": {1: 1.0, 2: 0.0, 3: 0.0},
-        "StyledText": "Revision 01  ",
+        "StyledText": "Revision 02  ",
         "Font": font_family,
         "Style": font_weight,
         "Size": font_size,
@@ -611,7 +613,7 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
 
 
 def create_countdown_animation_comp(
-    comp, ppp: FusionParams, count_str, fps, tool_pos
+    comp, ppp: FusionParams, count_str, tool_pos
 ):
     """
     Parameters
@@ -680,7 +682,7 @@ def create_countdown_animation_comp(
     dcl.set_multiple_tool_input(tool=radial_wipe, input_dict=radial_wipe_input)
     radial_wipe["WriteLength"] = comp.BezierSpline()
     radial_wipe["WriteLength"][0] = 1.0
-    radial_wipe["WriteLength"][fps] = 0.0
+    radial_wipe["WriteLength"][ppp.fps_int] = 0.0
 
     # mask settings for wipe animation
     wipe_circle_mask_input = {
@@ -863,9 +865,10 @@ def create_frame_marker_core(comp, ppp, idx, fps, tool_pos=(1, 3)):
     return bg_merge, inv_bg_merge
 
 
-def create_frame_marker(comp, ppp: FusionParams, fps, tool_pos=(1, 3)):
+def create_frame_marker(comp, ppp: FusionParams, tool_pos=(1, 3)):
     x_pos = tool_pos[0]
     y_pos = tool_pos[1]
+    fps = ppp.fps_int
 
     base_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos-1))
 
@@ -894,7 +897,8 @@ def create_frame_marker(comp, ppp: FusionParams, fps, tool_pos=(1, 3)):
     merge_list = []
     for idx in range(fps+1):
         bg_merge, inv_bg_merge = create_frame_marker_core(
-            comp=comp, ppp=ppp, idx=idx, fps=fps,tool_pos=(x_pos+2*idx+2, y_pos-1)
+            comp=comp, ppp=ppp, idx=idx, fps=fps,
+            tool_pos=(x_pos+2*idx+2, y_pos-1)
         )
         merge_list.append([bg_merge, inv_bg_merge])
 
@@ -1216,21 +1220,22 @@ def create_motion_blur_animation_core(comp, c_idx, ppp: FusionParams, tool_pos=(
     transform["Center"].SetExpression(expression)
 
     bezier_spline = comp.BezierSpline()
+    fps = ppp.fps_int
     key_frame = {
-        -ppp.fps//2: {
+        -fps//2: {
             1: ppp.motion_blur_angle_st_ed_list[c_idx][0],
-            'LH': {1: -ppp.fps/2.0, 2: 0.0},
-            'RH': {1: ppp.fps/2.0, 2: 0.0}
+            'LH': {1: -fps/2.0, 2: 0.0},
+            'RH': {1: fps/2.0, 2: 0.0}
         },
-        ppp.fps//2: {
+        fps//2: {
             1: ppp.motion_blur_angle_st_ed_list[c_idx][1],
-            'LH': {1: -ppp.fps/2.0, 2: 0.0},
-            'RH': {1: ppp.fps/2.0, 2: 0.0}
+            'LH': {1: -fps/2.0, 2: 0.0},
+            'RH': {1: fps/2.0, 2: 0.0}
         },
-        ppp.fps_int + (ppp.fps//2): {
+        fps + (fps//2): {
             1: ppp.motion_blur_angle_st_ed_list[c_idx][2],
-            'LH': {1: -ppp.fps/2.0, 2: 0.0},
-            'RH': {1: ppp.fps/2.0, 2: 0.0}
+            'LH': {1: -fps/2.0, 2: 0.0},
+            'RH': {1: fps/2.0, 2: 0.0}
         }
     }
     bezier_spline.SetKeyFrames(key_frame)
@@ -1287,25 +1292,30 @@ def create_motion_blur_animation(comp, ppp: FusionParams, tool_pos=(1, 3)):
 
 
 def add_beep_sound():
-    wav_file_path = str(Path("./wav/countdown.wav").resolve())
+    fps = float(dcl.get_project_setting(name="timelineFrameRate"))
+    if fps.is_integer():
+        wav_file_path = str(Path("./wav/countdown.wav").resolve())
+    else:
+        wav_file_path = str(Path("./wav/countdown_ntsc.wav").resolve())
     clip = dcl.add_file_to_media_pool(file_path=wav_file_path)
     dcl.append_clip_to_timeline(
-        clip=clip, pos_timecode="01:00:00:00",
+        clip=clip, pos_frame_idx=dcl.sec_to_frame_idx(sec=60*60),
         media_type=2
     )
 
 def create_countdown_comp():
-    fps = int(dcl.get_project_setting(name="timelineFrameRate"))
+    fps = float(dcl.get_project_setting(name="timelineFrameRate"))
     width, height = dcl.get_project_resolution()
     ppp = FusionParams(fps=fps, width=width, height=height)
     for idx, countdown_str in enumerate([4, 3, 2, 1]):
+        start_frame = dcl.sec_to_frame_idx(60 * 60 + idx)
         tl_item_fusion_comp, comp =\
             dcl.append_fusion_composition_to_timeline(
-                num_of_frame=fps,
-                pos_timecode=f"01:00:{idx:02d}:00"
+                num_of_frame=ppp.fps_int,
+                pos_frame_idx=start_frame
             )
         create_countdown_comp_each_sec(
-            comp=comp, ppp=ppp, fps=fps, count_str=countdown_str)
+            comp=comp, ppp=ppp, fps=ppp.fps_int, count_str=countdown_str)
         # break
 
     add_beep_sound()
@@ -1342,7 +1352,7 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     y_pos += 0
     cntdown_anime_output_merge\
         = create_countdown_animation_comp(
-            comp=comp, ppp=ppp, count_str=count_str, fps=fps,
+            comp=comp, ppp=ppp, count_str=count_str,
             tool_pos=(x_pos, y_pos)
         )
     
@@ -1351,7 +1361,7 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     y_pos += 0
     frame_marker_output_merge\
         = create_frame_marker(
-            comp=comp, ppp=ppp, fps=fps, tool_pos=(x_pos, y_pos)
+            comp=comp, ppp=ppp, tool_pos=(x_pos, y_pos)
         )
     
     # ramp pattern
@@ -1526,19 +1536,22 @@ if __name__ == '__main__':
 
     from itertools import product
     resolution_list = [
-        "1280x720",
+        # "1280x720",
         "1920x1080",
-        "2048x1080",
-        "2560x1440",
-        "3840x2160",
-        "4096x2160",
+        # "2048x1080",
+        # "2560x1440",
+        # "3840x2160",
+        # "4096x2160",
     ]
     framerate_list = [
-        24,
-        25,
-        30,
-        50,
-        60
+        23.976,
+        # 24,
+        # 25,
+        29.97,
+        # 30,
+        # 50,
+        # 59.94,
+        # 60
     ]
     gamut_list = [
         drc.PRJ_COLOR_SPACE_REC709,

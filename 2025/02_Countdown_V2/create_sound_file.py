@@ -142,16 +142,21 @@ def add_fade_in_out(data, sec=0.005, sampling_rate=48000):
     data[-sample:] = data[-sample:] * y[::-1]
 
 
-def make_countdown_sound(sampling_rate=48000):
+def make_countdown_sound(div_1001=False):
+    mul_val = 1.001 if div_1001 else 1.0
+    sampling_rate=48000
     count_down_sec = 4
     low_freq = 1000
     high_freq = 2000
     beep_sec = 0.06
     fade_in_out_sec = 0.0065
-    total_sample = count_down_sec * sampling_rate
-    left_st_sec = 1 - beep_sec / 8.0
-    right_st_sec = 2 - beep_sec / 8.0
-    center_st_sec = 3 - beep_sec / 8.0
+    total_sample = int(round(count_down_sec * sampling_rate * mul_val))
+    left_st_sec = 1 * mul_val - beep_sec / 8.0
+    right_st_sec = 2 * mul_val - beep_sec / 8.0
+    center_st_sec = 3 * mul_val - beep_sec / 8.0
+    # left_st_sec = 1 * mul_val
+    # right_st_sec = 2 * mul_val
+    # center_st_sec = 3 * mul_val
 
     # 無音ファイル
     np.zeros((total_sample), dtype=np.int16)
@@ -180,7 +185,11 @@ def make_countdown_sound(sampling_rate=48000):
     right_sound[st_sample:st_sample+sine_high.shape[0]] = sine_high
 
     stereo = np.dstack((left_sound, right_sound)).reshape((total_sample, 2))
-    wavfile.write("./wav/countdown.wav", sampling_rate, stereo)
+    if not div_1001:
+        fname = "./wav/countdown.wav"
+    else:
+        fname = "./wav/countdown_ntsc.wav"
+    wavfile.write(fname, sampling_rate, stereo)
 
 
 def main_func():
@@ -197,7 +206,8 @@ def main_func():
     # make_time_freq_plane("./voice/aaa.wav")
 
     # カウントダウン動画用にデータを作るよ
-    make_countdown_sound()
+    make_countdown_sound(div_1001=False)
+    make_countdown_sound(div_1001=True)
 
 
 def get_turbo_colormap():
