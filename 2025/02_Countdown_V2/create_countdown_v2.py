@@ -1477,7 +1477,7 @@ def create_countdown_video_each_spec(
     ####################################################
     # Temporarily commented out because it is slow...
     ####################################################
-    dcl.set_timeline_settings(timeline=timeline, params=project_settings_params)
+    # dcl.set_timeline_settings(timeline=timeline, params=project_settings_params)
 
     # add files to the media storage
     relative_file_list = [
@@ -1499,10 +1499,10 @@ def create_countdown_video_each_spec(
     ###################
     # encode
     ###################
-    # preset_path = str(
-    #     Path("./render_presets/h265_main10_444_qp-0.xml").resolve()
-    # )
-    preset_path = None
+    preset_path = str(
+        Path("./render_presets/H265_Main10_444_10-bit Render.xml").resolve()
+    )
+    # preset_path = None
 
     format_extension = drc.OUT_FILE_EXTENSTION_MOV
     # codec = drc.CODEC_H265_NVIDIA
@@ -1524,6 +1524,8 @@ def create_countdown_video_each_spec(
         dcl.import_render_preset(preset_path=preset_path)
     else:
         dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
+
+    dcl.setup_project_settings(params=project_settings_params)
 
     dcl.set_render_settings(setting_dict=render_settings)
     dcl.run_rendering_and_wait_until_finish(project=project)
@@ -1547,20 +1549,20 @@ if __name__ == '__main__':
         23.976,
         # 24,
         # 25,
-        29.97,
+        # 29.97,
         # 30,
         # 50,
         # 59.94,
         # 60
     ]
     gamut_list = [
-        drc.PRJ_COLOR_SPACE_REC709,
+        # drc.PRJ_COLOR_SPACE_REC709,
         # drc.PRJ_COLOR_SPACE_P3D65,
-        # drc.PRJ_COLOR_SPACE_REC2020
+        drc.PRJ_COLOR_SPACE_REC2020
     ]
     gamma_list = [
-        drc.PRJ_GAMMA_STR_GAMMA24,
-        # drc.PRJ_GAMMA_STR_ST2084
+        # drc.PRJ_GAMMA_STR_GAMMA24,
+        drc.PRJ_GAMMA_STR_ST2084
     ]
 
     for resolution, framerate, gamut, gamma in product(
