@@ -41,8 +41,8 @@ def calc_cycle_param(freq=440, sec=5, sampling_rate=48000):
     sample_per_one_cycle = sampling_rate / freq_per_one_cycle[Hz]
     """
     temp_total_sample_num = sec * sampling_rate
-    sample_per_one_cycle = int(sampling_rate / freq + 0.5)
-    cycle_num = int(temp_total_sample_num / sample_per_one_cycle + 0.5)
+    sample_per_one_cycle = int(round(sampling_rate / freq))
+    cycle_num = int(round(temp_total_sample_num / sample_per_one_cycle))
     total_sample_num = cycle_num * sample_per_one_cycle
 
     return total_sample_num, sample_per_one_cycle, cycle_num
@@ -135,8 +135,11 @@ def add_fade_in_out(data, sec=0.005, sampling_rate=48000):
     データにプチノイズが乗らないように
     始めと終わりをまろやかにする。
     """
-    sample = int(sampling_rate * sec + 0.5)
-    x = np.linspace(0, 0.5 * np.pi, sample)
+    if sec == 0:
+        return
+
+    sample = int(round(sampling_rate * sec))
+    x = np.linspace(0.0, 0.5 * np.pi, sample)
     y = np.sin(x)
     data[:sample] = data[:sample] * y
     data[-sample:] = data[-sample:] * y[::-1]
@@ -148,15 +151,17 @@ def make_countdown_sound(div_1001=False):
     count_down_sec = 4
     low_freq = 1000
     high_freq = 2000
-    beep_sec = 0.06
-    fade_in_out_sec = 0.0065
+    low_frec_1cyc_sample = sampling_rate // low_freq
+    high_frec_1cyc_sample = sampling_rate // high_freq
+    beep_sec = 0.05
+    fade_in_out_sec = 0.002
     total_sample = int(round(count_down_sec * sampling_rate * mul_val))
-    left_st_sec = 1 * mul_val - beep_sec / 8.0
-    right_st_sec = 2 * mul_val - beep_sec / 8.0
-    center_st_sec = 3 * mul_val - beep_sec / 8.0
-    # left_st_sec = 1 * mul_val
-    # right_st_sec = 2 * mul_val
-    # center_st_sec = 3 * mul_val
+    # left_st_sec = 1 * mul_val - beep_sec / 8.0
+    # right_st_sec = 2 * mul_val - beep_sec / 8.0
+    # center_st_sec = 3 * mul_val - beep_sec / 8.0
+    left_st_sec = 1 * mul_val
+    right_st_sec = 2 * mul_val
+    center_st_sec = 3 * mul_val
 
     # 無音ファイル
     np.zeros((total_sample), dtype=np.int16)
