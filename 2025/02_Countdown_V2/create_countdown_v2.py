@@ -256,6 +256,10 @@ class FusionParams:
         self.audio_pos_h = 0.19
         self.audio_pos_v = 0.27
         self.audio_text_list = {
+            8: ["L", "L", "", ""],
+            7: ["", "", "R", "R"],
+            6: ["L", "L", "", ""],
+            5: ["", "", "R", "R"],
             4: ["L", "L", "", ""],
             3: ["", "", "R", "R"],
             2: ["C", "C", "C", "C"],
@@ -1316,6 +1320,7 @@ def create_countdown_comp():
             )
         create_countdown_comp_each_sec(
             comp=comp, ppp=ppp, fps=ppp.fps_int, count_str=countdown_str)
+        dcl.force_rcm_update_via_page_switch()
         # break
 
     add_beep_sound()
@@ -1494,7 +1499,7 @@ def create_countdown_video_each_spec(
     create_countdown_comp()
     dcl.set_current_timecode(timecode="01:00:00:00")
 
-    dcl.open_page(page_name=drc.FUSION_PAGE_STR)
+    # dcl.open_page(page_name=drc.FUSION_PAGE_STR)
 
     ###################
     # encode

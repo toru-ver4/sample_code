@@ -6,6 +6,8 @@ from pathlib import Path
 import functools
 import time
 
+from ty_davinci_constants import EDIT_PAGE_STR, FUSION_PAGE_STR
+
 if sys.platform == "darwin":  # macOS
     resolve_script_api = (
         "/Library/Application Support/Blackmagic Design/DaVinci Resolve/"
@@ -1205,6 +1207,32 @@ def add_line_comp(
         )
 
     return line_merge
+
+
+def force_rcm_update_via_page_switch():
+    """
+    Force a refresh of DaVinci Resolve's Color Management (RCM) settings
+    for Fusion compositions.
+
+    Background:
+        Under certain conditions, DaVinci Resolve fails to correctly apply RCM settings
+        to Fusion compositions.
+        This function acts as a workaround by performing a specific page transition
+        to force the RCM settings to update.
+
+    Process:
+        1. Open the Fusion page (FUSION_PAGE_STR) where the RCM is properly applied.
+        2. Wait for 0.1 seconds to allow the page transition to complete.
+        3. Return to the Edit page (EDIT_PAGE_STR).
+
+    Note:
+        This workaround is implemented to address a potential bug in DaVinci Resolve
+        and may become unnecessary if the underlying issue is resolved in future updates.
+    """
+    open_page(page_name=FUSION_PAGE_STR)
+    time.sleep(0.1)
+    open_page(page_name=EDIT_PAGE_STR)
+
 
 
 if __name__ == '__main__':
