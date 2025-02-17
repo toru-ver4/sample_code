@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from pprint import pprint
 import copy
+import shutil
+import subprocess
 
 # import third-party libraries
 import numpy as np
@@ -72,6 +74,18 @@ def dump_tool_list(comp):
 def debug_resolve():
     # print(get_project_setting("videoMonitorFormat"))
     pprint(dcl.get_project_setting(name=None))
+    project = dcl.get_current_project()
+    format_list = project.GetRenderFormats()
+    buf = ""
+    for render_format_name, ext in format_list.items():
+        codecs = project.GetRenderCodecs(ext)
+        buf += f"=== {ext} ===\n"
+        for key, value in codecs.items():
+            buf += f"{key}: {value}\n"
+        buf += "\n"
+        print(f"=== {ext} ===")
+        print(codecs)
+        print('')
     sys.exit(0)
 
 
@@ -1427,6 +1441,56 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     comp.Unlock()
 
 
+def encode_hevc_using_ffmpeg(png_fname, fps, seq_file_ext, gamut, gamma):
+    print(png_fname)
+    in_fname_ffmpeg = str(Path(png_fname + "_%08d." + seq_file_ext))
+    target_dir = str(Path(png_fname).resolve().parent.parent)
+    target_name = str(Path(png_fname).name)
+    out_fname = str(Path(target_dir) / Path(target_name + ".mp4"))
+    print(in_fname_ffmpeg)
+    print(out_fname)
+    cmd = "ffmpeg"
+    codec = "libx265"
+    # codec = "librav1e"
+    # codec = "libvvenc"
+
+    if gamma == drc.PRJ_GAMMA_STR_GAMMA24:
+        color_trc = "bt709"
+    elif gamma == drc.PRJ_GAMMA_STR_ST2084:
+        color_trc = "smpte2084"
+    else:
+        raise ValueError("invalid gamma parameter")
+
+    if gamut == drc.PRJ_COLOR_SPACE_REC709:
+        color_primaries = "bt709"
+        color_space = "bt709"
+    elif gamut == drc.PRJ_COLOR_SPACE_REC2020:
+        color_primaries = "bt2020"
+        color_space = "bt2020nc"
+    elif gamut == drc.PRJ_COLOR_SPACE_P3D65:
+        color_primaries = "smpte432"
+        color_space = "bt709"
+    else:
+        raise ValueError("invalid gamut parameter")
+
+    ops = [
+        '-start_number', '86400',
+        '-color_primaries', color_primaries, '-color_trc', color_trc,
+        '-colorspace', color_space,
+        '-r', f"{fps}", '-i', in_fname_ffmpeg,
+        '-c:v', codec,
+        # '-profile:v', 'main444-12',
+        '-pix_fmt', 'yuv444p12le',
+        '-x265-params', 'lossless=1',
+        '-color_primaries', color_primaries, '-color_trc', color_trc,
+        '-colorspace', color_space,
+        str(out_fname), '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
 def create_countdown_video_each_spec(
         width, height, framerate, gamut, gamma):
     ##################
@@ -1499,24 +1563,34 @@ def create_countdown_video_each_spec(
     create_countdown_comp()
     dcl.set_current_timecode(timecode="01:00:00:00")
 
-    # dcl.open_page(page_name=drc.FUSION_PAGE_STR)
+    dcl.open_page(page_name=drc.FUSION_PAGE_STR)
 
     ###################
     # encode
     ###################
-    preset_path = str(
-        Path("./render_presets/H265_Main10_444_10-bit Render.xml").resolve()
-    )
-    # preset_path = None
+    # preset_path = str(
+    #     Path("./render_presets/H265_Main10_444_10-bit Render.xml").resolve()
+    # )
+    preset_path = None
 
-    format_extension = drc.OUT_FILE_EXTENSTION_MOV
+    # format_extension = drc.OUT_FILE_EXTENSTION_MOV
+    format_extension = drc.OUT_FILE_EXTENSTION_PNG
     # codec = drc.CODEC_H265_NVIDIA
-    codec = drc.CODEC_H264_NVIDIA
+    # codec = drc.CODEC_H264_NVIDIA
     # codec = drc.CODEC_APPLE_PRORES_4444
     # format_extension = drc.OUT_FILE_EXTENSTION_EXR
     # codec = drc.CODEC_EXR_RGB_HALF
+    codec = drc.CODEC_DPX_RGB_16_BITS
     basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
-    output_fname = f"./render_out/{basename}" + "." + format_extension
+    # output_fname = f"./render_out/{basename}" + "." + format_extension
+
+    dir_path = Path(r"D:\abuse\Countdown\temp_seq")
+    shutil.rmtree(dir_path)
+    dir_path.mkdir(parents=True, exist_ok=True)
+    if format_extension is drc.OUT_FILE_EXTENSTION_PNG:
+        output_fname = f"D:\\abuse\\Countdown\\temp_seq\\{basename}"
+    else:
+        output_fname = f"D:\\abuse\\Countdown\\temp_seq\\{basename}" + "." + format_extension
     target_dir = str(Path(output_fname).resolve().parent)
     custom_name = str(Path(output_fname).resolve().name)
 
@@ -1534,6 +1608,10 @@ def create_countdown_video_each_spec(
 
     dcl.set_render_settings(setting_dict=render_settings)
     dcl.run_rendering_and_wait_until_finish(project=project)
+
+    encode_hevc_using_ffmpeg(
+        png_fname=output_fname, fps=framerate, seq_file_ext=format_extension,
+        gamma=gamma, gamut=gamut)
 
 
 if __name__ == '__main__':
@@ -1561,12 +1639,12 @@ if __name__ == '__main__':
         # 60
     ]
     gamut_list = [
-        # drc.PRJ_COLOR_SPACE_REC709,
-        # drc.PRJ_COLOR_SPACE_P3D65,
+        drc.PRJ_COLOR_SPACE_REC709,
+        drc.PRJ_COLOR_SPACE_P3D65,
         drc.PRJ_COLOR_SPACE_REC2020
     ]
     gamma_list = [
-        # drc.PRJ_GAMMA_STR_GAMMA24,
+        drc.PRJ_GAMMA_STR_GAMMA24,
         drc.PRJ_GAMMA_STR_ST2084
     ]
 
