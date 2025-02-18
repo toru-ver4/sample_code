@@ -1484,7 +1484,7 @@ def encode_hevc_using_ffmpeg(png_fname, fps: float, seq_file_ext, gamut, gamma, 
     else:
         wav_file = "./wav/countdown_ntsc.wav"
 
-    for out_fname, pix_fmt in zip([out_fname_444, out_fname_420], [pix_fmt_444, pix_fmt_420]):
+    for out_fname, pix_fmt in zip([out_fname_444], [pix_fmt_444]):
         if out_fname == out_fname_444:
             lossless = lossless_on
         else:
@@ -1496,7 +1496,7 @@ def encode_hevc_using_ffmpeg(png_fname, fps: float, seq_file_ext, gamut, gamma, 
             '-r', f"{fps}", '-i', in_fname_ffmpeg, '-i', wav_file,
             '-c:v', codec,
             # '-profile:v', 'main444-12',
-            '-pix_fmt', pix_fmt,
+            '-pix_fmt', pix_fmt, '-tag:v', 'hvc1',
             '-x265-params', lossless,
             '-c:a', 'aac', '-b:a', '128k',
             '-color_primaries', color_primaries, '-color_trc', color_trc,
@@ -1649,12 +1649,12 @@ if __name__ == '__main__':
 
     from itertools import product
     resolution_list = [
-        # "1280x720",
+        "1280x720",
         "1920x1080",
-        # "2048x1080",
-        # "2560x1440",
-        # "3840x2160",
-        # "4096x2160",
+        "2048x1080",
+        "2560x1440",
+        "3840x2160",
+        "4096x2160",
     ]
     framerate_list = [
         23.976,
