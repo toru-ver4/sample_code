@@ -17,6 +17,7 @@ import ty_davinci_constants as drc
 import ty_davinci_control_lib_2 as dcl
 import transfer_functions as tf
 
+REVISION = 2
 
 #####################
 # Debug
@@ -1446,9 +1447,14 @@ def encode_hevc_using_ffmpeg(png_fname, fps: float, seq_file_ext, gamut, gamma, 
     in_fname_ffmpeg = str(Path(png_fname + "_%08d." + seq_file_ext))
     target_dir = str(Path(png_fname).resolve().parent.parent)
     target_name = str(Path(png_fname).name)
-    out_fname = str(Path(target_dir) / Path(target_name + ".mp4"))
+    out_fname_444 = str(Path(target_dir) / Path(f"{target_name}_yub444p12le_rev{REVISION:02d}.mp4"))
+    out_fname_420 = str(Path(target_dir) / Path(f"{target_name}_yub420p10le_rev{REVISION:02d}.mp4"))
+    pix_fmt_444 = "yuv444p12le"
+    pix_fmt_420 = "yuv420p10le"
+    lossless_on = 'lossless=1'
+    lossless_off = 'lossless=1'
     print(in_fname_ffmpeg)
-    print(out_fname)
+    print(out_fname_444)
     cmd = "ffmpeg"
     codec = "libx265"
     # codec = "librav1e"
@@ -1478,23 +1484,28 @@ def encode_hevc_using_ffmpeg(png_fname, fps: float, seq_file_ext, gamut, gamma, 
     else:
         wav_file = "./wav/countdown_ntsc.wav"
 
-    ops = [
-        '-start_number', f"{start_frame}",
-        '-color_primaries', color_primaries, '-color_trc', color_trc,
-        '-colorspace', color_space,
-        '-r', f"{fps}", '-i', in_fname_ffmpeg, '-i', wav_file,
-        '-c:v', codec,
-        # '-profile:v', 'main444-12',
-        '-pix_fmt', 'yuv444p12le',
-        '-x265-params', 'lossless=1',
-        '-c:a', 'aac', '-b:a', '128k',
-        '-color_primaries', color_primaries, '-color_trc', color_trc,
-        '-colorspace', color_space,
-        str(out_fname), '-y'
-    ]
-    args = [cmd] + ops
-    print(" ".join(args))
-    subprocess.run(args)
+    for out_fname, pix_fmt in zip([out_fname_444, out_fname_420], [pix_fmt_444, pix_fmt_420]):
+        if out_fname == out_fname_444:
+            lossless = lossless_on
+        else:
+            lossless = lossless_off
+        ops = [
+            '-start_number', f"{start_frame}",
+            '-color_primaries', color_primaries, '-color_trc', color_trc,
+            '-colorspace', color_space,
+            '-r', f"{fps}", '-i', in_fname_ffmpeg, '-i', wav_file,
+            '-c:v', codec,
+            # '-profile:v', 'main444-12',
+            '-pix_fmt', pix_fmt,
+            '-x265-params', lossless,
+            '-c:a', 'aac', '-b:a', '128k',
+            '-color_primaries', color_primaries, '-color_trc', color_trc,
+            '-colorspace', color_space,
+            str(out_fname), '-y'
+        ]
+        args = [cmd] + ops
+        print(" ".join(args))
+        subprocess.run(args)
 
 
 def create_countdown_video_each_spec(
@@ -1598,14 +1609,18 @@ def create_countdown_video_each_spec(
     basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
     # output_fname = f"./render_out/{basename}" + "." + format_extension
 
-
-    dir_path = Path(r"D:\abuse\Countdown\temp_seq")
-    # shutil.rmtree(dir_path)
+    if sys.platform == "darwin":  # macOS
+        dir_path = Path("/Volumes/My Passport/Countdown/temp_seq")
+        output_fname = str(dir_path / basename)
+    else:
+        output_fname = f"D:\\abuse\\Countdown\\temp_seq\\{basename}"
+        dir_path = Path(r"D:\abuse\Countdown\temp_seq")
+    shutil.rmtree(dir_path, ignore_errors=True)
     dir_path.mkdir(parents=True, exist_ok=True)
     if format_extension is drc.OUT_FILE_EXTENSTION_PNG:
-        output_fname = f"D:\\abuse\\Countdown\\temp_seq\\{basename}"
+        output_fname = output_fname
     else:
-        output_fname = f"D:\\abuse\\Countdown\\temp_seq\\{basename}" + "." + format_extension
+        output_fname = output_fname + "." + format_extension
     target_dir = str(Path(output_fname).resolve().parent)
     custom_name = str(Path(output_fname).resolve().name)
 
@@ -1618,8 +1633,6 @@ def create_countdown_video_each_spec(
         dcl.import_render_preset(preset_path=preset_path)
     else:
         dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
-
-    dcl.setup_project_settings(params=project_settings_params)
 
     dcl.set_render_settings(setting_dict=render_settings)
     dcl.run_rendering_and_wait_until_finish(project=project)
@@ -1655,12 +1668,12 @@ if __name__ == '__main__':
     ]
     gamut_list = [
         drc.PRJ_COLOR_SPACE_REC709,
-        # drc.PRJ_COLOR_SPACE_P3D65,
-        # drc.PRJ_COLOR_SPACE_REC2020
+        drc.PRJ_COLOR_SPACE_P3D65,
+        drc.PRJ_COLOR_SPACE_REC2020
     ]
     gamma_list = [
         drc.PRJ_GAMMA_STR_GAMMA24,
-        # drc.PRJ_GAMMA_STR_ST2084
+        drc.PRJ_GAMMA_STR_ST2084
     ]
 
     for resolution, framerate, gamut, gamma in product(
