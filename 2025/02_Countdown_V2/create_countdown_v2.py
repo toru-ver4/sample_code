@@ -1441,7 +1441,7 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     comp.Unlock()
 
 
-def encode_hevc_using_ffmpeg(png_fname, fps, seq_file_ext, gamut, gamma):
+def encode_hevc_using_ffmpeg(png_fname, fps: float, seq_file_ext, gamut, gamma, start_frame):
     print(png_fname)
     in_fname_ffmpeg = str(Path(png_fname + "_%08d." + seq_file_ext))
     target_dir = str(Path(png_fname).resolve().parent.parent)
@@ -1473,15 +1473,21 @@ def encode_hevc_using_ffmpeg(png_fname, fps, seq_file_ext, gamut, gamma):
     else:
         raise ValueError("invalid gamut parameter")
 
+    if fps.is_integer():
+        wav_file = "./wav/countdown.wav"
+    else:
+        wav_file = "./wav/countdown_ntsc.wav"
+
     ops = [
-        '-start_number', '86400',
+        '-start_number', f"{start_frame}",
         '-color_primaries', color_primaries, '-color_trc', color_trc,
         '-colorspace', color_space,
-        '-r', f"{fps}", '-i', in_fname_ffmpeg,
+        '-r', f"{fps}", '-i', in_fname_ffmpeg, '-i', wav_file,
         '-c:v', codec,
         # '-profile:v', 'main444-12',
         '-pix_fmt', 'yuv444p12le',
         '-x265-params', 'lossless=1',
+        '-c:a', 'aac', '-b:a', '128k',
         '-color_primaries', color_primaries, '-color_trc', color_trc,
         '-colorspace', color_space,
         str(out_fname), '-y'
@@ -1528,6 +1534,10 @@ def create_countdown_video_each_spec(
         "hdrMasteringLuminanceMax": "1000",
         "hdrMasteringOn": "1",
     }
+    start_time_code = "01:00:00:00"
+    start_frame = dcl.timecode_to_frame_index(
+        timecode=start_time_code, fps_float=framerate
+    )
 
     # control the project
     dcl.close_current_project()
@@ -1560,8 +1570,12 @@ def create_countdown_video_each_spec(
     ]
     print(file_path_list)
 
+    ###################
+    # Core Function
+    ###################
     create_countdown_comp()
-    dcl.set_current_timecode(timecode="01:00:00:00")
+
+    dcl.set_current_timecode(timecode=start_time_code)
 
     dcl.open_page(page_name=drc.FUSION_PAGE_STR)
 
@@ -1584,8 +1598,9 @@ def create_countdown_video_each_spec(
     basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
     # output_fname = f"./render_out/{basename}" + "." + format_extension
 
+
     dir_path = Path(r"D:\abuse\Countdown\temp_seq")
-    shutil.rmtree(dir_path)
+    # shutil.rmtree(dir_path)
     dir_path.mkdir(parents=True, exist_ok=True)
     if format_extension is drc.OUT_FILE_EXTENSTION_PNG:
         output_fname = f"D:\\abuse\\Countdown\\temp_seq\\{basename}"
@@ -1611,7 +1626,7 @@ def create_countdown_video_each_spec(
 
     encode_hevc_using_ffmpeg(
         png_fname=output_fname, fps=framerate, seq_file_ext=format_extension,
-        gamma=gamma, gamut=gamut)
+        gamma=gamma, gamut=gamut, start_frame=start_frame)
 
 
 if __name__ == '__main__':
@@ -1630,22 +1645,22 @@ if __name__ == '__main__':
     ]
     framerate_list = [
         23.976,
-        # 24,
-        # 25,
-        # 29.97,
-        # 30,
-        # 50,
-        # 59.94,
-        # 60
+        24,
+        25,
+        29.97,
+        30,
+        50,
+        59.94,
+        60
     ]
     gamut_list = [
         drc.PRJ_COLOR_SPACE_REC709,
-        drc.PRJ_COLOR_SPACE_P3D65,
-        drc.PRJ_COLOR_SPACE_REC2020
+        # drc.PRJ_COLOR_SPACE_P3D65,
+        # drc.PRJ_COLOR_SPACE_REC2020
     ]
     gamma_list = [
         drc.PRJ_GAMMA_STR_GAMMA24,
-        drc.PRJ_GAMMA_STR_ST2084
+        # drc.PRJ_GAMMA_STR_ST2084
     ]
 
     for resolution, framerate, gamut, gamma in product(

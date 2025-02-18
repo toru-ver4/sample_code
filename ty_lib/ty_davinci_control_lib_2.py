@@ -668,14 +668,8 @@ def _frame_index_to_timecode(
     return new_timecode
 
 
-def _timecode_to_frame_index(timecode: str):
-    fps_float = get_project_setting("timelineFrameRate")
-    if abs(fps_float - int(fps_float)) > 0.0:
-        msg = 'Unsupported frame rate. '
-        msg += 'Please specify integer framerate in the project settings.'
-        raise TyResolveModuleError(False, msg)
-
-    fps = int(fps_float)
+def timecode_to_frame_index(timecode: str, fps_float: float):
+    fps = int(round(fps_float))
 
     th, tm, ts, tf = map(int, timecode.split(':'))
 
