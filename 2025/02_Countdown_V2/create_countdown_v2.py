@@ -8,6 +8,8 @@ from pprint import pprint
 import copy
 import shutil
 import subprocess
+import psutil
+import csv
 
 # import third-party libraries
 import numpy as np
@@ -22,6 +24,34 @@ REVISION = 2
 #####################
 # Debug
 #####################
+
+def debug_log_memory(index):
+    """
+    ChatGPT o3-mini 大先生が作成
+    """
+    # メモリ情報の取得
+    mem = psutil.virtual_memory()
+    total_gb = round(mem.total / (1024 ** 3), 3)
+    used_gb = round(mem.used / (1024 ** 3), 3)
+
+    file_path = "./memory_log.csv"
+    
+    # index が 0 の場合はファイルを新規作成、ヘッダーも書き込む
+    if index == 0 or not os.path.exists(file_path):
+        mode = 'w'
+        header = ['index', 'total_memory', 'used_memory']
+    else:
+        mode = 'a'
+        header = None
+
+    with open(file_path, mode, newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        # 新規作成時のみヘッダーを書き込む
+        if header:
+            writer.writerow(header)
+        # データ行を書き込む
+        writer.writerow([index, total_gb, used_gb])
+
 
 def dump_tool_input_value(tool):
     print("=" * 80)
@@ -1649,12 +1679,12 @@ if __name__ == '__main__':
 
     from itertools import product
     resolution_list = [
-        "1280x720",
+        # "1280x720",
         "1920x1080",
-        "2048x1080",
-        "2560x1440",
-        "3840x2160",
-        "4096x2160",
+        # "2048x1080",
+        # "2560x1440",
+        # "3840x2160",
+        # "4096x2160",
     ]
     framerate_list = [
         23.976,
@@ -1662,24 +1692,28 @@ if __name__ == '__main__':
         25,
         29.97,
         30,
-        50,
-        59.94,
-        60
+        # 50,
+        # 59.94,
+        # 60
     ]
     gamut_list = [
         drc.PRJ_COLOR_SPACE_REC709,
-        drc.PRJ_COLOR_SPACE_P3D65,
-        drc.PRJ_COLOR_SPACE_REC2020
+        # drc.PRJ_COLOR_SPACE_P3D65,
+        # drc.PRJ_COLOR_SPACE_REC2020
     ]
     gamma_list = [
         drc.PRJ_GAMMA_STR_GAMMA24,
-        drc.PRJ_GAMMA_STR_ST2084
+        # drc.PRJ_GAMMA_STR_ST2084
     ]
+
+    debug_idx = 0
 
     for resolution, framerate, gamut, gamma in product(
         resolution_list, framerate_list, gamut_list, gamma_list
     ):
         width, height = resolution.split("x")
+        debug_log_memory(debug_idx)
+        debug_idx += 1
         create_countdown_video_each_spec(
             width=width, height=height, framerate=framerate,
             gamut=gamut, gamma=gamma
