@@ -1679,8 +1679,8 @@ if __name__ == '__main__':
 
     from itertools import product
     resolution_list = [
-        # "1280x720",
-        "1920x1080",
+        "1280x720",
+        # "1920x1080",
         # "2048x1080",
         # "2560x1440",
         # "3840x2160",
@@ -1690,8 +1690,8 @@ if __name__ == '__main__':
         23.976,
         24,
         25,
-        29.97,
-        30,
+        # 29.97,
+        # 30,
         # 50,
         # 59.94,
         # 60
@@ -1718,3 +1718,4 @@ if __name__ == '__main__':
             width=width, height=height, framerate=framerate,
             gamut=gamut, gamma=gamma
         )
+        dcl.reboot_resolve()

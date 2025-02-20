@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import functools
 import time
+import subprocess
 
 from ty_davinci_constants import EDIT_PAGE_STR, FUSION_PAGE_STR
 
@@ -71,6 +72,66 @@ def log_return_value(func):
     return wrapper
 
 
+def reboot_resolve():
+    global resolve
+    global fusion
+    # OS ごとのコマンド設定
+    if sys.platform == "win32":  # Windows
+        kill_cmd = r'Get-Process | Where-Object { $_.ProcessName -eq "Resolve" } | Stop-Process -Force'
+        launch_cmd = r'C:\Program Files\Blackmagic Design\DaVinci Resolve\Resolve.exe'
+    elif sys.platform == "darwin":  # macOS
+        kill_cmd = "osascript -e 'tell application \"/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/MacOS/Resolve\" to quit'"
+        launch_cmd = r'/Applications/DaVinci\ Resolve/DaVinci\ Resolve.app/Contents/MacOS/Resolve'
+    else:
+        raise OSError("Unsupported platform")
+
+    # 1. 現在起動中の Resolve を終了する
+    try:
+        if sys.platform == "win32":
+            subprocess.run(["powershell", "-Command", kill_cmd], check=True)
+        elif sys.platform == "darwin":
+            subprocess.run(kill_cmd, shell=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print("Unexpected error has occured during the launch of Resolve:", e)
+
+    # 2. 終了の完了を待つ（約3秒）
+    time.sleep(3)
+
+    # 3. Resolve を起動する
+    try:
+        if sys.platform == "win32":
+            subprocess.Popen(launch_cmd)
+        elif sys.platform == "darwin":
+            subprocess.Popen(launch_cmd, shell=True)
+    except Exception as e:
+        print("Failed to launch Resolve:", e)
+        raise
+
+    # 4. Resolve 起動のために約10秒待つ
+    time.sleep(10)
+
+    # 5. dvr_script を使って Resolve に接続、接続できなければリトライ（最大5回、各回2秒待ち）
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            resolve = dvr_script.scriptapp("Resolve")
+            if resolve is None:
+                raise ConnectionError("The DaVinci Resolve app is not running.")
+            # 正常に接続できたらループを抜ける
+            print("Successed to launch Resolve")
+            fusion = resolve.Fusion()
+            break
+        except ConnectionError as e:
+            print(f"Failed to launch Resolve ({attempt+1}/{max_retries}): {e}")
+            time.sleep(2)
+    else:
+        # 最大リトライ回数に達した場合
+        raise ConnectionError("Failed to connect to DaVinci Resolve after several retries.")
+
+
+# =============================
+# System
+# =============================
 def get_project_manager():
     """
     Returns
