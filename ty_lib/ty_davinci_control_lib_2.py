@@ -111,7 +111,7 @@ def reboot_resolve():
     time.sleep(10)
 
     # 5. dvr_script を使って Resolve に接続、接続できなければリトライ（最大5回、各回2秒待ち）
-    max_retries = 5
+    max_retries = 10
     for attempt in range(max_retries):
         try:
             resolve = dvr_script.scriptapp("Resolve")
