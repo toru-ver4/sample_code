@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import psutil
 import csv
+import time
 
 # import third-party libraries
 import numpy as np
@@ -24,6 +25,42 @@ REVISION = 2
 #####################
 # Debug
 #####################
+_previous_time = None  # 前回の時刻を保持するグローバル変数
+
+def measure_start():
+    """計測開始：現在時刻を保存し、計測を開始します。"""
+    global _previous_time
+    _previous_time = time.time()
+    print("計測開始")
+
+def measure_rap():
+    """
+    現在時刻と前回保存した時刻との差を計算して出力し、
+    現在時刻を新たな基準として保存します。
+    """
+    global _previous_time
+    if _previous_time is None:
+        print("エラー: measure_start が呼ばれていません")
+        return
+    current_time = time.time()
+    elapsed = current_time - _previous_time
+    print("前回からの経過時間: {:.4f}秒".format(elapsed))
+    _previous_time = current_time
+
+def measure_end():
+    """
+    現在時刻と前回保存した時刻との差を計算して出力し、
+    計測を終了します。
+    """
+    global _previous_time
+    if _previous_time is None:
+        print("エラー: measure_start が呼ばれていません")
+        return
+    current_time = time.time()
+    elapsed = current_time - _previous_time
+    print("前回からの経過時間: {:.4f}秒".format(elapsed))
+    _previous_time = None  # 状態をリセット
+
 
 def debug_log_memory(index):
     """
@@ -1665,11 +1702,14 @@ def create_countdown_video_each_spec(
         dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
 
     dcl.set_render_settings(setting_dict=render_settings)
+    measure_start()
     dcl.run_rendering_and_wait_until_finish(project=project)
+    measure_rap()
 
     encode_hevc_using_ffmpeg(
         png_fname=output_fname, fps=framerate, seq_file_ext=format_extension,
         gamma=gamma, gamut=gamut, start_frame=start_frame)
+    measure_end()
 
 
 if __name__ == '__main__':
@@ -1679,22 +1719,22 @@ if __name__ == '__main__':
 
     from itertools import product
     resolution_list = [
-        "1280x720",
+        # "1280x720",
         # "1920x1080",
         # "2048x1080",
         # "2560x1440",
         # "3840x2160",
-        # "4096x2160",
+        "4096x2160",
     ]
     framerate_list = [
-        23.976,
-        24,
-        25,
+        # 23.976,
+        # 24,
+        # 25,
         # 29.97,
         # 30,
         # 50,
         # 59.94,
-        # 60
+        60
     ]
     gamut_list = [
         drc.PRJ_COLOR_SPACE_REC709,
@@ -1719,3 +1759,4 @@ if __name__ == '__main__':
             gamut=gamut, gamma=gamma
         )
         dcl.reboot_resolve()
+        break
