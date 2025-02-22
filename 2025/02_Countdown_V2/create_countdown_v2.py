@@ -28,37 +28,28 @@ REVISION = 2
 _previous_time = None  # 前回の時刻を保持するグローバル変数
 
 def measure_start():
-    """計測開始：現在時刻を保存し、計測を開始します。"""
     global _previous_time
     _previous_time = time.time()
-    print("計測開始")
+    print("measure start")
 
 def measure_rap():
-    """
-    現在時刻と前回保存した時刻との差を計算して出力し、
-    現在時刻を新たな基準として保存します。
-    """
     global _previous_time
     if _previous_time is None:
-        print("エラー: measure_start が呼ばれていません")
+        print("error, please call `measure_start`")
         return
     current_time = time.time()
     elapsed = current_time - _previous_time
-    print("前回からの経過時間: {:.4f}秒".format(elapsed))
+    print("elapse time: {:.4f} sec".format(elapsed))
     _previous_time = current_time
 
 def measure_end():
-    """
-    現在時刻と前回保存した時刻との差を計算して出力し、
-    計測を終了します。
-    """
     global _previous_time
     if _previous_time is None:
-        print("エラー: measure_start が呼ばれていません")
+        print("error, please call `measure_start`")
         return
     current_time = time.time()
     elapsed = current_time - _previous_time
-    print("前回からの経過時間: {:.4f}秒".format(elapsed))
+    print("elapse time: {:.4f} sec".format(elapsed))
     _previous_time = None  # 状態をリセット
 
 
@@ -1509,23 +1500,19 @@ def create_countdown_comp_each_sec(comp, ppp, fps=24, count_str=3):
     comp.Unlock()
 
 
-def encode_hevc_using_ffmpeg(png_fname, fps: float, seq_file_ext, gamut, gamma, start_frame):
+def encode_hevc_using_ffmpeg(
+        png_fname, wav_fname, fps: float, seq_file_ext, gamut, gamma,
+        pix_fmt="yuv422p10le", start_frame=86400):
     print(png_fname)
     in_fname_ffmpeg = str(Path(png_fname + "_%08d." + seq_file_ext))
     target_dir = str(Path(png_fname).resolve().parent.parent)
     target_name = str(Path(png_fname).name)
-    out_fname_444 = str(Path(target_dir) / Path(f"{target_name}_yub444p12le_rev{REVISION:02d}.mp4"))
-    out_fname_420 = str(Path(target_dir) / Path(f"{target_name}_yub420p10le_rev{REVISION:02d}.mp4"))
-    pix_fmt_444 = "yuv444p12le"
-    pix_fmt_420 = "yuv420p10le"
-    lossless_on = 'lossless=1'
-    lossless_off = 'lossless=1'
+    out_fname = str(Path(target_dir) / Path(f"{target_name}_{pix_fmt}_rev{REVISION:02d}.mp4"))
+    lossless = 'lossless=1'  # lossless on
     print(in_fname_ffmpeg)
-    print(out_fname_444)
+    print(out_fname)
     cmd = "ffmpeg"
     codec = "libx265"
-    # codec = "librav1e"
-    # codec = "libvvenc"
 
     if gamma == drc.PRJ_GAMMA_STR_GAMMA24:
         color_trc = "bt709"
@@ -1546,33 +1533,22 @@ def encode_hevc_using_ffmpeg(png_fname, fps: float, seq_file_ext, gamut, gamma, 
     else:
         raise ValueError("invalid gamut parameter")
 
-    if fps.is_integer():
-        wav_file = "./wav/countdown.wav"
-    else:
-        wav_file = "./wav/countdown_ntsc.wav"
-
-    for out_fname, pix_fmt in zip([out_fname_444], [pix_fmt_444]):
-        if out_fname == out_fname_444:
-            lossless = lossless_on
-        else:
-            lossless = lossless_off
-        ops = [
-            '-start_number', f"{start_frame}",
-            '-color_primaries', color_primaries, '-color_trc', color_trc,
-            '-colorspace', color_space,
-            '-r', f"{fps}", '-i', in_fname_ffmpeg, '-i', wav_file,
-            '-c:v', codec,
-            # '-profile:v', 'main444-12',
-            '-pix_fmt', pix_fmt, '-tag:v', 'hvc1',
-            '-x265-params', lossless,
-            '-c:a', 'aac', '-b:a', '128k',
-            '-color_primaries', color_primaries, '-color_trc', color_trc,
-            '-colorspace', color_space,
-            str(out_fname), '-y'
-        ]
-        args = [cmd] + ops
-        print(" ".join(args))
-        subprocess.run(args)
+    ops = [
+        '-start_number', f"{start_frame}",
+        '-color_primaries', color_primaries, '-color_trc', color_trc,
+        '-colorspace', color_space,
+        '-r', f"{fps}", '-i', in_fname_ffmpeg, '-i', wav_fname,
+        '-c:v', codec,
+        '-pix_fmt', pix_fmt, '-tag:v', 'hvc1',
+        '-x265-params', lossless,
+        '-c:a', 'aac', '-b:a', '128k',
+        '-color_primaries', color_primaries, '-color_trc', color_trc,
+        '-colorspace', color_space,
+        str(out_fname), '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
 
 
 def create_countdown_video_each_spec(
@@ -1665,37 +1641,44 @@ def create_countdown_video_each_spec(
     # )
     preset_path = None
 
-    # format_extension = drc.OUT_FILE_EXTENSTION_MOV
-    format_extension = drc.OUT_FILE_EXTENSTION_PNG
-    # codec = drc.CODEC_H265_NVIDIA
-    # codec = drc.CODEC_H264_NVIDIA
-    # codec = drc.CODEC_APPLE_PRORES_4444
-    # format_extension = drc.OUT_FILE_EXTENSTION_EXR
-    # codec = drc.CODEC_EXR_RGB_HALF
-    codec = drc.CODEC_DPX_RGB_16_BITS
-    basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
-    # output_fname = f"./render_out/{basename}" + "." + format_extension
+    if preset_path is not None:
+        # format_extension = drc.OUT_FILE_EXTENSTION_MOV
+        format_extension = drc.OUT_FILE_EXTENSTION_PNG
+        # format_extension = drc.OUT_FILE_EXTENSTION_TIFF
+        # format_extension = drc.OUT_FILE_EXTENSTION_EXR
+        # format_extension = drc.OUT_FILE_EXTENSTION_DPX
 
-    if sys.platform == "darwin":  # macOS
-        dir_path = Path("/Volumes/My Passport/Countdown/temp_seq")
+        # codec = drc.CODEC_H265_NVIDIA
+        # codec = drc.CODEC_H264_NVIDIA
+        # codec = drc.CODEC_APPLE_PRORES_4444
+        # codec = drc.CODEC_EXR_RGB_HALF
+        # codec = drc.CODEC_DPX_RGB_10_BITS
+        codec = drc.CODEC_PNG_RGB_16_BITS
+        # codec = drc.CODEC_TIF_RGB_16_BITS
+
+        if sys.platform == "darwin":  # macOS
+            dir_path = Path("/Volumes/My Passport/Countdown/temp_seq")
+        elif sys.platform == "win32":  # Windows
+            dir_path = Path(r"D:\abuse\Countdown\temp_seq")
+        else:
+            pass
+
+        basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
         output_fname = str(dir_path / basename)
-    else:
-        output_fname = f"D:\\abuse\\Countdown\\temp_seq\\{basename}"
-        dir_path = Path(r"D:\abuse\Countdown\temp_seq")
-    shutil.rmtree(dir_path, ignore_errors=True)
-    dir_path.mkdir(parents=True, exist_ok=True)
-    if format_extension is drc.OUT_FILE_EXTENSTION_PNG:
-        output_fname = output_fname
-    else:
-        output_fname = output_fname + "." + format_extension
-    target_dir = str(Path(output_fname).resolve().parent)
-    custom_name = str(Path(output_fname).resolve().name)
+        if format_extension in drc.STILL_SEQ_FILE_EXTENTION_LIST:
+            output_fname = output_fname
+        else:
+            output_fname = output_fname + "." + format_extension
+        target_dir = str(Path(output_fname).resolve().parent)
+        custom_name = str(Path(output_fname).resolve().name)
 
-    render_settings = {
-        "TargetDir": target_dir,
-        "CustomName": custom_name,
-    }
+        render_settings = {
+            "TargetDir": target_dir,
+            "CustomName": custom_name,
+        }
 
+        shutil.rmtree(dir_path, ignore_errors=True)
+        dir_path.mkdir(parents=True, exist_ok=True)
     if preset_path is not None:
         dcl.import_render_preset(preset_path=preset_path)
     else:
@@ -1706,9 +1689,20 @@ def create_countdown_video_each_spec(
     dcl.run_rendering_and_wait_until_finish(project=project)
     measure_rap()
 
-    encode_hevc_using_ffmpeg(
-        png_fname=output_fname, fps=framerate, seq_file_ext=format_extension,
-        gamma=gamma, gamut=gamut, start_frame=start_frame)
+    # encode with ffmpeg
+    if framerate.is_integer():
+        wav_fname = "./wav/countdown.wav"
+    else:
+        wav_fname = "./wav/countdown_ntsc.wav"
+    pix_fmt_list =[
+        "yuv420p10le", "yuv422p10le",
+        "yuv422p12le", "yuv444p12le"
+    ]
+    for pix_fmt in pix_fmt_list:
+        encode_hevc_using_ffmpeg(
+            png_fname=output_fname, seq_file_ext=format_extension, wav_fname=wav_fname,
+            fps=framerate, gamma=gamma, gamut=gamut, pix_fmt=pix_fmt, start_frame=start_frame
+        )
     measure_end()
 
 
@@ -1719,22 +1713,22 @@ if __name__ == '__main__':
 
     from itertools import product
     resolution_list = [
-        # "1280x720",
+        "1280x720",
         # "1920x1080",
         # "2048x1080",
         # "2560x1440",
         # "3840x2160",
-        "4096x2160",
+        # "4096x2160",
     ]
     framerate_list = [
-        # 23.976,
+        23.976,
         # 24,
         # 25,
         # 29.97,
         # 30,
         # 50,
         # 59.94,
-        60
+        # 60
     ]
     gamut_list = [
         drc.PRJ_COLOR_SPACE_REC709,
@@ -1758,5 +1752,5 @@ if __name__ == '__main__':
             width=width, height=height, framerate=framerate,
             gamut=gamut, gamma=gamma
         )
-        dcl.reboot_resolve()
-        break
+        # dcl.reboot_resolve()
+        # break
