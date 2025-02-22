@@ -1641,7 +1641,7 @@ def create_countdown_video_each_spec(
     # )
     preset_path = None
 
-    if preset_path is not None:
+    if preset_path is None:
         # format_extension = drc.OUT_FILE_EXTENSTION_MOV
         format_extension = drc.OUT_FILE_EXTENSTION_PNG
         # format_extension = drc.OUT_FILE_EXTENSTION_TIFF
