@@ -1046,7 +1046,7 @@ def add_ramp_info_text(
         "StyledText": "dummy",
         "Font": "Noto Sans",
         "Style": "Regular",
-        "Size": 0.022,
+        "Size": 0.02,
         "Red1": ppp.gray80,
         "Green1": ppp.gray80,
         "Blue1": ppp.gray80,
