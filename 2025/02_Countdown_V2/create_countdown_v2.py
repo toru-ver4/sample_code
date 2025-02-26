@@ -20,7 +20,9 @@ import ty_davinci_constants as drc
 import ty_davinci_control_lib_2 as dcl
 import transfer_functions as tf
 
-REVISION = 2
+# REVISION = 1  # test version
+# REVISION = 2  # first release
+REVISION = 3  # object size adjustment
 
 #####################
 # Debug
@@ -165,29 +167,18 @@ def debug_fusion():
     print(merge_tool)
     dump_tool_input_value(tool=merge_tool)
     dump_tool_main_input_value(tool=merge_tool)
-    transform = dcl.get_comp_tool_by_name(comp=comp, name="Transform1")
-    dump_tool_main_input_value(tool=transform)
+    # transform = dcl.get_comp_tool_by_name(comp=comp, name="Transform1")
+    # dump_tool_main_input_value(tool=transform)
     # dump_tool_input_value(tool=media_out)
 
-    rec56 = dcl.get_comp_tool_by_name(comp=comp, name="Text4")
-    rec_mask = dcl.add_comp_tool(comp=comp, name="TextPlus", pos=(20, 20))
+    # rec56 = dcl.get_comp_tool_by_name(comp=comp, name="Text4")
+    # rec_mask = dcl.add_comp_tool(comp=comp, name="TextPlus", pos=(20, 20))
     # compare_tool_input_value(aa=rec56, bb=rec_mask)
-
-    # transform = dcl.get_comp_tool_by_name(comp=comp, name="Transform1")
-    # circle_angle_splineout = transform["CircularAngle"].GetConnectedOutput()
-    # if circle_angle_splineout:
-    #     spline = circle_angle_splineout.GetTool()
-    #     splinedata = spline.GetKeyFrames()
-    #     print(f"splinedata type = {type(splinedata)}")
-    #     print(f"splinedata = {splinedata}")
-
-    # print(type(transform["CircularAngle"]))
-    # print(dir(transform["CircularAngle"]))
 
     # dump_tool_list(comp=fusion_comp)
 
-    rectangle61 = dcl.get_comp_tool_by_name(comp=comp, name="Rectangle61")
-    dump_tool_input_value(tool=rectangle61)
+    rectangle1 = dcl.get_comp_tool_by_name(comp=comp, name="Rectangle1")
+    dump_tool_input_value(tool=rectangle1)
 
     import sys
     sys.exit(0)
@@ -324,7 +315,7 @@ class FusionParams:
         self.info_vanchor = 2.3
         self.deg45_line_color = (72/255) ** 2.4
         self.deg45_line_margin = 192
-        self.deg45_line_width = 1
+        self.deg45_line_width_1080p = 1
         self.audio_font_size = HeightBasedSize(0.33).h_size
         self.audio_pos_h = 0.19
         self.audio_pos_v = 0.27
@@ -344,6 +335,7 @@ class FusionParams:
             {1: 0.5 + self.audio_pos_h, 2: 1 - self.audio_pos_v, 3: 0.0},
             {1: 0.5 + self.audio_pos_h, 2: self.audio_pos_v, 3: 0.0},
         ]
+        self.base_bg_border_width = round(self.height / 1080)
 
         # frame marker parameters
         frame_marker_h_st_pos = 0.07
@@ -548,7 +540,7 @@ def draw_info_comp(
     )
     rev_text_input = {
         "Center": {1: 1.0, 2: 0.0, 3: 0.0},
-        "StyledText": "Revision 02  ",
+        "StyledText": f"Revision {REVISION:02d}  ",
         "Font": font_family,
         "Style": font_weight,
         "Size": font_size,
@@ -595,7 +587,7 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
         base_pos=[x_pos+1, y_pos-1],
         option={
             "sliderIntParam0": ppp.deg45_line_margin,
-            "sliderIntParam1": ppp.deg45_line_width,
+            "sliderIntParam1": ppp.deg45_line_width_1080p,
             "sliderFloatParam0": ppp.deg45_line_color,
         }
     )
@@ -643,6 +635,9 @@ def create_still_background_comp(comp, ppp: FusionParams, tool_pos):
         height=0.035, base_pos=[x_pos+9, y_pos-1])
     border_dctl = dcl.add_dctl_comp(
         comp=comp, dctl_path="TY_DCTL/draw_countdown_border.dctl",
+        option={
+            "sliderIntParam0": ppp.base_bg_border_width,
+        },
         base_pos=[x_pos+12, y_pos-1]
     )
     output_merge = dcl.add_comp_tool(
@@ -1714,10 +1709,10 @@ if __name__ == '__main__':
     from itertools import product
     resolution_list = [
         "1280x720",
-        # "1920x1080",
+        "1920x1080",
         # "2048x1080",
-        # "2560x1440",
-        # "3840x2160",
+        "2560x1440",
+        "3840x2160",
         # "4096x2160",
     ]
     framerate_list = [

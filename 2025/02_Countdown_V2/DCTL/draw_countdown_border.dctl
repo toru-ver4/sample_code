@@ -2,6 +2,8 @@
 
 #define NUM_OF_LINES   (12)
 
+DEFINE_UI_PARAMS(line_width, Border Width, DCTLUI_SLIDER_INT, 1, 0, 32, 1)
+
 // main function
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
 {
@@ -12,7 +14,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
     int v_line_length = (int)(_round(p_Height / 5.0));
     int h_center = p_Width / 2;
     int v_center = p_Height / 2;
-    int line_width = 1;
+    // int line_width = 1;
 
     int2 st_pos_list[NUM_OF_LINES] = {
         {0, 0},
@@ -23,7 +25,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
         {p_Width - line_width, p_Height - v_line_length},
         {p_Width - v_line_length, p_Height - line_width},
         {h_center - h_line_length / 2, p_Height - line_width},
-        {0, p_Height - 1},
+        {0, p_Height - line_width},
         {0, p_Height - v_line_length},
         {0, v_center - v_line_length / 2},
         {0, 0},
@@ -31,7 +33,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
     int2 ed_pos_list[NUM_OF_LINES] = {
         {v_line_length, line_width},
         {h_center + h_line_length / 2, line_width},
-        {p_Width, 1},
+        {p_Width, line_width},
         {p_Width, v_line_length},
         {p_Width, v_center + v_line_length / 2},
         {p_Width, p_Height},
