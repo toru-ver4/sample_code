@@ -1710,29 +1710,29 @@ if __name__ == '__main__':
     resolution_list = [
         "1280x720",
         "1920x1080",
-        # "2048x1080",
+        "2048x1080",
         "2560x1440",
         "3840x2160",
-        # "4096x2160",
+        "4096x2160",
     ]
     framerate_list = [
         23.976,
-        # 24,
-        # 25,
-        # 29.97,
-        # 30,
-        # 50,
-        # 59.94,
-        # 60
+        24,
+        25,
+        29.97,
+        30,
+        50,
+        59.94,
+        60
     ]
     gamut_list = [
         drc.PRJ_COLOR_SPACE_REC709,
-        # drc.PRJ_COLOR_SPACE_P3D65,
-        # drc.PRJ_COLOR_SPACE_REC2020
+        drc.PRJ_COLOR_SPACE_P3D65,
+        drc.PRJ_COLOR_SPACE_REC2020
     ]
     gamma_list = [
         drc.PRJ_GAMMA_STR_GAMMA24,
-        # drc.PRJ_GAMMA_STR_ST2084
+        drc.PRJ_GAMMA_STR_ST2084
     ]
 
     debug_idx = 0
@@ -1741,11 +1741,11 @@ if __name__ == '__main__':
         resolution_list, framerate_list, gamut_list, gamma_list
     ):
         width, height = resolution.split("x")
-        debug_log_memory(debug_idx)
+        # debug_log_memory(debug_idx)
         debug_idx += 1
         create_countdown_video_each_spec(
             width=width, height=height, framerate=framerate,
             gamut=gamut, gamma=gamma
         )
-        # dcl.reboot_resolve()
+        dcl.reboot_resolve()
         # break
