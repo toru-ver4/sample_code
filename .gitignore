@@ -252,9 +252,11 @@ temporary/**/**
 2024/15_Investigate_Rec709-A/**/*.tif
 2024/16_Investigate_Resolve_API_Color_Space/**/*.run
 !2024/16_Investigate_Resolve_API_Color_Space/fonts/*.ttf
-2024/16_Investigate_Resolve_API_Color_Space/render_out/*.mov
-2024/16_Investigate_Resolve_API_Color_Space/render_out/*.mp4
-2024/16_Investigate_Resolve_API_Color_Space/render_out/*.dpx
+**/render_out/*
+!2024/16_Investigate_Resolve_API_Color_Space/render_out/.gitkeep
+!2025/02_Countdown_V2/render_out/.gitkeep
+
+!ty_lib/fonts/*.ttf
 
 [Dd]ebug/
 [Rr]elease/
