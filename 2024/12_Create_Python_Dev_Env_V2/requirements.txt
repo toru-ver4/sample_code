@@ -16,3 +16,4 @@ jupyterlab
 # wavio
 pyside2
 conan
+imagecodecs
