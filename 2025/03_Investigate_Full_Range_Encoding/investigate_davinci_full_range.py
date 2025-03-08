@@ -21,6 +21,7 @@ import ty_davinci_control_lib_2 as dcl
 #####################
 def encode_decode_seq(
         width, height, framerate, gamut, gamma, encode_param):
+    
     ##################
     # Project Settings
     ##################
@@ -153,25 +154,7 @@ def encode_decode_seq(
         dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
 
     dcl.set_render_settings(setting_dict=render_settings)
-    measure_start()
-    dcl.run_rendering_and_wait_until_finish(project=project)
-    measure_rap()
-
-    # encode with ffmpeg
-    if framerate.is_integer():
-        wav_fname = "./wav/countdown.wav"
-    else:
-        wav_fname = "./wav/countdown_ntsc.wav"
-    pix_fmt_list =[
-        "yuv420p10le", "yuv422p10le",
-        "yuv422p12le", "yuv444p12le"
-    ]
-    for pix_fmt in pix_fmt_list:
-        encode_hevc_using_ffmpeg(
-            png_fname=output_fname, seq_file_ext=format_extension, wav_fname=wav_fname,
-            fps=framerate, gamma=gamma, gamut=gamut, pix_fmt=pix_fmt, start_frame=start_frame
-        )
-    measure_end()
+    # dcl.run_rendering_and_wait_until_finish(project=project)
 
 
 #####################
