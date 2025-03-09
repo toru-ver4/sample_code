@@ -12,8 +12,6 @@ import matplotlib.pyplot as plt
 # import my libraries
 import ty_davinci_constants as drc
 import ty_davinci_control_lib_2 as dcl
-import test_pattern_generator2 as tpg
-import plot_utility as pu
 
 
 #####################
@@ -302,30 +300,21 @@ if __name__ == '__main__':
 
     encode_preset_list = [
         "./resolve_encode_preset/H265_MOV_Main10_Full.xml",
-        # "./resolve_encode_preset/H265_MOV_Main10_Limited.xml",
-        # "./resolve_encode_preset/H265_MP4_Main10_Full.xml",
-        # "./resolve_encode_preset/ProRes_MOV_422HQ_Full.xml",
-        # "./resolve_encode_preset/DNxHR_MOV_HQX_10-bit.xml",
+        "./resolve_encode_preset/H265_MOV_Main10_Limited.xml",
+        "./resolve_encode_preset/H265_MP4_Main10_Full.xml",
+        "./resolve_encode_preset/ProRes_MOV_422HQ_Full.xml",
+        "./resolve_encode_preset/DNxHR_MOV_HQX_10-bit.xml",
     ]
 
     width, height = resolution.split("x")
 
-    # encode_full_range(
-    #     width=width, height=height, framerate=framerate,
-    #     gamut=gamut, gamma=gamma, encode_preset_list=encode_preset_list
-    # )
-
-    # for encode_preset in encode_preset_list:
-    #     decode_full_range(
-    #         width=width, height=height, framerate=framerate,
-    #         gamut=gamut, gamma=gamma, encode_preset=encode_preset
-    #     )
+    encode_full_range(
+        width=width, height=height, framerate=framerate,
+        gamut=gamut, gamma=gamma, encode_preset_list=encode_preset_list
+    )
 
     for encode_preset in encode_preset_list:
-        encode_preset_stem = Path(encode_preset).stem
-        dir_path = Path("./encode_data/Resolve") / encode_preset_stem
-        decoded_png = str(dir_path / encode_preset_stem) + "00086400.png"
-
-        check_decoded_full_range_data(
-            test_name=f"Resolve_{encode_preset}", decoded_png_fname=decoded_png
+        decode_full_range(
+            width=width, height=height, framerate=framerate,
+            gamut=gamut, gamma=gamma, encode_preset=encode_preset
         )
