@@ -20,7 +20,7 @@ import ty_davinci_control_lib_2 as dcl
 # Logic
 #####################
 def encode_decode_seq(
-        width, height, framerate, gamut, gamma, encode_param):
+        width, height, framerate, gamut, gamma, encode_preset):
     
     ##################
     # Project Settings
@@ -83,78 +83,39 @@ def encode_decode_seq(
 
     # add files to the media storage
     relative_file_list = [
-        "./videos/countdown_HDR_24fps_hevc_yuv420p10le.mov",
-        "./videos/countdown_SDR_24fps_hevc_yuv420p10le.mov",
-        "./videos/countdown_SDR_60P_%04d.png",
-        "./videos/countdown.wav",
+        "./img/src_img.png",
     ]
     file_path_list = [
         str(Path(x).resolve()) for x in relative_file_list
     ]
     print(file_path_list)
 
-    ###################
-    # Core Function
-    ###################
-    create_countdown_comp()
-
-    dcl.set_current_timecode(timecode=start_time_code)
-
-    dcl.open_page(page_name=drc.FUSION_PAGE_STR)
+    clip = dcl.add_file_to_media_pool(file_path=file_path_list[0])
+    dcl.append_clip_to_timeline(clip=clip)
 
     ###################
     # encode
     ###################
-    # preset_path = str(
-    #     Path("./render_presets/H265_Main10_444_10-bit Render.xml").resolve()
-    # )
-    preset_path = None
+    preset_path = str(Path(encode_preset).resolve())
+    dcl.import_render_preset(preset_path=preset_path)
 
-    if preset_path is None:
-        # format_extension = drc.OUT_FILE_EXTENSTION_MOV
-        format_extension = drc.OUT_FILE_EXTENSTION_PNG
-        # format_extension = drc.OUT_FILE_EXTENSTION_TIFF
-        # format_extension = drc.OUT_FILE_EXTENSTION_EXR
-        # format_extension = drc.OUT_FILE_EXTENSTION_DPX
+    # output file settings
+    encode_preset_stem = Path(encode_preset).stem
+    dir_path = Path("./encode_data/Resolve") / encode_preset_stem
+    dir_path.mkdir(parents=True, exist_ok=True)
 
-        # codec = drc.CODEC_H265_NVIDIA
-        # codec = drc.CODEC_H264_NVIDIA
-        # codec = drc.CODEC_APPLE_PRORES_4444
-        # codec = drc.CODEC_EXR_RGB_HALF
-        # codec = drc.CODEC_DPX_RGB_10_BITS
-        codec = drc.CODEC_PNG_RGB_16_BITS
-        # codec = drc.CODEC_TIF_RGB_16_BITS
-
-        if sys.platform == "darwin":  # macOS
-            dir_path = Path("/Volumes/My Passport/Countdown/temp_seq")
-        elif sys.platform == "win32":  # Windows
-            dir_path = Path(r"D:\abuse\Countdown\temp_seq")
-        else:
-            pass
-
-        basename = f"{width}x{height}_{framerate}P_{gamma}_{gamut}"
-        output_fname = str(dir_path / basename)
-        if format_extension in drc.STILL_SEQ_FILE_EXTENTION_LIST:
-            output_fname = output_fname
-        else:
-            output_fname = output_fname + "." + format_extension
-        target_dir = str(Path(output_fname).resolve().parent)
-        custom_name = str(Path(output_fname).resolve().name)
-
-        render_settings = {
-            "TargetDir": target_dir,
-            "CustomName": custom_name,
-        }
-
-        shutil.rmtree(dir_path, ignore_errors=True)
-        dir_path.mkdir(parents=True, exist_ok=True)
-    if preset_path is not None:
-        dcl.import_render_preset(preset_path=preset_path)
-    else:
-        dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
+    basename = f"{encode_preset_stem}"
+    output_fname = str(dir_path / basename)
+    target_dir = str(Path(output_fname).resolve().parent)
+    custom_name = str(Path(output_fname).resolve().name)
+    render_settings = {
+        "TargetDir": target_dir,
+        "CustomName": custom_name,
+    }
 
     dcl.set_render_settings(setting_dict=render_settings)
-    # dcl.run_rendering_and_wait_until_finish(project=project)
+
+    dcl.run_rendering_and_wait_until_finish(project=project)
 
 
 #####################
@@ -167,14 +128,18 @@ if __name__ == '__main__':
     gamut = drc.PRJ_COLOR_SPACE_REC709
     gamma = drc.PRJ_GAMMA_STR_REC709
 
-    encode_param_list = [
-        [drc.CODEC_APPLE_PRORES_422_HQ, drc.OUT_FILE_EXTENSTION_MOV, "./preset/hoge.xml"],
+    encode_preset_list = [
+        "./resolve_encode_preset/H.265_MOV_Main10_Full.xml",
+        "./resolve_encode_preset/H.265_MOV_Main10_Limited.xml",
+        "./resolve_encode_preset/H265_MP4_Main10_Full.xml",
+        "./resolve_encode_preset/ProRes_MOV_422HQ_Full.xml",
+        "./resolve_encode_preset/DNxHR_MOV_HQX_10-bit.xml"
     ]
 
     width, height = resolution.split("x")
 
-    for encode_param in encode_param_list:
+    for encode_preset in encode_preset_list:
         encode_decode_seq(
             width=width, height=height, framerate=framerate,
-            gamut=gamut, gamma=gamma, encode_param=encode_param
+            gamut=gamut, gamma=gamma, encode_preset=encode_preset
         )
