@@ -55,23 +55,26 @@ def plot_full_data_with_diff(test_name, ramp_10bit_int, diff):
     # Define custom tick positions for ax1
     xticks_ax1 = [x * 128 for x in range(8)] + [1023]
     yticks_ax1 = [x * 128 for x in range(8)] + [1023]
-
     ax1.set_xticks(xticks_ax1)
     ax1.set_yticks(yticks_ax1)
+    ax1.set_xlabel("Code Value Before Encoding (10-bit)")
+    ax1.set_ylabel("Code Value After Decoding (10-bit)")
 
     # Define custom tick positions for ax2
     xticks_ax2 = [x * 128 for x in range(8)] + [1023]
     yticks_ax2 = [-4, -3, -2, -1, 0, 1, 2, 3, 4]
     ax2.set_xticks(xticks_ax2)
     ax2.set_yticks(yticks_ax2)
+    ax2.set_xlabel("Target Code Value (10-bit)")
+    ax2.set_ylabel("Adjacent Difference")
 
     # Add grid lines (auxiliary lines) to both axes
     ax1.grid(True, which='both')
     ax2.grid(True, which='both')
 
     # Set titles with the appropriate English translations
-    ax1.set_title(f"{test_name} Decoded 10-bit Ramp Result")
-    ax2.set_title(f"{test_name} Difference Between Adjacent Pixels")
+    ax1.set_title(f"{test_name} Encode-Decode Result")
+    ax2.set_title(f"{test_name} Adjacent Difference")
 
     # plot
     x = np.arange(1024)
@@ -155,7 +158,7 @@ if __name__ == '__main__':
         "./resolve_encode_preset/H265_MOV_Main10_Limited.xml",
         "./resolve_encode_preset/H265_MP4_Main10_Full.xml",
         "./resolve_encode_preset/ProRes_MOV_422HQ_Full.xml",
-        "./resolve_encode_preset/DNxHR_MOV_HQX_10-bit.xml",
+        "./resolve_encode_preset/DNxHR_MOV_HQX_10-bit_Full.xml",
     ]
 
     for encode_preset in encode_preset_list:

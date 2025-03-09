@@ -303,7 +303,7 @@ if __name__ == '__main__':
         "./resolve_encode_preset/H265_MOV_Main10_Limited.xml",
         "./resolve_encode_preset/H265_MP4_Main10_Full.xml",
         "./resolve_encode_preset/ProRes_MOV_422HQ_Full.xml",
-        "./resolve_encode_preset/DNxHR_MOV_HQX_10-bit.xml",
+        "./resolve_encode_preset/DNxHR_MOV_HQX_10-bit_Full.xml",
     ]
 
     width, height = resolution.split("x")
