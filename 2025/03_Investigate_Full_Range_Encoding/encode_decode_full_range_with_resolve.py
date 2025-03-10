@@ -232,82 +232,7 @@ def decode_full_range(
     dcl.save_project()
 
 
-def check_decoded_full_range_data(test_name, decoded_png_fname):
-    st_pos_h = 57
-    ed_pos_h = st_pos_h + 1024
-    pos_v = 1079 - 822
-    img = tpg.img_read_as_float(decoded_png_fname)
-    ramp_10bit_float = img[pos_v, st_pos_h:ed_pos_h, 1]
-    ramp_10bit_int = np.round(ramp_10bit_float * 1023).astype(np.int16)
-    
-    diff = ramp_10bit_int[1:] - ramp_10bit_int[:-1]
-    x = np.arange(1024)
-    x_diff = x[1:]
-
-    # Create figure with two subplots arranged vertically (ax1 is top, ax2 is bottom)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
-
-    # Define margin values for x and y axes
-    x_margin = 10   # margin for x-axis
-    y_margin_ax1 = 10  # margin for y-axis in ax1
-    y_margin_ax2 = 1   # margin for y-axis in ax2
-
-    # Set axis limits for ax1: x from 0 to 1023, y from 0 to 1023 (with margins)
-    ax1.set_xlim(-x_margin, 1023 + x_margin)
-    ax1.set_ylim(-y_margin_ax1, 1023 + y_margin_ax1)
-
-    # Set axis limits for ax2: x from 0 to 1023, y from -10 to 10 (with margins)
-    ax2.set_xlim(-x_margin, 1023 + x_margin)
-    ax2.set_ylim(-10 - y_margin_ax2, 10 + y_margin_ax2)
-
-    # Define custom tick positions for ax1
-    xticks_ax1 = np.linspace(0, 1023, 10)
-    yticks_ax1 = np.linspace(0, 1023, 10)
-    ax1.set_xticks(xticks_ax1)
-    ax1.set_yticks(yticks_ax1)
-
-    # Define custom tick positions for ax2
-    xticks_ax2 = np.linspace(0, 1023, 10)
-    yticks_ax2 = np.linspace(-10, 10, 9)
-    ax2.set_xticks(xticks_ax2)
-    ax2.set_yticks(yticks_ax2)
-
-    # Add grid lines (auxiliary lines) to both axes
-    ax1.grid(True, which='both')
-    ax2.grid(True, which='both')
-
-    # Set titles with the appropriate English translations
-    ax1.set_title("Decoded 10-bit Ramp Result")
-    ax2.set_title("Difference Between Adjacent Pixels")
-
-    # plot
-    ax1.plot(x, ramp_10bit_int)
-    ax2.plot(x_diff, diff)
-
-    # Adjust layout and display the plot
-    plt.tight_layout()
-    plt.show()
-
-#####################
-# Main
-#####################
-if __name__ == '__main__':
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    resolution = "1920x1080"
-    framerate = 24
-    gamut = drc.PRJ_COLOR_SPACE_REC709
-    gamma = drc.PRJ_GAMMA_STR_REC709
-
-    encode_preset_list = [
-        "./resolve_encode_preset/H265_MOV_Main10_Full.xml",
-        "./resolve_encode_preset/H265_MOV_Main10_Limited.xml",
-        "./resolve_encode_preset/H265_MP4_Main10_Full.xml",
-        "./resolve_encode_preset/ProRes_MOV_422HQ_Full.xml",
-        "./resolve_encode_preset/DNxHR_MOV_HQX_10-bit_Full.xml",
-    ]
-
-    width, height = resolution.split("x")
-
+def encode_and_decode(width, height, framerate, gamut, gamma, encode_preset_list):
     encode_full_range(
         width=width, height=height, framerate=framerate,
         gamut=gamut, gamma=gamma, encode_preset_list=encode_preset_list
@@ -318,3 +243,40 @@ if __name__ == '__main__':
             width=width, height=height, framerate=framerate,
             gamut=gamut, gamma=gamma, encode_preset=encode_preset
         )
+
+
+#####################
+# Main
+#####################
+if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    resolution = "1920x1080"
+    framerate = 24
+    gamut = drc.PRJ_COLOR_SPACE_REC709
+    gamma = drc.PRJ_GAMMA_STR_REC709
+    width, height = resolution.split("x")
+
+    mac_encode_preset_list = [
+        "./resolve_encode_preset/H265_MOV_macOS_Main10_Full.xml",
+        "./resolve_encode_preset/H265_MOV_macOS_Main10_Limited.xml",
+        "./resolve_encode_preset/H265_MP4_macOS_Main10_Full.xml",
+        "./resolve_encode_preset/ProRes_MOV_422HQ_Full.xml",
+        "./resolve_encode_preset/DNxHR_MOV_HQX_10-bit_Full.xml",
+    ]
+
+    win_encode_preset_list = [
+        "./resolve_encode_preset/H265_MOV_Win_Native_Main10_Full.xml",
+        "./resolve_encode_preset/H265_MOV_Win_NVIDIA_Main10_Full.xml",
+        "./resolve_encode_preset/H265_MP4_Win_Native_Main10_Full.xml",
+        "./resolve_encode_preset/H265_MP4_Win_NVIDIA_Main10_Full.xml",
+    ]
+
+    encode_and_decode(
+        width=width, height=height, framerate=framerate,
+        gamut=gamut, gamma=gamma, encode_preset_list=mac_encode_preset_list
+    )
+
+    encode_and_decode(
+        width=width, height=height, framerate=framerate,
+        gamut=gamut, gamma=gamma, encode_preset_list=win_encode_preset_list
+    )
