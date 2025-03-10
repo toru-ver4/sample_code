@@ -7,6 +7,8 @@ from pathlib import Path
 
 # import third-party libraries
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 # import my libraries
@@ -37,7 +39,10 @@ def calc_10bit_ramp_center_pos(width, block_size):
 
 def plot_full_data_with_diff(test_name, ramp_10bit_int, diff):
     # Create figure with two subplots arranged vertically (ax1 is top, ax2 is bottom)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6))
+    fig, axes = plt.subplots(2, 1, figsize=(8, 6))
+
+    ax1 = axes[0]
+    ax2 = axes[1]
 
     # Define margin values for x and y axes
     x_margin = 10   # margin for x-axis
@@ -50,7 +55,7 @@ def plot_full_data_with_diff(test_name, ramp_10bit_int, diff):
 
     # Set axis limits for ax2: x from 0 to 1023, y from -10 to 10 (with margins)
     ax2.set_xlim(-x_margin, 1023 + x_margin)
-    ax2.set_ylim(-4 - y_margin_ax2, 4 + y_margin_ax2)
+    ax2.set_ylim(-2 - y_margin_ax2, 3 + y_margin_ax2)
 
     # Define custom tick positions for ax1
     xticks_ax1 = [x * 128 for x in range(8)] + [1023]
@@ -62,7 +67,7 @@ def plot_full_data_with_diff(test_name, ramp_10bit_int, diff):
 
     # Define custom tick positions for ax2
     xticks_ax2 = [x * 128 for x in range(8)] + [1023]
-    yticks_ax2 = [-4, -3, -2, -1, 0, 1, 2, 3, 4]
+    yticks_ax2 = [-2, -1, 0, 1, 2, 3]
     ax2.set_xticks(xticks_ax2)
     ax2.set_yticks(yticks_ax2)
     ax2.set_xlabel("Target Code Value (10-bit)")
@@ -134,9 +139,9 @@ def check_decoded_full_range_data(test_name, decoded_png_fname, block_size):
     
     diff = ramp_10bit_int[1:] - ramp_10bit_int[:-1]
 
-    plot_full_data_without_diff(
-        test_name=test_name, ramp_10bit_int=ramp_10bit_float
-    )
+    # plot_full_data_without_diff(
+    #     test_name=test_name, ramp_10bit_int=ramp_10bit_float
+    # )
     plot_full_data_with_diff(
         test_name=test_name, ramp_10bit_int=ramp_10bit_int, diff=diff
     )
@@ -167,7 +172,7 @@ if __name__ == '__main__':
         decoded_png = str(dir_path / encode_preset_stem) + "00086400.png"
 
         check_decoded_full_range_data(
-            test_name=f"Resolve_{encode_preset_stem}",
+            test_name=f'Resolve "{encode_preset_stem}"',
             decoded_png_fname=decoded_png,
             block_size=grey_block_size
         )
