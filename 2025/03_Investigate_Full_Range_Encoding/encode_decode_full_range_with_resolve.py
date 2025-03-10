@@ -262,21 +262,22 @@ if __name__ == '__main__':
         "./resolve_encode_preset/H265_MP4_macOS_Main10_Full.xml",
         "./resolve_encode_preset/ProRes_MOV_422HQ_Full.xml",
         "./resolve_encode_preset/DNxHR_MOV_HQX_10-bit_Full.xml",
+        "./resolve_encode_preset/DNxHD_MOV_220-185-175_10-bit_Full.xml",
     ]
 
-    win_encode_preset_list = [
-        "./resolve_encode_preset/H265_MOV_Win_Native_Main10_Full.xml",
-        "./resolve_encode_preset/H265_MOV_Win_NVIDIA_Main10_Full.xml",
-        "./resolve_encode_preset/H265_MP4_Win_Native_Main10_Full.xml",
-        "./resolve_encode_preset/H265_MP4_Win_NVIDIA_Main10_Full.xml",
-    ]
+    # win_encode_preset_list = [
+    #     "./resolve_encode_preset/H265_MOV_Win_Native_Main10_Full.xml",
+    #     "./resolve_encode_preset/H265_MOV_Win_NVIDIA_Main10_Full.xml",
+    #     "./resolve_encode_preset/H265_MP4_Win_Native_Main10_Full.xml",
+    #     "./resolve_encode_preset/H265_MP4_Win_NVIDIA_Main10_Full.xml",
+    # ]
 
     encode_and_decode(
         width=width, height=height, framerate=framerate,
         gamut=gamut, gamma=gamma, encode_preset_list=mac_encode_preset_list
     )
 
-    encode_and_decode(
-        width=width, height=height, framerate=framerate,
-        gamut=gamut, gamma=gamma, encode_preset_list=win_encode_preset_list
-    )
+    # encode_and_decode(
+    #     width=width, height=height, framerate=framerate,
+    #     gamut=gamut, gamma=gamma, encode_preset_list=win_encode_preset_list
+    # )
