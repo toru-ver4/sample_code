@@ -159,11 +159,16 @@ if __name__ == '__main__':
     grey_block_size = 32
 
     encode_preset_list = [
-        "./resolve_encode_preset/H265_MOV_Main10_Full.xml",
-        "./resolve_encode_preset/H265_MOV_Main10_Limited.xml",
-        "./resolve_encode_preset/H265_MP4_Main10_Full.xml",
+        "./resolve_encode_preset/H265_MOV_macOS_Main10_Full.xml",
+        "./resolve_encode_preset/H265_MOV_macOS_Main10_Limited.xml",
+        "./resolve_encode_preset/H265_MP4_macOS_Main10_Full.xml",
         "./resolve_encode_preset/ProRes_MOV_422HQ_Full.xml",
         "./resolve_encode_preset/DNxHR_MOV_HQX_10-bit_Full.xml",
+        "./resolve_encode_preset/DNxHD_MOV_220-185-175_10-bit_Full.xml",
+        "./resolve_encode_preset/H265_MOV_Win_Native_Main10_Full.xml",
+        "./resolve_encode_preset/H265_MOV_Win_NVIDIA_Main10_Full.xml",
+        "./resolve_encode_preset/H265_MP4_Win_Native_Main10_Full.xml",
+        "./resolve_encode_preset/H265_MP4_Win_NVIDIA_Main10_Full.xml",
     ]
 
     for encode_preset in encode_preset_list:
@@ -172,7 +177,7 @@ if __name__ == '__main__':
         decoded_png = str(dir_path / encode_preset_stem) + "00086400.png"
 
         check_decoded_full_range_data(
-            test_name=f'Resolve "{encode_preset_stem}"',
+            test_name=f'Resolve {encode_preset_stem}',
             decoded_png_fname=decoded_png,
             block_size=grey_block_size
         )
