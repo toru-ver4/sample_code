@@ -8,6 +8,8 @@ from pathlib import Path
 # import third-party libraries
 import numpy as np
 import matplotlib.pyplot as plt
+from colour import write_image
+from colour.io.image import ImageAttribute_Specification
 
 # import my libraries
 import test_pattern_generator2 as tpg
@@ -49,7 +51,9 @@ def calc_gradation_pattern_block_st_pos(code_value, width, block_size):
 
 
 def create_10bit_pattern_for_full_range_encode():
-    output_fname = "./img/src_img.png"
+    output_fname_png = "./img/src_img.png"
+    output_fname_tif = "./img/src_img.tif"
+    output_fname_dpx = "./img/src_img.dpx"
     width = 1920
     height = 1080
     cv_max = 1023
@@ -93,7 +97,14 @@ def create_10bit_pattern_for_full_range_encode():
         tpg.merge(img, block_img, st_pos)
 
     tpg.img_wirte_float_as_16bit_int(
-        filename=output_fname, img_float=img/1023
+        filename=output_fname_png, img_float=img/1023
+    )
+    tpg.img_wirte_float_as_16bit_int(
+        filename=output_fname_tif, img_float=img/1023
+    )
+    bit_option = ImageAttribute_Specification("oiio:BitsPerSample", 10)
+    write_image(
+        img/1023, output_fname_dpx, bit_depth='uint16', attributes=[bit_option]
     )
 
 

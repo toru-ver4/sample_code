@@ -81,7 +81,7 @@ def encode_full_range(
 
     # add files to the media storage
     relative_file_list = [
-        "./img/src_img.png",
+        "./img/src_img.dpx",
     ]
     file_path_list = [
         str(Path(x).resolve()) for x in relative_file_list
