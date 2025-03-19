@@ -52,8 +52,8 @@ def plot_full_data_with_diff(test_name, ramp_10bit_int, adjacent_diff, abs_diff)
     x_margin = 10   # margin for x-axis
     y_margin_ax1 = 10  # margin for y-axis in ax1
     y_margin_ax2 = 0.5   # margin for y-axis in ax2
-    y_margin_ax3 = 1 if max_diff < 6 else 6
-    y_min_max_ax3 = 6 if max_diff < 6 else 100
+    y_margin_ax3 = 0.75 if max_diff < 5 else 5
+    y_min_max_ax3 = 4 if max_diff < 5 else 100
 
     # Set axis limits for ax1: x from 0 to 1023, y from 0 to 1023 (with margins)
     ax1.set_xlim(-x_margin, 1023 + x_margin)
@@ -85,7 +85,7 @@ def plot_full_data_with_diff(test_name, ramp_10bit_int, adjacent_diff, abs_diff)
     # Define custom tick positions for ax3
     xticks_ax3 = [x * 128 for x in range(8)] + [1023]
     if max_diff < 6:
-        yticks_ax3 = [-6, -4, -2, 0, 2, 4, 6]
+        yticks_ax3 = [-4, -2, 0, 2, 4]
     else:
         yticks_ax3 = [-96, -64, -32, 0, 32, 64, 96]
     ax3.set_xticks(xticks_ax3)
