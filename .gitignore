@@ -255,6 +255,9 @@ temporary/**/**
 **/render_out/*
 !2024/16_Investigate_Resolve_API_Color_Space/render_out/.gitkeep
 !2025/02_Countdown_V2/render_out/.gitkeep
+2025/03_Investigate_Full_Range_Encoding/encode_data/*
+!2025/03_Investigate_Full_Range_Encoding/encode_data/.gitkeep
+2025/03_Investigate_Full_Range_Encoding/debug/*
 
 !ty_lib/fonts/*.ttf
 

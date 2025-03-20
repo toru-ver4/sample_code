@@ -9,7 +9,7 @@ import os
 # import third-party libraries
 import numpy as np
 from colour.utilities import tstack
-from numpy.lib.type_check import nan_to_num
+from numpy import nan_to_num
 from scipy import linalg
 
 # import my libraries
