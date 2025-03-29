@@ -2961,6 +2961,71 @@ def png_to_avif(
     subprocess.run(cmd)
 
 
+def png_to_avif_2(
+        png_fname, avif_fname,
+        bit_depth=10,
+        color_space_name=cs.BT2020,
+        transfer_characteristics=tf.ST2084,
+        lossless=True,
+        cll=None, pall=None):
+
+    if (cll is None) or (pall is None):
+        rgb_non_linear = img_read_as_float(png_fname)
+        rgb_linear = tf.eotf_to_luminance(
+            rgb_non_linear, transfer_characteristics
+        )
+        if cll is None:
+            cll = calc_max_cll(
+                rgb_linear=rgb_linear, color_space_name=color_space_name
+            )
+        if pall is None:
+            pall = calc_max_fall(
+                rgb_linear=rgb_linear, color_space_name=color_space_name
+            )
+
+    # set cicp
+    if color_space_name == cs.BT2020:
+        cicp_cs = "9"
+        cicp_mtx = "9"
+    elif color_space_name == cs.P3_D65:
+        cicp_cs = "12"
+        cicp_mtx = "1"
+    elif color_space_name == cs.BT709:
+        cicp_cs = "1"
+        cicp_mtx = "1"
+    else:
+        raise ValueError("Error. unknown color space name.")
+
+    if transfer_characteristics == tf.ST2084:
+        cicp_tf = "16"
+    elif transfer_characteristics == tf.HLG:
+        cicp_tf = "18"
+    elif transfer_characteristics == tf.SRGB:
+        cicp_tf = "13"
+    else:
+        cicp_tf = "1"
+
+    if lossless:
+        cicp_ops = f"{cicp_cs}/{cicp_tf}/0"
+        quality_ops = ["--lossless"]
+    else:
+        cicp_ops = f"{cicp_cs}/{cicp_tf}/{cicp_mtx}"
+        quality_ops = ["-q", "90"]
+
+    cmd = [
+        "avifenc", png_fname,
+        "-d", f"{bit_depth}",
+        "--cicp", cicp_ops,
+        "-r", "full",
+        "--clli", f"{cll},{pall}",
+        *quality_ops,
+        "--ignore-exif",
+        avif_fname
+    ]
+    print(" ".join(cmd))
+    subprocess.run(cmd)
+
+
 def png_to_heif(
         png_fname,
         heif_fname,

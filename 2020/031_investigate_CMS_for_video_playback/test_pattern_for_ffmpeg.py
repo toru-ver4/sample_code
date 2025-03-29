@@ -13,7 +13,7 @@ import subprocess
 # import third-party libraries
 import numpy as np
 import cv2
-from colour.models import BT709_COLOURSPACE
+from colour.models import RGB_COLOURSPACE_BT709
 from colour import RGB_COLOURSPACES
 from numpy.core.defchararray import center
 import matplotlib.pyplot as plt
@@ -44,10 +44,10 @@ RGBMYC_COLOR_LIST = np.array(
     [[1, 0, 0], [0, 1, 0], [0, 0, 1],
      [1, 0, 1], [1, 1, 0], [0, 1, 1]], dtype=np.uint8)
 COLOR_CHECKER_LINEAR = tpg.generate_color_checker_rgb_value(
-    color_space=BT709_COLOURSPACE)
-SRC_PNG_DIR = "/work/overuse/2020/031_cms_for_video_playback/img_seq/"
-DST_MP4_DIR = "/work/overuse/2020/031_cms_for_video_playback/mp4/"
-DST_PNG_DIR = "/work/overuse/2020/031_cms_for_video_playback/mp4_to_png/"
+    color_space=RGB_COLOURSPACE_BT709)
+SRC_PNG_DIR = "./img"
+DST_MP4_DIR = "./img"
+DST_PNG_DIR = "./img"
 
 LABEL_CONV_DICT = {
     'bt709': 'BT.709',
@@ -640,8 +640,8 @@ def create_test_src():
     width = 1920
     height = 1080
     block_size = 64
-    # create_gradation_pattern_sequence(
-    #     width=width, height=height, block_size=block_size)
+    create_gradation_pattern_sequence(
+        width=width, height=height, block_size=block_size)
     # create_gradation_pattern_sequence_with_cms(
     #     width=width, height=height, block_size=block_size,
     #     color_space_name=cs.BT709, eotf_name=tf.GAMMA24)
@@ -702,9 +702,9 @@ def create_test_src():
     # create_gradation_pattern_sequence_with_cms(
     #     width=width, height=height, block_size=block_size,
     #     color_space_name=cs.ACES_AP0, eotf_name=tf.GAMMA35)
-    create_gradation_pattern_sequence_with_cms(
-        width=width, height=height, block_size=block_size,
-        color_space_name=cs.BT709, eotf_name=tf.SRGB)
+    # create_gradation_pattern_sequence_with_cms(
+    #     width=width, height=height, block_size=block_size,
+    #     color_space_name=cs.BT709, eotf_name=tf.SRGB)
 
 
 def make_cms_result_srgb_monitor_filename(color_trc='bt709'):
