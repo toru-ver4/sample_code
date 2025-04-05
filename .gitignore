@@ -258,6 +258,12 @@ temporary/**/**
 2025/03_Investigate_Full_Range_Encoding/encode_data/*
 !2025/03_Investigate_Full_Range_Encoding/encode_data/.gitkeep
 2025/03_Investigate_Full_Range_Encoding/debug/*
+2025/03_Investigate_Full_Range_Encoding/debug/*
+2025/05_OBS_HDR_Capture/capture_data/*/*.png
+2025/05_OBS_HDR_Capture/capture_data/*/*.mkv
+2025/05_OBS_HDR_Capture/capture_data/*/*.mkv
+2025/05_OBS_HDR_Capture/capture_data/*/*.jxr
+2025/05_OBS_HDR_Capture/capture_data/*/*.exr
 
 !ty_lib/fonts/*.ttf
 
