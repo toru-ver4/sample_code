@@ -262,6 +262,8 @@ temporary/**/**
 2025/05_OBS_HDR_Capture/capture_data/*/*.png
 2025/05_OBS_HDR_Capture/capture_data/*/*.mkv
 2025/05_OBS_HDR_Capture/capture_data/*/*.mkv
+2025/05_OBS_HDR_Capture/capture_data/*/*.jxr
+2025/05_OBS_HDR_Capture/capture_data/*/*.exr
 
 !ty_lib/fonts/*.ttf
 

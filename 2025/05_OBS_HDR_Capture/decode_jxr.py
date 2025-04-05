@@ -49,6 +49,8 @@ def jxr_to_avif_lossy(src_fname="./Windows_HDR_Capture/600.jxr"):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # jxr_to_exr("./capture_data/check_precision/Microsoft_Edge.jxr")
-    jxr_to_avif_lossy("./capture_data/check_precision/Microsoft_Edge.jxr")
+    # jxr_to_avif_lossy("./capture_data/check_precision/Microsoft_Edge.jxr")
     # jxr_to_exr("./capture_data/check_precision/Monster_Hunter_Wilds.jxr")
-    jxr_to_avif_lossy("./capture_data/check_precision/Monster_Hunter_Wilds.jxr")
+    # jxr_to_avif_lossy("./capture_data/check_precision/Monster_Hunter_Wilds.jxr")
+
+    jxr_to_exr("./capture_data/01_obs_internal_tonemapping/screenshot.jxr")
