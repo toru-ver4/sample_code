@@ -33,9 +33,6 @@ launch "x64 Native Tools Command Prompt for VS 2022"
 # build OBS Studio
 cd C:\home\build_tools
 git clone --branch 31.0.3 --recursive https://github.com/obsproject/obs-studio.git
-cd obs-studio
-cmake --preset windows-x64
-cmake --build --preset windows-x64
 
 cd C:\home\build_tools\obs-studio
 rmdir /s /q .git
@@ -50,3 +47,34 @@ cmake --preset windows-x64
 cmake --build --preset windows-x64
 
 ```
+
+とりあえず、obs-shaderfileter.c の `get_input_source` と `draw_output` の `gs_get_format_from_space` の戻り値を確認したい
+
+確認したら、Canvas は GS_CS_709_EXTENDED っぽい。
+filter->context が映像ソースっぽい？
+
+## 1.0 を超える値の維持
+
+以下のようにして gs_texrender_create に GS_RGBA16F を食わせる
+
+```
+gs_texrender_t *create_or_reset_texrender(gs_texrender_t *render)
+{
+	if (!render) {
+		// render = gs_texrender_create(GS_RGBA, GS_ZS_NONE);
+		render = gs_texrender_create(GS_RGBA16F, GS_ZS_NONE);
+	} else {
+		gs_texrender_reset(render);
+	}
+	return render;
+}
+```
+
+obs_source_process_filter_tech_end の最終行の gs_set_linear_srgb(previous); は previous が true になってしまってる。たぶん、これで linear to srgb 変換が適用されてる気がする
+
+たぶんだけど、obs-shaderfilter.c の shader_filter_render がメインでレンダリングしてるところ
+
+obs-source.c としては obs_source_render_filters がメインっぽいかな
+
+
+obs-scence.c の render_item の linear_srgb を強制 false にしてみる？
