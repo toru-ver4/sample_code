@@ -1,0 +1,9 @@
+diff --git "a/.\\plugins\\CMakeLists.txt" "b/.\\plugins\\CMakeLists_after.txt"
+index 470e727..6395002 100644
+--- "a/.\\plugins\\CMakeLists.txt"
++++ "b/.\\plugins\\CMakeLists_after.txt"
+@@ -88,3 +88,4 @@ add_obs_plugin(vlc-video WITH_MESSAGE)
+ add_obs_plugin(win-capture PLATFORMS WINDOWS)
+ add_obs_plugin(win-dshow PLATFORMS WINDOWS)
+ add_obs_plugin(win-wasapi PLATFORMS WINDOWS)
++add_obs_plugin(obs-shaderfilter PLATFORMS WINDOWS)
