@@ -395,10 +395,10 @@ def create_color_palette(num_of_sample=6):
         linear_color_palette_list_bt709.append(rgb_linear_bt709)
 
     # convert from bt.709 to bt.2020
-    rgb_709 = np.ndarray(linear_color_palette_list_bt709)
+    rgb_709 = np.array(linear_color_palette_list_bt709)
     large_xyz = cs.rgb_to_large_xyz(rgb_709, cs.BT709)
     rgb_2020 = cs.large_xyz_to_rgb(large_xyz, cs.BT2020)
-    linear_color_paletter_list_bt2020 = linear_color_palette_list_bt709
+    linear_color_paletter_list_bt2020 = rgb_2020
 
     # write to .effect file
     effect_str = ""
