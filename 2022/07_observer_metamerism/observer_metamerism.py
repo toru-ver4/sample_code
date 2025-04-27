@@ -12,7 +12,7 @@ from colour.continuous import MultiSignals, Signal
 from colour import sd_to_XYZ, MultiSpectralDistributions, MSDS_CMFS,\
     SDS_ILLUMINANTS, SpectralShape, SpectralDistribution, XYZ_to_xyY,\
     XYZ_to_xy, xy_to_XYZ, XYZ_to_Lab
-from colour.algebra import vector_dot
+from colour.algebra import vecmul
 from colour.utilities import tstack
 from colour.io import write_image, read_image
 from scipy.stats import norm
@@ -191,7 +191,7 @@ def calc_tristimulus_value_for_each_sd_patch_cmfs(
         for c_idx in range(num_of_cmfs):
             mtx = xyz_to_rgb_mtx[d_idx, c_idx]
             large_xyz_temp = large_xyz[c_idx]
-            rgb = vector_dot(mtx, large_xyz_temp)
+            rgb = vecmul(mtx, large_xyz_temp)
             out_rgb[d_idx, c_idx] = rgb / rgb_nomalize_val[d_idx, c_idx]
 
     return out_rgb
@@ -338,7 +338,7 @@ def calc_display_sd_using_metamerism(
     ds = DisplaySpectrum(msd=base_msd)
     xyz_to_rgb_mtx = ds.get_rgb_to_xyz_mtx()
 
-    rgb_gain = vector_dot(xyz_to_rgb_mtx, large_xyz) / 100
+    rgb_gain = vecmul(xyz_to_rgb_mtx, large_xyz) / 100
     rgb_gain = np.clip(rgb_gain, 0.0, 1.0)
 
     metamerism_spectrum = ds.calc_msd_from_rgb_gain(rgb=rgb_gain)
@@ -1981,7 +1981,7 @@ def plot_out_of_gamut_spectral_distribution():
     # calc Color Checker's XYZ
     target_xy = np.array([0.170, 0.797])
     target_large_xyz = xy_to_XYZ(target_xy)
-    rgb = vector_dot(xyz_to_rgb_matrix, target_large_xyz)
+    rgb = vecmul(xyz_to_rgb_matrix, target_large_xyz)
     rgb = rgb / np.max(np.abs(rgb))
 
     wavelengths = display_spd.wavelengths

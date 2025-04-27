@@ -382,16 +382,50 @@ def create_pallate_image(hue, num_of_sample=4, idx=0):
     )
 
 
-def create_color_palette():
+def create_color_palette(num_of_sample=6):
     hue_list = [
         #  B        C        G        Y       O       R        M
         258.812, 203.825, 132.719, 101.804, 72.126, 42.477, 320.769
     ]
+    linear_color_palette_list_bt709 = []
     for idx, hue in enumerate(hue_list):
-        create_pallate_image(hue, num_of_sample=6, idx=idx)
+        create_pallate_image(hue, num_of_sample=num_of_sample, idx=idx)
         create_pallate_image(hue, num_of_sample=1600, idx=idx)
-        # rgb_linear_4 = create_color_palette_each_hue(hue=hue, num_of_sample=32)
-        # break
+        rgb_linear_bt709 = create_color_palette_each_hue(hue=hue, num_of_sample=num_of_sample)
+        linear_color_palette_list_bt709.append(rgb_linear_bt709)
+
+    # convert from bt.709 to bt.2020
+    rgb_709 = np.ndarray(linear_color_palette_list_bt709)
+    large_xyz = cs.rgb_to_large_xyz(rgb_709, cs.BT709)
+    rgb_2020 = cs.large_xyz_to_rgb(large_xyz, cs.BT2020)
+    linear_color_paletter_list_bt2020 = linear_color_palette_list_bt709
+
+    # write to .effect file
+    effect_str = ""
+    for idx, rgb_linear in enumerate(linear_color_paletter_list_bt2020):
+        effect_str += f"static const float3 palette_{idx}[{num_of_sample}]"
+        effect_str += " = {\n"
+        for row in rgb_linear:
+            effect_str += "    float3({:.6f}, {:.6f}, {:.6f}),\n".format(row[0], row[1], row[2])
+        effect_str += "};\n"
+
+    # Write to "paletter.effect" in the same directory.
+    output_filename = "flase_color_palette.effect"
+    with open(output_filename, "w") as f:
+        f.write(effect_str)
+
+    # write to .py file
+    py_effect_str = "# Python palette definitions.\n"
+    py_effect_str = "# This color palette is for BT.2100-PQ color space.\n"
+    for idx, rgb_linear in enumerate(linear_color_paletter_list_bt2020):
+        py_effect_str += f"palette_{idx} = [\n"
+        for row in rgb_linear:
+            py_effect_str += "    [{:.6f}, {:.6f}, {:.6f}],\n".format(row[0], row[1], row[2])
+        py_effect_str += "]\n\n"
+
+    output_filename_py = "flase_color_palette.py"
+    with open(output_filename_py, "w") as f:
+        f.write(py_effect_str)
 
 
 def create_color_palette_each_hue(hue, num_of_sample=1024):
@@ -403,8 +437,8 @@ def create_color_palette_each_hue(hue, num_of_sample=1024):
     c_ed = cusp[1]
     h_ed = cusp[2]
 
-    j_st = j_ed / 2.0
-    c_st = c_ed / 2.0
+    j_st = j_ed / 3.0
+    c_st = c_ed / 3.0
     h_st = h_ed
 
     # Create linear interpolated arrays for each channel
@@ -418,18 +452,28 @@ def create_color_palette_each_hue(hue, num_of_sample=1024):
     large_xyz = jzazbz_to_large_xyz(jzazbz) / 100.0
     rgb_linear = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
 
-    return rgb_linear
+    return np.clip(rgb_linear, 0.0, 1.0)
 
 
-def concat_color_palette_img():
+def concat_color_palette_img(num_of_sample=6):
     img_buf = []
     for idx in range(7):
-        fname = f"./img/hue-{idx}_sample-0006.png"
+        fname = f"./img/hue-{idx}_sample-{num_of_sample:04d}.png"
         img_buf.append(tpg.img_read_as_float(fname))
 
     img = np.vstack(img_buf)
     tpg.img_wirte_float_as_16bit_int(
-        "./img/concat_sample-0006.png", img
+        f"./img/concat_sample-{num_of_sample:04d}.png", img
+    )
+
+    img_buf = []
+    for idx in range(7):
+        fname = f"./img/hue-{idx}_sample-1600.png"
+        img_buf.append(tpg.img_read_as_float(fname))
+
+    img = np.vstack(img_buf)
+    tpg.img_wirte_float_as_16bit_int(
+        "./img/concat_sample-1600.png", img
     )
 
 
@@ -438,10 +482,12 @@ def debug():
     # create_and_plot_cj_plane()
     # plot_color_volume()
     # calculate_hue_for_color_palette()
-    # create_color_palette()
-    concat_color_palette_img()
+    pass
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    debug()
+    # debug()
+    num_of_palette_sample = 6
+    create_color_palette(num_of_sample=num_of_palette_sample)
+    concat_color_palette_img(num_of_sample=num_of_palette_sample)

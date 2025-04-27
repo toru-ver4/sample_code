@@ -30,7 +30,7 @@ from colour import MultiSpectralDistributions, SpectralShape, MSDS_CMFS,\
     xy_to_XYZ
 from colour.models import RGB_COLOURSPACE_BT709
 from colour.utilities import tstack
-from colour.algebra import vector_dot, normalise_maximum
+from colour.algebra import vecmul, normalise_maximum
 
 from scipy.spatial import Delaunay
 from scipy.ndimage import convolve
@@ -864,7 +864,7 @@ def calc_normal_pos(
     """
     rotate_mtx = get_rotate_mtx(angle_degree=angle_degree)
     xy_centerd = xy[1:] - xy[:-1]
-    xy_rotate = vector_dot(rotate_mtx, xy_centerd)
+    xy_rotate = vecmul(rotate_mtx, xy_centerd)
     aa = xy_rotate[..., 1] / xy_rotate[..., 0]
     bb = xy[:-1, 1] - xy[:-1, 0] * aa
 
