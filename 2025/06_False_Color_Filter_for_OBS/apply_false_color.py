@@ -112,6 +112,35 @@ def convert_bt2020_linear_to_sRGB(img_linear_bt2020):
     return srgb_img
 
 
+def apply_hdr_false_color_filter(y_like, palette_list, out_img):
+    threshold_list = [1.0, 2.0, 4.0, 6.0, 10.0, 20.0, 40.0, 101.0]
+    for p_idx in range(len(threshold_list) - 1):
+        lower_bound = threshold_list[p_idx]
+        upper_bound = threshold_list[p_idx + 1]
+        palette = palette_list[p_idx]
+        x_org = np.linspace(0, 1, len(palette))
+
+        # Find indices where the luminance value falls in the current threshold range
+        idx = (y_like > lower_bound) & (y_like <= upper_bound)
+        x = (y_like[idx] - lower_bound) / (upper_bound - lower_bound)
+
+        # Interpolate each channel from the palette
+        rr = np.interp(x, x_org, palette[:, 0])
+        gg = np.interp(x, x_org, palette[:, 1])
+        bb = np.interp(x, x_org, palette[:, 2])
+        # Combine the interpolated channels into an RGB value
+        rgb = np.column_stack((rr, gg, bb))
+        out_img[idx] = rgb
+
+    return out_img
+
+
+def apply_sdr_false_color_filter(y_like, out_img):
+    mono_idx = y_like < 1.0
+    mono_img = np.dstack((y_like[mono_idx], y_like[mono_idx], y_like[mono_idx])).reshape(-1, 3)
+    out_img[mono_idx] = mono_img ** (1 / 1.1)
+
+
 def apply_false_color_filter_for_Y(img, palette_list):
     """
     Parameters
@@ -127,35 +156,37 @@ def apply_false_color_filter_for_Y(img, palette_list):
     Returens
     --------
     ndarray
-
     """
-    threshold_list = [1.0, 2.0, 4.0, 6.0, 10.0, 20.0, 40.0, 101.0]
-
     out_img = np.zeros_like(img)
 
-    yy = 0.262700212 * img[..., 0] + 0.677998072 * img[..., 1] + 0.0593017165 * img[..., 2]
+    y_like = 0.262700212 * img[..., 0] + 0.677998072 * img[..., 1] + 0.0593017165 * img[..., 2]
+    apply_sdr_false_color_filter(y_like=y_like, out_img=out_img)
+    apply_hdr_false_color_filter(y_like=y_like, out_img=out_img, palette_list=palette_list)
 
-    # mono
-    mono_idx = yy < 1.0
-    mono_img = np.dstack((yy[mono_idx], yy[mono_idx], yy[mono_idx])).reshape(-1, 3)
-    out_img[mono_idx] = mono_img ** (1 / 1.1)
+    return out_img
 
-    for p_idx in range(len(threshold_list) - 1):
-        lower_bound = threshold_list[p_idx]
-        upper_bound = threshold_list[p_idx + 1]
-        palette = palette_list[p_idx]
-        x_org = np.linspace(0, 1, len(palette))
 
-        # Y < lower_bound
-        idx = (yy > lower_bound) & (yy <= upper_bound)
-        x = (yy[idx] - lower_bound) / (upper_bound - lower_bound)
-        print(np.min(x), np.max(x))
+def apply_false_color_filter_for_maxRGB(img, palette_list):
+    """
+    Parameters
+    ----------
+    img : ndarray
+        The input image in BT.2020-Linear color space.
+        Nominal white is represented as (1, 1, 1) in the Rec.2020-Linear color space.
+        Peak white is represented as (100, 100, 100) in the Rec.2020-Linear color space.
+    palette_list : ndarray
+        The false color palette to be applied to the image.
+        The palette should be in the same color space as the input image.
 
-        rr = np.interp(x, x_org, palette[:, 0])
-        gg = np.interp(x, x_org, palette[:, 1])
-        bb = np.interp(x, x_org, palette[:, 2])
-        rgb = np.dstack([rr, gg, bb]).reshape(-1, 3)
-        out_img[idx] = rgb
+    Returens
+    --------
+    ndarray
+    """
+    out_img = np.zeros_like(img)
+
+    y_like = np.max(img, axis=-1)
+    apply_sdr_false_color_filter(y_like=y_like, out_img=out_img)
+    apply_hdr_false_color_filter(y_like=y_like, out_img=out_img, palette_list=palette_list)
 
     return out_img
 
@@ -171,10 +202,19 @@ if __name__ == '__main__':
         img=img_rec2100_pq, source_cs_name=cs.BT2020, source_tf_name=tf.ST2084
     )
 
-    false_color_img_bt2020_linear = apply_false_color_filter_for_Y(
+    false_color_img_y_base_bt2020_linear = apply_false_color_filter_for_Y(
+        img=img_rec2100_linear, palette_list=palette_list
+    )
+    false_color_img_maxRGB_base_bt2020_linear = apply_false_color_filter_for_maxRGB(
         img=img_rec2100_linear, palette_list=palette_list
     )
 
-    srgb_img = convert_bt2020_linear_to_sRGB(img_linear_bt2020=false_color_img_bt2020_linear)
+    srgb_img_y = convert_bt2020_linear_to_sRGB(
+        img_linear_bt2020=false_color_img_y_base_bt2020_linear
+    )
+    srgb_img_maxRGB = convert_bt2020_linear_to_sRGB(
+        img_linear_bt2020=false_color_img_maxRGB_base_bt2020_linear
+    )
 
-    tpg.img_wirte_float_as_16bit_int("./img/dst_tp_rec2100-pq_y.png", srgb_img)
+    tpg.img_wirte_float_as_16bit_int("./img/dst_tp_rec2100-pq_y.png", srgb_img_y)
+    tpg.img_wirte_float_as_16bit_int("./img/dst_tp_rec2100-pq_maxRGB.png", srgb_img_maxRGB)
