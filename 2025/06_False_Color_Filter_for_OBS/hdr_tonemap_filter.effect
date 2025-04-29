@@ -1,5 +1,74 @@
 #include "color.effect"
 
+// Threshold values (threshold_list = [1, 2, 4, 6, 10, 20, 40, 101])
+uniform float t1 = 1.0;
+uniform float t2 = 2.0;
+uniform float t3 = 4.0;
+uniform float t4 = 6.0;
+uniform float t5 = 10.0;
+uniform float t6 = 20.0;
+uniform float t7 = 40.0;
+uniform float t8 = 101.0;
+
+// Palette definitions (palette_0 through palette_6, each with 6 entries)
+// declared as uniforms instead of static const float3 ...
+
+// palette_0
+uniform float3 p0_0 = { 0.006870, 0.010806, 0.066433 };
+uniform float3 p0_1 = { 0.011951, 0.016830, 0.136649 };
+uniform float3 p0_2 = { 0.018471, 0.021998, 0.243564 };
+uniform float3 p0_3 = { 0.026109, 0.024525, 0.397274 };
+uniform float3 p0_4 = { 0.034571, 0.022095, 0.609755 };
+uniform float3 p0_5 = { 0.043458, 0.011752, 0.895132 };
+
+// palette_1
+uniform float3 p1_0 = { 0.043260, 0.077137, 0.079256 };
+uniform float3 p1_1 = { 0.081920, 0.156688, 0.161881 };
+uniform float3 p1_2 = { 0.133998, 0.274117, 0.284756 };
+uniform float3 p1_3 = { 0.199854, 0.436833, 0.456306 };
+uniform float3 p1_4 = { 0.279404, 0.652628, 0.685586 };
+uniform float3 p1_5 = { 0.372089, 0.929636, 0.982266 };
+
+// palette_2
+uniform float3 p2_0 = { 0.037669, 0.076590, 0.018682 };
+uniform float3 p2_1 = { 0.071234, 0.155267, 0.031800 };
+uniform float3 p2_2 = { 0.116685, 0.271308, 0.046693 };
+uniform float3 p2_3 = { 0.174674, 0.432080, 0.062113 };
+uniform float3 p2_4 = { 0.245594, 0.645368, 0.076575 };
+uniform float3 p2_5 = { 0.329557, 0.919339, 0.088376 };
+
+// palette_3
+uniform float3 p3_0 = { 0.080057, 0.084641, 0.024562 };
+uniform float3 p3_1 = { 0.162542, 0.171343, 0.041712 };
+uniform float3 p3_2 = { 0.283944, 0.298159, 0.060600 };
+uniform float3 p3_3 = { 0.451536, 0.471938, 0.079072 };
+uniform float3 p3_4 = { 0.672855, 0.699505, 0.094600 };
+uniform float3 p3_5 = { 0.955659, 0.987578, 0.104328 };
+
+// palette_4
+uniform float3 p4_0 = { 0.062827, 0.040983, 0.012828 };
+uniform float3 p4_1 = { 0.126368, 0.078263, 0.020906 };
+uniform float3 p4_2 = { 0.219572, 0.129472, 0.029339 };
+uniform float3 p4_3 = { 0.348266, 0.195778, 0.037102 };
+uniform float3 p4_4 = { 0.518677, 0.278128, 0.043051 };
+uniform float3 p4_5 = { 0.737423, 0.377211, 0.045940 };
+
+// palette_5
+uniform float3 p5_0 = { 0.054922, 0.014994, 0.006472 };
+uniform float3 p5_1 = { 0.109362, 0.025329, 0.009976 };
+uniform float3 p5_2 = { 0.188642, 0.037021, 0.013254 };
+uniform float3 p5_3 = { 0.297598, 0.049073, 0.015790 };
+uniform float3 p5_4 = { 0.441452, 0.060248, 0.017033 };
+uniform float3 p5_5 = { 0.625815, 0.069046, 0.016407 };
+
+// palette_6
+uniform float3 p6_0 = { 0.058208, 0.019449, 0.071704 };
+uniform float3 p6_1 = { 0.116440, 0.032952, 0.146631 };
+uniform float3 p6_2 = { 0.201438, 0.047866, 0.258881 };
+uniform float3 p6_3 = { 0.318343, 0.062392, 0.417113 };
+uniform float3 p6_4 = { 0.472651, 0.074221, 0.630991 };
+uniform float3 p6_5 = { 0.670206, 0.080494, 0.911242 };
+
 uniform float4x4 ViewProj;
 uniform texture2d image;
 
@@ -35,12 +104,174 @@ VertOut VSHdrTonemap(VertData v_in)
 	return vert_out;
 }
 
+// Apply SDR false color (monochrome gamma correction)
+float3 apply_sdr_false_color(float y)
+{
+    float v = pow(y, 1.0 / 1.1);
+    return float3(v, v, v);
+}
+
+// Interpolate between two palette entries
+float3 interp_palette(float3 a, float3 b, float segmentStart, float segmentEnd, float x)
+{
+    return lerp(a, b, (x - segmentStart) / (segmentEnd - segmentStart));
+}
+
+// Palette functions for each band (x in [0,1])
+float3 apply_palette0(float x)
+{
+    if (x <= 0.2)  return lerp(p0_0, p0_1, x / 0.2);
+    if (x <= 0.4)  return lerp(p0_1, p0_2, (x - 0.2) / 0.2);
+    if (x <= 0.6)  return lerp(p0_2, p0_3, (x - 0.4) / 0.2);
+    if (x <= 0.8)  return lerp(p0_3, p0_4, (x - 0.6) / 0.2);
+                   return lerp(p0_4, p0_5, (x - 0.8) / 0.2);
+}
+
+float3 apply_palette1(float x)
+{
+    if (x <= 0.2)  return lerp(p1_0, p1_1, x / 0.2);
+    if (x <= 0.4)  return lerp(p1_1, p1_2, (x - 0.2) / 0.2);
+    if (x <= 0.6)  return lerp(p1_2, p1_3, (x - 0.4) / 0.2);
+    if (x <= 0.8)  return lerp(p1_3, p1_4, (x - 0.6) / 0.2);
+                   return lerp(p1_4, p1_5, (x - 0.8) / 0.2);
+}
+
+float3 apply_palette2(float x)
+{
+    if (x <= 0.2)  return lerp(p2_0, p2_1, x / 0.2);
+    if (x <= 0.4)  return lerp(p2_1, p2_2, (x - 0.2) / 0.2);
+    if (x <= 0.6)  return lerp(p2_2, p2_3, (x - 0.4) / 0.2);
+    if (x <= 0.8)  return lerp(p2_3, p2_4, (x - 0.6) / 0.2);
+                   return lerp(p2_4, p2_5, (x - 0.8) / 0.2);
+}
+
+float3 apply_palette3(float x)
+{
+    if (x <= 0.2)  return lerp(p3_0, p3_1, x / 0.2);
+    if (x <= 0.4)  return lerp(p3_1, p3_2, (x - 0.2) / 0.2);
+    if (x <= 0.6)  return lerp(p3_2, p3_3, (x - 0.4) / 0.2);
+    if (x <= 0.8)  return lerp(p3_3, p3_4, (x - 0.6) / 0.2);
+                   return lerp(p3_4, p3_5, (x - 0.8) / 0.2);
+}
+
+float3 apply_palette4(float x)
+{
+    if (x <= 0.2)  return lerp(p4_0, p4_1, x / 0.2);
+    if (x <= 0.4)  return lerp(p4_1, p4_2, (x - 0.2) / 0.2);
+    if (x <= 0.6)  return lerp(p4_2, p4_3, (x - 0.4) / 0.2);
+    if (x <= 0.8)  return lerp(p4_3, p4_4, (x - 0.6) / 0.2);
+                   return lerp(p4_4, p4_5, (x - 0.8) / 0.2);
+}
+
+float3 apply_palette5(float x)
+{
+    if (x <= 0.2)  return lerp(p5_0, p5_1, x / 0.2);
+    if (x <= 0.4)  return lerp(p5_1, p5_2, (x - 0.2) / 0.2);
+    if (x <= 0.6)  return lerp(p5_2, p5_3, (x - 0.4) / 0.2);
+    if (x <= 0.8)  return lerp(p5_3, p5_4, (x - 0.6) / 0.2);
+                   return lerp(p5_4, p5_5, (x - 0.8) / 0.2);
+}
+
+float3 apply_palette6(float x)
+{
+    if (x <= 0.2)  return lerp(p6_0, p6_1, x / 0.2);
+    if (x <= 0.4)  return lerp(p6_1, p6_2, (x - 0.2) / 0.2);
+    if (x <= 0.6)  return lerp(p6_2, p6_3, (x - 0.4) / 0.2);
+    if (x <= 0.8)  return lerp(p6_3, p6_4, (x - 0.6) / 0.2);
+                   return lerp(p6_4, p6_5, (x - 0.8) / 0.2);
+}
+
+// Main false color function for luminance Y
+float3 apply_false_color_y(float3 rgb)
+{
+    // Compute luma in Rec.2020-Linear space
+    float y = dot(rgb, float3(0.262700212, 0.677998072, 0.0593017165));
+
+    if (y <= t1) {
+        // SDR region: monochrome mapping
+        return apply_sdr_false_color(y);
+    }
+    else if (y <= t2) {
+        float x = (y - t1) / (t2 - t1);
+        return apply_palette0(x);
+    }
+    else if (y <= t3) {
+        float x = (y - t2) / (t3 - t2);
+        return apply_palette1(x);
+    }
+    else if (y <= t4) {
+        float x = (y - t3) / (t4 - t3);
+        return apply_palette2(x);
+    }
+    else if (y <= t5) {
+        float x = (y - t4) / (t5 - t4);
+        return apply_palette3(x);
+    }
+    else if (y <= t6) {
+        float x = (y - t5) / (t6 - t5);
+        return apply_palette4(x);
+    }
+    else if (y <= t7) {
+        float x = (y - t6) / (t7 - t6);
+        return apply_palette5(x);
+    }
+    else if (y <= t8) {
+        float x = (y - t7) / (t8 - t7);
+        return apply_palette6(x);
+    }
+
+    // Above the highest threshold: use final palette color
+    return p6_5;
+}
+
+float3 apply_false_color_maxRGB(float3 rgb)
+{
+    // Compute luma in Rec.2020-Linear space
+    float y = max(rgb.r, max(rgb.g, rgb.b));
+
+    if (y <= t1) {
+        // SDR region: monochrome mapping
+        return apply_sdr_false_color(y);
+    }
+    else if (y <= t2) {
+        float x = (y - t1) / (t2 - t1);
+        return apply_palette0(x);
+    }
+    else if (y <= t3) {
+        float x = (y - t2) / (t3 - t2);
+        return apply_palette1(x);
+    }
+    else if (y <= t4) {
+        float x = (y - t3) / (t4 - t3);
+        return apply_palette2(x);
+    }
+    else if (y <= t5) {
+        float x = (y - t4) / (t5 - t4);
+        return apply_palette3(x);
+    }
+    else if (y <= t6) {
+        float x = (y - t5) / (t6 - t5);
+        return apply_palette4(x);
+    }
+    else if (y <= t7) {
+        float x = (y - t6) / (t7 - t6);
+        return apply_palette5(x);
+    }
+    else if (y <= t8) {
+        float x = (y - t7) / (t8 - t7);
+        return apply_palette6(x);
+    }
+
+    // Above the highest threshold: use final palette color
+    return p6_5;
+}
+
 float4 PSReinhard(FragData f_in) : TARGET
 {
 	float4 rgba = image.Sample(textureSampler, f_in.uv);
 	rgba.rgb *= multiplier;
 	rgba.rgb = rec709_to_rec2020(rgba.rgb);
-	rgba.rgb = reinhard(rgba.rgb);
+	rgba.rgb = apply_false_color_y(rgba.rgb);
 	rgba.rgb = rec2020_to_rec709(rgba.rgb);
 	return rgba;
 }
@@ -48,11 +279,9 @@ float4 PSReinhard(FragData f_in) : TARGET
 float4 PSMaxrgb(FragData f_in) : TARGET
 {
 	float4 rgba = image.Sample(textureSampler, f_in.uv);
-	rgba.rgb *= multiplier;
 	rgba.rgb = rec709_to_rec2020(rgba.rgb);
-	rgba.rgb = maxRGB_eetf_linear_to_linear(rgba.rgb, input_maximum_nits, output_maximum_nits);
+	rgba.rgb = apply_false_color_maxRGB(rgba.rgb);
 	rgba.rgb = rec2020_to_rec709(rgba.rgb);
-	rgba.rgb *= 1. / multiplier;
 	return rgba;
 }
 
