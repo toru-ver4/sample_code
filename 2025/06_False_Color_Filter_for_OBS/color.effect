@@ -277,7 +277,42 @@ float3 maxRGB_eetf_internal(float3 rgb_linear, float maxRGB1_linear, float maxRG
 
 float3 maxRGB_eetf_linear_to_linear(float3 rgb_linear, float Lw, float Lmax)
 {
-	float maxRGB1_linear = max(max(rgb_linear.r, rgb_linear.g), rgb_linear.b);
-	float maxRGB1_pq = linear_to_st2084_channel(maxRGB1_linear);
-	return maxRGB_eetf_internal(rgb_linear, maxRGB1_linear, maxRGB1_pq, Lw, Lmax);
+    // Compute luma in Rec.2020-Linear space
+    float y = max(rgb_linear.r, max(rgb_linear.g, rgb_linear.b));
+
+    if (y <= t1) {
+        // SDR region: monochrome mapping
+        return apply_sdr_false_color(y);
+    }
+    else if (y <= t2) {
+        float x = (y - t1) / (t2 - t1);
+        return apply_palette0(x);
+    }
+    else if (y <= t3) {
+        float x = (y - t2) / (t3 - t2);
+        return apply_palette1(x);
+    }
+    else if (y <= t4) {
+        float x = (y - t3) / (t4 - t3);
+        return apply_palette2(x);
+    }
+    else if (y <= t5) {
+        float x = (y - t4) / (t5 - t4);
+        return apply_palette3(x);
+    }
+    else if (y <= t6) {
+        float x = (y - t5) / (t6 - t5);
+        return apply_palette4(x);
+    }
+    else if (y <= t7) {
+        float x = (y - t6) / (t7 - t6);
+        return apply_palette5(x);
+    }
+    else if (y <= t8) {
+        float x = (y - t7) / (t8 - t7);
+        return apply_palette6(x);
+    }
+
+    // Above the highest threshold: use final palette color
+    return p6_5;
 }

@@ -17,7 +17,11 @@ from colour.models import xy_to_XYZ, XYZ_to_RGB, XYZ_to_xyY
 from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ, LCHab_to_Lab
 from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020,\
     RGB_COLOURSPACE_ACES2065_1, RGB_COLOURSPACE_ACESCG
-from colour.algebra import normalise_maximum, vecmul, vecmul
+from colour.algebra import normalise_maximum
+try:
+    from colour.algebra import vecmul
+except ImportError:
+    from colour.algebra import vector_dot
 from colour.adaptation import matrix_chromatic_adaptation_VonKries
 from colour import RGB_COLOURSPACES, CCS_COLOURCHECKERS
 import math

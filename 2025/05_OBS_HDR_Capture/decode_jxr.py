@@ -53,4 +53,6 @@ if __name__ == '__main__':
     # jxr_to_exr("./capture_data/check_precision/Monster_Hunter_Wilds.jxr")
     # jxr_to_avif_lossy("./capture_data/check_precision/Monster_Hunter_Wilds.jxr")
 
-    jxr_to_exr("./capture_data/01_obs_internal_tonemapping/screenshot.jxr")
+    # jxr_to_exr("./capture_data/01_obs_internal_tonemapping/screenshot.jxr")
+    # jxr_to_exr("../06_False_Color_Filter_for_OBS/debug/ff7_capture.jxr")
+    jxr_to_exr("../06_False_Color_Filter_for_OBS/debug/RE4.jxr")

@@ -191,8 +191,35 @@ def apply_false_color_filter_for_maxRGB(img, palette_list):
     return out_img
 
 
-if __name__ == '__main__':
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+def debug_func():
+    palette_list = np.array(
+        [palette_0, palette_1, palette_2, palette_3, palette_4, palette_5, palette_6]
+    )
+
+    from colour.io import read_image
+    img_rec709_linear = read_image("./debug/RE4.exr")
+    large_xyz = cs.rgb_to_large_xyz(img_rec709_linear, cs.BT709)
+    img_rec2100_linear = cs.large_xyz_to_rgb(large_xyz, cs.BT2020)
+
+    false_color_img_y_base_bt2020_linear = apply_false_color_filter_for_Y(
+        img=img_rec2100_linear, palette_list=palette_list
+    )
+    false_color_img_maxRGB_base_bt2020_linear = apply_false_color_filter_for_maxRGB(
+        img=img_rec2100_linear, palette_list=palette_list
+    )
+
+    srgb_img_y = convert_bt2020_linear_to_sRGB(
+        img_linear_bt2020=false_color_img_y_base_bt2020_linear
+    )
+    srgb_img_maxRGB = convert_bt2020_linear_to_sRGB(
+        img_linear_bt2020=false_color_img_maxRGB_base_bt2020_linear
+    )
+
+    tpg.img_wirte_float_as_16bit_int("./debug/RE4_y.png", srgb_img_y)
+    tpg.img_wirte_float_as_16bit_int("./debug/RE4_maxRGB.png", srgb_img_maxRGB)
+
+
+def main():
     palette_list = np.array(
         [palette_0, palette_1, palette_2, palette_3, palette_4, palette_5, palette_6]
     )
@@ -218,3 +245,9 @@ if __name__ == '__main__':
 
     tpg.img_wirte_float_as_16bit_int("./img/dst_tp_rec2100-pq_y.png", srgb_img_y)
     tpg.img_wirte_float_as_16bit_int("./img/dst_tp_rec2100-pq_maxRGB.png", srgb_img_maxRGB)
+
+
+if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # main()
+    debug_func()
