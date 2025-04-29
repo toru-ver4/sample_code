@@ -1,6 +1,6 @@
 # パラメータ
-$src = ".\color.effect"
-$dst = "C:\Program Files\obs-studio\data\obs-plugins\obs-filters\color.effect"
+$src = ".\hdr_tonemap_filter.effect"
+$dst = "C:\Program Files\obs-studio\data\obs-plugins\obs-filters\hdr_tonemap_filter.effect"
 
 # 絶対パスに変換
 $srcFullPath = (Resolve-Path -Path $src).Path

@@ -348,6 +348,59 @@ def plot_color_volume():
     plt.show()
 
 
+def plot_cj_plane_with_hue(h_val):
+    bg_lut = TyLchLut(lut=np.load("./lut/JzChz_gb-lut_method_c_ITU-R BT.709_100nits_jj-1024_hh-4096.npy"))
+    sample_num = 1536
+    jj_sample = 1536
+    cc_max = 0.17
+    jj_max = 0.18
+    maximum_luminance = 100
+
+    rgb_st2084 = create_valid_jzazbz_cj_plane_image_sRGB(
+        h_val=h_val, c_max=cc_max, l_max=jj_max,
+        c_sample=sample_num, j_sample=sample_num,
+        color_space_name=cs.BT709,
+        bg_rgb_luminance=np.array([50, 50, 50]),
+        maximum_luminance=maximum_luminance)
+    graph_title = f"CzJz plane,  {cs.BT709},  hue={h_val:.2f}°,  "
+    graph_title += f"target={maximum_luminance} nits"
+
+    jj_base = np.linspace(0, bg_lut.ll_max, jj_sample)
+    hh_base = np.ones_like(jj_base) * h_val
+    jh_array = tstack([jj_base, hh_base])
+    # jzczhz = get_gamut_boundary_lch_from_lut(
+    #     lut=bg_lut, lh_array=jh_array, lightness_max=1.0)
+    jzczhz = bg_lut.interpolate(lh_array=jh_array)
+
+    chroma = jzczhz[..., 1]
+    lightness = jzczhz[..., 0]
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(12, 12),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=graph_title,
+        graph_title_size=None,
+        xlabel="Cz", ylabel="Jz",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[0, cc_max],
+        ylim=[0, jj_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=1.5,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.imshow(
+        rgb_st2084, extent=(0, cc_max, 0, jj_max), aspect='auto')
+    ax1.plot(chroma, lightness, color='k')
+    fname = f"./img/CzJz_Plane_{h_val:.1f}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc=None, show=False, save_fname=fname)
+
+
 def calculate_hue_for_rgb(rgb):
     rgb_linear = tf.eotf(rgb, tf.SRGB)
     large_xyz = cs.rgb_to_large_xyz(rgb_linear, cs.BT709) * 100
@@ -383,9 +436,13 @@ def create_pallate_image(hue, num_of_sample=4, idx=0):
 
 
 def create_color_palette(num_of_sample=6):
+    # hue_list = [
+    #     #  B        C        G        Y       O       R        M
+    #     258.812, 203.825, 132.719, 101.804, 72.126, 42.477, 320.769
+    # ]
     hue_list = [
         #  B        C        G        Y       O       R        M
-        258.812, 203.825, 132.719, 101.804, 72.126, 42.477, 320.769
+        254.000, 203.825, 132.719, 101.804, 72.126, 42.477, 320.769
     ]
     linear_color_palette_list_bt709 = []
     for idx, hue in enumerate(hue_list):
@@ -393,6 +450,7 @@ def create_color_palette(num_of_sample=6):
         create_pallate_image(hue, num_of_sample=1600, idx=idx)
         rgb_linear_bt709 = create_color_palette_each_hue(hue=hue, num_of_sample=num_of_sample)
         linear_color_palette_list_bt709.append(rgb_linear_bt709)
+        # plot_cj_plane_with_hue(hue)
 
     # convert from bt.709 to bt.2020
     rgb_709 = np.array(linear_color_palette_list_bt709)
@@ -400,14 +458,16 @@ def create_color_palette(num_of_sample=6):
     rgb_2020 = cs.large_xyz_to_rgb(large_xyz, cs.BT2020)
     linear_color_paletter_list_bt2020 = rgb_2020
 
+
     # write to .effect file
     effect_str = ""
-    for idx, rgb_linear in enumerate(linear_color_paletter_list_bt2020):
-        effect_str += f"static const float3 palette_{idx}[{num_of_sample}]"
-        effect_str += " = {\n"
-        for row in rgb_linear:
-            effect_str += "    float3({:.6f}, {:.6f}, {:.6f}),\n".format(row[0], row[1], row[2])
-        effect_str += "};\n"
+    for p_idx, palette in enumerate(linear_color_paletter_list_bt2020):
+        effect_str += f"// palette_{p_idx}\n"
+        for entry_idx, row in enumerate(palette):
+            effect_str += "uniform float3 p{}_{} = {{ {:.6f}, {:.6f}, {:.6f} }};\n".format(
+                p_idx, entry_idx, row[0], row[1], row[2]
+            )
+        effect_str += "\n"
 
     # Write to "paletter.effect" in the same directory.
     output_filename = "flase_color_palette.effect"
@@ -437,8 +497,9 @@ def create_color_palette_each_hue(hue, num_of_sample=1024):
     c_ed = cusp[1]
     h_ed = cusp[2]
 
-    j_st = j_ed / 3.0
-    c_st = c_ed / 3.0
+    # j_st = j_ed / 3.0
+    j_st = j_ed - 0.035
+    c_st = c_ed / 2.0
     h_st = h_ed
 
     # Create linear interpolated arrays for each channel

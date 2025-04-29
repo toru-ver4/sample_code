@@ -8,73 +8,10 @@ import numpy as np
 import color_space as cs
 import test_pattern_generator2 as tpg
 import transfer_functions as tf
-# from flase_color_palette import(
-#     palette_0, palette_1, palette_2, palette_3, palette_4, palette_5, palette_6
-# )
-
-# This color palette is for BT.2100-PQ color space.
-palette_0 = [
-    [0.006870, 0.010806, 0.066433],
-    [0.011951, 0.016830, 0.136649],
-    [0.018471, 0.021998, 0.243564],
-    [0.026109, 0.024525, 0.397274],
-    [0.034571, 0.022095, 0.609755],
-    [0.043458, 0.011752, 0.895132],
-]
-
-palette_1 = [
-    [0.043260, 0.077137, 0.079256],
-    [0.081920, 0.156688, 0.161881],
-    [0.133998, 0.274117, 0.284756],
-    [0.199854, 0.436833, 0.456306],
-    [0.279404, 0.652628, 0.685586],
-    [0.372089, 0.929636, 0.982266],
-]
-
-palette_2 = [
-    [0.037669, 0.076590, 0.018682],
-    [0.071234, 0.155267, 0.031800],
-    [0.116685, 0.271308, 0.046693],
-    [0.174674, 0.432080, 0.062113],
-    [0.245594, 0.645368, 0.076575],
-    [0.329557, 0.919339, 0.088376],
-]
-
-palette_3 = [
-    [0.080057, 0.084641, 0.024562],
-    [0.162542, 0.171343, 0.041712],
-    [0.283944, 0.298159, 0.060600],
-    [0.451536, 0.471938, 0.079072],
-    [0.672855, 0.699505, 0.094600],
-    [0.955659, 0.987578, 0.104328],
-]
-
-palette_4 = [
-    [0.062827, 0.040983, 0.012828],
-    [0.126368, 0.078263, 0.020906],
-    [0.219572, 0.129472, 0.029339],
-    [0.348266, 0.195778, 0.037102],
-    [0.518677, 0.278128, 0.043051],
-    [0.737423, 0.377211, 0.045940],
-]
-
-palette_5 = [
-    [0.054922, 0.014994, 0.006472],
-    [0.109362, 0.025329, 0.009976],
-    [0.188642, 0.037021, 0.013254],
-    [0.297598, 0.049073, 0.015790],
-    [0.441452, 0.060248, 0.017033],
-    [0.625815, 0.069046, 0.016407],
-]
-
-palette_6 = [
-    [0.058208, 0.019449, 0.071704],
-    [0.116440, 0.032952, 0.146631],
-    [0.201438, 0.047866, 0.258881],
-    [0.318343, 0.062392, 0.417113],
-    [0.472651, 0.074221, 0.630991],
-    [0.670206, 0.080494, 0.911242],
-]
+from ty_utility import add_suffix_to_filename
+from flase_color_palette import(
+    palette_0, palette_1, palette_2, palette_3, palette_4, palette_5, palette_6
+)
 
 
 def convert_to_bt2020_linear(img, source_cs_name, source_tf_name):
@@ -219,12 +156,23 @@ def debug_func():
     tpg.img_wirte_float_as_16bit_int("./debug/RE4_maxRGB.png", srgb_img_maxRGB)
 
 
-def main():
+def main(src_file="./img/src_tp_rec2100-pq.png"):
     palette_list = np.array(
         [palette_0, palette_1, palette_2, palette_3, palette_4, palette_5, palette_6]
     )
+    is_alpha = False
+    alpha = None
+    dst_file = src_file.replace("src", "dst")
+    dst_file_y = add_suffix_to_filename(fname=dst_file, suffix="_y")
+    dst_file_maxRGBx = add_suffix_to_filename(fname=dst_file, suffix="_maxRGB")
 
-    img_rec2100_pq = tpg.img_read_as_float("./img/src_tp_rec2100-pq.png")
+
+    img_rec2100_pq = tpg.img_read_as_float(src_file)
+    if img_rec2100_pq.shape[2] == 4:
+        is_alpha = True
+        alpha = img_rec2100_pq[..., 3].copy()
+        img_rec2100_pq = img_rec2100_pq[..., :3]
+
     img_rec2100_linear = convert_to_bt2020_linear(
         img=img_rec2100_pq, source_cs_name=cs.BT2020, source_tf_name=tf.ST2084
     )
@@ -243,11 +191,16 @@ def main():
         img_linear_bt2020=false_color_img_maxRGB_base_bt2020_linear
     )
 
-    tpg.img_wirte_float_as_16bit_int("./img/dst_tp_rec2100-pq_y.png", srgb_img_y)
-    tpg.img_wirte_float_as_16bit_int("./img/dst_tp_rec2100-pq_maxRGB.png", srgb_img_maxRGB)
+    if is_alpha:
+        srgb_img_y = np.dstack((srgb_img_y, alpha))
+        srgb_img_maxRGB = np.dstack((srgb_img_maxRGB, alpha))
+
+    tpg.img_wirte_float_as_16bit_int(dst_file_y, srgb_img_y)
+    tpg.img_wirte_float_as_16bit_int(dst_file_maxRGBx, srgb_img_maxRGB)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # main()
-    debug_func()
+    main("./img/step_ramp_step_65.png")
+    main("./img/src_tp_rec2100-pq.png")
+    # debug_func()
