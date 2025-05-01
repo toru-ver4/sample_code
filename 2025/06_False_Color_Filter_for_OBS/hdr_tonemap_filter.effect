@@ -231,7 +231,8 @@ float3 apply_false_color_maxRGB(float3 rgb)
 
     if (y <= t1) {
         // SDR region: monochrome mapping
-        return apply_sdr_false_color(y);
+        float mono = dot(rgb, float3(0.262700212, 0.677998072, 0.0593017165));
+        return apply_sdr_false_color(mono);
     }
     else if (y <= t2) {
         float x = (y - t1) / (t2 - t1);
