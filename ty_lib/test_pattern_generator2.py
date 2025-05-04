@@ -290,8 +290,7 @@ def img_read(filename):
     """
     OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
     """
-    img = cv2.imread(filename, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)
-
+    img = cv2.imread(filename, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_UNCHANGED)
     if img is not None:
         if img.shape[2] == 3:
             return img[:, :, ::-1]

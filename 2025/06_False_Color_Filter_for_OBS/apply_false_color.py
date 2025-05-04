@@ -156,6 +156,19 @@ def debug_func():
     tpg.img_wirte_float_as_16bit_int("./debug/RE4_maxRGB.png", srgb_img_maxRGB)
 
 
+def debug_func_2_calc_rgb_to_rgb_mtx():
+    from colour import matrix_RGB_to_RGB
+    import color_space as cs
+
+    p3d65_to_bt2020 = matrix_RGB_to_RGB(cs.P3_D65, cs.BT2020)
+    bt2020_to_p3d65 = matrix_RGB_to_RGB(cs.BT2020, cs.P3_D65)
+    bt2020_to_rec709 = matrix_RGB_to_RGB(cs.BT2020, cs.BT709)
+
+    print(p3d65_to_bt2020)
+    print(bt2020_to_p3d65)
+    print(bt2020_to_rec709)
+
+
 def main(src_file="./img/src_tp_rec2100-pq.png"):
     palette_list = np.array(
         [palette_0, palette_1, palette_2, palette_3, palette_4, palette_5, palette_6]
@@ -202,5 +215,6 @@ def main(src_file="./img/src_tp_rec2100-pq.png"):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     main("./img/step_ramp_step_65.png")
-    main("./img/src_tp_rec2100-pq.png")
+    # main("./img/src_tp_rec2100-pq.png")
     # debug_func()
+    # debug_func_2_calc_rgb_to_rgb_mtx()
