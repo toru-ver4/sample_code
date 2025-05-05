@@ -538,17 +538,143 @@ def concat_color_palette_img(num_of_sample=6):
     )
 
 
+def plot_czjz_plane_for_blog_core(idx, hue):
+    bg_lut = TyLchLut(lut=np.load("./lut/JzChz_gb-lut_method_c_ITU-R BT.709_100nits_jj-1024_hh-4096.npy"))
+    num_of_palette_sample = 6
+    sample_num = 1536
+    jj_sample = 1536
+    cc_max = 0.17
+    jj_max = 0.18
+    maximum_luminance = 100
+
+    cusp = bg_lut.get_cusp(hue)
+
+    j_ed = cusp[0]
+    c_ed = cusp[1]
+
+    # j_st = j_ed / 3.0
+    j_st = j_ed - 0.035
+    c_st = c_ed / 2.0
+
+    # Create linear interpolated arrays for each channel
+    jj = np.linspace(j_st, j_ed, num=num_of_palette_sample)
+    cc = np.linspace(c_st, c_ed, num=num_of_palette_sample)
+
+    rgb_st2084 = create_valid_jzazbz_cj_plane_image_sRGB(
+        h_val=hue, c_max=cc_max, l_max=jj_max,
+        c_sample=sample_num, j_sample=sample_num,
+        color_space_name=cs.BT709,
+        bg_rgb_luminance=np.array([50, 50, 50]),
+        maximum_luminance=maximum_luminance)
+    graph_title = f"CzJz plane,  {cs.BT709},  hue={hue:.2f}°,  "
+    graph_title += f"target={maximum_luminance} nits"
+
+    jj_base = np.linspace(0, bg_lut.ll_max, jj_sample)
+    hh_base = np.ones_like(jj_base) * hue
+    jh_array = tstack([jj_base, hh_base])
+    # jzczhz = get_gamut_boundary_lch_from_lut(
+    #     lut=bg_lut, lh_array=jh_array, lightness_max=1.0)
+    jzczhz = bg_lut.interpolate(lh_array=jh_array)
+
+    chroma = jzczhz[..., 1]
+    lightness = jzczhz[..., 0]
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 10),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=graph_title,
+        graph_title_size=20,
+        xlabel="Cz", ylabel="Jz",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=[0, cc_max],
+        ylim=[0, jj_max],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=1.5,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    for x in np.arange(0.00, 0.17, 0.02):
+        ax1.axvline(x=x, color='k', linestyle='--', linewidth=0.5, zorder=3, alpha=0.15)
+    for y in np.arange(0.00, 0.19, 0.02):
+        ax1.axhline(y=y, color='k', linestyle='--', linewidth=0.5, zorder=3, alpha=0.15)
+    ax1.imshow(
+        rgb_st2084, extent=(0, cc_max, 0, jj_max), aspect='auto', zorder=2
+    )
+    ax1.plot(chroma, lightness, color='k', zorder=3)
+    ax1.plot(cc, jj, "o",
+             markerfacecolor='none',
+             markeredgecolor='k',
+             markersize=24,
+             markeredgewidth=2,
+             zorder=3)
+    ax1.plot(cc, jj, "o",
+             markerfacecolor='none',
+             markeredgecolor='w',
+             markersize=28,
+             markeredgewidth=2,
+             zorder=3)
+    fname = f"./img/color_palette_{idx}.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc=None, show=False, save_fname=fname)
+
+
+def plot_czjz_plane_for_blog_ctrl():
+    hue_list = [
+        #  B        C        G        Y       O       R        M
+        254.000, 203.825, 132.719, 101.804, 72.126, 42.477, 320.769
+    ]
+
+    for idx, hue in enumerate(hue_list):
+        plot_czjz_plane_for_blog_core(idx=idx, hue=hue)
+
+
+def concat_czjz_plane():
+    h_img_buf = []
+    v_img_buf = []
+    dummy_img = np.ones((1000, 1000, 3))
+    idx = 0
+    for v_idx in range(3):
+        h_img_buf = []
+        for h_idx in range(3):
+            fname = f"./img/color_palette_{idx}.png"
+            if os.path.exists(fname):
+                temp_img = tpg.img_read_as_float(fname)
+                temp_img = temp_img[..., :3]  # remove alpha channel
+            else:
+                temp_img = dummy_img
+
+            # draw border
+            border_color = [0] * temp_img.shape[2]
+            temp_img[0, :] = border_color
+            temp_img[-1, :] = border_color
+            temp_img[:, 0] = border_color
+            temp_img[:, -1] = border_color
+
+            h_img_buf.append(temp_img)
+            idx += 1
+        v_img_buf.append(np.hstack(h_img_buf))
+
+    img = np.vstack(v_img_buf)
+    tpg.img_wirte_float_as_16bit_int("./img/color_palette_concat.png", img)
+
+
 def debug():
     # create_and_plot_ab_plane()
     # create_and_plot_cj_plane()
     # plot_color_volume()
     # calculate_hue_for_color_palette()
+    # plot_czjz_plane_for_blog_ctrl()
+    concat_czjz_plane()
     pass
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # debug()
-    num_of_palette_sample = 6
-    create_color_palette(num_of_sample=num_of_palette_sample)
-    concat_color_palette_img(num_of_sample=num_of_palette_sample)
+    debug()
+    # num_of_palette_sample = 6
+    # create_color_palette(num_of_sample=num_of_palette_sample)
+    # concat_color_palette_img(num_of_sample=num_of_palette_sample)
