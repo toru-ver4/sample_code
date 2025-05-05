@@ -9,7 +9,7 @@ import os
 import numpy as np
 from scipy import linalg
 from colour import sd_to_XYZ, SpectralShape
-from colour.algebra import vector_dot
+from colour.algebra import vecmul
 from colour.models import eotf_inverse_sRGB
 from colour.io import write_image
 
@@ -77,7 +77,7 @@ def main_func():
     color_checker_large_xyz = color_checker_calc_sd_to_XYZ_D65_illuminant()
     yellow_large_xyz = color_checker_large_xyz[15] / maximum_large_y_d65
 
-    yellow_rgb = vector_dot(xyz_to_rgb_matrix, yellow_large_xyz)
+    yellow_rgb = vecmul(xyz_to_rgb_matrix, yellow_large_xyz)
     print(f"R_D, G_D, B_D = {yellow_rgb}")
 
     yellow_rgb_srgb = eotf_inverse_sRGB(yellow_rgb)

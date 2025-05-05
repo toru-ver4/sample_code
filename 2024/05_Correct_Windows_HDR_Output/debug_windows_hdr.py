@@ -14,7 +14,7 @@ from colour import matrix_RGB_to_RGB, normalised_primary_matrix, xy_to_XYZ, RGB_
 from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020
 from colour.io import write_image
 from colour.utilities import tstack
-from colour.algebra import vector_dot
+from colour.algebra import vecmul
 import matplotlib.pyplot as plt
 from scipy import linalg, interpolate
 
@@ -985,7 +985,7 @@ def create_gradient_rec2100_pq_10bit():
         ], dtype=np.float32
     )
 
-    data_2020_linear = vector_dot(rec709_to_rec2020_mtx, data_709_linear)\
+    data_2020_linear = vecmul(rec709_to_rec2020_mtx, data_709_linear)\
         .astype(np.float32)
 
     data_rec2100_pq = tf.oetf_from_luminance(data_2020_linear * 10000, tf.ST2084)\
@@ -1067,7 +1067,7 @@ def emulation_windows_internal_process():
     # white_large_xyz = np.array([95.047, 100, 108.883])
     # rec2020_to_rec709_mtx = calc_rec2020_to_rec709_matrix(white_xyz=white_large_xyz)
 
-    data_rec709_linear = vector_dot(
+    data_rec709_linear = vecmul(
         rec2020_to_rec709_mtx.astype(np.float16),
         data_rec2100_linear.astype(np.float16))
     plot_rec709_data_after_theoretical_conv(data=data_rec709_linear)

@@ -14,7 +14,7 @@ from colour import sd_to_XYZ, MultiSpectralDistributions, MSDS_CMFS,\
 from colour.continuous import Signal
 from scipy import linalg
 from colour.models import eotf_ST2084, eotf_inverse_ST2084
-from colour.algebra import vector_dot
+from colour.algebra import vecmul
 
 # import my libraries
 
@@ -118,10 +118,10 @@ if __name__ == '__main__':
 
 
     test_data_rec2020_linear_1\
-        = vector_dot(rec709_to_rec2020_mtx_1, test_data_rec709_linear)
+        = vecmul(rec709_to_rec2020_mtx_1, test_data_rec709_linear)
 
     test_data_rec709_linear_1_2\
-        = vector_dot(rec2020_to_rec709_mtx_2, test_data_rec2020_linear_1)
+        = vecmul(rec2020_to_rec709_mtx_2, test_data_rec2020_linear_1)
     
     print(f"test_data_rec709_linear_1_2 = {test_data_rec709_linear_1_2}")
     

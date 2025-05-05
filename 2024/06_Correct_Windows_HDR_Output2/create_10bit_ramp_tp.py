@@ -13,7 +13,7 @@ import subprocess
 # import third-party libraries
 import numpy as np
 from colour import normalised_primary_matrix
-from colour.algebra import vector_dot
+from colour.algebra import vecmul
 from scipy import linalg
 from colour.io import write_image
 from colour import LUT3D
@@ -211,7 +211,7 @@ def conv_rec709_pq_to_rec2020_pq(img):
 
     conv_mtx = calc_rgb_to_rgb_matrix(
         src_cs_name=cs.BT709, dst_cs_name=cs.BT2020)
-    rec709_linear = vector_dot(conv_mtx, rec2020_img_linear)
+    rec709_linear = vecmul(conv_mtx, rec2020_img_linear)
 
     rec709_st2084 = tf.oetf(np.clip(rec709_linear, 0.0, 1.0), tf.ST2084)
 

@@ -11,7 +11,7 @@ from pathlib import Path
 
 # import third-party libraries
 import numpy as np
-from colour.algebra import vector_dot
+from colour.algebra import vecmul
 from colour.io import read_image
 from colour.utilities import tstack
 from colour.models import eotf_ST2084, eotf_inverse_ST2084
@@ -45,7 +45,7 @@ __all__ = []
 def conv_rgb_to_rgb(img, src_cs_name, dst_cs_name):
     mtx = calc_rgb_to_rgb_matrix(
         src_cs_name=src_cs_name, dst_cs_name=dst_cs_name)
-    dst_img = vector_dot(mtx, img)
+    dst_img = vecmul(mtx, img)
 
     return dst_img
 

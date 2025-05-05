@@ -17,7 +17,11 @@ from colour.models import xy_to_XYZ, XYZ_to_RGB, XYZ_to_xyY
 from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ, LCHab_to_Lab
 from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020,\
     RGB_COLOURSPACE_ACES2065_1, RGB_COLOURSPACE_ACESCG
-from colour.algebra import normalise_maximum, vector_dot
+from colour.algebra import normalise_maximum
+try:
+    from colour.algebra import vecmul
+except ImportError:
+    from colour.algebra import vector_dot
 from colour.adaptation import matrix_chromatic_adaptation_VonKries
 from colour import RGB_COLOURSPACES, CCS_COLOURCHECKERS
 import math
@@ -286,8 +290,7 @@ def img_read(filename):
     """
     OpenCV の BGR 配列が怖いので並べ替えるwrapperを用意。
     """
-    img = cv2.imread(filename, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)
-
+    img = cv2.imread(filename, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_UNCHANGED)
     if img is not None:
         if img.shape[2] == 3:
             return img[:, :, ::-1]
@@ -1663,7 +1666,7 @@ def generate_color_checker_xyY_value():
         xyY_to_XYZ(xy_to_xyY(cs.D65)),
         transform="CAT02",
     )
-    large_xyz = vector_dot(M_CAT, large_xyz)
+    large_xyz = vecmul(M_CAT, large_xyz)
     xyY = XYZ_to_xyY(large_xyz)
 
     return xyY
@@ -1733,7 +1736,7 @@ def generate_color_checker_rgb_value(
         xyY_to_XYZ(xy_to_xyY(cs.D65)),
         transform="CAT02",
     )
-    large_xyz = vector_dot(M_CAT, large_xyz)
+    large_xyz = vecmul(M_CAT, large_xyz)
 
     rgb = XYZ_to_RGB(
         XYZ=large_xyz, colourspace=color_space, illuminant=cs.D65)
