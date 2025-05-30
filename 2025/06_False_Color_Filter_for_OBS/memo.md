@@ -78,3 +78,31 @@ obs-source.c としては obs_source_render_filters がメインっぽいかな
 
 
 obs-scence.c の render_item の linear_srgb を強制 false にしてみる？
+
+
+OBS のキャプチャのコールバックについて
+
+* Display Capture: duplicator_capture_render
+  * これは Windows の scRGB を GS_CS_709_EXTENDED に変換している
+* Window Capture: wc_render
+* Game Capture: game_capture_render
+  * GS_R10G10B10A2 と GS_RGBA16F もちゃんと棲み分けしてる
+
+
+# OBS の描画について
+* 大元は obs-video.c の obs_graphics_thread_loop と思われる
+  * output_frames でソースを GS_CS_709_EXTENDED に変換したり、フィルタを適用してる（きっと）
+    * render_displays で GS_CS_709_EXTENDED を scRGB に変換して Windows にお任せしてる
+* output_frames は最終的に source_render をコールしている
+* source_render で色変換が行われている
+* render_displays からはディスプレイ描画用のコールバックとして window-basic-main.cpp の OBSBasic::RenderMain がコールされている
+  * その中の obs_render_main_texture_internal で scRGB への変換が行われているっぽいぞ！
+
+
+# HDRアプリの Swap Chain について
+
+* FF7RB: GS_R10G10B10A2
+* Resident Evil 4: GS_R10G10B10A2
+* Monster Hunter Wilds: GS_R10G10B10A2
+* 自作アプリ: GS_RGBA16F
+* Sky: Children of the Light: GS_R10G10B10A2
