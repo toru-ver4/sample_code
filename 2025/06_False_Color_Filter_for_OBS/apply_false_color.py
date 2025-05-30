@@ -214,7 +214,8 @@ def main(src_file="./img/src_tp_rec2100-pq.png"):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    main("./img/step_ramp_step_65.png")
+    # main("./img/step_ramp_step_65.png")
+    main("./img/scale_img.png")
     # main("./img/src_tp_rec2100-pq.png")
     # debug_func()
     # debug_func_2_calc_rgb_to_rgb_mtx()

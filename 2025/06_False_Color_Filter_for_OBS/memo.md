@@ -92,7 +92,7 @@ OBS のキャプチャのコールバックについて
 # OBS の描画について
 * 大元は obs-video.c の obs_graphics_thread_loop と思われる
   * output_frames でソースを GS_CS_709_EXTENDED に変換したり、フィルタを適用してる（きっと）
-  * render_displays で GS_CS_709_EXTENDED を scRGB に変換して Windows にお任せしてる
+    * render_displays で GS_CS_709_EXTENDED を scRGB に変換して Windows にお任せしてる
 * output_frames は最終的に source_render をコールしている
 * source_render で色変換が行われている
 * render_displays からはディスプレイ描画用のコールバックとして window-basic-main.cpp の OBSBasic::RenderMain がコールされている

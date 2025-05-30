@@ -52,10 +52,10 @@ BIZUD_P_GOTHIC_REGULAR\
 if platform.system() == "Windows":
     NOTO_SANS_CJKJP_MEDIUM\
         = "C:/Users/toruv/AppData/Local/Microsoft/Windows"\
-        + "/Fonts/NotoSansJP-Medium.ttf"
+        + "/Fonts/NotoSansJP-Medium.otf"
     NOTO_SANS_CJKJP_BOLD\
         = "C:/Users/toruv/AppData/Local/Microsoft/Windows"\
-        + "/Fonts/NotoSansJP-Bold.ttf"
+        + "/Fonts/NotoSansJP-Bold.otf"
 
 
 def get_text_width_height(
@@ -260,7 +260,7 @@ class TextDrawControl():
             stroke_width_offset = self.stroke_width
         else:
             stroke_width_offset = 0
-        text_width = bbox[2]
+        text_width = bbox[2] + stroke_width_offset
         text_height = bbox[3] + stroke_width_offset
         text_size = [text_width, text_height]
 
