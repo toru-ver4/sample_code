@@ -1,0 +1,12 @@
+version: '3.9'
+
+services:
+    python_dev:
+        image: takuver4/still_hdr:rev02
+        environment: 
+            PYTHONPATH: "/work/src/ty_lib"
+            DISPLAY: host.docker.internal:0.0
+        volumes:
+            - C:\Users\toruv\OneDrive\work\sample_code:/work/src
+            - D:\abuse:/work/overuse
+        stdin_open: true

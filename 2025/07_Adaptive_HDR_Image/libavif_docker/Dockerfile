@@ -1,0 +1,102 @@
+ARG DEBIAN_VERSION="bookworm"
+ARG PYTHON_VERSION="3.12"
+
+FROM python:${PYTHON_VERSION}-${DEBIAN_VERSION} AS builder
+
+# Avoid clearing `DEBIAN_VERSION`
+ARG DEBIAN_VERSION
+ARG PYTHON_VERSION
+
+WORKDIR /root/local
+
+RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/apt/sources.list \
+    && echo "deb http://security.debian.org/ ${DEBIAN_VERSION}-security main" >> /etc/apt/sources.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        clang \
+        cmake \
+        doxygen \
+        ffmpeg \
+        git \
+        libboost-all-dev \
+        libde265-dev \
+        libexpat1-dev \
+        libfreetype-dev \
+        libgif-dev \
+        libgl1-mesa-dev \
+        libglu1-mesa-dev \
+        libheif-dev \
+        libimath-dev \
+        libjpeg-dev \
+        liblcms2-dev \
+        libopencv-dev \
+        libopenexr-dev \
+        libopenjp2-7-dev \
+        libopenvdb-dev \
+        libpng-dev \
+        libpystring-dev \
+        libtbb-dev \
+        libtiff-dev \
+        libraw-dev \
+        libwebp-dev \
+        libx265-dev \
+        libyaml-cpp-dev \
+        llvm \
+        ninja-build \
+        pybind11-dev \
+        yasm \
+    && rm -rf /var/lib/apt/lists/*
+
+# # Install libjxl (JPEG XL)
+# RUN echo "export CC=clang" >> /etc/profile \
+#     && echo "export CXX=clang++" >> /etc/profile \
+#     && git clone https://github.com/libjxl/libjxl.git -b v0.11.1 --recursive --shallow-submodules \
+#     && cd libjxl \
+#     && git submodule update --init --recursive --depth 1 --recommend-shallow \
+#     && mkdir build && cd build \
+#     && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF .. \
+#     && cmake --build . -- -j$(nproc) \
+#     && cmake --install . \
+#     && cd /root/local \
+#     && rm -rf /root/local/libjxl
+
+# # Install libavif
+# RUN git clone https://github.com/AOMediaCodec/libavif.git -b v1.3.0 libavif_aom \
+#     && cd libavif_aom/ext \
+#     && $SHELL ./libyuv.cmd \
+#     && $SHELL ./aom.cmd \
+#     && $SHELL ./libsharpyuv.cmd \
+#     && $SHELL ./libjpeg.cmd \
+#     && $SHELL ./zlibpng.cmd \
+#     && cd .. \
+#     && cmake -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON \
+#     && cmake --build build --parallel \
+#     && cmake --install build \
+#     && cd /root/local \
+#     && rm -rf /root/local/libavif_aom
+
+# # Install libheif
+# RUN git clone https://github.com/strukturag/libheif.git -b v1.19.8 \
+#     && cd libheif \
+#     && mkdir build \
+#     && cd build \
+#     && cmake --preset=release .. \
+#     && make -j \
+#     && make install \
+#     && cd /root/local \
+#     && rm -rf /root/local/libheif
+
+# # Install libultrahdr
+# RUN git clone https://github.com/google/libultrahdr.git -b v1.4.0 \
+#     && cd libultrahdr \
+#     && mkdir build_directory \
+#     && cd build_directory \
+#     && cmake -G "Unix Makefiles" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DUHDR_BUILD_TESTS=1 ../ \
+#     && make -j \
+#     && cp ultrahdr_app /usr/local/bin/ \
+#     && cd / \
+#     && rm -rf /root/local/libultrahdr
+
+RUN ldconfig
+
+CMD ["bash"]

@@ -86,6 +86,17 @@ RUN git clone https://github.com/strukturag/libheif.git -b v1.18.2 \
     && cd /root/local \
     && rm -rf /root/local/libheif
 
+# Install libultrahdr
+RUN git clone https://github.com/google/libultrahdr.git \
+    && cd libultrahdr \
+    && mkdir build_directory \
+    && cd build_directory \
+    && cmake -G "Unix Makefiles" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DUHDR_BUILD_TESTS=1 ../ \
+    && make \
+    && cp ultrahdr_app /usr/local/bin/ \
+    && cd / \
+    && rm -rf /root/local/libultrahdr
+
 RUN ldconfig
 
 CMD ["bash"]
