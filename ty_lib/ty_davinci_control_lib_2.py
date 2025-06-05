@@ -278,6 +278,30 @@ def get_current_project():
 
 
 @log_return_value
+def get_current_page():
+    """
+    Returns
+    -------
+    str
+        A current page name.
+        The return value is one of the following strings:
+            * "media"
+            * "cut"
+            * "edit"
+            * 'fusion'
+            * "color"
+            * "deliver"
+    """
+    current_page = resolve.GetCurrentPage()
+
+    if current_page is None:
+        msg = 'Failed to get current page. '
+        msg += 'Please verify that the DaVinci Resolve\'s project is opend.'
+        raise TyResolveModuleError(current_page, msg)
+
+    return current_page
+
+@log_return_value
 def open_page(page_name="edit"):
     """
     Parameters
@@ -1104,6 +1128,11 @@ def set_tool_topleft_color(tool, rgba=[0.18, 0.18, 0.18, 1.0]):
 
 @log_return_value
 def set_tool_position(comp, tool, pos=(1, 1)):
+    current_page = get_current_page()
+    if current_page != "fusion":
+        # activate `comp.CurrentFrame`
+        open_page(page_name="fusion")
+
     flow = comp.CurrentFrame.FlowView
     flow.SetPos(tool, pos[0], pos[1])
 
