@@ -221,7 +221,7 @@ class HeightBasedSize:
 
 
 class FusionParams:
-    def __init__(self, fps, width, height):
+    def __init__(self):
         """
         Parameters
         ----------
@@ -233,10 +233,16 @@ class FusionParams:
             project canvas size (v)
         """
         # basic parameters
-        self.fps = fps
-        self.fps_int = int(round(fps))
-        self.width = width
-        self.height = height
+        self.fps = float(dcl.get_project_setting(name="timelineFrameRate"))
+        self.fps_int = int(round(self.fps))
+        self.width, self.height = dcl.get_project_resolution()
+
+        self.bg_color = [0.01, 0.01, 0.01, 1.0]  # RGBA
+
+        self.info_area_height = HdPixelBasedSize(38).v_size
+        self.info_font_color = [0.5, 0.5, 0.5, 1.0]
+        self.info_font_size = 0.021
+        self.info_vanchor = 2.3
 
         self.frame_marker_v_pos = HdPixelBasedSize(140).v_size
         self.frame_marker_v_pos2 = HdPixelBasedSize(108).v_size
@@ -244,61 +250,97 @@ class FusionParams:
         self.motion_blur_mask_size = HeightBasedSize(0.075)
 
 
-def draw_info_comp(
-        comp, font_size, vanchor, bg_rgba, fg_rgba, height, base_pos=[0, 0]):
+def create_background_comp(
+        comp, ppp: FusionParams, base_pos=[0, 0]
+):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+    transparent_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos))
+
+    x_pos += 1
+    y_pos += 0
+    output_merge = dcl.add_comp_tool(
+        comp=comp, name="Merge", pos=(x_pos, y_pos)
+    )
+
+    x_pos += 0
+    y_pos += 0
+    bg = dcl.add_comp_tool(
+        comp=comp, name="Background", pos=(x_pos, y_pos-1)
+    )
+    dcl.set_tool_topleft_color(tool=bg, rgba=ppp.bg_color)
+    dcl.connect_merge_tool(merge_tool=output_merge, bg_tool=transparent_bg, fg_tool=bg)
+
+    return output_merge, x_pos
+
+
+def create_info_comp(
+        comp, ppp: FusionParams, base_pos=[0, 0]
+):
     x_pos = base_pos[0]
     y_pos = base_pos[1]
 
+    transparent_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos))
+
+    # add rectangle
+    x_pos += 1
     rectangle_mask = dcl.add_comp_tool(
-        comp=comp, name="RectangleMask", pos=(x_pos+0, y_pos-2)
+        comp=comp, name="RectangleMask", pos=(x_pos, y_pos-2)
     )
     rectangle_mask_input = {
-        "Center": {1: 0.5, 2: height/2.0, 3: 0.0},
+        "Center": {1: 0.5, 2: ppp.info_area_height/2.0, 3: 0.0},
         "Width": 1.0,
-        "Height": height,
+        "Height": ppp.info_area_height,
     }
     dcl.set_multiple_tool_input(
         tool=rectangle_mask, input_dict=rectangle_mask_input
     )
-    rectangle_fg = dcl.add_comp_tool(
-        comp=comp, name="Background", pos=(x_pos+0, y_pos-1)
+
+    rectangle_bg = dcl.add_comp_tool(
+        comp=comp, name="Background", pos=(x_pos, y_pos-1)
     )
-    dcl.set_tool_topleft_color(tool=rectangle_fg, rgba=bg_rgba)
-    dcl.set_tool_input(tool=rectangle_fg, name="EffectMask", value=rectangle_mask)
+    rectangle_bg_input = {
+        "TopLeftRed": 0.0,
+        "TopLeftGreen": 0.0,
+        "TopLeftBlue": 0.0,
+        "TopLeftAlpha": 1.0,
+        "EffectMask": rectangle_mask,
+    }
+    dcl.set_multiple_tool_input(tool=rectangle_bg, input_dict=rectangle_bg_input)
+
     rectangle_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=(x_pos+0, y_pos+0)
+        comp=comp, name="Merge", pos=(x_pos, y_pos-0)
     )
     dcl.connect_merge_tool(
-        merge_tool=rectangle_merge, bg_tool=None, fg_tool=rectangle_fg
+        merge_tool=rectangle_merge, bg_tool=transparent_bg, fg_tool=rectangle_bg
     )
 
     # info text
+    x_pos += 1
     info_text = dcl.add_comp_tool(
-        comp=comp, name="TextPlus", pos=(x_pos+1, y_pos-1)
+        comp=comp, name="TextPlus", pos=(x_pos, y_pos-1)
     )
     info_text_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=(x_pos+1, y_pos-0)
+        comp=comp, name="Merge", pos=(x_pos, y_pos-0)
     )
     font_family = "Noto Sans"
     font_weight = "Regular"
-    fps = float(dcl.get_project_setting("timelineFrameRate"))
-    fps = int(fps) if fps.is_integer() else fps
     gamut = dcl.get_project_setting("colorSpaceOutput")
     gamma = dcl.get_project_setting("colorSpaceOutputGamma")
     project_width, project_height = dcl.get_project_resolution()
-    info_text_str = f"  Countdown v2, {project_width}x{project_height}, "
-    info_text_str += f"{fps} fps, {gamma}, {gamut}"
+    info_text_str = f"  TP for Adaptive HDR, {project_width}x{project_height}, "
+    info_text_str += f"{gamma}, {gamut}"
     print(f"info_text = {info_text}")
     info_text_input = {
         "Center": {1: 0.0, 2: 0.0, 3: 0.0},
         "StyledText": info_text_str,
         "Font": font_family,
         "Style": font_weight,
-        "Size": font_size,
-        "Red1": fg_rgba[0],
-        "Green1": fg_rgba[1],
-        "Blue1": fg_rgba[2],
-        "VerticalTopCenterBottom": vanchor,
+        "Size": ppp.info_font_size,
+        "Red1": ppp.info_font_color[0],
+        "Green1": ppp.info_font_color[1],
+        "Blue1": ppp.info_font_color[2],
+        "VerticalTopCenterBottom": ppp.info_vanchor,
         "HorizontalLeftCenterRight": -1.0,
         "AdvancedFontControls": 1.0,
     }
@@ -307,23 +349,24 @@ def draw_info_comp(
         merge_tool=info_text_merge, bg_tool=rectangle_merge, fg_tool=info_text
     )
 
-    # rev text
+    # info text
+    x_pos += 1
     rev_text = dcl.add_comp_tool(
-        comp=comp, name="TextPlus", pos=(x_pos+2, y_pos-1)
+        comp=comp, name="TextPlus", pos=(x_pos, y_pos-1)
     )
     rev_text_merge = dcl.add_comp_tool(
-        comp=comp, name="Merge", pos=(x_pos+2, y_pos-0)
+        comp=comp, name="Merge", pos=(x_pos, y_pos-0)
     )
     rev_text_input = {
         "Center": {1: 1.0, 2: 0.0, 3: 0.0},
         "StyledText": f"Revision {REVISION:02d}  ",
         "Font": font_family,
         "Style": font_weight,
-        "Size": font_size,
-        "Red1": fg_rgba[0],
-        "Green1": fg_rgba[1],
-        "Blue1": fg_rgba[2],
-        "VerticalTopCenterBottom": vanchor,
+        "Size": ppp.info_font_size,
+        "Red1": ppp.info_font_color[0],
+        "Green1": ppp.info_font_color[1],
+        "Blue1": ppp.info_font_color[2],
+        "VerticalTopCenterBottom": ppp.info_vanchor,
         "HorizontalLeftCenterRight": 1.0,
         "AdvancedFontControls": 1.0,
     }
@@ -332,10 +375,8 @@ def draw_info_comp(
         merge_tool=rev_text_merge, bg_tool=info_text_merge, fg_tool=rev_text
     )
 
-    in_merge = rectangle_merge
-    out_merge = rev_text_merge
-
-    return in_merge, out_merge
+    output_merge = rev_text_merge
+    return output_merge, x_pos
 
 
 def create_adaptive_htr_tp_comp():
@@ -344,24 +385,44 @@ def create_adaptive_htr_tp_comp():
             num_of_frame=1,
             pos_frame_idx=dcl.sec_to_frame_idx(60 * 60)
         )
+    ppp = FusionParams()
 
     comp.Lock()
 
     x_pos = 1
-    y_pos = 7
+    y_pos = 7  # y_pos is fixed this value
     pseudo_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos))
 
-    x_pos += 1
-    y_pos += 0
+    # base background
+    x_pos += 2
+    # x_pos will be overwritten in the following function
+    background, x_pos = create_background_comp(comp=comp, ppp=ppp, base_pos=(x_pos, y_pos-1))
+    background_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
+    dcl.connect_merge_tool(
+        merge_tool=background_merge, bg_tool=pseudo_bg, fg_tool=background
+    )
+    
+    # infomation
+    x_pos += 2
+    info, x_pos = create_info_comp(comp=comp, ppp=ppp, base_pos=(x_pos, y_pos-1))
+    info_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
+    dcl.connect_merge_tool(
+        merge_tool=info_merge, bg_tool=background_merge, fg_tool=info
+    )
+
+    # media out
+    x_pos += 2
     media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
     dcl.set_tool_position(comp=comp, tool=media_out, pos=(x_pos, y_pos))
 
-    dcl.connect_mediaout(source=pseudo_bg, mediaout=media_out)
+    dcl.connect_mediaout(source=info_merge, mediaout=media_out)
+
     comp.Unlock()
 
 
 def create_adaptive_hdr_tp(
-        width, height, framerate, gamut, gamma):
+        width, height, framerate, gamut, gamma
+):
     ##################
     # Project Settings
     ##################
