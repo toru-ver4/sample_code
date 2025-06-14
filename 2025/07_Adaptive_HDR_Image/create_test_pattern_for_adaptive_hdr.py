@@ -184,6 +184,14 @@ class HdPixelBasedSize:
 
 
 class HeightBasedSize:
+    _cached_resolution = None  
+
+    @classmethod
+    def _get_resolution(cls):
+        if cls._cached_resolution is None:
+            cls._cached_resolution = dcl.get_project_resolution()
+        return cls._cached_resolution
+
     def __init__(self, size, hv_same=False, inverse=False):
         """
         Calculate the size parameters based on vertical relative parmaeters.
@@ -197,19 +205,13 @@ class HeightBasedSize:
         inverse : bool
             If true, calculate `v_size` based on horizontal size.
         """
-        width, height = dcl.get_project_resolution()
+        width, height = self._get_resolution()
         if not inverse:
             self._v_size = size
-            if hv_same:
-                self._h_size = size
-            else:    
-                self._h_size = self._v_size * height / width
+            self._h_size = size if hv_same else size * height / width
         else:
             self._h_size = size
-            if hv_same:
-                self._v_size = size
-            else:
-                self._v_size = self._h_size * width / height
+            self._v_size = size if hv_same else size * width / height
 
     @property
     def v_size(self):
@@ -244,15 +246,20 @@ class FusionParams:
         self.info_font_size = 0.021
         self.info_vanchor = 2.3
 
-        scale_width_rate = 0.9
+        scale_width_rate = 0.94
         scale_h_margin_int = self.to_even(self.width * (1.0 - scale_width_rate) / 2.0)
         self.scale_h_margin = HdPixelBasedSize(scale_h_margin_int).h_size
-        self.scale_v_margin = HdPixelBasedSize(200).v_size
+        self.scale_v_margin = HdPixelBasedSize(80).v_size
         scale_dynamic_range_factor = 4
-        scale_each_dynamic_range_num_of_setps = 8
-        scale_num_of_element = scale_dynamic_range_factor * scale_each_dynamic_range_num_of_setps + 1
-        self.scale_hh = self.to_even(self.width * scale_width_rate / scale_num_of_element)
-        self.scale_vv = self.scale_hh
+        scale_each_dynamic_range_num_of_setps = 16
+        self.scale_num_of_element = scale_dynamic_range_factor * scale_each_dynamic_range_num_of_setps + 1
+        scale_hh_int = self.to_even(1920 * scale_width_rate / self.scale_num_of_element)
+        scale_vv_int = scale_hh_int * 0.8
+        self.scale_hh = HdPixelBasedSize(scale_hh_int).h_size
+        self.scale_vv = HdPixelBasedSize(scale_vv_int).v_size
+        self.scale_text_size = 0.02
+        self.scale_text_h_anchor = -0.1
+        self.scale_text_v_anchor = -1.0
 
     def to_even(self, n: int|float) -> int:
         n_int = int(round(n))
@@ -339,7 +346,7 @@ def create_info_comp(
     project_width, project_height = dcl.get_project_resolution()
     info_text_str = f"  TP for Adaptive HDR, {project_width}x{project_height}, "
     info_text_str += f"{gamma}, {gamut}"
-    print(f"info_text = {info_text}")
+    print(f"info_text = {info_text_str}")
     info_text_input = {
         "Center": {1: 0.0, 2: 0.0, 3: 0.0},
         "StyledText": info_text_str,
@@ -391,7 +398,6 @@ def create_info_comp(
 def create_scale_column(comp, ppp: FusionParams=None, base_pos=[0, 0]):
     x_pos = base_pos[0]
     y_pos = base_pos[1]
-    num_of_color = 7
 
     base_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos))
 
@@ -405,18 +411,20 @@ def create_scale_column(comp, ppp: FusionParams=None, base_pos=[0, 0]):
         [0, 1, 1, 1],
         [1, 1, 0, 1],
         [1, 1, 1, 1],
+        [1, 1, 1, 1],
     ]
-    center_y_list = [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6]
+    num_of_color = len(rgba_color_list)
 
     for c_idx in range(num_of_color):
         x_pos += 1
+        center_y = ppp.scale_v_margin + ppp.scale_vv / 2.0 + ppp.scale_vv * c_idx
         merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
         rectangle = dcl.add_rectangle_comp(
             comp=comp,
             rgba_color=rgba_color_list[c_idx],
-            center=[0.5, center_y_list[c_idx]],
-            width=0.03,
-            height=0.03,
+            center=[0.5, center_y],
+            width=ppp.scale_hh,
+            height=ppp.scale_vv,
             base_pos=[x_pos, y_pos-1]
         )
         fg_tool = rectangle
@@ -428,26 +436,28 @@ def create_scale_column(comp, ppp: FusionParams=None, base_pos=[0, 0]):
 
 
 def create_scale_info_text(
-        comp, ppp: FusionParams=None, luminance=10, base_pos=[0, 0]):
+        comp, ppp: FusionParams=None, center_y=0.6, luminance=10, base_pos=[0, 0]):
     x_pos = base_pos[0]
     y_pos = base_pos[1]
 
     info_text = dcl.add_comp_tool(comp=comp, name="TextPlus", pos=(x_pos, y_pos))
-    font_family = "Noto Sans"
-    font_weight = "Regular"
-    info_text_str = f"{luminance} nits"
-    print(f"info_text = {info_text}")
+    font_family = "Noto Sans Mono"
+    font_weight = "Medium"
+    if luminance < 100:
+        info_text_str = f"{luminance:5.1f} nits"
+    else:
+        info_text_str = f"{luminance:5.0f} nits"
     info_text_input = {
-        "Center": {1: 0.5, 2: 0.7, 3: 0.0},
+        "Center": {1: 0.5, 2: center_y, 3: 0.0},
         "StyledText": info_text_str,
         "Font": font_family,
         "Style": font_weight,
-        "Size": ppp.info_font_size,
+        "Size": ppp.scale_text_size,
         "Red1": ppp.info_font_color[0],
         "Green1": ppp.info_font_color[1],
         "Blue1": ppp.info_font_color[2],
-        "VerticalTopCenterBottom": ppp.info_vanchor,
-        "HorizontalLeftCenterRight": 0.0,
+        "VerticalTopCenterBottom": ppp.scale_text_v_anchor,
+        "HorizontalLeftCenterRight": ppp.scale_text_h_anchor,
         "AdvancedFontControls": 0.0,
 		"SelectTransform": 2,  # Line Rotation
 		"LineAngleZ": 90,
@@ -467,19 +477,24 @@ def create_scale_comp(comp, ppp: FusionParams=None, base_pos=[0, 0]):
     x_pos += 1
     scale, x_pos = create_scale_column(comp=comp, ppp=ppp, base_pos=[x_pos, y_pos-1])
 
+    text_pos_y = ppp.scale_v_margin + ppp.scale_vv * 12
+    x = np.linspace(0, 4, ppp.scale_num_of_element)
+    luminance_list = 10 ** x
+
     x_pos += 2
-    for h_idx in range(33):
+    for h_idx in range(ppp.scale_num_of_element):
         color_gain = dcl.add_comp_tool(comp=comp, name="ColorGain", pos=(x_pos, y_pos-1))
         color_gain_input = {
 			"LockRGB": 1,
-			"GainRed": 0.3 + 0.3 * h_idx,
+			"GainRed": luminance_list[h_idx] / 100.0,
         }
         dcl.set_multiple_tool_input(tool=color_gain, input_dict=color_gain_input)
         dcl.connect_tool(scale, color_gain)
 
         text_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos+1, y_pos-1))
         luminance_text = create_scale_info_text(
-            comp=comp, ppp=ppp, luminance=10*h_idx, base_pos=(x_pos+1, y_pos-2)
+            comp=comp, ppp=ppp, luminance=luminance_list[h_idx], center_y=text_pos_y,
+            base_pos=(x_pos+1, y_pos-2)
         )
         dcl.connect_merge_tool(
             merge_tool=text_merge, bg_tool=color_gain, fg_tool=luminance_text
@@ -487,7 +502,11 @@ def create_scale_comp(comp, ppp: FusionParams=None, base_pos=[0, 0]):
 
         transform = dcl.add_comp_tool(comp=comp, name="Transform", pos=(x_pos+2, y_pos-1))
         transform_input = {
-			"Center": {1: 0.1 + 0.03 * h_idx, 2: 0.5, 3: 0.0},
+            "Center": {
+                1: ppp.scale_h_margin + ppp.scale_hh / 2.0 + ppp.scale_hh * h_idx,
+                2: 0.5,
+                3: 0.0
+            },
         }
         dcl.set_multiple_tool_input(tool=transform, input_dict=transform_input)
         dcl.connect_tool(text_merge, transform)
