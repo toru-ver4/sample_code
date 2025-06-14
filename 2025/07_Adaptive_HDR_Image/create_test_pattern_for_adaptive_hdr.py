@@ -244,10 +244,19 @@ class FusionParams:
         self.info_font_size = 0.021
         self.info_vanchor = 2.3
 
-        self.frame_marker_v_pos = HdPixelBasedSize(140).v_size
-        self.frame_marker_v_pos2 = HdPixelBasedSize(108).v_size
-        self.motion_blur_radius = HeightBasedSize(0.2).h_size
-        self.motion_blur_mask_size = HeightBasedSize(0.075)
+        scale_width_rate = 0.9
+        scale_h_margin_int = self.to_even(self.width * (1.0 - scale_width_rate) / 2.0)
+        self.scale_h_margin = HdPixelBasedSize(scale_h_margin_int).h_size
+        self.scale_v_margin = HdPixelBasedSize(200).v_size
+        scale_dynamic_range_factor = 4
+        scale_each_dynamic_range_num_of_setps = 8
+        scale_num_of_element = scale_dynamic_range_factor * scale_each_dynamic_range_num_of_setps + 1
+        self.scale_hh = self.to_even(self.width * scale_width_rate / scale_num_of_element)
+        self.scale_vv = self.scale_hh
+
+    def to_even(self, n: int|float) -> int:
+        n_int = int(round(n))
+        return n_int - (n_int % 2)
 
 
 def create_background_comp(
@@ -379,6 +388,122 @@ def create_info_comp(
     return output_merge, x_pos
 
 
+def create_scale_column(comp, ppp: FusionParams=None, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+    num_of_color = 7
+
+    base_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos))
+
+    bg_tool = base_bg
+    fg_tool = None
+    rgba_color_list = [
+        [0, 0, 1, 1],
+        [1, 0, 0, 1],
+        [1, 0, 1, 1],
+        [0, 1, 0, 1],
+        [0, 1, 1, 1],
+        [1, 1, 0, 1],
+        [1, 1, 1, 1],
+    ]
+    center_y_list = [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6]
+
+    for c_idx in range(num_of_color):
+        x_pos += 1
+        merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
+        rectangle = dcl.add_rectangle_comp(
+            comp=comp,
+            rgba_color=rgba_color_list[c_idx],
+            center=[0.5, center_y_list[c_idx]],
+            width=0.03,
+            height=0.03,
+            base_pos=[x_pos, y_pos-1]
+        )
+        fg_tool = rectangle
+        dcl.connect_merge_tool(merge_tool=merge, bg_tool=bg_tool, fg_tool=fg_tool)
+        bg_tool = merge
+    last_merge = bg_tool
+
+    return last_merge, x_pos
+
+
+def create_scale_info_text(
+        comp, ppp: FusionParams=None, luminance=10, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    info_text = dcl.add_comp_tool(comp=comp, name="TextPlus", pos=(x_pos, y_pos))
+    font_family = "Noto Sans"
+    font_weight = "Regular"
+    info_text_str = f"{luminance} nits"
+    print(f"info_text = {info_text}")
+    info_text_input = {
+        "Center": {1: 0.5, 2: 0.7, 3: 0.0},
+        "StyledText": info_text_str,
+        "Font": font_family,
+        "Style": font_weight,
+        "Size": ppp.info_font_size,
+        "Red1": ppp.info_font_color[0],
+        "Green1": ppp.info_font_color[1],
+        "Blue1": ppp.info_font_color[2],
+        "VerticalTopCenterBottom": ppp.info_vanchor,
+        "HorizontalLeftCenterRight": 0.0,
+        "AdvancedFontControls": 0.0,
+		"SelectTransform": 2,  # Line Rotation
+		"LineAngleZ": 90,
+    }
+    dcl.set_multiple_tool_input(tool=info_text, input_dict=info_text_input)
+
+    return info_text
+
+
+def create_scale_comp(comp, ppp: FusionParams=None, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    base_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos))
+
+    bg_tool = base_bg
+    x_pos += 1
+    scale, x_pos = create_scale_column(comp=comp, ppp=ppp, base_pos=[x_pos, y_pos-1])
+
+    x_pos += 2
+    for h_idx in range(33):
+        color_gain = dcl.add_comp_tool(comp=comp, name="ColorGain", pos=(x_pos, y_pos-1))
+        color_gain_input = {
+			"LockRGB": 1,
+			"GainRed": 0.3 + 0.3 * h_idx,
+        }
+        dcl.set_multiple_tool_input(tool=color_gain, input_dict=color_gain_input)
+        dcl.connect_tool(scale, color_gain)
+
+        text_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos+1, y_pos-1))
+        luminance_text = create_scale_info_text(
+            comp=comp, ppp=ppp, luminance=10*h_idx, base_pos=(x_pos+1, y_pos-2)
+        )
+        dcl.connect_merge_tool(
+            merge_tool=text_merge, bg_tool=color_gain, fg_tool=luminance_text
+        )
+
+        transform = dcl.add_comp_tool(comp=comp, name="Transform", pos=(x_pos+2, y_pos-1))
+        transform_input = {
+			"Center": {1: 0.1 + 0.03 * h_idx, 2: 0.5, 3: 0.0},
+        }
+        dcl.set_multiple_tool_input(tool=transform, input_dict=transform_input)
+        dcl.connect_tool(text_merge, transform)
+
+        offset = 0 if h_idx == 0 else -1
+        output_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos+3, y_pos+offset))
+        dcl.connect_merge_tool(
+            merge_tool=output_merge, bg_tool=bg_tool, fg_tool=transform
+        )
+        bg_tool = output_merge
+        y_pos += 4 if h_idx == 0 else 2
+    last_merge = bg_tool
+
+    return last_merge, x_pos+3
+
+
 def create_adaptive_htr_tp_comp():
     tl_item_fusion_comp, comp = \
         dcl.append_fusion_composition_to_timeline(
@@ -386,6 +511,7 @@ def create_adaptive_htr_tp_comp():
             pos_frame_idx=dcl.sec_to_frame_idx(60 * 60)
         )
     ppp = FusionParams()
+    margin_between_modules = 2
 
     comp.Lock()
 
@@ -394,7 +520,7 @@ def create_adaptive_htr_tp_comp():
     pseudo_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos))
 
     # base background
-    x_pos += 2
+    x_pos += margin_between_modules
     # x_pos will be overwritten in the following function
     background, x_pos = create_background_comp(comp=comp, ppp=ppp, base_pos=(x_pos, y_pos-1))
     background_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
@@ -403,19 +529,28 @@ def create_adaptive_htr_tp_comp():
     )
     
     # infomation
-    x_pos += 2
+    x_pos += margin_between_modules
     info, x_pos = create_info_comp(comp=comp, ppp=ppp, base_pos=(x_pos, y_pos-1))
     info_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
     dcl.connect_merge_tool(
         merge_tool=info_merge, bg_tool=background_merge, fg_tool=info
     )
 
-    # media out
+    # scale
+    x_pos += margin_between_modules
+    scale, x_pos = create_scale_comp(comp=comp, ppp=ppp, base_pos=(x_pos, y_pos-1))
     x_pos += 2
+    scale_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
+    dcl.connect_merge_tool(
+        merge_tool=scale_merge, bg_tool=info_merge, fg_tool=scale
+    )
+
+    # media out
+    x_pos += margin_between_modules
     media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
     dcl.set_tool_position(comp=comp, tool=media_out, pos=(x_pos, y_pos))
 
-    dcl.connect_mediaout(source=info_merge, mediaout=media_out)
+    dcl.connect_mediaout(source=scale_merge, mediaout=media_out)
 
     comp.Unlock()
 
@@ -490,8 +625,7 @@ def create_adaptive_hdr_tp(
     dcl.set_current_timecode(timecode=start_time_code)
 
 
-if __name__ == '__main__':
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+def main():
     # debug_resolve()
     # debug_fusion()
 
@@ -525,3 +659,16 @@ if __name__ == '__main__':
             width=width, height=height, framerate=framerate,
             gamut=gamut, gamma=gamma
         )
+
+
+def debug():
+    x = np.linspace(0, 4, 33)
+    y = 10 ** x
+    for x, y in zip(x, y):
+        print(f"{x:.2f}, {y:.2f}")
+
+
+if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    main()
+    # debug()
