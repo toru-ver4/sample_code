@@ -14,11 +14,12 @@ import time
 
 # import third-party libraries
 import numpy as np
+from colour.models import RGB_COLOURSPACE_BT2020
 
 # import my libraries
 import ty_davinci_constants as drc
 import ty_davinci_control_lib_2 as dcl
-import transfer_functions as tf
+from test_pattern_generator2 import generate_color_checker_rgb_value
 
 REVISION = 0  # Development verion
 
@@ -246,6 +247,7 @@ class FusionParams:
         self.info_font_size = 0.021
         self.info_vanchor = 2.3
 
+        # scale
         scale_width_rate = 0.94
         scale_h_margin_int = self.to_even(self.width * (1.0 - scale_width_rate) / 2.0)
         self.scale_h_margin = HdPixelBasedSize(scale_h_margin_int).h_size
@@ -261,9 +263,36 @@ class FusionParams:
         self.scale_text_h_anchor = -0.1
         self.scale_text_v_anchor = -1.0
 
+        # color checker
+        self.num_of_cc_patch_h = 6
+        self.num_of_cc_patch_v = 4
+        self.cc_corner_radius = 0.05
+        cc_width_int = 800  # HD Based Size
+        cc_margin_int = 10  # HD Based Size
+        cc_patch_size_int\
+            = (cc_width_int - cc_margin_int * (self.num_of_cc_patch_h + 1)) / self.num_of_cc_patch_h
+        cc_height_int = (cc_margin_int + cc_patch_size_int) * self.num_of_cc_patch_v + cc_margin_int
+        self.cc_width = HdPixelBasedSize(cc_width_int).h_size
+        self.cc_height = HdPixelBasedSize(cc_height_int).v_size
+        self.cc_margin_h = HdPixelBasedSize(cc_margin_int).h_size
+        self.cc_margin_v = HdPixelBasedSize(cc_margin_int).v_size
+        self.pp_hh = HdPixelBasedSize(cc_patch_size_int).h_size
+        self.pp_vv = HdPixelBasedSize(cc_patch_size_int).v_size
+        self.cc_pos = [0.7, 0.7]
+        self.cc_rgb = generate_color_checker_rgb_value(color_space=RGB_COLOURSPACE_BT2020)
+        pseudo_cc_center = [
+            (self.pp_hh + self.cc_margin_h) * (self.num_of_cc_patch_h // 2) + self.cc_margin_h / 2.0,
+            (self.pp_vv + self.cc_margin_v) * (self.num_of_cc_patch_v // 2) + self.cc_margin_v / 2.0
+        ]
+        self.cc_center_offset = [
+            0.5 - pseudo_cc_center[0],
+            0.5 - pseudo_cc_center[1],
+        ]
+
     def to_even(self, n: int|float) -> int:
         n_int = int(round(n))
         return n_int - (n_int % 2)
+    
 
 
 def create_background_comp(
@@ -523,6 +552,109 @@ def create_scale_comp(comp, ppp: FusionParams=None, base_pos=[0, 0]):
     return last_merge, x_pos+3
 
 
+def create_color_checker_background(comp, ppp: FusionParams=None, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    bg = dcl.add_comp_tool(comp=comp, name="Background", pos=(x_pos, y_pos-1))
+    bg_mask = dcl.add_comp_tool(
+        comp=comp, name="RectangleMask", pos=(x_pos, y_pos-2)
+    )
+    bg_mask_input = {
+        "Center": {1: 0.5, 2: 0.5, 3: 0.0},
+        "Width": ppp.cc_width,
+        "Height": ppp.cc_height,
+        "CornerRadius": ppp.cc_corner_radius,
+    }
+    dcl.set_multiple_tool_input(tool=bg_mask, input_dict=bg_mask_input)
+    bg_input = {
+        "TopLeftRed": 0.01,
+        "TopLeftGreen": 0.01,
+        "TopLeftBlue": 0.01,
+        "TopLeftAlpha": 1.0,
+        "EffectMask": bg_mask,
+    }
+    dcl.set_multiple_tool_input(tool=bg, input_dict=bg_input)
+
+    return bg
+
+
+def create_color_checker_patch_vertical(
+        comp, ppp: FusionParams=None, h_idx=0, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    base_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos))
+    bg_tool = base_bg
+
+    x_pos += 1
+    for v_idx in range(ppp.num_of_cc_patch_v):
+        cc_idx = v_idx * ppp.num_of_cc_patch_h + h_idx
+        rectangle = dcl.add_rectangle_comp(
+            comp=comp,
+            rgba_color=[
+                ppp.cc_rgb[cc_idx, 0],
+                ppp.cc_rgb[cc_idx, 1],
+                ppp.cc_rgb[cc_idx, 2],
+                1
+            ],
+            center=[
+                ppp.cc_margin_h + ppp.pp_hh / 2.0 + (ppp.pp_hh + ppp.cc_margin_h) * h_idx + ppp.cc_center_offset[0],
+                ppp.cc_margin_v + ppp.pp_vv / 2.0 + (ppp.pp_vv + ppp.cc_margin_v) * (3 - v_idx) + ppp.cc_center_offset[1],
+            ],
+            width=ppp.pp_hh,
+            height=ppp.pp_vv,
+            base_pos=[x_pos, y_pos-1],
+        )
+
+        y_pos_offset = 0 if v_idx == 0 else -1
+        merge = dcl.add_comp_tool(
+            comp=comp, name="Merge", pos=(x_pos+1, y_pos + y_pos_offset)
+        )
+        dcl.connect_merge_tool(
+            merge_tool=merge, bg_tool=bg_tool, fg_tool=rectangle
+        )
+        bg_tool = merge
+        y_pos_offset = 5 if v_idx == 0 else 2
+        y_pos += y_pos_offset
+
+    return bg_tool, x_pos+1
+
+
+def create_color_checker_comp(comp, ppp: FusionParams=None, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    base_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos))
+
+    x_pos += 1
+    bg = create_color_checker_background(comp=comp, ppp=ppp, base_pos=(x_pos, y_pos-1))
+    bg_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
+    dcl.connect_merge_tool(merge_tool=bg_merge, bg_tool=base_bg, fg_tool=bg)
+    bg_tool = bg_merge
+
+    for h_idx in range(ppp.num_of_cc_patch_h):
+        x_pos += 1
+        vertical_patches, x_pos = create_color_checker_patch_vertical(
+            comp=comp, ppp=ppp, h_idx=h_idx, base_pos=(x_pos, y_pos-1)
+        )
+        x_pos += 1
+        cc_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
+        dcl.connect_merge_tool(
+            merge_tool=cc_merge, bg_tool=bg_tool, fg_tool=vertical_patches
+        )
+        bg_tool = cc_merge
+
+    x_pos += 1
+    output_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
+    dcl.connect_merge_tool(
+        merge_tool=output_merge, bg_tool=bg_tool, fg_tool=vertical_patches
+    )
+
+    x_pos += 1
+    
+    return output_merge, x_pos
+
 def create_adaptive_htr_tp_comp():
     tl_item_fusion_comp, comp = \
         dcl.append_fusion_composition_to_timeline(
@@ -564,12 +696,22 @@ def create_adaptive_htr_tp_comp():
         merge_tool=scale_merge, bg_tool=info_merge, fg_tool=scale
     )
 
+    # color checker
+    x_pos += margin_between_modules
+    color_checker, x_pos = create_color_checker_comp(
+        comp=comp, ppp=ppp, base_pos=(x_pos, y_pos-1)
+    )
+    cc_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
+    dcl.connect_merge_tool(
+        merge_tool=cc_merge, bg_tool=scale_merge, fg_tool=color_checker
+    )
+
     # media out
     x_pos += margin_between_modules
     media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
     dcl.set_tool_position(comp=comp, tool=media_out, pos=(x_pos, y_pos))
 
-    dcl.connect_mediaout(source=scale_merge, mediaout=media_out)
+    dcl.connect_mediaout(source=cc_merge, mediaout=media_out)
 
     comp.Unlock()
 
@@ -601,7 +743,7 @@ def create_adaptive_hdr_tp(
         "separateColorSpaceAndGamma": drc.PRJ_PARAM_ENABLE,
         "colorSpaceInput": f"{gamut}",
         "colorSpaceInputGamma": f"{gamma}",
-        "colorSpaceTimeline": drc.PRJ_COLOR_SPACE_REC709,
+        "colorSpaceTimeline": drc.PRJ_COLOR_SPACE_REC2020,
         "colorSpaceTimelineGamma": drc.PRJ_GAMMA_STR_ST2084,
         "colorSpaceOutput": f"{gamut}",
         "colorSpaceOutputGamma": f"{gamma}",
@@ -661,13 +803,13 @@ def main():
         24,
     ]
     gamut_list = [
-        # drc.PRJ_COLOR_SPACE_REC709,
+        drc.PRJ_COLOR_SPACE_REC709,
         # drc.PRJ_COLOR_SPACE_P3D65,
-        drc.PRJ_COLOR_SPACE_REC2020
+        # drc.PRJ_COLOR_SPACE_REC2020
     ]
     gamma_list = [
-        # drc.PRJ_GAMMA_STR_GAMMA24,
-        drc.PRJ_GAMMA_STR_ST2084
+        drc.PRJ_GAMMA_STR_GAMMA24,
+        # drc.PRJ_GAMMA_STR_ST2084
     ]
 
     for resolution, framerate, gamut, gamma in product(
