@@ -247,14 +247,18 @@ class FusionParams:
         self.info_font_size = 0.021
         self.info_vanchor = 2.3
 
+        # border
+        self.base_bg_border_width = round(self.height / 1080)
+
         # scale
-        scale_width_rate = 0.94
-        scale_h_margin_int = self.to_even(self.width * (1.0 - scale_width_rate) / 2.0)
-        self.scale_h_margin = HdPixelBasedSize(scale_h_margin_int).h_size
-        self.scale_v_margin = HdPixelBasedSize(80).v_size
         scale_dynamic_range_factor = 4
         scale_each_dynamic_range_num_of_setps = 16
         self.scale_num_of_element = scale_dynamic_range_factor * scale_each_dynamic_range_num_of_setps + 1
+        each_scale_width = 28  # please specify int value to reduce rounding error
+        scale_width_rate = (self.scale_num_of_element * each_scale_width) / 1920
+        scale_h_margin_int = self.to_even(self.width * (1.0 - scale_width_rate) / 2.0)
+        self.scale_h_margin = HdPixelBasedSize(scale_h_margin_int).h_size
+        self.scale_v_margin = self.info_area_height * 2
         scale_hh_int = self.to_even(1920 * scale_width_rate / self.scale_num_of_element)
         scale_vv_int = scale_hh_int * 0.8
         self.scale_hh = HdPixelBasedSize(scale_hh_int).h_size
@@ -267,7 +271,7 @@ class FusionParams:
         self.num_of_cc_patch_h = 6
         self.num_of_cc_patch_v = 4
         self.cc_corner_radius = 0.05
-        cc_width_int = 800  # HD Based Size
+        cc_width_int = 720  # HD Based Size
         cc_margin_int = 10  # HD Based Size
         cc_patch_size_int\
             = (cc_width_int - cc_margin_int * (self.num_of_cc_patch_h + 1)) / self.num_of_cc_patch_h
@@ -278,7 +282,10 @@ class FusionParams:
         self.cc_margin_v = HdPixelBasedSize(cc_margin_int).v_size
         self.pp_hh = HdPixelBasedSize(cc_patch_size_int).h_size
         self.pp_vv = HdPixelBasedSize(cc_patch_size_int).v_size
-        self.cc_pos = [0.7, 0.7]
+        self.cc_pos = [
+            1.0 - (1 - scale_width_rate) / 2.0 - (self.cc_width / 2.0) + self.scale_hh / 2.0,
+            0.68
+        ]
         self.cc_rgb = generate_color_checker_rgb_value(color_space=RGB_COLOURSPACE_BT2020)
         pseudo_cc_center = [
             (self.pp_hh + self.cc_margin_h) * (self.num_of_cc_patch_h // 2) + self.cc_margin_h / 2.0,
@@ -292,7 +299,6 @@ class FusionParams:
     def to_even(self, n: int|float) -> int:
         n_int = int(round(n))
         return n_int - (n_int % 2)
-    
 
 
 def create_background_comp(
@@ -568,9 +574,9 @@ def create_color_checker_background(comp, ppp: FusionParams=None, base_pos=[0, 0
     }
     dcl.set_multiple_tool_input(tool=bg_mask, input_dict=bg_mask_input)
     bg_input = {
-        "TopLeftRed": 0.01,
-        "TopLeftGreen": 0.01,
-        "TopLeftBlue": 0.01,
+        "TopLeftRed": 0.00,
+        "TopLeftGreen": 0.00,
+        "TopLeftBlue": 0.00,
         "TopLeftAlpha": 1.0,
         "EffectMask": bg_mask,
     }
@@ -646,14 +652,19 @@ def create_color_checker_comp(comp, ppp: FusionParams=None, base_pos=[0, 0]):
         bg_tool = cc_merge
 
     x_pos += 1
-    output_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
-    dcl.connect_merge_tool(
-        merge_tool=output_merge, bg_tool=bg_tool, fg_tool=vertical_patches
-    )
+    transform = dcl.add_comp_tool(comp=comp, name="Transform", pos=(x_pos, y_pos))
+    transform_input = {
+        "Center": {
+            1: ppp.cc_pos[0],
+            2: ppp.cc_pos[1],
+            3: 0.0
+        },
+    }
+    dcl.set_multiple_tool_input(tool=transform, input_dict=transform_input)
+    dcl.connect_tool(bg_tool, transform)
 
-    x_pos += 1
-    
-    return output_merge, x_pos
+    return transform, x_pos
+
 
 def create_adaptive_htr_tp_comp():
     tl_item_fusion_comp, comp = \
@@ -687,13 +698,22 @@ def create_adaptive_htr_tp_comp():
         merge_tool=info_merge, bg_tool=background_merge, fg_tool=info
     )
 
+    # border
+    x_pos += margin_between_modules
+    border_dctl = dcl.add_dctl_comp(
+        comp=comp, dctl_path="TY_DCTL/draw_countdown_border.dctl",
+        option={"sliderIntParam0": ppp.base_bg_border_width},
+        base_pos=[x_pos, y_pos]
+    )
+    dcl.connect_dctl(border_dctl, info_merge)
+
     # scale
     x_pos += margin_between_modules
     scale, x_pos = create_scale_comp(comp=comp, ppp=ppp, base_pos=(x_pos, y_pos-1))
     x_pos += 2
     scale_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
     dcl.connect_merge_tool(
-        merge_tool=scale_merge, bg_tool=info_merge, fg_tool=scale
+        merge_tool=scale_merge, bg_tool=border_dctl, fg_tool=scale
     )
 
     # color checker
