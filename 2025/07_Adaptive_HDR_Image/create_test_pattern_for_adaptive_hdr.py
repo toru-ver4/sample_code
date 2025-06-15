@@ -19,6 +19,7 @@ from colour.models import RGB_COLOURSPACE_BT2020
 # import my libraries
 import ty_davinci_constants as drc
 import ty_davinci_control_lib_2 as dcl
+import transfer_functions as tf
 from test_pattern_generator2 import generate_color_checker_rgb_value
 
 REVISION = 0  # Development verion
@@ -304,6 +305,7 @@ class FusionParams:
             self.scale_h_margin,
             0.4,
         ]
+        self.ramp_text_pos_v = (1 - self.ramp_pos[1]) - self.ramp_height * 2 - 0.02
 
     def to_even(self, n: int|float) -> int:
         n_int = int(round(n))
@@ -675,6 +677,35 @@ def create_color_checker_comp(comp, ppp: FusionParams=None, base_pos=[0, 0]):
     return transform, x_pos
 
 
+def create_ramp_info_text(
+        comp, ppp: FusionParams=None, center_pos=[0, 1], luminance=10, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    info_text = dcl.add_comp_tool(comp=comp, name="TextPlus", pos=(x_pos, y_pos))
+    font_family = "Noto Sans Mono"
+    font_weight = "Medium"
+    if luminance < 1000:
+        info_text_str = f"{luminance}"
+    else:
+        info_text_str = f"{int(luminance/1000)}K"
+    info_text_input = {
+        "Center": {1: center_pos[0], 2: center_pos[1], 3: 0.0},
+        "StyledText": info_text_str,
+        "Font": font_family,
+        "Style": font_weight,
+        "Size": ppp.scale_text_size,
+        "Red1": ppp.info_font_color[0],
+        "Green1": ppp.info_font_color[1],
+        "Blue1": ppp.info_font_color[2],
+        "VerticalTopCenterBottom": 0,
+        "HorizontalLeftCenterRight": 0,
+    }
+    dcl.set_multiple_tool_input(tool=info_text, input_dict=info_text_input)
+
+    return info_text
+
+
 def create_ramp_pattern_comp(comp, ppp: FusionParams=None, base_pos=[0, 0]):
     x_pos = base_pos[0]
     y_pos = base_pos[1]
@@ -713,7 +744,26 @@ def create_ramp_pattern_comp(comp, ppp: FusionParams=None, base_pos=[0, 0]):
     )
     dcl.connect_dctl(lower_ramp_dctl, upper_ramp_dctl)
 
-    return lower_ramp_dctl, x_pos
+    luminance_list = [0, 0.1, 1, 10, 100, 1000, 10000]
+    st2084_cv_list = tf.oetf_from_luminance(np.array(luminance_list), tf.ST2084)
+    ramp_width = ppp.ramp_width
+    st_pos_h = ppp.ramp_pos[0]
+    st_pos_v = ppp.ramp_text_pos_v
+
+    bg_tool = lower_ramp_dctl
+    for st2084_cv, luminance in zip(st2084_cv_list, luminance_list):
+        x_pos += 1
+        center_pos = [st_pos_h + ramp_width * st2084_cv, st_pos_v]
+        ramp_text = create_ramp_info_text(
+            comp=comp, ppp=ppp, center_pos=center_pos, luminance=luminance,
+            base_pos=[x_pos, y_pos]
+        )
+        x_pos += 1
+        text_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=[x_pos, y_pos])
+        dcl.connect_merge_tool(merge_tool=text_merge, bg_tool=bg_tool, fg_tool=ramp_text)
+        bg_tool = text_merge
+
+    return bg_tool, x_pos
 
 
 def create_adaptive_htr_tp_comp():
