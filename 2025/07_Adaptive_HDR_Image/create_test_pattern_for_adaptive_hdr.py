@@ -295,6 +295,15 @@ class FusionParams:
             0.5 - pseudo_cc_center[0],
             0.5 - pseudo_cc_center[1],
         ]
+    
+        # ramp
+        self.ramp_width = HdPixelBasedSize(1024).h_size
+        self.ramp_height = 0.06
+        self.ramp_border_width = 1
+        self.ramp_pos = [
+            self.scale_h_margin,
+            0.4,
+        ]
 
     def to_even(self, n: int|float) -> int:
         n_int = int(round(n))
@@ -666,6 +675,47 @@ def create_color_checker_comp(comp, ppp: FusionParams=None, base_pos=[0, 0]):
     return transform, x_pos
 
 
+def create_ramp_pattern_comp(comp, ppp: FusionParams=None, base_pos=[0, 0]):
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    base_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos))
+
+    x_pos += 1
+    upper_ramp_dctl = dcl.add_dctl_comp(
+        comp=comp, dctl_path="TY_DCTL/draw_8bit_10bit_ramp.dctl",
+        option={
+            "sliderIntParam0": ppp.ramp_border_width,
+            "sliderFloatParam0": ppp.ramp_height,  # ramp height
+            "sliderFloatParam1": ppp.ramp_pos[0],  # ramp st_pos_h
+            "sliderFloatParam2": ppp.ramp_pos[1],  # ramp st_pos_v
+            "sliderFloatParam3": 1,  # show top scale
+            "sliderFloatParam4": 0,  # show bottom scale
+            "checkBoxParam0": 0,  # 8-bit ramp
+        },
+        base_pos=[x_pos, y_pos]
+    )
+    dcl.connect_dctl(upper_ramp_dctl, base_bg)
+
+    x_pos += 1
+    lower_ramp_dctl = dcl.add_dctl_comp(
+        comp=comp, dctl_path="TY_DCTL/draw_8bit_10bit_ramp.dctl",
+        option={
+            "sliderIntParam0": ppp.ramp_border_width,
+            "sliderFloatParam0": ppp.ramp_height,  # ramp height
+            "sliderFloatParam1": ppp.ramp_pos[0],  # ramp st_pos_h
+            "sliderFloatParam2": ppp.ramp_pos[1] + ppp.ramp_height,  # ramp st_pos_v
+            "sliderFloatParam3": 0,  # show top scale
+            "sliderFloatParam4": 1,  # show bottom scale
+            "checkBoxParam0": 1,  # 8-bit ramp
+        },
+        base_pos=[x_pos, y_pos]
+    )
+    dcl.connect_dctl(lower_ramp_dctl, upper_ramp_dctl)
+
+    return lower_ramp_dctl, x_pos
+
+
 def create_adaptive_htr_tp_comp():
     tl_item_fusion_comp, comp = \
         dcl.append_fusion_composition_to_timeline(
@@ -680,6 +730,7 @@ def create_adaptive_htr_tp_comp():
     x_pos = 1
     y_pos = 7  # y_pos is fixed this value
     pseudo_bg = dcl.add_transparent_background(comp=comp, pos=(x_pos, y_pos))
+    bg_tool = pseudo_bg
 
     # base background
     x_pos += margin_between_modules
@@ -687,16 +738,18 @@ def create_adaptive_htr_tp_comp():
     background, x_pos = create_background_comp(comp=comp, ppp=ppp, base_pos=(x_pos, y_pos-1))
     background_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
     dcl.connect_merge_tool(
-        merge_tool=background_merge, bg_tool=pseudo_bg, fg_tool=background
+        merge_tool=background_merge, bg_tool=bg_tool, fg_tool=background
     )
+    bg_tool = background_merge
     
     # infomation
     x_pos += margin_between_modules
     info, x_pos = create_info_comp(comp=comp, ppp=ppp, base_pos=(x_pos, y_pos-1))
     info_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
     dcl.connect_merge_tool(
-        merge_tool=info_merge, bg_tool=background_merge, fg_tool=info
+        merge_tool=info_merge, bg_tool=bg_tool, fg_tool=info
     )
+    bg_tool = info_merge
 
     # border
     x_pos += margin_between_modules
@@ -705,7 +758,8 @@ def create_adaptive_htr_tp_comp():
         option={"sliderIntParam0": ppp.base_bg_border_width},
         base_pos=[x_pos, y_pos]
     )
-    dcl.connect_dctl(border_dctl, info_merge)
+    dcl.connect_dctl(border_dctl, bg_tool)
+    bg_tool = border_dctl
 
     # scale
     x_pos += margin_between_modules
@@ -713,8 +767,9 @@ def create_adaptive_htr_tp_comp():
     x_pos += 2
     scale_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
     dcl.connect_merge_tool(
-        merge_tool=scale_merge, bg_tool=border_dctl, fg_tool=scale
+        merge_tool=scale_merge, bg_tool=bg_tool, fg_tool=scale
     )
+    bg_tool = scale_merge
 
     # color checker
     x_pos += margin_between_modules
@@ -723,15 +778,27 @@ def create_adaptive_htr_tp_comp():
     )
     cc_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
     dcl.connect_merge_tool(
-        merge_tool=cc_merge, bg_tool=scale_merge, fg_tool=color_checker
+        merge_tool=cc_merge, bg_tool=bg_tool, fg_tool=color_checker
     )
+    bg_tool = cc_merge
+
+    # 8-bit / 10-bit ramp pattern
+    x_pos += margin_between_modules
+    ramp, x_pos = create_ramp_pattern_comp(
+        comp=comp, ppp=ppp, base_pos=(x_pos, y_pos-1)
+    )
+    ramp_merge = dcl.add_comp_tool(comp=comp, name="Merge", pos=(x_pos, y_pos))
+    dcl.connect_merge_tool(
+        merge_tool=ramp_merge, bg_tool=bg_tool, fg_tool=ramp
+    )
+    bg_tool = ramp_merge
 
     # media out
     x_pos += margin_between_modules
     media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
     dcl.set_tool_position(comp=comp, tool=media_out, pos=(x_pos, y_pos))
 
-    dcl.connect_mediaout(source=cc_merge, mediaout=media_out)
+    dcl.connect_mediaout(source=bg_tool, mediaout=media_out)
 
     comp.Unlock()
 
