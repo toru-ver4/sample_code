@@ -14,11 +14,9 @@ DEFINE_UI_PARAMS(show_bottom_scale, Show Bottom Scale, DCTLUI_SLIDER_FLOAT, 0.0,
 DEFINE_UI_PARAMS(enable_8bit_mode, Enable 8-bit Mode, DCTLUI_CHECK_BOX, 0)
 
 // main function
-__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+__DEVICE__ float4 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B, float p_A)
 {
-    float3 rgb = to_float3(p_R, p_G, p_B);
-    float3 ramp_rgb = rgb;
-    float3 out_rgb = rgb;
+    float4 rgba = {p_R, p_G, p_B, p_A};
     float3 scale_color = {0.4, 0.4, 0.4};
     float3 outline_color = {0.0, 0.0, 0.0};
     float st2084_cv_float;
@@ -93,9 +91,9 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
         int ruler_pos_h = _round(cv * ramp_width) + st_pos_h_10bit;
         int2 ruler_st_pos = {ruler_pos_h - 1, ruler_st_pos_v};
         int2 ruler_ed_pos = {ruler_pos_h + 1, ruler_ed_pos_v};
-        out_rgb = draw_rectangle(
+        rgba = draw_rectangle_with_alpha(
             p_Width, p_Height, p_X, p_Y,
-            out_rgb,
+            rgba,
             ruler_st_pos, ruler_ed_pos, scale_color
         );
     }
@@ -108,9 +106,9 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
             int ruler_pos_h = _round(cv * ramp_width) + st_pos_h_10bit;
             int2 ruler_st_pos = {ruler_pos_h - 1, minor_ruler_st_pos_v};
             int2 ruler_ed_pos = {ruler_pos_h + 1, minor_ruler_ed_pos_v};
-            out_rgb = draw_rectangle(
+            rgba = draw_rectangle_with_alpha(
                 p_Width, p_Height, p_X, p_Y,
-                out_rgb,
+                rgba,
                 ruler_st_pos, ruler_ed_pos, scale_color
             );
         }
@@ -126,16 +124,17 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
             else {
                 linear = ST2084_2_Linear(st2084_cv_float);
             }
-            out_rgb.x = linear;
-            out_rgb.y = linear;
-            out_rgb.z = linear;
+            rgba.x = linear;
+            rgba.y = linear;
+            rgba.z = linear;
+            rgba.w = 1.0f;
         }
     }
-    out_rgb = draw_rectangle_outline(
+    rgba = draw_rectangle_outline_with_alpha(
         p_Width, p_Height, p_X, p_Y,
-        out_rgb,
+        rgba,
         inner_st_pos, inner_ed_pos, line_width, outline_color
     );
 
-    return out_rgb;
+    return rgba;
 }

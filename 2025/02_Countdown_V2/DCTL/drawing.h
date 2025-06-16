@@ -2,6 +2,7 @@
 #define TY_DRAWING_H
 
 #include "custom_types.h"
+#include "utils.h"
 
 #define NUM_OF_OUTLINE_POS   (6)
 
@@ -36,6 +37,24 @@ __DEVICE__ float3 draw_rectangle(
     return rgb_out;
 }
 
+__DEVICE__ float4 draw_rectangle_with_alpha(
+    int p_Width, int p_Height,
+    int p_X, int p_Y,
+    float4 rgba_in,
+    int2 st_pos, int2 ed_pos, float3 fill_color)
+{
+    float4 rgba_out = rgba_in;
+
+    if((st_pos.x <= p_X) && (p_X < ed_pos.x)){
+        if((st_pos.y <= p_Y) && (p_Y < ed_pos.y)){
+            rgba_out.x = fill_color.x;
+            rgba_out.y = fill_color.y;
+            rgba_out.z = fill_color.z;
+            rgba_out.w = 1.0f;
+        }
+    }
+    return rgba_out;
+}
 
 /**
  * @brief Draw rectangle filled with specified colors
@@ -80,6 +99,37 @@ __DEVICE__ float3 draw_rectangle_outline(
             st_pos_list[ii], ed_pos_list[ii], fill_color);
     }
     return out_rgb;
+}
+
+__DEVICE__ float4 draw_rectangle_outline_with_alpha(
+    int p_Width, int p_Height,
+    int p_X, int p_Y,
+    float4 rgba_in,
+    int2 inner_st_pos, int2 inner_ed_pos, int line_width,
+    float3 fill_color)
+{
+    float4 out_rgba = rgba_in;
+    int2 st_pos_list[NUM_OF_OUTLINE_POS] = {
+        {inner_st_pos.x - line_width, inner_st_pos.y - line_width},
+        {inner_st_pos.x - line_width, inner_ed_pos.y},
+        {inner_st_pos.x - line_width, inner_st_pos.y - line_width},
+        {inner_ed_pos.x, inner_st_pos.y - line_width}
+    };
+    int2 ed_pos_list[NUM_OF_OUTLINE_POS] = {
+        {inner_ed_pos.x + line_width, inner_st_pos.y},
+        {inner_ed_pos.x + line_width, inner_ed_pos.y + line_width},
+        {inner_st_pos.x, inner_ed_pos.y + line_width},
+        {inner_ed_pos.x + line_width, inner_ed_pos.y + line_width}
+    };
+
+    for(int ii=0; ii<NUM_OF_OUTLINE_POS; ++ii){
+        out_rgba = draw_rectangle_with_alpha(
+            p_Width, p_Height,
+            p_X, p_Y,
+            out_rgba,
+            st_pos_list[ii], ed_pos_list[ii], fill_color);
+    }
+    return out_rgba;
 }
 
 
@@ -128,6 +178,5 @@ __DEVICE__ float3 draw_45deg_line(
 
     return rgb_out;
 }
-
 
 #endif
