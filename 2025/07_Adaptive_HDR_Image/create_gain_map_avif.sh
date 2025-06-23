@@ -78,9 +78,15 @@ combine_gain_map() {
 }
 
 combine_gain_map \
-    "./img/BT2100-BT1886.avif" \
-    "./img/BT2100-PQ.avif" \
-    "./hoge" \
+    "./src_img/1920x1080_sRGB_sRGB_0.5x.avif" \
+    "./src_img/1920x1080_ST2084_Rec.2020.avif" \
+    "./gain_map_img" \
+    "${headroom_values[@]}"
+
+combine_gain_map \
+    "./src_img/1920x1080_sRGB_sRGB.avif" \
+    "./src_img/1920x1080_ST2084_Rec.2020.avif" \
+    "./gain_map_img" \
     "${headroom_values[@]}"
 
 # for headroom in $headroom_values; do

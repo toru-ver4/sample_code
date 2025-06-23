@@ -1,16 +1,11 @@
 # -*- coding: utf-8 -*-
 
 # import standard libraries
+from pathlib import Path
 import sys
 import os
-from pathlib import Path
 from pprint import pprint
-import copy
 import shutil
-import subprocess
-import psutil
-import csv
-import time
 
 # import third-party libraries
 import numpy as np
@@ -23,6 +18,7 @@ import transfer_functions as tf
 from test_pattern_generator2 import generate_color_checker_rgb_value
 
 REVISION = 0  # Development verion
+REVISION = 1  # Initial Release
 
 #####################
 # Debug
@@ -301,7 +297,7 @@ class FusionParams:
         self.ramp_width = HdPixelBasedSize(1024).h_size
         self.ramp_height = 0.06
         self.ramp_border_width = 1
-        ramp_pos_v = 0.4
+        ramp_pos_v = 0.414
         self.ramp_bit_depth_info_text_pos = [
             [self.scale_h_margin, (1 - ramp_pos_v) - self.ramp_height * 0.5],
             [self.scale_h_margin, (1 - ramp_pos_v) - (self.ramp_height * 1.5)]
@@ -397,7 +393,7 @@ def create_info_comp(
     gamma = dcl.get_project_setting("colorSpaceOutputGamma")
     project_width, project_height = dcl.get_project_resolution()
     info_text_str = f"  TP for Adaptive HDR, {project_width}x{project_height}, "
-    info_text_str += f"{gamma}, {gamut}"
+    info_text_str += f"Color Gamut: {gamma}, Transfer Characteristics: {gamut}"
     print(f"info_text = {info_text_str}")
     info_text_input = {
         "Center": {1: 0.0, 2: 0.0, 3: 0.0},
@@ -827,7 +823,7 @@ def create_ramp_pattern_comp(comp, ppp: FusionParams=None, base_pos=[0, 0]):
     return bg_tool, x_pos
 
 
-def create_adaptive_htr_tp_comp():
+def create_adaptive_htr_tp_comp(half_gain_for_sdr=False):
     tl_item_fusion_comp, comp = \
         dcl.append_fusion_composition_to_timeline(
             num_of_frame=1,
@@ -904,6 +900,18 @@ def create_adaptive_htr_tp_comp():
     )
     bg_tool = ramp_merge
 
+    # half gain for sdr
+    if half_gain_for_sdr:
+        x_pos += margin_between_modules
+        color_gain = dcl.add_comp_tool(comp=comp, name="ColorGain", pos=(x_pos, y_pos))
+        color_gain_input = {
+			"LockRGB": 1,
+			"GainRed": 0.5,
+        }
+        dcl.set_multiple_tool_input(tool=color_gain, input_dict=color_gain_input)
+        dcl.connect_tool(bg_tool, color_gain)
+        bg_tool = color_gain
+
     # media out
     x_pos += margin_between_modules
     media_out = dcl.get_comp_tool_by_name(comp=comp, name="MediaOut1")
@@ -915,7 +923,7 @@ def create_adaptive_htr_tp_comp():
 
 
 def create_adaptive_hdr_tp(
-        width, height, framerate, gamut, gamma
+        width, height, framerate, gamut, gamma, half_gain_for_sdr=False,
 ):
     ##################
     # Project Settings
@@ -979,9 +987,64 @@ def create_adaptive_hdr_tp(
     ###################
     # Core Function
     ###################
-    create_adaptive_htr_tp_comp()
+    create_adaptive_htr_tp_comp(half_gain_for_sdr=half_gain_for_sdr)
 
     dcl.set_current_timecode(timecode=start_time_code)
+
+
+    ###################
+    # Encode
+    ###################
+    preset_path = None
+
+    if preset_path is None:
+        format_extension = drc.OUT_FILE_EXTENSTION_PNG
+        codec = drc.CODEC_PNG_RGB_16_BITS
+
+        if sys.platform == "darwin":  # macOS
+            dir_path = Path("/Volumes/My Passport/Countdown/temp_seq")
+        elif sys.platform == "win32":  # Windows
+            dir_path = Path(r"C:\Users\toruv\OneDrive\work\sample_code\2025\07_Adaptive_HDR_Image\src_img")
+        else:
+            pass
+
+        basename = f"{width}x{height}_{gamma}_{gamut}"
+        if half_gain_for_sdr:
+            basename += "_0.5x"
+
+        output_fname = str(dir_path / basename)
+        if format_extension in drc.STILL_SEQ_FILE_EXTENTION_LIST:
+            output_fname = output_fname
+        else:
+            output_fname = output_fname + "." + format_extension
+        target_dir = str(Path(output_fname).resolve().parent)
+        custom_name = str(Path(output_fname).resolve().name)
+
+        render_settings = {
+            "TargetDir": target_dir,
+            "CustomName": custom_name,
+        }
+
+    if preset_path is not None:
+        dcl.import_render_preset(preset_path=preset_path)
+    else:
+        dcl.set_render_format_codec_settings(format=format_extension, codec=codec)
+
+    dcl.set_render_settings(setting_dict=render_settings)
+    dcl.run_rendering_and_wait_until_finish(project=project)
+    
+    output_full_fname_1 = str(dir_path / basename) + "00086400" + "." + format_extension
+    output_full_fname_2 = str(dir_path / basename) + "_00086400" + "." + format_extension
+    if os.path.exists(output_full_fname_1):
+        output_full_fname = output_full_fname_1
+    elif os.path.exists(output_full_fname_2):
+        output_full_fname = output_full_fname_2
+    else:
+        ValueError("file not found")
+    output_new_full_fname = str(dir_path / basename) + "." + format_extension
+    if os.path.exists(output_new_full_fname):
+        os.remove(output_new_full_fname)
+    os.rename(output_full_fname, output_new_full_fname)
 
 
 def main():
@@ -994,20 +1057,22 @@ def main():
         "1920x1080",
         # "2048x1080",
         # "2560x1440",
-        # "3840x2160",
+        "3840x2160",
         # "4096x2160",
     ]
     framerate_list = [
         24,
     ]
     gamut_list = [
-        drc.PRJ_COLOR_SPACE_REC709,
+        # drc.PRJ_COLOR_SPACE_REC709,
+        drc.PRJ_COLOR_SPACE_SRGB,
         # drc.PRJ_COLOR_SPACE_P3D65,
-        # drc.PRJ_COLOR_SPACE_REC2020
+        drc.PRJ_COLOR_SPACE_REC2020
     ]
     gamma_list = [
-        drc.PRJ_GAMMA_STR_GAMMA24,
-        # drc.PRJ_GAMMA_STR_ST2084
+        drc.PRJ_GAMMA_STR_SRGB,
+        # drc.PRJ_GAMMA_STR_GAMMA24,
+        drc.PRJ_GAMMA_STR_ST2084
     ]
 
     for resolution, framerate, gamut, gamma in product(
@@ -1016,8 +1081,13 @@ def main():
         width, height = resolution.split("x")
         create_adaptive_hdr_tp(
             width=width, height=height, framerate=framerate,
-            gamut=gamut, gamma=gamma
+            gamut=gamut, gamma=gamma, half_gain_for_sdr=False
         )
+        if (gamma == drc.PRJ_GAMMA_STR_GAMMA24) or (gamma == drc.PRJ_GAMMA_STR_SRGB):
+            create_adaptive_hdr_tp(
+                width=width, height=height, framerate=framerate,
+                gamut=gamut, gamma=gamma, half_gain_for_sdr=True
+            )
 
 
 def debug():
