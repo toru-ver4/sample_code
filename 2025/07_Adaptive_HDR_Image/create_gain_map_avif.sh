@@ -77,65 +77,77 @@ combine_gain_map() {
     done
 }
 
-combine_gain_map \
-    "./src_img/1920x1080_sRGB_sRGB_0.5x.avif" \
-    "./src_img/1920x1080_ST2084_Rec.2020.avif" \
-    "./gain_map_img" \
-    "${headroom_values[@]}"
+# combine_gain_map \
+#     "./src_img/1920x1080_sRGB_sRGB_0.5x.avif" \
+#     "./src_img/1920x1080_ST2084_Rec.2020.avif" \
+#     "./gain_map_img" \
+#     "${headroom_values[@]}"
 
-combine_gain_map \
-    "./src_img/1920x1080_sRGB_sRGB.avif" \
-    "./src_img/1920x1080_ST2084_Rec.2020.avif" \
-    "./gain_map_img" \
-    "${headroom_values[@]}"
+# combine_gain_map \
+#     "./src_img/1920x1080_sRGB_sRGB.avif" \
+#     "./src_img/1920x1080_ST2084_Rec.2020.avif" \
+#     "./gain_map_img" \
+#     "${headroom_values[@]}"
 
-# for headroom in $headroom_values; do
-#     output="./img/type1_sdr_with_gain_map_headroom-${headroom}.avif"
+# combine_gain_map \
+#     "./src_img/kanazawa_01_sRGB.avif" \
+#     "./src_img/kanazawa_01_BT2100-PQ.avif" \
+#     "./gain_map_img" \
+#     "${headroom_values[@]}"
+
+# combine_gain_map \
+#     "./src_img/kenrokuen_01_sRGB.avif" \
+#     "./src_img/kenrokuen_01_BT2100-PQ.avif" \
+#     "./gain_map_img" \
+#     "${headroom_values[@]}"
+
+# combine_gain_map \
+#     "./src_img/kanazawa_castle_01_sRGB.avif" \
+#     "./src_img/kanazawa_castle_01_BT2100-PQ.avif" \
+#     "./gain_map_img" \
+#     "${headroom_values[@]}"
+
+# # HDR Capacity Image
+# capacity_values=(0.000 0.563 0.978 1.300 1.563 1.978 2.300 2.563 2.885 3.300 3.622 3.885 4.300 5.622 6.965)
+# for capacity in "${capacity_values[@]}"; do
+#     output="./gain_map_img/hdr_capacity_checker_headroom-${capacity}.avif"
 #     avifgainmaputil combine \
-#         ./img/BT2100-BT1886.avif \
-#         ./img/BT2100-PQ.avif \
+#         ./src_img/HDR_Capacity_${capacity}_1280x720.avif \
+#         ./src_img/HDR_Capacity_SDR_1280x720.avif \
 #         ${output} \
 #         --qgain-map 100 \
 #         --depth-gain-map 10 \
 #         --yuv-gain-map 444 \
-#         --cicp-base 1/1/0 \
-#         --cicp-alternate 9/16/0 \
+#         --cicp-base 9/16/0 \
+#         --cicp-alternate 9/13/0 \
 #         --qcolor 100 \
 #         --depth 10 \
-#         --manual-base-hdr-headroom 0.0 \
-#         --manual-alternate-hdr-headroom ${headroom}
+#         --manual-base-hdr-headroom ${capacity} \
+#         --manual-alternate-hdr-headroom 0.0
 # done
 
-# for headroom in $headroom_values; do
-#     output="./img/type2_sdr_with_gain_map_headroom-${headroom}.avif"
-#     avifgainmaputil combine \
-#         ./img/BT2100-BT1886.avif \
-#         ./img/BT2100-PQ.avif \
-#         ${output} \
-#         --qgain-map 100 \
-#         --depth-gain-map 10 \
-#         --yuv-gain-map 444 \
-#         --cicp-base 1/1/0 \
-#         --cicp-alternate 9/16/0 \
-#         --qcolor 100 \
-#         --depth 10 \
-#         --manual-base-hdr-headroom 0.0 \
-#         --manual-alternate-hdr-headroom ${headroom}
-# done
 
-# for headroom in $headroom_values; do
-#     output="./img/type3_sdr_with_gain_map_headroom-${headroom}.avif"
-#     avifgainmaputil combine \
-#         ./img/BT2100-BT1886.avif \
-#         ./img/BT2100-PQ.avif \
-#         ${output} \
-#         --qgain-map 100 \
-#         --depth-gain-map 10 \
-#         --yuv-gain-map 444 \
-#         --cicp-base 1/1/0 \
-#         --cicp-alternate 9/16/0 \
-#         --qcolor 100 \
-#         --depth 10 \
-#         --manual-base-hdr-headroom 0.0 \
-#         --manual-alternate-hdr-headroom ${headroom}
-# done
+# blog iamge
+avifgainmaputil combine \
+    ./src_img/kenrokuen_01_sRGB.png \
+    ./src_img/kenrokuen_01_BT2100-PQ_1000nit.avif \
+    ./gain_map_img/kenrokuen_01_sRGB_BT2100-PQ_1000nit.avif \
+    --qgain-map 100 \
+    --depth-gain-map 10 \
+    --yuv-gain-map 444 \
+    --cicp-base 1/13/0 \
+    --cicp-alternate 9/16/0 \
+    --qcolor 100 \
+    --depth 10
+
+avifgainmaputil combine \
+    ./src_img/kenrokuen_01_sRGB.png \
+    ./src_img/kenrokuen_01_BT2100-PQ_10000nit.avif \
+    ./gain_map_img/kenrokuen_01_sRGB_BT2100-PQ_10000nit.avif \
+    --qgain-map 100 \
+    --depth-gain-map 10 \
+    --yuv-gain-map 444 \
+    --cicp-base 1/13/0 \
+    --cicp-alternate 9/16/0 \
+    --qcolor 100 \
+    --depth 10
