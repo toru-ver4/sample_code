@@ -278,6 +278,30 @@ def get_current_project():
 
 
 @log_return_value
+def get_current_page():
+    """
+    Returns
+    -------
+    str
+        A current page name.
+        The return value is one of the following strings:
+            * "media"
+            * "cut"
+            * "edit"
+            * 'fusion'
+            * "color"
+            * "deliver"
+    """
+    current_page = resolve.GetCurrentPage()
+
+    if current_page is None:
+        msg = 'Failed to get current page. '
+        msg += 'Please verify that the DaVinci Resolve\'s project is opend.'
+        raise TyResolveModuleError(current_page, msg)
+
+    return current_page
+
+@log_return_value
 def open_page(page_name="edit"):
     """
     Parameters
@@ -1104,6 +1128,11 @@ def set_tool_topleft_color(tool, rgba=[0.18, 0.18, 0.18, 1.0]):
 
 @log_return_value
 def set_tool_position(comp, tool, pos=(1, 1)):
+    current_page = get_current_page()
+    if current_page != "fusion":
+        # activate `comp.CurrentFrame`
+        open_page(page_name="fusion")
+
     flow = comp.CurrentFrame.FlowView
     flow.SetPos(tool, pos[0], pos[1])
 
@@ -1262,6 +1291,55 @@ def add_line_comp(
         )
 
     return line_merge
+
+
+def add_rectangle_comp(
+        comp, rgba_color=[1, 1, 1, 1], center=[0.5, 0.5], width=0.1, height=0.1, base_pos=[0, 0]):
+    """
+    Add a rectangle component to the composition using a Background node and a
+    Mask node. The Mask node is used to create the rectangle shape and is placed
+    above the Background node.
+    Parameters:
+        comp (object): The composition object to which the nodes are added.
+        rgba_color (list, optional): A list of four values representing the red,
+            green, blue, and alpha components of the rectangle color. Default is
+            [1, 1, 1, 1].
+        center (list, optional): A list of two values specifying the center
+            coordinates (x, y) of the rectangle within the node space. Default is
+            [0.5, 0.5].
+        width (float, optional): The width of the rectangle. Default is 0.1.
+        height (float, optional): The height of the rectangle. Default is 0.1.
+        base_pos (list, optional): A list of two values representing the base
+            position (x, y) for positioning the nodes. Default is [0, 0].
+    Returns:
+        object: The created Background node with the applied Mask node effect.
+    """
+    x_pos = base_pos[0]
+    y_pos = base_pos[1]
+
+    mask = add_comp_tool(
+        comp=comp, name="RectangleMask", pos=(x_pos, y_pos-1)
+    )
+    mask_input = {
+        "Center": {1: center[0], 2: center[1], 3: 0.0},
+        "Width": width,
+        "Height": height,
+    }
+    set_multiple_tool_input(
+        tool=mask, input_dict=mask_input
+    )
+
+    bg = add_comp_tool(comp=comp, name="Background", pos=(x_pos, y_pos))
+    bg_input = {
+        "TopLeftRed": rgba_color[0],
+        "TopLeftGreen": rgba_color[1],
+        "TopLeftBlue": rgba_color[2],
+        "TopLeftAlpha": rgba_color[3],
+        "EffectMask": mask,
+    }
+    set_multiple_tool_input(tool=bg, input_dict=bg_input)
+
+    return bg
 
 
 def force_rcm_update_via_page_switch():

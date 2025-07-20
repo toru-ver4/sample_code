@@ -210,6 +210,7 @@ float3 apply_false_color_y(float3 rgb)
 {
     // Compute luma in Rec.2020-Linear space
     float y = dot(rgb, float3(0.262700212, 0.677998072, 0.0593017165));
+    y = clamp(y, 0.0f, 100.0f);
 
     if (y <= t1) {
         // SDR region: monochrome mapping

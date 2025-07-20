@@ -1,0 +1,140 @@
+#include "drawing.h"
+#include "ampas_color_lib.h"
+
+#define NUM_OF_MAJOR_LUMINANCE      (7)
+#define NUM_OF_MINOR_LUMINANCE      (8)
+#define NUM_OF_LUMINANCE_MAGNITUDE  (5)
+
+DEFINE_UI_PARAMS(ramp_height_ratio, Ramp Height, DCTLUI_SLIDER_FLOAT, 0.1, 0.0, 1.0, 0.000001)
+DEFINE_UI_PARAMS(line_width, Border Width, DCTLUI_SLIDER_INT, 4, 0, 32, 1)
+DEFINE_UI_PARAMS(st_pos_h, Start Position H, DCTLUI_SLIDER_FLOAT, 0.1, 0.0, 1.0, 0.000001)
+DEFINE_UI_PARAMS(st_pos_v, Start Position V, DCTLUI_SLIDER_FLOAT, 0.1, 0.0, 1.0, 0.000001)
+DEFINE_UI_PARAMS(show_top_scale, Show Top Scale, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 1.0, 0.1)
+DEFINE_UI_PARAMS(show_bottom_scale, Show Bottom Scale, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 1.0, 0.1)
+DEFINE_UI_PARAMS(enable_8bit_mode, Enable 8-bit Mode, DCTLUI_CHECK_BOX, 0)
+
+// main function
+__DEVICE__ float4 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B, float p_A)
+{
+    float4 rgba = {p_R, p_G, p_B, p_A};
+    float3 scale_color = {0.4, 0.4, 0.4};
+    float3 outline_color = {0.0, 0.0, 0.0};
+    float st2084_cv_float;
+    int st2084_cv_10bit;
+    float linear = 0;
+    // float ramp_height_ratio = 0.1;
+    float luminance_list[NUM_OF_MAJOR_LUMINANCE] = {
+        0,
+        0.1 / 100.0,
+        1 / 100.0,
+        10 / 100.0,
+        100 / 100.0,
+        1000 / 100.0,
+        10000 / 100.0,
+    };
+
+    float minor_luminance_list[NUM_OF_MINOR_LUMINANCE] = {
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+    };
+    float luminance_magnitude_list[NUM_OF_LUMINANCE_MAGNITUDE] = {
+        0.1 / 100,
+        1.0 / 100,
+        10.0 / 100,
+        100.0 / 100,
+        1000.0 / 100
+    };
+
+    int ramp_width = _round(1024 * p_Height / 1080.0f);
+    int ramp_height = _round(p_Height * ramp_height_ratio);
+    int ruler_height = _round(ramp_height * 1.36);
+    int minor_ruler_height = _round(ramp_height * 1.2);
+    int st_pos_h_10bit = _round(st_pos_h * p_Width);
+    int ed_pos_h_10bit = st_pos_h_10bit + ramp_width;
+    int st_pos_v_10bit = _round(st_pos_v * p_Height);
+    int ed_pos_v_10bit = st_pos_v_10bit + ramp_height;
+    int ramp_center_v = (ed_pos_v_10bit - st_pos_v_10bit) / 2 + st_pos_v_10bit;
+    int ruler_st_pos_v;
+    int ruler_ed_pos_v;
+    int minor_ruler_st_pos_v;
+    int minor_ruler_ed_pos_v;
+
+    if (show_top_scale > 0.5) {
+        ruler_st_pos_v = ramp_center_v - ruler_height / 2;
+        minor_ruler_st_pos_v = ramp_center_v - minor_ruler_height / 2;
+    }
+    else {
+        ruler_st_pos_v = ramp_center_v;
+        minor_ruler_st_pos_v = ramp_center_v;
+    }
+
+    if (show_bottom_scale > 0.5){
+        ruler_ed_pos_v = ramp_center_v + ruler_height / 2;
+        minor_ruler_ed_pos_v = ramp_center_v + minor_ruler_height / 2;
+    }
+    else {
+        ruler_ed_pos_v = ramp_center_v;
+        minor_ruler_ed_pos_v = ramp_center_v;
+    }
+
+    int2 inner_st_pos = {st_pos_h_10bit, st_pos_v_10bit};
+    int2 inner_ed_pos = {ed_pos_h_10bit, ed_pos_v_10bit};
+
+    for(int ii=0; ii<NUM_OF_MAJOR_LUMINANCE; ii++){
+        float cv = Linear_2_ST2084(luminance_list[ii]);
+        int ruler_pos_h = _round(cv * ramp_width) + st_pos_h_10bit;
+        int2 ruler_st_pos = {ruler_pos_h - 1, ruler_st_pos_v};
+        int2 ruler_ed_pos = {ruler_pos_h + 1, ruler_ed_pos_v};
+        rgba = draw_rectangle_with_alpha(
+            p_Width, p_Height, p_X, p_Y,
+            rgba,
+            ruler_st_pos, ruler_ed_pos, scale_color
+        );
+    }
+
+    for(int ii=0; ii<NUM_OF_MINOR_LUMINANCE; ii++){
+        for(int jj=0; jj<NUM_OF_LUMINANCE_MAGNITUDE; jj++){
+            float cv = Linear_2_ST2084(
+                minor_luminance_list[ii] * luminance_magnitude_list[jj]
+            );
+            int ruler_pos_h = _round(cv * ramp_width) + st_pos_h_10bit;
+            int2 ruler_st_pos = {ruler_pos_h - 1, minor_ruler_st_pos_v};
+            int2 ruler_ed_pos = {ruler_pos_h + 1, minor_ruler_ed_pos_v};
+            rgba = draw_rectangle_with_alpha(
+                p_Width, p_Height, p_X, p_Y,
+                rgba,
+                ruler_st_pos, ruler_ed_pos, scale_color
+            );
+        }
+    }
+
+    if( (p_X >= st_pos_h_10bit) && (p_X < ed_pos_h_10bit) ) {
+        if( (p_Y >= st_pos_v_10bit) && (p_Y < ed_pos_v_10bit) ){
+            st2084_cv_float = (p_X - st_pos_h_10bit) / float(ramp_width - 1);
+            if (enable_8bit_mode > 0.5) {
+                st2084_cv_10bit = _round(st2084_cv_float * 1023.0f);
+                linear = ST2084_2_Linear((st2084_cv_10bit & 0xFFFC) / 1023.0f);
+            }
+            else {
+                linear = ST2084_2_Linear(st2084_cv_float);
+            }
+            rgba.x = linear;
+            rgba.y = linear;
+            rgba.z = linear;
+            rgba.w = 1.0f;
+        }
+    }
+    rgba = draw_rectangle_outline_with_alpha(
+        p_Width, p_Height, p_X, p_Y,
+        rgba,
+        inner_st_pos, inner_ed_pos, line_width, outline_color
+    );
+
+    return rgba;
+}

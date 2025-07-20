@@ -105,9 +105,9 @@ def compare_tool_input_value(aa, bb):
 
     for idx in range(len(aa_input)):
         if aa_input[idx]["value"] != bb_input[idx]["value"]:
-            msg = f"{aa_input[idx]["name"]}: "
-            msg += f"{aa_input[idx]["value"]}, "
-            msg += f"{bb_input[idx]["value"]}, "
+            msg = f"{aa_input[idx]['name']}: "
+            msg += f"{aa_input[idx]['value']}, "
+            msg += f"{bb_input[idx]['value']}, "
             print(msg)
 
 
