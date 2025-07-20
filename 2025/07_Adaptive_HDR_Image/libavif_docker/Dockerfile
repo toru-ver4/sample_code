@@ -60,7 +60,22 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
 #     && cd /root/local \
 #     && rm -rf /root/local/libjxl
 
-# # Install libavif
+# Install libavif customized
+RUN git clone https://github.com/toru-ver4/libavif.git libavif_aom \
+    && cd libavif_aom/ext \
+    && $SHELL ./libyuv.cmd \
+    && $SHELL ./aom.cmd \
+    && $SHELL ./libsharpyuv.cmd \
+    && $SHELL ./libjpeg.cmd \
+    && $SHELL ./zlibpng.cmd \
+    && cd .. \
+    && cmake -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON \
+    && cmake --build build --parallel \
+    && cmake --install build \
+    && cd /root/local \
+    && rm -rf /root/local/libavif_aom
+
+# # Install libavif default
 # RUN git clone https://github.com/AOMediaCodec/libavif.git -b v1.3.0 libavif_aom \
 #     && cd libavif_aom/ext \
 #     && $SHELL ./libyuv.cmd \

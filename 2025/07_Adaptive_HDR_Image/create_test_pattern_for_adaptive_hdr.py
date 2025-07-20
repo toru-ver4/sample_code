@@ -906,7 +906,7 @@ def create_adaptive_htr_tp_comp(half_gain_for_sdr=False):
         color_gain = dcl.add_comp_tool(comp=comp, name="ColorGain", pos=(x_pos, y_pos))
         color_gain_input = {
 			"LockRGB": 1,
-			"GainRed": 0.5,
+			"GainRed": 100/203,
         }
         dcl.set_multiple_tool_input(tool=color_gain, input_dict=color_gain_input)
         dcl.connect_tool(bg_tool, color_gain)
@@ -1057,7 +1057,7 @@ def main():
         "1920x1080",
         # "2048x1080",
         # "2560x1440",
-        "3840x2160",
+        # "3840x2160",
         # "4096x2160",
     ]
     framerate_list = [
@@ -1065,7 +1065,7 @@ def main():
     ]
     gamut_list = [
         # drc.PRJ_COLOR_SPACE_REC709,
-        drc.PRJ_COLOR_SPACE_SRGB,
+        # drc.PRJ_COLOR_SPACE_SRGB,
         # drc.PRJ_COLOR_SPACE_P3D65,
         drc.PRJ_COLOR_SPACE_REC2020
     ]

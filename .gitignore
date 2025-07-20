@@ -304,3 +304,8 @@ BenchmarkDotNet.Artifacts/
 .vs/
 2025/06_False_Color_Filter_for_OBS/lut/JzChz_gb-lut_method_c_ITU-R BT.709_100nits_jj-1024_hh-4096.npy
 2025/07_Adaptive_HDR_Image/_debug/**
+2025/07_Adaptive_HDR_Image/camera_raw/*.ARW
+2025/07_Adaptive_HDR_Image/camera_raw/*.tiff
+2025/07_Adaptive_HDR_Image/**/*.png
+2025/07_Adaptive_HDR_Image/**/*.avif
+2025/07_Adaptive_HDR_Image/**/*.TIF
