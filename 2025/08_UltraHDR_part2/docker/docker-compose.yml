@@ -7,5 +7,5 @@ services:
             PYTHONPATH: "/work/src/ty_lib"
             DISPLAY: host.docker.internal:0.0
         volumes:
-            - /Users/toru/Work/sample_code:/work/src
+            - C:\Users\toruv\OneDrive\work\sample_code:/work/src
         stdin_open: true
