@@ -111,7 +111,7 @@ def save_gain_map_metadata(
         hdr_fname, sdr_fname, min_val, max_val, offset_val,
         hdr_capacity_min=0.0, hdr_capacity_max=2.3):
     cfg_name = f"./metadata/metadata_{Path(hdr_fname).stem}-"
-    cfg_name += f"{Path(sdr_fname).stem}.cfg"
+    cfg_name += f"{Path(sdr_fname).stem}_hdr_capacity-{hdr_capacity_max:.3f}.cfg"
     print(cfg_name)
 
     with open(cfg_name, 'wt') as f:
@@ -125,15 +125,18 @@ def save_gain_map_metadata(
         buf += f"--hdrCapacityMax {hdr_capacity_max}\n"
         f.write(buf)
 
+    return cfg_name
+
 
 def make_sdr_8bit_jpeg(sdr_fname: str):
     img = tpg.img_read_as_float(sdr_fname)
     fname = sdr_fname.replace(".png", "_8bit.jpeg")
     print(fname)
     img_write_8bit_jpeg_from_float(filename=fname, img_float=img)
+    return fname
 
 
-def create_gain_map_jpeg_and_metadata(hdr_fname, sdr_fname, hdr_tf):
+def create_gain_map_jpeg_and_metadata(hdr_fname, sdr_fname, hdr_tf, hdr_capacity_max=None):
     sdr_linear = linearize_input_image(
         fname=sdr_fname, tf_name=tf.SRGB, cs_name=cs.BT2020
     )
@@ -155,23 +158,62 @@ def create_gain_map_jpeg_and_metadata(hdr_fname, sdr_fname, hdr_tf):
         filename=gain_map_fname, img_float=gain_map_normalized
     )
 
-    save_gain_map_metadata(
-        hdr_fname=hdr_fname, sdr_fname=sdr_fname,
-        offset_val=OFFSET_VAL,
-        min_val=min_val, max_val=max_val,
-        hdr_capacity_min=0.0,
-        hdr_capacity_max=np.log2(1000/SDR_WHITE_LUMINANCE)
-    )
+    if hdr_capacity_max is None:
+        hdr_capacity_max = np.log2(np.max(hdr_linear)/(SDR_WHITE_LUMINANCE / tf.REF_WHITE_LUMINANCE))
+
+    metadata_fname = \
+        save_gain_map_metadata(
+            hdr_fname=hdr_fname, sdr_fname=sdr_fname,
+            offset_val=OFFSET_VAL,
+            min_val=min_val, max_val=max_val,
+            hdr_capacity_min=0.0,
+            hdr_capacity_max=hdr_capacity_max
+        )
+
+    return gain_map_fname, metadata_fname
 
 
 def craete_files_for_ultrahdr_app(hdr_fname, sdr_fname, hdr_tf=tf.ST2084):
     png_16bit_to_rgba1010102(fname=hdr_fname)
     png_16bit_to_rgba8888(fname=sdr_fname)
     # _debug_calc_gain_map_metadata(hdr_fname=hdr_fname, sdr_fname=sdr_fname)
-    make_sdr_8bit_jpeg(sdr_fname=sdr_fname)
-    create_gain_map_jpeg_and_metadata(
-        hdr_fname=hdr_fname, sdr_fname=sdr_fname, hdr_tf=hdr_tf
+    sdr_jpeg_fname = make_sdr_8bit_jpeg(sdr_fname=sdr_fname)
+    gain_map_fname, metadata_fname = \
+        create_gain_map_jpeg_and_metadata(
+            hdr_fname=hdr_fname, sdr_fname=sdr_fname, hdr_tf=hdr_tf
+        )
+
+    output_fname = f"./gain_map_img/{Path(sdr_fname).stem}-{Path(metadata_fname).stem}.jpg"
+
+    run_ultrahdr_app_scenario_4(
+        sdr_fname=sdr_jpeg_fname, gain_map_fname=gain_map_fname,
+        output_fname=output_fname, metadata_fname=metadata_fname
     )
+
+
+def run_ultrahdr_app_scenario_4(
+        sdr_fname, gain_map_fname, output_fname, metadata_fname):
+    cmd = [
+        "ultrahdr_app",
+        "-m", "0",  # 0: encode, 1: decode
+        "-i", sdr_fname,  # sdr source
+        "-g", gain_map_fname,  # gain map
+        "-q", "100",  # quality parameter for sdr
+        "-Q","100",  # quality parameter for gain map
+        "-C", "2",  # hdr intent color gamut. 0: bt709, 1: p3, 2: bt2100
+        "-c", "2",  # sdr intent color gamut. 0: bt709, 1: p3, 2: bt2100
+        "-t", "2",  # hdr_intent_transfer function. 0:linear, 1: hlg, 2:pq
+        "-R", "1",  # color range. 0: narrow range, 1: full range
+        "-M", "1",  # multi channel gain map. 0: disable, 1: enable
+        # "-L", "1000",  # target display peak luminance [nits].
+        "-f", metadata_fname,  # gainmap metadata
+        "-z", output_fname  # output file
+    ]
+    try:
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        print("ultrahdr_app output:", result.stdout)
+    except subprocess.CalledProcessError as e:
+        print("Error running ultrahdr_app:", e.stderr)
 
 
 if __name__ == '__main__':
