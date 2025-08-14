@@ -108,7 +108,7 @@ def _debug_calc_gain_map_metadata(hdr_fname, sdr_fname):
 
 
 def save_gain_map_metadata(
-        hdr_fname, sdr_fname, min_val, max_val, offset_val,
+        hdr_fname, sdr_fname, min_content_boost, max_content_boost, offset_val,
         hdr_capacity_min=0.0, hdr_capacity_max=2.3):
     cfg_name = f"./metadata/metadata_{Path(hdr_fname).stem}-"
     cfg_name += f"{Path(sdr_fname).stem}_hdr_capacity-{hdr_capacity_max:.3f}.cfg"
@@ -116,13 +116,14 @@ def save_gain_map_metadata(
 
     with open(cfg_name, 'wt') as f:
         buf = ""
-        buf += f"--maxContentBoost {2**max_val}\n"
-        buf += f"--minContentBoost {2**min_val}\n"
-        buf += "--gamma 1.0\n"
-        buf += f"--offsetSdr {offset_val}\n"
-        buf += f"--offsetHdr {offset_val}\n"
+        buf += f"--maxContentBoost {max_content_boost[0]} {max_content_boost[1]} {max_content_boost[2]}\n"
+        buf += f"--minContentBoost {min_content_boost[0]} {min_content_boost[1]} {min_content_boost[2]}\n"
+        buf += "--gamma 1.0 1.0 1.0\n"
+        buf += f"--offsetSdr {offset_val} {offset_val} {offset_val}\n"
+        buf += f"--offsetHdr {offset_val} {offset_val} {offset_val}\n"
         buf += f"--hdrCapacityMin {hdr_capacity_min}\n"
         buf += f"--hdrCapacityMax {hdr_capacity_max}\n"
+        buf += "--useBaseColorSpace 1\n"
         f.write(buf)
 
     return cfg_name
@@ -147,10 +148,14 @@ def create_gain_map_jpeg_and_metadata(hdr_fname, sdr_fname, hdr_tf, hdr_capacity
     )
 
     gain_map_raw = np.log2((hdr_linear + OFFSET_VAL)/(sdr_linear + OFFSET_VAL))
+    gain_map_normalized = np.zeros_like(gain_map_raw)
+    min_val = np.min(gain_map_raw, axis=(0, 1))
+    max_val = np.max(gain_map_raw, axis=(0, 1))
 
-    min_val = np.min(gain_map_raw)
-    max_val = np.max(gain_map_raw)
-    gain_map_normalized = (gain_map_raw - min_val) / (max_val - min_val)
+    for c_idx in range(3):
+        min_val[c_idx] = 0.0 if min_val[c_idx] < 0.0 else min_val[c_idx]
+        gain_map_normalized[..., c_idx] =\
+            np.clip((gain_map_raw[..., c_idx] - min_val[c_idx]) / (max_val[c_idx] - min_val[c_idx]), 0.0, 1.0)
 
     gain_map_fname = "./gain_map_img/gain_map_"
     gain_map_fname += f"{Path(hdr_fname).stem}-{Path(sdr_fname).stem}.jpeg"
@@ -165,22 +170,24 @@ def create_gain_map_jpeg_and_metadata(hdr_fname, sdr_fname, hdr_tf, hdr_capacity
         save_gain_map_metadata(
             hdr_fname=hdr_fname, sdr_fname=sdr_fname,
             offset_val=OFFSET_VAL,
-            min_val=min_val, max_val=max_val,
-            hdr_capacity_min=0.0,
-            hdr_capacity_max=hdr_capacity_max
+            min_content_boost=2**min_val,
+            max_content_boost=2**max_val,
+            hdr_capacity_min=2**0.0,
+            hdr_capacity_max=2**0.5
         )
 
     return gain_map_fname, metadata_fname
 
 
-def craete_files_for_ultrahdr_app(hdr_fname, sdr_fname, hdr_tf=tf.ST2084):
+def craete_files_for_ultrahdr_app(hdr_fname, sdr_fname, hdr_tf=tf.ST2084, hdr_capacity_max=None):
     png_16bit_to_rgba1010102(fname=hdr_fname)
     png_16bit_to_rgba8888(fname=sdr_fname)
     # _debug_calc_gain_map_metadata(hdr_fname=hdr_fname, sdr_fname=sdr_fname)
     sdr_jpeg_fname = make_sdr_8bit_jpeg(sdr_fname=sdr_fname)
     gain_map_fname, metadata_fname = \
         create_gain_map_jpeg_and_metadata(
-            hdr_fname=hdr_fname, sdr_fname=sdr_fname, hdr_tf=hdr_tf
+            hdr_fname=hdr_fname, sdr_fname=sdr_fname, hdr_tf=hdr_tf,
+            hdr_capacity_max=hdr_capacity_max
         )
 
     output_fname = f"./gain_map_img/{Path(sdr_fname).stem}-{Path(metadata_fname).stem}.jpg"
@@ -222,8 +229,15 @@ if __name__ == '__main__':
     # convert_avif_to_png_2100pq_2020srgb_river()
     # convert_avif_to_png_rec2100_pq_shiga_kougen()
 
+    # craete_files_for_ultrahdr_app(
+    #     hdr_fname="./src_png/1920x1080_ST2084_Rec.2020.png",
+    #     sdr_fname="./src_png/1920x1080_sRGB_Rec.2020_0.5x.png",
+    #     hdr_tf=tf.ST2084
+    # )
+
     craete_files_for_ultrahdr_app(
-        hdr_fname="./src_png/1920x1080_ST2084_Rec.2020.png",
-        sdr_fname="./src_png/1920x1080_sRGB_Rec.2020_0.5x.png",
-        hdr_tf=tf.ST2084
+        hdr_fname="./src_png/HDR_Capacity_2.300_1280x720.png",
+        sdr_fname="./src_png/HDR_Capacity_SDR_1280x720.png",
+        hdr_tf=tf.ST2084,
+        hdr_capacity_max=None
     )
