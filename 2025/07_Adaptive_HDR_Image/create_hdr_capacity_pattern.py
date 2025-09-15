@@ -855,8 +855,11 @@ def main():
     # debug_resolve()
     # debug_fusion()
 
+    # hdr_capacity_list = [
+    #     0.000, 0.563, 0.978, 1.300, 1.563, 1.978, 2.300, 2.563, 2.885, 3.300, 3.622, 3.885, 4.300, 5.622, 6.965
+    # ]
     hdr_capacity_list = [
-        0.000, 0.563, 0.978, 1.300, 1.563, 1.978, 2.300, 2.563, 2.885, 3.300, 3.622, 3.885, 4.300, 5.622, 6.965
+        2.300
     ]
 
     create_hdr_capacity_tp(
@@ -865,13 +868,12 @@ def main():
         hdr_capacity=None
     )
 
-    # for hdr_capacity in hdr_capacity_list:
-    #     create_hdr_capacity_tp(
-    #         width=1280, height=720, framerate=24,
-    #         gamut=drc.PRJ_COLOR_SPACE_REC2020, gamma=drc.PRJ_GAMMA_STR_ST2084,
-    #         hdr_capacity=hdr_capacity
-    #     )
-    #     break
+    for hdr_capacity in hdr_capacity_list:
+        create_hdr_capacity_tp(
+            width=1280, height=720, framerate=24,
+            gamut=drc.PRJ_COLOR_SPACE_REC2020, gamma=drc.PRJ_GAMMA_STR_ST2084,
+            hdr_capacity=hdr_capacity
+        )
 
 
 def make_sdr_image():

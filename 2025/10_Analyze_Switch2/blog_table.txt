@@ -1,0 +1,207 @@
+# 更新履歴
+
+| 日付 | 内容 |
+|:-------------:|:--------|
+| 2025/09/07 | 初版作成 |
+| 2025/09/08 | 「HDR調整がゲームの映像に与える影響」の`P1`パラメータの変化を以下に変更 ((P1にはオフセットとして 80 nits が加わることを考慮できていなかったため))<br>"23/992 --> 46/992 --> 92/992"<br>↓<br>"0/992 --> 17/992 --> 42/992 --> 92/992"  |
+| 2025/09/08 | 付録に「パラメータ`P2`に関する考察」を追記 |
+
+# 背景
+
+* ついに筆者も Nintendo Switch 2 を購入することができた  ((以後は Nintendo Switch 2 を Switch 2 と略す)) ((誇張抜きで石川県から県外に6～7回は探しに出かけていた。最終的に新潟のヨドバシカメラで購入した))
+* HDR対応ゲームを快適に楽しむために Switch 2 の HDR調整について調べたのだが、[公式のサポートページ](https://support.nintendo.com/jp/switch2/index.html) には HDR調整に関する説明が特に無かった
+* 筆者は、動作原理が分からないまま HDR調整を行うと HDR対応ゲームの映像が意図しないものとなる危険性があると考えた
+* そのため HDMI信号をキャプチャして Switch 2 の HDR調整の仕様を簡単に調べることにした
+* なお、筆者は以前に PlayStation 5 の HDR調整について調べた経験がある。参考までに過去記事のリンクを掲載しておく
+
+[https://trev16.hatenablog.com/entry/2023/07/09/191658:embed:cite]
+
+# 目的
+
+* Switch 2 の HDR調整について以下の点を調べる
+  * どのような調整 UI となっているか
+  * HDR調整によってゲームの映像がどう変化するのか
+  * HDR調整のパラメータはどのような意味を持つのか
+
+# おことわり
+
+* 今回の調査は Switch 2 のシステムバージョン「20.4.0」にて実施した
+  * 今後のアップデートで仕様が変わる可能性があるので、あくまでも参考情報として読んで頂きたい。
+* 今回の調査は Switch 2 を TVモードにして実施した
+  * 携帯モードでの挙動については何も確認していないので注意して頂きたい
+
+# 結論
+
+#### HDR調整の UI について
+
+* Switch 2 には HDR調整として 2種類の UI が用意されている
+  * **① 10% Window を使いモニターの輝度値を <span style="color: #ff5252">993段階</span> で調整する UI (図1)**
+    * 以後、この UI で調整するパラメータを<span style="color: #ff5252">`P1`</span>と呼ぶ
+    * `P1`の範囲は 0～992 である ((0～992 である根拠は後述する))
+  * **② ゲーム画面を見ながら画面全体の明るさを調整する UI (図2)**
+    * 以後、この UI で調整するパラメータを<span style="color: #ff5252">`P2`</span>と呼ぶ
+    * `P2`の範囲は筆者の独断で 0.0～1.0 と定義する ((刻み幅は存在するはずだが、何段階か分からなかったため本記事では 0.0～1.0 の浮動小数点表記とした))
+
+| [f:id:takuver4:20250905174645p:plain] | [f:id:takuver4:20250905174657p:plain] |
+|:---------------------:|:-------------------:|
+| 図1. HDR調整の UI ① | 図2. HDR調整の UI ② |
+
+#### HDR調整がゲームの映像に与える影響
+
+* HDR調整の結果により画面の明るさが変化する
+* `P1`を 0/992 --> 17/992 --> 43/992 --> 92/992、`P2`を 0.0 --> 約0.5 --> 1.0 と変化させた場合の画面の様子を以下に示す
+
+|   |  `P2 = 0.0`  | `P2 ≒ 0.5`  | `P2 = 1.0`  | 
+|:-------:|:-------:|:-------:|:-------:|
+| `P1 = 0/992`  | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/IMG-05_P1-000_P2-00.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/IMG-05_P1-000_P2-05.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/IMG-05_P1-000_P2-10.avif) |
+| `P1 = 17/992` | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/IMG-05_P1-017_P2-00.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/IMG-05_P1-017_P2-05.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/IMG-05_P1-017_P2-10.avif) |
+| `P1 = 42/992` | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/IMG-05_P1-042_P2-00.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/IMG-05_P1-042_P2-05.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/IMG-05_P1-042_P2-10.avif) |
+| `P1 = 92/992` | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/IMG-05_P1-092_P2-00.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/IMG-05_P1-092_P2-05.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/IMG-05_P1-092_P2-10.avif) |
+
+###### マリオカートワールドの画面
+
+|   |  `P2 = 0.0`  | `P2 ≒ 0.5`  | `P2 = 1.0`  | 
+|:-------:|:-------:|:-------:|:-------:|
+| `P1 = 0/992`  | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW_P1-000_P2-00.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW_P1-000_P2-05.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW_P1-000_P2-10.avif) |
+| `P1 = 17/992` | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW_P1-017_P2-00.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW_P1-017_P2-05.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW_P1-017_P2-10.avif) |
+| `P1 = 42/992` | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW_P1-042_P2-00.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW_P1-042_P2-05.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW_P1-042_P2-10.avif) |
+| `P1 = 92/992` | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW_P1-092_P2-00.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW_P1-092_P2-05.avif) | ![1](https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW_P1-092_P2-10.avif) |
+
+
+<br>
+
+#### パラメータ`P1`に関する考察
+
+筆者は`P1`は接続しているモニターのピーク輝度情報の計算に使っていると推測する。
+
+モニターのピーク輝度情報 (nits) を`L`と置くと、`P1`と`L`の関係は以下だと推測する。
+
+<br />
+<div align="center">
+[tex: \displaystyle
+L = 10 \cdot P1 + 80 \ 
+] [nits]
+</div>
+<br />
+
+* 例:
+  * `P1 = 52` の場合 `L = 600`
+  * `P1 = 92` の場合 `L = 1000`
+
+詳細については付録を参照。
+
+#### パラメータ`P2`について
+
+残念ながら筆者は`P2`が具体的に何を意味するパラメータか分からなかった。なので結論欄で述べることは無い。
+
+一方で少し調べた内容はあるので付録に記載をしておく。
+
+#### HDR調整に関する注意事項
+
+* Switch 2 本体の HDR調整結果が無視されるゲームソフトも存在する
+* 例えば [ホグワーツレガシー](https://store-jp.nintendo.com/item/software/D70010000095416) はゲームソフト内に独自の HDR調整 UI 用意しており、Switch 2 の HDR調整結果は無視された
+* Switch 2 本体の HDR調整結果を使うかどうかはゲームソフト側に委ねられていると推測する
+
+<figure class="figure-image figure-image-fotolife" title="図3. ゲームソフト内に専用の HDR調整項目がある例（Switch 2 の HDR調整は無視される）">[f:id:takuver4:20250907091355p:plain:w720]<figcaption>図3. ゲームソフト内に専用の HDR調整項目がある例（Switch 2 の HDR調整は無視される）</figcaption></figure>
+
+# 付録
+
+ここでは、結論欄の内容にたどり着くまでに筆者が行った作業や、ゲームをプレイした感想などを述べていく。
+
+#### 10% Window を使った HDR調整 UI ①の分析
+
+筆者は結論欄で`P1`は 0～992 の 993段階だと述べたが、これは地道に回数をカウントして確認した。
+確認した様子を動画にしたので以下に添付しておく。
+
+<div align="center">
+<iframe width="720" height="405" src="https://www.youtube.com/embed/sf0Dl1I8gfA?si=FFrkHJYeIfpS6iQR" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+</div>
+
+続いて筆者は 1 step あたりの輝度の変化量を確認した。DaVinci Resolve を使って 右側の☀マークの Code Value と対応する輝度値を確認した結果を以下に示す。
+
+| `P1` | Code Value (10-bit) | Luminance (nits) |
+|:---:|:---:|:---:|
+| 0 | 497 | 80.0 |
+| 1 | 509 | 90.0 |
+| 2 | 520 | 100.2 |
+| 3 | 530 | 110.4 |
+| 4 | 539 | 120.5 |
+| 5 | 546 | 128.8 |
+| 52 | 711 | 593 |
+| 92 | 770 | 1007.9 |
+| 992 | 1021 | 9815 |
+
+<br>
+
+上記の表から以下の 3点が分かった。
+
+* 1 step で 10 nits 程度増えている
+* 最小輝度は 80 nits である
+* 最大輝度は約10000 nits である
+
+上記を踏まえると HDR調整が 993段階という中途半端な数値だったことにも説明がつく。なぜならば以下の数式が成立するからである。
+
+<br />
+<div align="center">
+[tex: \displaystyle
+\frac{10000 - 80}{10} = 992
+]
+</div>
+<br />
+
+この結果から筆者は、HDR調整画面の右側の☀マークの輝度値`L`と`P1`の関係性は以下であると推測した（微妙に誤差があるものの、キャプチャデバイス側の誤差だと考えて無視することにした）。
+
+<br />
+<div align="center">
+[tex: \displaystyle
+L = 10 \cdot P1 + 80
+] [nits]
+</div>
+<br />
+
+#### パラメータ`P2`に関する考察
+
+パラメータ`P2`について筆者が理解したことは以下の 2点である。
+
+* (a) `P2`に小さい値を設定すると画面が暗くなる （ただし`P1=0/0992`の場合を除く）
+* (b) ゲームソフトは`P1`と`P2`を掛け算した値を使う訳ではない
+
+(a) に関しては結論欄のスクリーンショットのテーブルを見れば自明である。
+
+(b) に関して、筆者は初めは <span style="color: #ff5252">`P1`と`P2`を掛け算した値が Switch 2 に保存されると予想</span>していた。実際、HDR調整のUI② ではそのように見えた。
+
+しかし、マリオカートワールドのスクリーンショットを解析したところ、その予想は外れた。パラメータを「`P1=92/992`, `P2=0.0`」にした場合と「`P1=0/992`, `P2=1.0`」にした場合とでは違いがあった。
+
+<div class="ic-wrapper" data-before="https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW-01_P1-000_P2-10.avif" data-after="https://toru-ver4.github.io/pages_test/AVIF_Adaptive_HDR_test/img_blog/MKW-01_P1-092_P2-00.avif"></div>
+<div align="center">図4. `P1=92/992`, `P2=0.0` と `P1=0/992`, `P2=1.0` の比較。両者には違いがある</div>
+
+むしろ、マリオカートワールドでは`P2`を0.0にすると SDR に近づいているように見えた。
+
+
+#### マリオカートワールドの画面について
+
+（単なる感想です）
+
+パラメータ`P2`を 0.0 に下げても HDR であることが感じられる画面になっており、筆者は大変ありがたく感じている。
+
+筆者がメインで使っている AW3225QF という OLEDモニターは、高輝度を出すことが難しく Final Fantasy 7 Rebirth では輝度の変化に相当に苦しめられた。
+
+[https://trev16.hatenablog.com/entry/2024/03/17/222252:embed:cite]
+
+しかし、マリオカートワールドは HDR調整により十分に輝度を落とすことができ、かつ輝度を落とした状態でも広いダイナミックレンジが維持されている（SDRにはならない）ため、快適にHDRの画面を堪能することができている。Switch 2 を買って良かったと心の底から思っている。
+
+#### 使用機材の紹介
+
+最後に筆者が HDMIキャプチャに使用した機材を説明しておく。
+
+| 項目 | 名称 or Version |
+|:------:|:------:|
+| HDMI キャプチャデバイス | AverMedia製 GC553G2 |
+| GC553G2 のファームウェア | v1.0.8.1 |
+| キャプチャソフト | Streaming Center - v1.6.65.1 |
+
+# 感想
+
+調査が一区切りついたので、これでやっとゲームに集中できる。いや、その前に Ultra HDR の記事を書かないと…（微妙に生じる誤差の扱いをどうすればよいか迷い中）
+
+

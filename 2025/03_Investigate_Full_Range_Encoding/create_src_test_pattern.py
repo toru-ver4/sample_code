@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from colour import write_image
-from colour.io.image import ImageAttribute_Specification
+from colour.io.image import Image_Specification_Attribute
 
 # import my libraries
 import test_pattern_generator2 as tpg
@@ -102,7 +102,7 @@ def create_10bit_pattern_for_full_range_encode():
     tpg.img_wirte_float_as_16bit_int(
         filename=output_fname_tif, img_float=img/1023
     )
-    bit_option = ImageAttribute_Specification("oiio:BitsPerSample", 10)
+    bit_option = Image_Specification_Attribute("oiio:BitsPerSample", 10)
     write_image(
         img/1023, output_fname_dpx, bit_depth='uint16', attributes=[bit_option]
     )
