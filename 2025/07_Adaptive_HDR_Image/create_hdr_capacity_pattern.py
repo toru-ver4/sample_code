@@ -554,13 +554,13 @@ def create_capacity_text(comp, hdr_capacity, base_pos=[0, 0]):
         "Font": font_family,
         "Style": font_weight,
         "Size": 0.105,
-        "Red1": fg_luminance,
-        "Green1": fg_luminance if hdr_capacity is not None else 0.0,
-        "Blue1": fg_luminance if hdr_capacity is not None else 0.0,
+        "Red1": fg_luminance if hdr_capacity is not None else bg_luminance / 2.03,
+        "Green1": fg_luminance if hdr_capacity is not None else 0.1,
+        "Blue1": fg_luminance if hdr_capacity is not None else 0.1,
         "VerticalTopCenterBottom": 0.0,
         "HorizontalLeftCenterRight": 0.0,
         "AdvancedFontControls": 0.0,
-        "LineSpacing": 1.2,
+        "LineSpacing": 1.85,
     }
     dcl.set_multiple_tool_input(tool=info_text, input_dict=info_text_input)
 
@@ -585,21 +585,21 @@ def create_rectangles(comp, is_sdr, base_pos=[0, 0]):
 
     if is_sdr:
         rgba_color_list = [
-            [1, 1, 0, 1],
-            [0, 1, 1, 1],
-            [0, 1, 0, 1],
-            [1, 0, 1, 1],
-            [1, 0, 0, 1],
-            [0, 0, 1, 1],
+            [1.0, 1.0, 0.1, 1.0],
+            [0.1, 1.0, 1.0, 1.0],
+            [0.1, 1.0, 0.1, 1.0],
+            [1.0, 0.1, 1.0, 1.0],
+            [1.0, 0.1, 0.1, 1.0],
+            [0.1, 0.1, 1.0, 1.0],
         ]
     else:
         rgba_color_list = [
-            [1, 1, 1, 1],
-            [1, 1, 1, 1],
-            [1, 1, 1, 1],
-            [1, 1, 1, 1],
-            [1, 1, 1, 1],
-            [1, 1, 1, 1],
+            [1.0, 1.0, 1.0, 1.0],
+            [1.0, 1.0, 1.0, 1.0],
+            [1.0, 1.0, 1.0, 1.0],
+            [1.0, 1.0, 1.0, 1.0],
+            [1.0, 1.0, 1.0, 1.0],
+            [1.0, 1.0, 1.0, 1.0],
         ]
 
     num_of_color = len(rgba_color_list)
@@ -708,7 +708,7 @@ def create_htr_capacity_tp_comp(hdr_capacity=2.3, is_sdr=False):
         color_gain = dcl.add_comp_tool(comp=comp, name="ColorGain", pos=(x_pos, y_pos))
         color_gain_input = {
 			"LockRGB": 1,
-			"GainRed": 0.5,
+			"GainRed": 100/203,
         }
         dcl.set_multiple_tool_input(tool=color_gain, input_dict=color_gain_input)
         dcl.connect_tool(bg_tool, color_gain)
@@ -855,8 +855,11 @@ def main():
     # debug_resolve()
     # debug_fusion()
 
+    # hdr_capacity_list = [
+    #     0.000, 0.563, 0.978, 1.300, 1.563, 1.978, 2.300, 2.563, 2.885, 3.300, 3.622, 3.885, 4.300, 5.622, 6.965
+    # ]
     hdr_capacity_list = [
-        0.000, 0.563, 0.978, 1.300, 1.563, 1.978, 2.300, 2.563, 2.885, 3.300, 3.622, 3.885, 4.300, 5.622, 6.965
+        2.300
     ]
 
     create_hdr_capacity_tp(
@@ -871,7 +874,6 @@ def main():
             gamut=drc.PRJ_COLOR_SPACE_REC2020, gamma=drc.PRJ_GAMMA_STR_ST2084,
             hdr_capacity=hdr_capacity
         )
-        # break
 
 
 def make_sdr_image():

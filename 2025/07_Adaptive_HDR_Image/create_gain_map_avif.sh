@@ -107,24 +107,24 @@ combine_gain_map() {
 #     "./gain_map_img" \
 #     "${headroom_values[@]}"
 
-# # HDR Capacity Image (Note! Base rendition is *HDR*)
-# capacity_values=(0.000 0.563 0.978 1.300 1.563 1.978 2.300 2.563 2.885 3.300 3.622 3.885 4.300 5.622 6.965)
-# for capacity in "${capacity_values[@]}"; do
-#     output="./gain_map_img/hdr_capacity_checker_headroom-${capacity}.avif"
-#     avifgainmaputil combine \
-#         ./src_img/HDR_Capacity_${capacity}_1280x720.avif \
-#         ./src_img/HDR_Capacity_SDR_1280x720.avif \
-#         ${output} \
-#         --qgain-map 100 \
-#         --depth-gain-map 10 \
-#         --yuv-gain-map 444 \
-#         --cicp-base 9/16/0 \
-#         --cicp-alternate 9/13/0 \
-#         --qcolor 100 \
-#         --depth 10 \
-#         --manual-base-hdr-headroom ${capacity} \
-#         --manual-alternate-hdr-headroom 0.0
-# done
+# HDR Capacity Image (Note! Base rendition is *HDR*)
+capacity_values=(0.000 0.563 0.978 1.300 1.563 1.978 2.300 2.563 2.885 3.300 3.622 3.885 4.300 5.622 6.965)
+for capacity in "${capacity_values[@]}"; do
+    output="./gain_map_img/hdr_capacity_checker_headroom-${capacity}.avif"
+    avifgainmaputil combine \
+        ./src_img/HDR_Capacity_${capacity}_1280x720.avif \
+        ./src_img/HDR_Capacity_SDR_1280x720.avif \
+        ${output} \
+        --qgain-map 100 \
+        --depth-gain-map 10 \
+        --yuv-gain-map 444 \
+        --cicp-base 9/16/0 \
+        --cicp-alternate 9/13/0 \
+        --qcolor 100 \
+        --depth 10 \
+        --manual-base-hdr-headroom ${capacity} \
+        --manual-alternate-hdr-headroom 0.0
+done
 
 
 # # blog iamge
@@ -255,16 +255,16 @@ combine_gain_map() {
 #     --manual-base-hdr-headroom 0.0 \
 #     --manual-alternate-hdr-headroom 0.563
 
-avifgainmaputil combine \
-    ./src_img/is_SDR.avif \
-    ./src_img/is_HDR.avif \
-    ./gain_map_img/is_SDR-is_HDR.avif \
-    --qgain-map 100 \
-    --depth-gain-map 10 \
-    --yuv-gain-map 444 \
-    --cicp-base 1/1/0 \
-    --cicp-alternate 1/16/0 \
-    --qcolor 100 \
-    --depth 10 \
-    --manual-base-hdr-headroom 0.0 \
-    --manual-alternate-hdr-headroom 0.563
+# avifgainmaputil combine \
+#     ./src_img/is_SDR.avif \
+#     ./src_img/is_HDR.avif \
+#     ./gain_map_img/is_SDR-is_HDR.avif \
+#     --qgain-map 100 \
+#     --depth-gain-map 10 \
+#     --yuv-gain-map 444 \
+#     --cicp-base 1/1/0 \
+#     --cicp-alternate 1/16/0 \
+#     --qcolor 100 \
+#     --depth 10 \
+#     --manual-base-hdr-headroom 0.0 \
+#     --manual-alternate-hdr-headroom 0.563

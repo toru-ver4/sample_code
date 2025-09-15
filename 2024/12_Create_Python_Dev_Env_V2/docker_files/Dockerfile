@@ -1,7 +1,7 @@
 ARG DEBIAN_VERSION="bookworm"
 ARG PYTHON_VERSION="3.12"
 
-FROM python:${PYTHON_VERSION}-${DEBIAN_VERSION} as builder
+FROM python:${PYTHON_VERSION}-${DEBIAN_VERSION} AS builder
 
 # Avoid clearing `DEBIAN_VERSION`
 ARG DEBIAN_VERSION
@@ -50,8 +50,12 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
     && rm -rf /var/lib/apt/lists/*
 
 # Install lubultrahdr
-RUN git clone https://github.com/google/libultrahdr.git \
+########################################
+# Note: Please modify `sed` command 
+########################################
+RUN git clone https://github.com/google/libultrahdr.git -b v1.4.0 \
     && cd libultrahdr \
+    && sed '485,490s/^/\/\/ /' ./lib/src/ultrahdr_api.cpp > ./lib/src/ultrahdr_api.cpp \
     && mkdir build_directory \
     && cd build_directory \
     && cmake -G "Unix Makefiles" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DUHDR_BUILD_TESTS=1 ../ \
@@ -65,8 +69,29 @@ COPY ./requirements.txt /root/local/requirements.txt
 RUN pip install --upgrade pip \
         && pip install --no-cache-dir -r /root/local/requirements.txt
 
+# Install libheif
+RUN git clone https://github.com/strukturag/libheif.git -b v1.20.1 \
+    && cd libheif \
+    && mkdir build \
+    && cd build \
+    && cmake --preset=release .. \
+    && make -j16 \
+    && make install \
+    && cd /root/local \
+    && rm -rf /root/local/libheif
+
+# Install OpencolorIO
+RUN mkdir /tmp/ociobuild \
+        && cd /tmp/ociobuild \
+        && git clone https://github.com/AcademySoftwareFoundation/OpenColorIO.git /root/local/OpenColorIO -b v2.4.2 \
+        && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOCIO_INSTALL_EXT_PACKAGES=MISSING -DOCIO_BUILD_PYTHON=0 -DOCIO_VERBOSE=1 /root/local/OpenColorIO \
+        && make -j16 \
+        && make install \
+        && cd /root/local \
+        && rm -rf /root/local/OpenColorIO /tmp/ociobuild
+
 # Install OpenImageIO
-RUN git clone https://github.com/OpenImageIO/oiio.git -b v2.5.14.0 \
+RUN git clone https://github.com/OpenImageIO/oiio.git -b v3.0.8.1 \
         && cd oiio \
         && mkdir build \
         && cd build \
@@ -75,16 +100,6 @@ RUN git clone https://github.com/OpenImageIO/oiio.git -b v2.5.14.0 \
         && cd /root/local \
         && rm -rf /root/local/oiio
     
-# Install OpencolorIO
-RUN mkdir /tmp/ociobuild \
-        && cd /tmp/ociobuild \
-        && git clone https://github.com/AcademySoftwareFoundation/OpenColorIO.git /root/local/OpenColorIO -b v2.3.2 \
-        && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOCIO_INSTALL_EXT_PACKAGES=MISSING -DOCIO_BUILD_PYTHON=0 -DOCIO_VERBOSE=1 /root/local/OpenColorIO \
-        && make -j16 \
-        && make install \
-        && cd /root/local \
-        && rm -rf /root/local/OpenColorIO /tmp/ociobuild
-
 # Install CTL
 RUN git clone https://github.com/ampas/CTL.git \
         && cd CTL \
@@ -132,7 +147,7 @@ RUN echo "export CC=clang" >> /etc/profile \
     && rm -rf /root/local/libjxl
 
 # Install libavif
-RUN git clone https://github.com/AOMediaCodec/libavif.git -b v1.0.3 libavif_aom \
+RUN git clone https://github.com/AOMediaCodec/libavif.git -b v1.3.0 libavif_aom \
     && cd libavif_aom/ext \
     && $SHELL ./libyuv.cmd \
     && $SHELL ./aom.cmd \
@@ -146,16 +161,21 @@ RUN git clone https://github.com/AOMediaCodec/libavif.git -b v1.0.3 libavif_aom 
     && cd /root/local \
     && rm -rf /root/local/libavif_aom
 
-# Install libheif
-RUN git clone https://github.com/strukturag/libheif.git -b v1.18.2 \
-    && cd libheif \
-    && mkdir build \
-    && cd build \
-    && cmake --preset=release .. \
-    && make -j16 \
-    && make install \
-    && cd /root/local \
-    && rm -rf /root/local/libheif
+# install pngcheck
+RUN git clone https://github.com/toru-ver4/pngcheck.git -b add_srgb_to_rec2020_primaries \
+    && cd pngcheck \
+    && mkdir build && cd build \
+    && cmake -DPNGCHECK_USE_SYSTEM_ZLIB=OFF .. \
+    && cmake --build . \
+    && cmake --install . \
+    && rm -rf /root/local/pngcheck
+
+# Install png_cicp_editor
+RUN git clone https://github.com/ProgramMax/png_cicp_editor.git -b v3.0 \
+    && cd png_cicp_editor \
+    && cd Projects/Make && make \
+    && cp ./Build/png_cicp_editor /usr/local/bin/ \
+    && rm -rf /root/local/png_cicp_editor
 
 # Install Noto Fonts
 RUN mkdir font_install \

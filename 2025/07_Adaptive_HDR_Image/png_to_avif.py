@@ -146,20 +146,20 @@ if __name__ == '__main__':
     # png_to_avif_2(
     #     png_fname="./src_img/HDR_Capacity_SDR_1280x720.png",
     #     avif_fname="./src_img/HDR_Capacity_SDR_1280x720.avif",
-    #     color_space_name=cs.BT709,
+    #     color_space_name=cs.BT2020,
     #     transfer_characteristics=tf.SRGB,
     # )
 
-    png_to_avif_2(
-        png_fname="./src_img/is_SDR.png",
-        avif_fname="./src_img/is_SDR.avif",
-        color_space_name=cs.BT709,
-        transfer_characteristics=tf.BT709,
-    )
-    png_to_avif_2(
-        png_fname="./src_img/is_HDR.png",
-        avif_fname="./src_img/is_HDR.avif",
-        color_space_name=cs.BT709,
-        transfer_characteristics=tf.ST2084,
-    )
+    # png_to_avif_2(
+    #     png_fname="./src_img/is_SDR.png",
+    #     avif_fname="./src_img/is_SDR.avif",
+    #     color_space_name=cs.BT709,
+    #     transfer_characteristics=tf.BT709,
+    # )
+    # png_to_avif_2(
+    #     png_fname="./src_img/is_HDR.png",
+    #     avif_fname="./src_img/is_HDR.avif",
+    #     color_space_name=cs.BT709,
+    #     transfer_characteristics=tf.ST2084,
+    # )
 

@@ -374,6 +374,18 @@ def rgb_to_large_xyz(
     return large_xyz
 
 
+def rgb_to_rgb(
+        rgb, src_color_space_name, dst_color_space_name):
+    large_xyz = rgb_to_large_xyz(
+        rgb=rgb, color_space_name=src_color_space_name
+    )
+    dst_rgb = large_xyz_to_rgb(
+        xyz=large_xyz, color_space_name=dst_color_space_name
+    )
+
+    return dst_rgb
+
+
 def rgb_to_lab(
         rgb, color_space_name, xyz_white=D65):
     large_xyz = rgb_to_large_xyz(

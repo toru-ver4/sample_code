@@ -45,13 +45,13 @@ docker run -it -P --name still_hdr_rev01 -v C:\Users\toruv\OneDrive\work\sample_
 #### build
 
 ```powershell
-docker build --no-cache -f ./docker_files/Dockerfile -t takuver4/ty_env_v2:rev02 .
+docker build --no-cache -f ./docker_files/Dockerfile -t takuver4/ty_env_v2:rev04 .
 ```
 
 ## Push
 
 ```powershell
-docker push takuver4/ty_env_v2:rev02
+docker push takuver4/ty_env_v2:rev04
 ```
 
 ## run
@@ -59,6 +59,6 @@ docker push takuver4/ty_env_v2:rev02
 ```powershell
 docker-compose up -d
   or
-docker run -it -P --name ty_env_v2_rev02 -v C:\Users\toruv\OneDrive\work\sample_code:/work/src -v D:\abuse:/work/overuse --rm takuver4/ty_env_v2:rev02
-docker run -itd -P --platform linux/amd64 --name ty_env_v2_rev02 -v /Users/toru/Work/sample_code:/work/src -e PYTHONPATH=/work/src/ty_lib --rm takuver4/ty_env_v2:rev02
+docker run -it -P --name ty_env_v2_rev04 -v C:\Users\toruv\OneDrive\work\sample_code:/work/src -v D:\abuse:/work/overuse --rm takuver4/ty_env_v2:rev04
+docker run -itd -P --platform linux/amd64 --name ty_env_v2_rev04 -v /Users/toru/Work/sample_code:/work/src -e PYTHONPATH=/work/src/ty_lib --rm takuver4/ty_env_v2:rev04
 ```

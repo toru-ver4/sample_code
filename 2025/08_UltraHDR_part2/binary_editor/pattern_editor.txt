@@ -1,0 +1,63 @@
+#pragma endian big
+
+// flag ビット（参考：encode側の |= 位置と対応）
+const u8 FLAG_IS_MULTI_CHANNEL      = 1 << 0; // kIsMultiChannelMask
+const u8 FLAG_USE_BASE_COLOR_SPACE  = 1 << 1; // kUseBaseColorSpaceMask
+const u8 FLAG_BACKWARD_DIRECTION    = 1 << 2; // |= 4
+const u8 FLAG_USE_COMMON_DENOM      = 1 << 3; // |= 8（今回は常に 0 の前提）
+
+// 1チャンネル分（useCommonDenominator == false のときの並び）
+struct ChannelFrac {
+    s32 gainMapMinN;        // streamWriteS32
+    u32 gainMapMinD;        // streamWriteU32
+    s32 gainMapMaxN;        // streamWriteS32
+    u32 gainMapMaxD;        // streamWriteU32
+    u32 gainMapGammaN;      // streamWriteU32
+    u32 gainMapGammaD;      // streamWriteU32
+    s32 baseOffsetN;        // streamWriteS32
+    u32 baseOffsetD;        // streamWriteU32
+    s32 alternateOffsetN;   // streamWriteS32
+    u32 alternateOffsetD;   // streamWriteU32
+};
+
+// ヘッダ＋本体（useCommonDenominator == false / channelCount == 3 固定）
+struct GainmapMetadata {
+    // ヘッダ
+    u16 min_version;        // streamWriteU16
+    u16 writer_version;     // streamWriteU16
+    u8  flags;              // streamWriteU8（bit3 は 0 の想定）
+
+    // 共通分母を使わない経路（順序に注意）
+    u32 baseHdrHeadroomN;       // streamWriteU32
+    u32 baseHdrHeadroomD;       // streamWriteU32
+    u32 alternateHdrHeadroomN;  // streamWriteU32
+    u32 alternateHdrHeadroomD;  // streamWriteU32
+
+    // 3 チャンネル分
+    ChannelFrac channels[3];
+};
+
+u64 gm_offset = 0x00016A9A;
+GainmapMetadata gm @ gm_offset;
+
+// output
+float baseHdrHeadroom out;
+float alternateHdrHeadroom out;
+float gainMapMaxR out;
+float gainMapMaxG out;
+float gainMapMaxB out;
+
+float gainMapMinR out;
+float gainMapMinG out;
+float gainMapMinB out;
+
+baseHdrHeadroom = gm.baseHdrHeadroomN / float(gm.baseHdrHeadroomD);
+alternateHdrHeadroom = gm.alternateHdrHeadroomN / float(gm.alternateHdrHeadroomD);
+
+gainMapMaxR = gm.channels[0].gainMapMaxN / float(gm.channels[0].gainMapMaxD);
+gainMapMaxG = gm.channels[1].gainMapMaxN / float(gm.channels[1].gainMapMaxD);
+gainMapMaxB = gm.channels[2].gainMapMaxN / float(gm.channels[2].gainMapMaxD);
+
+gainMapMinR = gm.channels[0].gainMapMinN / float(gm.channels[0].gainMapMinD);
+gainMapMinG = gm.channels[1].gainMapMinN / float(gm.channels[1].gainMapMinD);
+gainMapMinB = gm.channels[2].gainMapMinN / float(gm.channels[2].gainMapMinD);

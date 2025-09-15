@@ -1,0 +1,60 @@
+debug/blog/png/IMG-05_P1-23_P2-00.png: 228.9 nits
+debug/blog/png/IMG-05_P1-23_P2-05.png: 228.5 nits
+debug/blog/png/IMG-05_P1-23_P2-10.png: 230.0 nits
+debug/blog/png/IMG-05_P1-46_P2-00.png: 227.7 nits
+debug/blog/png/IMG-05_P1-46_P2-05.png: 229.3 nits
+debug/blog/png/IMG-05_P1-46_P2-10.png: 350.0 nits
+debug/blog/png/IMG-05_P1-92_P2-00.png: 227.1 nits
+debug/blog/png/IMG-05_P1-92_P2-05.png: 316.9 nits
+debug/blog/png/IMG-05_P1-92_P2-10.png: 612.8 nits
+debug/blog/png/MKW_P1-23_P2-00.png: 167.5 nits
+debug/blog/png/MKW_P1-23_P2-05.png: 294.9 nits
+debug/blog/png/MKW_P1-23_P2-10.png: 305.1 nits
+debug/blog/png/MKW_P1-46_P2-00.png: 164.6 nits
+debug/blog/png/MKW_P1-46_P2-05.png: 505.1 nits
+debug/blog/png/MKW_P1-46_P2-10.png: 527.1 nits
+debug/blog/png/MKW_P1-92_P2-00.png: 174.5 nits
+debug/blog/png/MKW_P1-92_P2-05.png: 753.8 nits
+debug/blog/png/MKW_P1-92_P2-10.png: 797.7 nits
+debug/blog/png/IMG-05_P1-23_P2-00.png: max = 228.9 nits, ave = 31.6
+debug/blog/png/IMG-05_P1-23_P2-05.png: max = 228.5 nits, ave = 76.3
+debug/blog/png/IMG-05_P1-23_P2-10.png: max = 230.0 nits, ave = 127.0
+debug/blog/png/IMG-05_P1-46_P2-00.png: max = 227.7 nits, ave = 31.7
+debug/blog/png/IMG-05_P1-46_P2-05.png: max = 229.3 nits, ave = 121.1
+debug/blog/png/IMG-05_P1-46_P2-10.png: max = 350.0 nits, ave = 220.8
+debug/blog/png/IMG-05_P1-92_P2-00.png: max = 227.1 nits, ave = 31.9
+debug/blog/png/IMG-05_P1-92_P2-05.png: max = 316.9 nits, ave = 199.1
+debug/blog/png/IMG-05_P1-92_P2-10.png: max = 612.8 nits, ave = 385.8
+debug/blog/png/MKW_P1-23_P2-00.png: max = 167.5 nits, ave = 16.9
+debug/blog/png/MKW_P1-23_P2-05.png: max = 294.9 nits, ave = 37.2
+debug/blog/png/MKW_P1-23_P2-10.png: max = 305.1 nits, ave = 51.1
+debug/blog/png/MKW_P1-46_P2-00.png: max = 164.6 nits, ave = 17.0
+debug/blog/png/MKW_P1-46_P2-05.png: max = 505.1 nits, ave = 59.5
+debug/blog/png/MKW_P1-46_P2-10.png: max = 527.1 nits, ave = 86.4
+debug/blog/png/MKW_P1-92_P2-00.png: max = 174.5 nits, ave = 17.2
+debug/blog/png/MKW_P1-92_P2-05.png: max = 753.8 nits, ave = 93.9
+debug/blog/png/MKW_P1-92_P2-10.png: max = 797.7 nits, ave = 142.6
+debug/blog/png/IMG-05_P1-000_P2-00.png: max = 251.8 nits, ave = 33.0
+debug/blog/png/IMG-05_P1-000_P2-05.png: max = 251.9 nits, ave = 33.7
+debug/blog/png/IMG-05_P1-000_P2-10.png: max = 252.8 nits, ave = 35.8
+debug/blog/png/IMG-05_P1-017_P2-00.png: max = 251.4 nits, ave = 33.0
+debug/blog/png/IMG-05_P1-017_P2-05.png: max = 252.4 nits, ave = 69.7
+debug/blog/png/IMG-05_P1-017_P2-10.png: max = 252.9 nits, ave = 112.8
+debug/blog/png/IMG-05_P1-042_P2-00.png: max = 252.2 nits, ave = 33.0
+debug/blog/png/IMG-05_P1-042_P2-05.png: max = 251.5 nits, ave = 124.4
+debug/blog/png/IMG-05_P1-042_P2-10.png: max = 341.1 nits, ave = 215.2
+debug/blog/png/IMG-05_P1-092_P2-00.png: max = 240.7 nits, ave = 33.0
+debug/blog/png/IMG-05_P1-092_P2-05.png: max = 318.3 nits, ave = 199.1
+debug/blog/png/IMG-05_P1-092_P2-10.png: max = 614.1 nits, ave = 387.1
+debug/blog/png/MKW_P1-000_P2-00.png: max = 87.4 nits, ave = 33.2
+debug/blog/png/MKW_P1-000_P2-05.png: max = 88.0 nits, ave = 32.9
+debug/blog/png/MKW_P1-000_P2-10.png: max = 84.8 nits, ave = 32.4
+debug/blog/png/MKW_P1-017_P2-00.png: max = 191.0 nits, ave = 55.8
+debug/blog/png/MKW_P1-017_P2-05.png: max = 275.9 nits, ave = 92.6
+debug/blog/png/MKW_P1-017_P2-10.png: max = 278.7 nits, ave = 109.7
+debug/blog/png/MKW_P1-042_P2-00.png: max = 198.4 nits, ave = 56.6
+debug/blog/png/MKW_P1-042_P2-05.png: max = 546.5 nits, ave = 177.2
+debug/blog/png/MKW_P1-042_P2-10.png: max = 557.4 nits, ave = 214.2
+debug/blog/png/MKW_P1-092_P2-00.png: max = 191.5 nits, ave = 55.0
+debug/blog/png/MKW_P1-092_P2-05.png: max = 809.4 nits, ave = 265.0
+debug/blog/png/MKW_P1-092_P2-10.png: max = 781.3 nits, ave = 329.5
