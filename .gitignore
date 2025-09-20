@@ -312,3 +312,4 @@ BenchmarkDotNet.Artifacts/
 2025/08_UltraHDR_part2/**/*.raw
 2025/08_UltraHDR_part2/debug/**
 2025/10_Analyze_Switch2/debug/**
+2025/11_PNG_HDR_IMAGE/_debug/**
