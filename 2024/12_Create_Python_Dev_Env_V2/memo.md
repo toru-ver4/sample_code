@@ -40,18 +40,25 @@ docker build -f ./docker_files/04_Dockerfile_STILL_HDR -t takuver4/still_hdr:rev
 docker run -it -P --name still_hdr_rev01 -v C:\Users\toruv\OneDrive\work\sample_code:/mnt/data --rm takuver4/still_hdr:rev01
 ```
 
+### png_cicp_editor
+
+```powershell
+docker build -f ./docker_files/05_png_cicp_editor -t takuver4/png_cicp_editor:rev01 .
+docker run -it -P --name png_cicp_editor -v C:\Users\toruv\OneDrive\work\sample_code:/mnt/data --rm takuver4/png_cicp_editor:rev01
+```
+
 ### Integrated Image
 
 #### build
 
 ```powershell
-docker build --no-cache -f ./docker_files/Dockerfile -t takuver4/ty_env_v2:rev04 .
+docker build --no-cache -f ./docker_files/Dockerfile -t takuver4/ty_env_v2:rev06 .
 ```
 
 ## Push
 
 ```powershell
-docker push takuver4/ty_env_v2:rev04
+docker push takuver4/ty_env_v2:rev06
 ```
 
 ## run
@@ -59,6 +66,6 @@ docker push takuver4/ty_env_v2:rev04
 ```powershell
 docker-compose up -d
   or
-docker run -it -P --name ty_env_v2_rev04 -v C:\Users\toruv\OneDrive\work\sample_code:/work/src -v D:\abuse:/work/overuse --rm takuver4/ty_env_v2:rev04
-docker run -itd -P --platform linux/amd64 --name ty_env_v2_rev04 -v /Users/toru/Work/sample_code:/work/src -e PYTHONPATH=/work/src/ty_lib --rm takuver4/ty_env_v2:rev04
+docker run -it -P --name ty_env_v2_rev06 -v C:\Users\toruv\OneDrive\work\sample_code:/work/src --rm takuver4/ty_env_v2:rev06 bash
+docker run -itd -P --platform linux/amd64 --name ty_env_v2_rev06 -v /Users/toru/Work/sample_code:/work/src -e PYTHONPATH=/work/src/ty_lib --rm takuver4/ty_env_v2:rev04
 ```

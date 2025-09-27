@@ -34,7 +34,6 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         libopenexr-dev \
         libopenjp2-7-dev \
         libopenvdb-dev \
-        libpng-dev \
         libpystring-dev \
         libtbb-dev \
         libtiff-dev \
@@ -49,13 +48,22 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Intall libpng
+RUN git clone https://github.com/pnggroup/libpng.git \
+    && cd libpng \
+    && ./configure \
+    && make check \
+    && make install \
+    && cd /root/local \
+    && rm -rf /root/local/libpng
+
 # Install lubultrahdr
 ########################################
 # Note: Please modify `sed` command 
 ########################################
 RUN git clone https://github.com/google/libultrahdr.git -b v1.4.0 \
     && cd libultrahdr \
-    && sed '485,490s/^/\/\/ /' ./lib/src/ultrahdr_api.cpp > ./lib/src/ultrahdr_api.cpp \
+    && sed -i '485,490s/^/\/\/ /' ./lib/src/ultrahdr_api.cpp \
     && mkdir build_directory \
     && cd build_directory \
     && cmake -G "Unix Makefiles" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DUHDR_BUILD_TESTS=1 ../ \
@@ -70,7 +78,7 @@ RUN pip install --upgrade pip \
         && pip install --no-cache-dir -r /root/local/requirements.txt
 
 # Install libheif
-RUN git clone https://github.com/strukturag/libheif.git -b v1.20.1 \
+RUN git clone https://github.com/strukturag/libheif.git -b v1.20.2 \
     && cd libheif \
     && mkdir build \
     && cd build \
@@ -91,8 +99,12 @@ RUN mkdir /tmp/ociobuild \
         && rm -rf /root/local/OpenColorIO /tmp/ociobuild
 
 # Install OpenImageIO
-RUN git clone https://github.com/OpenImageIO/oiio.git -b v3.0.8.1 \
+#########################################
+# Please fix checkout 8530a87
+#########################################
+RUN git clone https://github.com/OpenImageIO/oiio.git \
         && cd oiio \
+        && git checkout 8530a87 \
         && mkdir build \
         && cd build \
         && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DPYTHON_VERSION=${PYTHON_VERSION} -DUSE_PYTHON=1 -DVERBOSE=1 -DSTOP_ON_WARNING=0 .. \

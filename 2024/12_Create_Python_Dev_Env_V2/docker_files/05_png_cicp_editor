@@ -1,0 +1,58 @@
+ARG DEBIAN_VERSION="bookworm"
+ARG PYTHON_VERSION="3.12"
+
+FROM python:${PYTHON_VERSION}-${DEBIAN_VERSION} AS builder
+
+# Avoid clearing `DEBIAN_VERSION`
+ARG DEBIAN_VERSION
+ARG PYTHON_VERSION
+
+WORKDIR /root/local
+
+RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/apt/sources.list \
+    && echo "deb http://security.debian.org/ ${DEBIAN_VERSION}-security main" >> /etc/apt/sources.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        clang \
+        cmake \
+        doxygen \
+        ffmpeg \
+        git \
+        libboost-all-dev \
+        libde265-dev \
+        libexpat1-dev \
+        libfreetype-dev \
+        libgif-dev \
+        libgl1-mesa-dev \
+        libglu1-mesa-dev \
+        libheif-dev \
+        libimath-dev \
+        libjpeg-dev \
+        liblcms2-dev \
+        libopencv-dev \
+        libopenexr-dev \
+        libopenjp2-7-dev \
+        libopenvdb-dev \
+        libpng-dev \
+        libpystring-dev \
+        libtbb-dev \
+        libtiff-dev \
+        libraw-dev \
+        libwebp-dev \
+        libx265-dev \
+        libyaml-cpp-dev \
+        llvm \
+        ninja-build \
+        pybind11-dev \
+        yasm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install png_cicp_editor
+RUN git clone https://github.com/ProgramMax/png_cicp_editor.git -b v3.0 \
+    && cd png_cicp_editor/Projects/Make \
+    && make -j16 \
+    && cp ./Build/png_cicp_editor /usr/local/bin/
+
+RUN ldconfig
+
+CMD ["bash"]
