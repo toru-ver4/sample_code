@@ -23,3 +23,18 @@
 | Chromaticity of White Point | mastering display の white point |
 | Maximum Display Mastering Luminance | mastering display のピーク輝度 |
 | Minimum Display Mastering Luminance | mastering display の最小輝度 |
+
+## EDID の HDR Static Metadata Data Block について
+
+* 以下の 3つが含まれる
+  * Desired Content Max Luminance data
+  * Desired Content Max Frame-average Luminance data
+  * Desired Content Min Luminance data
+* このうち、Desired Content Max Frame-average Luminance data は FALL の Sink版だと考える
+
+## 検証すべき項目の組み合わせ
+
+|No | Codec | Container |
+|:-------:|:-------:|:-------:|
+| 1 | HEVC | MP4 |
+| 2 | HEVC | MOV |

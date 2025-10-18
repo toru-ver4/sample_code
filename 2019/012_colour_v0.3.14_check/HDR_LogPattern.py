@@ -17,7 +17,8 @@ from multiprocessing import Pool, cpu_count
 # REVISION = 4  # colour version 0.3.14
 # REVISION = 5  # colour version 0.3.16
 # REVISION = 6  # colour version 0.4.3
-REVISION = 7  # update argument of `XYZ_to_RGB`
+# REVISION = 7  # update argument of `XYZ_to_RGB`
+REVISION = 8  # added cicp to PNG
 BIT_DEPTH = 10
 
 
@@ -145,9 +146,9 @@ def make_test_pattern(
     fname = fname_str_base.format(transfer_function, color_space.name,
                                   white_point, resolution, revision, "dpx")
     tpg_ctrl.save_image(fname, transfer_function)
-    fname = fname_str_base.format(transfer_function, color_space.name,
-                                  white_point, resolution, revision, "exr")
-    tpg_ctrl.save_image(fname, transfer_function)
+    # fname = fname_str_base.format(transfer_function, color_space.name,
+    #                               white_point, resolution, revision, "exr")
+    # tpg_ctrl.save_image(fname, transfer_function)
 
     # # type2
     # fname_str_base = "./img/{}_{}_{}_{}_rev{:02d}_type2.{}"
