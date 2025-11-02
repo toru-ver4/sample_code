@@ -1,14 +1,6 @@
 import os
 
 import numpy as np
-from colour.models import (
-    oetf_BT709,
-    oetf_inverse_BT709,
-    eotf_BT1886,
-    eotf_inverse_BT1886,
-    log_decoding_ARRILogC4,
-    log_encoding_ARRILogC4
-)
 import test_pattern_generator2 as tpg
 import plot_utility as pu
 
@@ -86,6 +78,82 @@ def non_linear_to_linear(x, gamma: float | str = 2.4):
         return x ** (gamma)
     
 
+def eotf_BT1886(x : np.ndarray) -> np.ndarray:
+    """
+    Apply BT.1886 EOTF
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Non linear code values.
+
+    Returns
+    -------
+    np.ndarray
+        Display referred linear light values.
+    """
+    return x ** 2.4
+
+
+def eotf_inverse_BT1886(x : np.ndarray) -> np.ndarray:
+    """
+    Apply Inverse BT.1886 EOTF
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Display referred linear light values.
+
+    Returns
+    -------
+    np.ndarray
+        Non linear code values.
+    """
+    return x ** (1/2.4)
+    
+
+def oetf_BT709(x : np.ndarray) -> np.ndarray:
+    """
+    Apply BT.709 OETF
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Scene linear light values.
+
+    Returns
+    -------
+    np.ndarray
+        BT.709 encoded non linear code values.
+    """
+    y = np.where(x < 0.018, x * 4.5, 1.099 * (x ** 0.45) - 0.099)
+
+    return y
+
+
+def oetf_inverse_BT709(x : np.ndarray) -> np.ndarray:
+    """
+    Apply Inverse BT.709 OETF
+
+    Parameters
+    ----------
+    x : np.ndarray
+        BT.709 encoded non linear code values.
+
+    Returns
+    -------
+    np.ndarray
+        Scene linear light values.
+    """
+    y = np.where(
+        oetf_BT709(0.018) > x,
+        x / 4.5,
+        ((x + 0.099) / 1.099) ** (1 / 0.45),
+    )
+
+    return y
+
+
 def apply_forward_ootf(e : np.ndarray) -> np.ndarray:
     """
     Apply forward OOTF characteristics.
@@ -122,6 +190,64 @@ def apply_inverse_ootf(e : np.ndarray) -> np.ndarray:
     e = np.asarray(e)
 
     return oetf_inverse_BT709((eotf_inverse_BT1886(e)))
+
+
+def log_decoding_ARRILogC4(x : np.ndarray) -> np.ndarray:
+    """
+    Apply ARRILogC4 EOTF
+
+    Parameters
+    ----------
+    x : np.ndarray
+        LogC4 encoded non linear code value.
+
+    Returns
+    -------
+    np.ndarray
+        Scene linear light value.
+    """
+    a = (2**18 - 16) / 117.45
+    b = (1023 - 95) / 1023
+    c = 95 / 1023
+    s = (7 * np.log(2) * 2 ** (7 - 14 * c / b)) / (a * b)
+    t = (2 ** (14 * (-c / b) + 6) - 64) / a
+
+    y = np.where(
+        x >= 0,
+        (2 ** (14 * ((x - c) / b) + 6) - 64) / a,
+        x * s + t,
+    )
+
+    return y
+
+
+def log_encoding_ARRILogC4(x: np.ndarray) -> np.ndarray:
+    """
+    Apply ARRILogC4 OETF
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Scene linear light value.
+
+    Returns
+    -------
+    np.ndarray
+        LogC4 encoded non linear value.
+    """
+    a = (2**18 - 16) / 117.45
+    b = (1023 - 95) / 1023
+    c = 95 / 1023
+    s = (7 * np.log(2) * 2 ** (7 - 14 * c / b)) / (a * b)
+    t = (2 ** (14 * (-c / b) + 6) - 64) / a
+
+    y = np.where(
+        x >= t,
+        (np.log2(a * x + 64) - 6) / 14 * b + c,
+        (x - t) / s,
+    )
+
+    return y
 
 
 def conv_logc4_to_gm26(x):
