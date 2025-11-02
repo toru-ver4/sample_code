@@ -250,12 +250,26 @@ def log_encoding_ARRILogC4(x: np.ndarray) -> np.ndarray:
     return y
 
 
-def conv_logc4_to_gm26(x):
+def conv_logc4_to_gm26(x : np.ndarray) -> np.ndarray:
+    """
+    Apply LogC4 to Gamma 2.6 conversion without tone mapping.
+    """
     linear = log_decoding_ARRILogC4(x)
     return np.clip(linear, 0.0, 1.0) ** (1/2.6)
 
 
-def conv_logc4_to_gm26_with_forward_ootf(x):
+def conv_gm26_to_logc4(x : np.ndarray) -> np.ndarray:
+    """
+    Apply Gamma 2.6 to LogC4 conversion without tone mapping.
+    """
+    linear = x ** 2.6
+    return log_encoding_ARRILogC4(linear)
+
+
+def conv_logc4_to_gm26_with_forward_ootf(x : np.ndarray) -> np.ndarray:
+    """
+    Apply LogC4 to Gamma 2.6 conversion with forward ootf without tone mapping.
+    """
     linear = log_decoding_ARRILogC4(x)
     linear = np.clip(linear, 0.0, 1.0)
 
@@ -266,7 +280,23 @@ def conv_logc4_to_gm26_with_forward_ootf(x):
     return gamma26
 
 
-def conv_logc4_to_gm26_with_inverse_ootf(x):
+def conv_gm26_to_logc4_with_forward_ootf(x : np.ndarray) -> np.ndarray:
+    """
+    Apply Gamma 2.6 to LogC4 conversion with forward ootf without tone mapping.
+    """
+    linear = x ** 2.6
+
+    linear_with_forward_ootf = apply_forward_ootf(linear)
+
+    logc4 = log_encoding_ARRILogC4(linear_with_forward_ootf)
+
+    return logc4
+
+
+def conv_logc4_to_gm26_with_inverse_ootf(x : np.ndarray) -> np.ndarray:
+    """
+    Apply LogC4 to Gamma 2.6 conversion with inverse ootf without tone mapping.
+    """
     linear = log_decoding_ARRILogC4(x)
     linear = np.clip(linear, 0.0, 1.0)
 
@@ -277,10 +307,23 @@ def conv_logc4_to_gm26_with_inverse_ootf(x):
     return gamma26
 
 
+def conv_gm26_to_logc4_with_inverse_ootf(x : np.ndarray) -> np.ndarray:
+    """
+    Apply 2.6 to Gamma LogC4 conversion with inverse ootf without tone mapping.
+    """
+    linear = x ** 2.6
+
+    linear_with_inverse_ootf = apply_inverse_ootf(linear)
+
+    logc4 = log_encoding_ARRILogC4(linear_with_inverse_ootf)
+
+    return logc4
+
+
 def debug2_wg4_logc4_to_p3d65_gm26():
     img_name_no_ootf = "./img/WG4_LogC4 to P3D65_GM26_no-ootf.png"
     img_name_forward_ootf = "./img/WG4_LogC4 to P3D65_GM26_forward-ootf.png"
-    img_name_inverse_ootf = "./img/P3D65_GM26_to_WG4_LogC4_inverse-ootf.png"
+    img_name_inverse_ootf = "./img/WG4_LogC4 to P3D65_GM26_inverse-ootf.png"
 
     img_no_ootf = tpg.img_read_as_float(img_name_no_ootf)
     img_forward_ootf = tpg.img_read_as_float(img_name_forward_ootf)
@@ -323,8 +366,62 @@ def debug2_wg4_logc4_to_p3d65_gm26():
     ax1.plot(x, my_forward_ootf, '--', color=pu.BROWN, label='Python: Forward-OOTF')
     ax1.plot(x, my_inverse_ootf, '--', color=pu.SKY, label='Python: Inverse-OOTF')
 
+    fname = "./img/all_graph_logc4_to_gm26.png"
+    print(fname)
     pu.show_and_save(
-        fig=fig, legend_loc='upper left', fontsize=16, save_fname=None, show=True)
+        fig=fig, legend_loc='upper left', fontsize=16, save_fname=fname, show=True)
+
+
+def debug2_p3d65_gm26_to_wg4_logc4():
+    img_name_no_ootf = "./img/P3D65_GM26_to_WG4_LogC4_no-ootf.png"
+    img_name_forward_ootf = "./img/P3D65_GM26_to_WG4_LogC4_forward-ootf.png"
+    img_name_inverse_ootf = "./img/P3D65_GM26_to_WG4_LogC4_inverse-ootf.png"
+
+    img_no_ootf = tpg.img_read_as_float(img_name_no_ootf)
+    img_forward_ootf = tpg.img_read_as_float(img_name_forward_ootf)
+    img_inverse_ootf = tpg.img_read_as_float(img_name_inverse_ootf)
+
+
+    # extract 1st channel for plot
+    y_no_ootf = img_no_ootf[0, :, 0].reshape(-1)
+    y_forward_ootf = img_forward_ootf[0, :, 0].reshape(-1)
+    y_inverse_ootf = img_inverse_ootf[0, :, 0].reshape(-1)
+
+    x = np.linspace(0, 1, len(y_no_ootf))
+    my_no_ootf = conv_gm26_to_logc4(x)
+    my_forward_ootf = conv_gm26_to_logc4_with_forward_ootf(x)
+    my_inverse_ootf = conv_gm26_to_logc4_with_inverse_ootf(x)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=14,
+        figsize=(12, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="P3D65 Gamma 2.6 to ARRI LogC4",
+        graph_title_size=None,
+        xlabel="Input Code Value (Gamma 2.6)",
+        ylabel="Output Code Value (LogC4)",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        # xtick=[x * 64 for x in range(1024//64)] + [1023],
+        # ytick=[x * 128 for x in range(1024//128)] + [1023],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, y_no_ootf, color=pu.RED, label="Resolve: No-OOTF")
+    ax1.plot(x, y_forward_ootf, color=pu.GREEN, label="Resolve: Forward-OOTF")
+    ax1.plot(x, y_inverse_ootf, color=pu.BLUE, label="Resolve: Inverse-OOTF")
+
+    ax1.plot(x, my_no_ootf, '--', color=pu.PINK, label="Python: No-OOTF")
+    ax1.plot(x, my_forward_ootf, '--', color=pu.BROWN, label='Python: Forward-OOTF')
+    ax1.plot(x, my_inverse_ootf, '--', color=pu.SKY, label='Python: Inverse-OOTF')
+
+    fname = "./img/all_graph_gm26_to_logc4.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', fontsize=16, save_fname=fname, show=True)
 
 
 if __name__ == '__main__':
@@ -333,3 +430,4 @@ if __name__ == '__main__':
     # debug1_plot_three_graph(output_gamma=2.2)
     # debug1_plot_three_graph(output_gamma="Rec.709")
     debug2_wg4_logc4_to_p3d65_gm26()
+    # debug2_p3d65_gm26_to_wg4_logc4()
