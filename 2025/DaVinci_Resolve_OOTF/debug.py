@@ -2,7 +2,9 @@ import os
 
 import numpy as np
 import test_pattern_generator2 as tpg
+from colour import normalised_primary_matrix, matrix_RGB_to_RGB
 import plot_utility as pu
+import color_space as cs
 
 
 def debug1_plot_three_graph(output_gamma: float | str = 2.4):
@@ -422,6 +424,19 @@ def debug2_p3d65_gm26_to_wg4_logc4():
     print(fname)
     pu.show_and_save(
         fig=fig, legend_loc='upper left', fontsize=16, save_fname=fname, show=True)
+    
+
+def calc_arri_wg4_to_p3d65_matrix():
+    arri_wg4_primaries = cs.get_primaries(cs.ALEXA_WIDE_GAMUT_4)
+    p3d65_primaries = cs.get_primaries(cs.P3_D65)
+    
+    arri_wg4_to_xyz = normalised_primary_matrix(arri_wg4_primaries, cs.D65)
+    p3d65_to_xyz = normalised_primary_matrix(p3d65_primaries, cs.D65)
+    xyz_to_p3d65 = np.linalg.inv(p3d65_to_xyz)
+
+    arri_wg4_to_p3d65 = xyz_to_p3d65.dot(arri_wg4_to_xyz)
+
+    return arri_wg4_to_p3d65
 
 
 if __name__ == '__main__':
@@ -429,5 +444,6 @@ if __name__ == '__main__':
     # debug1_plot_three_graph(output_gamma=2.4)
     # debug1_plot_three_graph(output_gamma=2.2)
     # debug1_plot_three_graph(output_gamma="Rec.709")
-    debug2_wg4_logc4_to_p3d65_gm26()
+    # debug2_wg4_logc4_to_p3d65_gm26()
     # debug2_p3d65_gm26_to_wg4_logc4()
+    print(calc_arri_wg4_to_p3d65_matrix())

@@ -1,0 +1,218 @@
+DEFINE_UI_PARAMS(is_forward_ootf, Forward OOTF, DCTLUI_CHECK_BOX, 0)
+DEFINE_UI_PARAMS(is_inverse_ootf, Inverse OOTF, DCTLUI_CHECK_BOX, 0)
+
+// ---------------------- ARRI LogC4 Constants ---------------------------------
+__CONSTANT__ float LOGC4_COEF[5] = {
+    2231.8263f,        // a = (2^18 - 16) / 117.45
+    0.90713587f,       // b = (1023 - 95) / 1023
+    0.092864126f,      // c = 95 / 1023
+    0.16388613f,       // s = (7*log2(2)*2^(7 - 14*c/b)) / (a*b)
+   -0.018056996f       // t = (2^(14*(-c/b)+6) - 64) / a
+};
+
+// ---------------------- Color Space Conversion Matrix ------------------------
+typedef struct {
+    float3 row0;
+    float3 row1;
+    float3 row2;
+} Matrix3x3;
+
+__CONSTANT__ Matrix3x3 arri_wg4_to_p3d65_mtx = {
+    {  1.5205024,  -0.40429866, -0.11620373},
+    { -0.13603158,  1.26984798, -0.1338164 },
+    {  0.00587852, -0.05487566,  1.04899714},
+};
+
+// ----------------------------- Helpers ---------------------------------------
+__DEVICE__ inline float _clip01(float v) { return clamp(v, 0.0f, 1.0f); }
+
+__DEVICE__ inline float3 _clip01_f3(float3 v)
+{
+    float3 o;
+    o.x = clamp(v.x, 0.0f, 1.0f);
+    o.y = clamp(v.y, 0.0f, 1.0f);
+    o.z = clamp(v.z, 0.0f, 1.0f);
+    return o;
+}
+
+__DEVICE__ inline float3 _pow_f3(float3 v, float g) {
+    float3 o;
+    o.x = _powf(v.x, g);
+    o.y = _powf(v.y, g);
+    o.z = _powf(v.z, g);
+    return o;
+}
+
+// ============================== BT.1886 =======================================
+
+__DEVICE__ inline float3 eotf_BT1886_f3(float3 in) {
+    return _pow_f3(in, 2.4f);
+}
+
+__DEVICE__ inline float3 eotf_inverse_BT1886_f3(float3 in) {
+    return _pow_f3(in, 1.0f/2.4f);
+}
+
+// =============================== BT.709 =======================================
+
+__DEVICE__ inline float oetf_BT709_f(float x) {
+    return (x < 0.018f) ? (x * 4.5f)
+                        : (1.099f * _powf(x, 0.45f) - 0.099f);
+}
+
+__DEVICE__ inline float3 oetf_BT709_f3(float3 in) {
+    float3 o;
+    o.x = oetf_BT709_f(in.x);
+    o.y = oetf_BT709_f(in.y);
+    o.z = oetf_BT709_f(in.z);
+    return o;
+}
+
+__DEVICE__ inline float oetf_inverse_BT709_f(float x) {
+    const float thr = (1.099f * _powf(0.018f, 0.45f) - 0.099f);
+    return (x < thr) ? (x / 4.5f)
+                     : _powf((x + 0.099f) / 1.099f, 1.0f/0.45f);
+}
+
+__DEVICE__ inline float3 oetf_inverse_BT709_f3(float3 in) {
+    float3 o;
+    o.x = oetf_inverse_BT709_f(in.x);
+    o.y = oetf_inverse_BT709_f(in.y);
+    o.z = oetf_inverse_BT709_f(in.z);
+    return o;
+}
+
+// ================================ OOTF ========================================
+
+__DEVICE__ inline float3 apply_forward_ootf_f3(float3 in) {
+    return eotf_BT1886_f3(oetf_BT709_f3(in));
+}
+
+__DEVICE__ inline float3 apply_inverse_ootf_f3(float3 in) {
+    return oetf_inverse_BT709_f3(eotf_inverse_BT1886_f3(in));
+}
+
+// ============================== ARRI LogC4 ====================================
+
+// scalar decoding
+__DEVICE__ inline float log_decoding_ARRILogC4_f(float x) {
+    float a = LOGC4_COEF[0];
+    float b = LOGC4_COEF[1];
+    float c = LOGC4_COEF[2];
+    float s = LOGC4_COEF[3];
+    float t = LOGC4_COEF[4];
+
+    return (x >= 0.0f)
+        ? (_powf(2.0f, 14.0f*((x - c)/b) + 6.0f) - 64.0f) / a
+        : (x * s + t);
+}
+
+// float3 decoding
+__DEVICE__ inline float3 log_decoding_ARRILogC4_f3(float3 in) {
+    float3 o;
+    o.x = log_decoding_ARRILogC4_f(in.x);
+    o.y = log_decoding_ARRILogC4_f(in.y);
+    o.z = log_decoding_ARRILogC4_f(in.z);
+    return o;
+}
+
+// scalar encoding
+__DEVICE__ inline float log_encoding_ARRILogC4_f(float x) {
+    float a = LOGC4_COEF[0];
+    float b = LOGC4_COEF[1];
+    float c = LOGC4_COEF[2];
+    float s = LOGC4_COEF[3];
+    float t = LOGC4_COEF[4];
+
+    return (x >= t)
+        ? (((_log2f(a*x + 64.0f) - 6.0f) / 14.0f) * b + c)
+        : ((x - t) / s);
+}
+
+// float3 encoding
+__DEVICE__ inline float3 log_encoding_ARRILogC4_f3(float3 in) {
+    float3 o;
+    o.x = log_encoding_ARRILogC4_f(in.x);
+    o.y = log_encoding_ARRILogC4_f(in.y);
+    o.z = log_encoding_ARRILogC4_f(in.z);
+    return o;
+}
+
+// ===================== LogC4 <-> Gamma 2.6 ===================================
+
+__DEVICE__ inline float3 conv_logc4_to_gm26_f3(float3 in) {
+    float3 lin = log_decoding_ARRILogC4_f3(in);
+    lin = make_float3(_clip01(lin.x), _clip01(lin.y), _clip01(lin.z));
+    return _pow_f3(lin, 1.0f/2.6f);
+}
+
+__DEVICE__ inline float3 conv_gm26_to_logc4_f3(float3 in) {
+    float3 lin = _pow_f3(in, 2.6f);
+    return log_encoding_ARRILogC4_f3(lin);
+}
+
+// ----- with Forward OOTF -----------------------------------------------------
+
+__DEVICE__ inline float3 conv_logc4_to_gm26_with_forward_ootf_f3(float3 in) {
+    float3 lin = log_decoding_ARRILogC4_f3(in);
+    lin = make_float3(_clip01(lin.x), _clip01(lin.y), _clip01(lin.z));
+    float3 disp = apply_forward_ootf_f3(lin);
+    return _pow_f3(disp, 1.0f/2.6f);
+}
+
+__DEVICE__ inline float3 conv_gm26_to_logc4_with_forward_ootf_f3(float3 in) {
+    float3 lin = _pow_f3(in, 2.6f);
+    float3 disp = apply_forward_ootf_f3(lin);
+    return log_encoding_ARRILogC4_f3(disp);
+}
+
+// ----- with Inverse OOTF -----------------------------------------------------
+
+__DEVICE__ inline float3 conv_logc4_to_gm26_with_inverse_ootf_f3(float3 in) {
+    float3 lin = log_decoding_ARRILogC4_f3(in);
+    lin = make_float3(_clip01(lin.x), _clip01(lin.y), _clip01(lin.z));
+    float3 scene = apply_inverse_ootf_f3(lin);
+    return _pow_f3(scene, 1.0f/2.6f);
+}
+
+__DEVICE__ inline float3 conv_gm26_to_logc4_with_inverse_ootf_f3(float3 in) {
+    float3 lin = _pow_f3(in, 2.6f);
+    float3 scene = apply_inverse_ootf_f3(lin);
+    return log_encoding_ARRILogC4_f3(scene);
+}
+
+// ----- Apply 3x3 matrix ------------------------------------------------------
+__DEVICE__ float3 apply_matrix(float3 in, Matrix3x3 mtx)
+{
+    float3 out;
+    out.x = in.x * mtx.row0.x + in.y * mtx.row0.y + in.z * mtx.row0.z;
+    out.y = in.x * mtx.row1.x + in.y * mtx.row1.y + in.z * mtx.row1.z;
+    out.z = in.x * mtx.row2.x + in.y * mtx.row2.y + in.z * mtx.row2.z;
+    return out;
+}
+
+// main function
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+    float3 arri_wg4_logc4 = to_float3(p_R, p_G, p_B);
+    float3 linear = log_decoding_ARRILogC4_f3(arri_wg4_logc4);
+
+    if(is_forward_ootf){
+        linear = apply_matrix(linear, arri_wg4_to_p3d65_mtx);
+        linear = apply_forward_ootf_f3(linear);
+    }
+    else if(is_inverse_ootf){
+        linear = apply_inverse_ootf_f3(linear);
+        linear = apply_matrix(linear, arri_wg4_to_p3d65_mtx);
+    }
+    else if((is_forward_ootf == 1) && (is_inverse_ootf == 1)){
+        linear = apply_matrix(linear, arri_wg4_to_p3d65_mtx);
+    }
+    else if((is_forward_ootf == 0) && (is_inverse_ootf == 0)){
+        linear = apply_matrix(linear, arri_wg4_to_p3d65_mtx);
+    }
+
+    float3 p3d65_gm26 = _pow_f3(linear, (1.0f/2.6f));
+
+    return p3d65_gm26;
+}
