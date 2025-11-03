@@ -23,6 +23,15 @@ __CONSTANT__ Matrix3x3 arri_wg4_to_p3d65_mtx = {
     {  0.00587852, -0.05487566,  1.04899714},
 };
 
+__DEVICE__ float3 apply_matrix(float3 in, Matrix3x3 mtx)
+{
+    float3 out;
+    out.x = in.x * mtx.row0.x + in.y * mtx.row0.y + in.z * mtx.row0.z;
+    out.y = in.x * mtx.row1.x + in.y * mtx.row1.y + in.z * mtx.row1.z;
+    out.z = in.x * mtx.row2.x + in.y * mtx.row2.y + in.z * mtx.row2.z;
+    return out;
+}
+
 // ----------------------------- Helpers ---------------------------------------
 __DEVICE__ inline float _clip01(float v) { return clamp(v, 0.0f, 1.0f); }
 
@@ -35,11 +44,21 @@ __DEVICE__ inline float3 _clip01_f3(float3 v)
     return o;
 }
 
+__DEVICE__ inline float sign(float x)
+{
+    if (x == 0.0f) return 0;
+    return signbit(x) ? -1 : 1;
+}
+
+__DEVICE__ inline float _my_powf(float v, float g) {
+    return sign(v) * _powf(_fabs(v), g);
+}
+
 __DEVICE__ inline float3 _pow_f3(float3 v, float g) {
     float3 o;
-    o.x = _powf(v.x, g);
-    o.y = _powf(v.y, g);
-    o.z = _powf(v.z, g);
+    o.x = _my_powf(v.x, g);
+    o.y = _my_powf(v.y, g);
+    o.z = _my_powf(v.z, g);
     return o;
 }
 
@@ -57,7 +76,7 @@ __DEVICE__ inline float3 eotf_inverse_BT1886_f3(float3 in) {
 
 __DEVICE__ inline float oetf_BT709_f(float x) {
     return (x < 0.018f) ? (x * 4.5f)
-                        : (1.099f * _powf(x, 0.45f) - 0.099f);
+                        : (1.099f * _my_powf(x, 0.45f) - 0.099f);
 }
 
 __DEVICE__ inline float3 oetf_BT709_f3(float3 in) {
@@ -69,9 +88,9 @@ __DEVICE__ inline float3 oetf_BT709_f3(float3 in) {
 }
 
 __DEVICE__ inline float oetf_inverse_BT709_f(float x) {
-    const float thr = (1.099f * _powf(0.018f, 0.45f) - 0.099f);
+    const float thr = (1.099f * _my_powf(0.018f, 0.45f) - 0.099f);
     return (x < thr) ? (x / 4.5f)
-                     : _powf((x + 0.099f) / 1.099f, 1.0f/0.45f);
+                     : _my_powf((x + 0.099f) / 1.099f, 1.0f/0.45f);
 }
 
 __DEVICE__ inline float3 oetf_inverse_BT709_f3(float3 in) {
@@ -103,7 +122,7 @@ __DEVICE__ inline float log_decoding_ARRILogC4_f(float x) {
     float t = LOGC4_COEF[4];
 
     return (x >= 0.0f)
-        ? (_powf(2.0f, 14.0f*((x - c)/b) + 6.0f) - 64.0f) / a
+        ? (_my_powf(2.0f, 14.0f*((x - c)/b) + 6.0f) - 64.0f) / a
         : (x * s + t);
 }
 
@@ -181,16 +200,6 @@ __DEVICE__ inline float3 conv_gm26_to_logc4_with_inverse_ootf_f3(float3 in) {
     return log_encoding_ARRILogC4_f3(scene);
 }
 
-// ----- Apply 3x3 matrix ------------------------------------------------------
-__DEVICE__ float3 apply_matrix(float3 in, Matrix3x3 mtx)
-{
-    float3 out;
-    out.x = in.x * mtx.row0.x + in.y * mtx.row0.y + in.z * mtx.row0.z;
-    out.y = in.x * mtx.row1.x + in.y * mtx.row1.y + in.z * mtx.row1.z;
-    out.z = in.x * mtx.row2.x + in.y * mtx.row2.y + in.z * mtx.row2.z;
-    return out;
-}
-
 // main function
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
 {
@@ -212,7 +221,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
         linear = apply_matrix(linear, arri_wg4_to_p3d65_mtx);
     }
 
-    float3 p3d65_gm26 = _pow_f3(linear, (1.0f/2.6f));
+    float3 p3d65_gm26 = _pow_f3(_clip01_f3(linear), (1.0f/2.6f));
 
     return p3d65_gm26;
 }
