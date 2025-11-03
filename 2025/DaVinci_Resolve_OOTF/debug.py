@@ -439,6 +439,44 @@ def calc_arri_wg4_to_p3d65_matrix():
     return arri_wg4_to_p3d65
 
 
+def plot_scRGB_oetf():
+    x = np.linspace(-0.5, 1.5, 1024)
+    y = np.where(
+            x <= -0.018,
+            -1.099 * (abs(x) ** 0.45) + 0.099,
+            np.where(
+                x <= 0.018,
+                4.5 * x,
+                1.099 * (x ** 0.45) -0.099
+            )
+        )
+    
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=14,
+        figsize=(8, 6),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="scRGB OETF",
+        graph_title_size=None,
+        xlabel="Scene Linear Light",
+        ylabel="scRGB Code Value",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        # xtick=[x * 64 for x in range(1024//64)] + [1023],
+        # ytick=[x * 128 for x in range(1024//128)] + [1023],
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    ax1.plot(x, y, color=pu.RED, label="scRGB")
+
+    fname = "./img/scrgb.png"
+    print(fname)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', fontsize=16, save_fname=fname, show=True)
+    
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug1_plot_three_graph(output_gamma=2.4)
@@ -446,4 +484,5 @@ if __name__ == '__main__':
     # debug1_plot_three_graph(output_gamma="Rec.709")
     # debug2_wg4_logc4_to_p3d65_gm26()
     # debug2_p3d65_gm26_to_wg4_logc4()
-    print(calc_arri_wg4_to_p3d65_matrix())
+    # print(calc_arri_wg4_to_p3d65_matrix())
+    plot_scRGB_oetf()
