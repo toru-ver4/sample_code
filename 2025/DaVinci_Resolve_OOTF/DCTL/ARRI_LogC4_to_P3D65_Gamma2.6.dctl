@@ -157,49 +157,6 @@ __DEVICE__ inline float3 log_encoding_ARRILogC4_f3(float3 in) {
     return o;
 }
 
-// ===================== LogC4 <-> Gamma 2.6 ===================================
-
-__DEVICE__ inline float3 conv_logc4_to_gm26_f3(float3 in) {
-    float3 lin = log_decoding_ARRILogC4_f3(in);
-    lin = make_float3(_clip01(lin.x), _clip01(lin.y), _clip01(lin.z));
-    return _pow_f3(lin, 1.0f/2.6f);
-}
-
-__DEVICE__ inline float3 conv_gm26_to_logc4_f3(float3 in) {
-    float3 lin = _pow_f3(in, 2.6f);
-    return log_encoding_ARRILogC4_f3(lin);
-}
-
-// ----- with Forward OOTF -----------------------------------------------------
-
-__DEVICE__ inline float3 conv_logc4_to_gm26_with_forward_ootf_f3(float3 in) {
-    float3 lin = log_decoding_ARRILogC4_f3(in);
-    lin = make_float3(_clip01(lin.x), _clip01(lin.y), _clip01(lin.z));
-    float3 disp = apply_forward_ootf_f3(lin);
-    return _pow_f3(disp, 1.0f/2.6f);
-}
-
-__DEVICE__ inline float3 conv_gm26_to_logc4_with_forward_ootf_f3(float3 in) {
-    float3 lin = _pow_f3(in, 2.6f);
-    float3 disp = apply_forward_ootf_f3(lin);
-    return log_encoding_ARRILogC4_f3(disp);
-}
-
-// ----- with Inverse OOTF -----------------------------------------------------
-
-__DEVICE__ inline float3 conv_logc4_to_gm26_with_inverse_ootf_f3(float3 in) {
-    float3 lin = log_decoding_ARRILogC4_f3(in);
-    lin = make_float3(_clip01(lin.x), _clip01(lin.y), _clip01(lin.z));
-    float3 scene = apply_inverse_ootf_f3(lin);
-    return _pow_f3(scene, 1.0f/2.6f);
-}
-
-__DEVICE__ inline float3 conv_gm26_to_logc4_with_inverse_ootf_f3(float3 in) {
-    float3 lin = _pow_f3(in, 2.6f);
-    float3 scene = apply_inverse_ootf_f3(lin);
-    return log_encoding_ARRILogC4_f3(scene);
-}
-
 // main function
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
 {
@@ -214,10 +171,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
         linear = apply_inverse_ootf_f3(linear);
         linear = apply_matrix(linear, arri_wg4_to_p3d65_mtx);
     }
-    else if((is_forward_ootf == 1) && (is_inverse_ootf == 1)){
-        linear = apply_matrix(linear, arri_wg4_to_p3d65_mtx);
-    }
-    else if((is_forward_ootf == 0) && (is_inverse_ootf == 0)){
+    else{
         linear = apply_matrix(linear, arri_wg4_to_p3d65_mtx);
     }
 
