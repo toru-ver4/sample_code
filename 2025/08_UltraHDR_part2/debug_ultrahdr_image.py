@@ -205,7 +205,7 @@ if __name__ == '__main__':
 
     # create_10bit_pattern_for_full_range_encode()
     # extract_tp_data_from_screenshot()
-    analyze_decoded_ultrahdr()
+    # analyze_decoded_ultrahdr()
 
     # switch 2
     # cv496 = 496/1023
