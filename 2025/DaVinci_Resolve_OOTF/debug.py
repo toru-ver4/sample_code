@@ -5,6 +5,7 @@ import test_pattern_generator2 as tpg
 from colour import normalised_primary_matrix, matrix_RGB_to_RGB
 import plot_utility as pu
 import color_space as cs
+import transfer_functions as tf
 
 
 def debug1_plot_three_graph(output_gamma: float | str = 2.4):
@@ -97,6 +98,23 @@ def eotf_BT1886(x : np.ndarray) -> np.ndarray:
     return x ** 2.4
 
 
+def eotf_BT1886_ST2084(x : np.ndarray) -> np.ndarray:
+    """
+    Apply BT.2100 BT.1886 EOTF
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Non linear code values.
+
+    Returns
+    -------
+    np.ndarray
+        Display referred linear light values.
+    """
+    return 100 * (x ** 2.4)
+
+
 def eotf_inverse_BT1886(x : np.ndarray) -> np.ndarray:
     """
     Apply Inverse BT.1886 EOTF
@@ -129,6 +147,25 @@ def oetf_BT709(x : np.ndarray) -> np.ndarray:
         BT.709 encoded non linear code values.
     """
     y = np.where(x < 0.018, x * 4.5, 1.099 * (x ** 0.45) - 0.099)
+
+    return y
+
+
+def oetf_BT709_ST2084(x : np.ndarray) -> np.ndarray:
+    """
+    Apply BT.2100 BT.709 OETF
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Scene linear light values.
+
+    Returns
+    -------
+    np.ndarray
+        BT.709 encoded non linear code values.
+    """
+    y = np.where(x < 0.0003024, x * 267.84, 1.099 * ((x * 59.5208) ** 0.45) - 0.099)
 
     return y
 
@@ -477,6 +514,110 @@ def plot_scRGB_oetf():
         fig=fig, legend_loc='upper left', fontsize=16, save_fname=fname, show=True)
     
 
+def conv_logc4_to_st2084_with_forward_ootf_1(x : np.ndarray) -> np.ndarray:
+    """
+    Apply LogC4 to Gamma 2.6 conversion with forward ootf without tone mapping.
+    """
+    linear = log_decoding_ARRILogC4(x)
+    linear = np.clip(linear, 0.0, 10000)
+    print(linear[-5:])
+
+    linear_with_forward_ootf = apply_forward_ootf(linear)
+    linear_with_forward_ootf = np.clip(linear_with_forward_ootf, 0.0, 10000.0)
+
+    st2084 = tf.oetf_from_luminance(linear_with_forward_ootf * 100, tf.ST2084)
+
+    return st2084
+
+
+def apply_forward_ootf_st2084(e : np.ndarray) -> np.ndarray:
+    """
+    Apply forward OOTF characteristics.
+
+    Parameters
+    ----------
+    e : np.ndarray
+        Scene referred linear value
+
+    Returns
+    -------
+    np.ndarray
+        Display referred linear values
+    """
+    e = np.asarray(e)
+
+    return eotf_BT1886_ST2084(oetf_BT709_ST2084(e))
+
+
+def conv_logc4_to_st2084_with_forward_ootf_2(x : np.ndarray) -> np.ndarray:
+    """
+    Apply LogC4 to Gamma 2.6 conversion with forward ootf without tone mapping.
+    """
+    linear = log_decoding_ARRILogC4(x) / 100
+    linear = np.clip(linear, 0.0, None)
+    print(linear[-5:])
+
+    linear_with_forward_ootf = apply_forward_ootf_st2084(linear)
+    linear_with_forward_ootf = np.clip(linear_with_forward_ootf, 0.0, 10000.0)
+
+    st2084 = tf.oetf_from_luminance(linear_with_forward_ootf, tf.ST2084)
+
+    return st2084
+
+
+def debug3_plot_st2084_three_graph():
+    
+    no_ootf_fname = "./img/LogC4_to_ST2084_no-ootf.png"
+    forward_ootf_fname = "./img/LogC4_to_ST2084_forward-ootf.png"
+    inverse_ootf_fname = "./img/LogC4_to_ST2084_inverse-ootf.png"
+
+    fname_list = [no_ootf_fname, forward_ootf_fname, inverse_ootf_fname]
+    label_list = ["Resolve: No OOTF", "Resolve: Foward OOTF", "Resolve: Inverse OOTF"]
+    color_list = [pu.GREEN, pu.RED, pu.BLUE]
+
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(10, 8),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="OOTF Characteristics (Gamma = ST 2084)",
+        graph_title_size=None,
+        xlabel="Timeline Code Value",
+        ylabel="Output Code Value",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=None,
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    for idx in range(len(fname_list)):
+        fname = fname_list[idx]
+        label = label_list[idx]
+        color = color_list[idx]
+        img = tpg.img_read_as_float(fname)
+        line_data = img[0, :, 1].reshape(-1)
+        x = np.linspace(0, 1, len(line_data))
+        ax1.plot(x, line_data, color=color, label=label)
+
+    timeline_ramp = np.linspace(0, 1, len(x))
+
+    forward_simulation_1 = conv_logc4_to_st2084_with_forward_ootf_1(timeline_ramp)
+    forward_simulation_2 = conv_logc4_to_st2084_with_forward_ootf_2(timeline_ramp)
+    
+    ax1.plot(x, forward_simulation_1, ':', color=pu.MAJENTA, lw=2, label="Python: Forward Simulation_1")
+    ax1.plot(x, forward_simulation_2, ':', color='k', lw=2, label="Python: Forward Simulation_2")
+ 
+    graph_fname = "./img/st2084_ootf.png"
+    print(graph_fname)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper left', save_fname=graph_fname, show=True
+    )
+    
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug1_plot_three_graph(output_gamma=2.4)
@@ -485,4 +626,6 @@ if __name__ == '__main__':
     # debug2_wg4_logc4_to_p3d65_gm26()
     # debug2_p3d65_gm26_to_wg4_logc4()
     # print(calc_arri_wg4_to_p3d65_matrix())
-    plot_scRGB_oetf()
+    # plot_scRGB_oetf()
+
+    debug3_plot_st2084_three_graph()
