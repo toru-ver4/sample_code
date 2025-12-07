@@ -18,6 +18,7 @@ from colour.adaptation import chromatic_adaptation_VonKries
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.patheffects as pe
+import string
 from coolpi.image.colourchecker import ColourCheckerSpectral
 
 import color_space as cs
@@ -127,38 +128,95 @@ def calc_large_xyz_from_sds(
 
 
 def plot_color_checker_sg(
-        rgb, num_of_h=14, num_of_v=10, margin=0.08, save_fname=None):
-    fig, ax = plt.subplots(figsize=(10, 7))
-    ax.set_aspect("equal")
+        rgb, num_of_h=14, num_of_v=10,
+        patch_margin=0.08,
+        fig_width=10,
+        save_fname=None):
+
+    # パッチの一辺（セル1マス=1 の座標系）
+    patch_size = 1.0 - 2 * patch_margin
+
+    # 左右の外側マージン：パッチサイズの 1/2 相当
+    outer_margin_x = patch_size * 0.65 - patch_margin
+
+    # 上下の外側マージン：少し広めに取りたいので係数だけ大きく
+    #   例: 0.75倍 → お好みで調整してください
+    outer_margin_y = patch_size * 0.65 - patch_margin
+
+    # --- ここがポイント：データの縦横比から figsize を決める ---
+    data_width = num_of_h + 2 * outer_margin_x
+    data_height = num_of_v + 2 * outer_margin_y
+
+    fig_height = fig_width * (data_height / data_width)
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    fig.patch.set_facecolor("black")
+    ax.set_facecolor("black")
+    ax.set_aspect("equal", adjustable="box")
     ax.axis("off")
-    fig.patch.set_facecolor('black')
-    ax.set_facecolor('black')    
 
-    width = 1 - 2 * margin
-    height = 1 - 2 * margin
-
-    # グリッド全体を [0, ncols] × [0, nrows] とする
+    # -------- パッチ描画 --------
     for v_idx in range(num_of_v):
         for h_idx in range(num_of_h):
             idx = v_idx * num_of_h + h_idx
             color = rgb[idx]
 
-            # マージンを考慮した矩形描画
-            x = h_idx + margin
-            y = v_idx + margin
+            x = h_idx + patch_margin
+            y = v_idx + patch_margin
+
             ax.add_patch(
-                Rectangle(
-                    (x, y), width, height,
-                    facecolor=color,
-                    edgecolor="none"
-                )
+                Rectangle((x, y), patch_size, patch_size,
+                          facecolor=color, edgecolor="none")
             )
 
-    ax.set_xlim(0, num_of_h)
-    ax.set_ylim(num_of_v, 0)
+    # グリッド＋外側マージンをそのまま xlim/ylim に
+    ax.set_xlim(-outer_margin_x, num_of_h + outer_margin_x)
+    ax.set_ylim(num_of_v + outer_margin_y, -outer_margin_y)  # 上を 0 行目にするため反転
+
+    # -------- ラベル描画 --------
+    font_color = (0.7, 0.7, 0.7)
+    pe_stroke = [pe.Stroke(linewidth=2, foreground="black"), pe.Normal()]
+
+    # 行番号（1..num_of_v）
+    for v_idx in range(num_of_v):
+        y = v_idx + 0.5  # パッチ中心
+        ax.text(-outer_margin_x * 0.33, y, str(v_idx + 1),
+                va="center", ha="center",
+                color=font_color, fontsize=10, fontweight="bold",
+                path_effects=pe_stroke, zorder=10)
+
+    # 列アルファベット（A..）
+    letters = string.ascii_uppercase[:num_of_h]
+    for h_idx, letter in enumerate(letters):
+        x = h_idx + 0.5  # パッチ中心
+        ax.text(x, num_of_v + outer_margin_y * 0.33, letter,
+                va="center", ha="center",
+                color=font_color, fontsize=10, fontweight="bold",
+                path_effects=pe_stroke, zorder=10)
+
+    # 軸領域を図いっぱいに
+    ax.set_position([0, 0, 1, 1])
+
+    # 図全体の枠
+    fig.add_artist(
+        Rectangle(
+            (0, 0), 1, 1,
+            transform=fig.transFigure,
+            facecolor="none",
+            edgecolor=(0.7, 0.7, 0.7),
+            linewidth=1
+        )
+    )
+
     if save_fname is not None:
-        plt.savefig(save_fname, facecolor=fig.get_facecolor(), dpi=300, bbox_inches='tight')
-    plt.tight_layout()
+        plt.savefig(
+            save_fname,
+            facecolor=fig.get_facecolor(),
+            dpi=100,
+            bbox_inches="tight",
+            pad_inches=0.01,
+        )
+
     plt.show()
 
 
@@ -335,7 +393,7 @@ def debug_plot_dual_patch_spectrum_all():
     plt.show()
 
 
-def load_xrite_theoretical_xyz_value(kind='after'):
+def load_xrite_official_ccdsg_xyz_value(kind='after'):
     if kind == 'before':
         fname = "./data/ColorCheckerSG_Before_Nov2014.txt"
         skip_rows = 10
@@ -360,7 +418,7 @@ def load_xrite_theoretical_xyz_value(kind='after'):
 
 
 def check_xrite_threoretical_value(kind="after"):
-    large_xyz = load_xrite_theoretical_xyz_value(kind=kind)
+    large_xyz = load_xrite_official_ccdsg_xyz_value(kind=kind)
     rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
     srgb = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.SRGB)
 
@@ -402,7 +460,7 @@ def extract_96_patch_from_140_patch(x: np.ndarray) -> np.ndarray:
 
 
 def compare_xrite_lab_and_displayhdr():
-    xyz_from_lab = load_xrite_theoretical_xyz_value()
+    xyz_from_lab = load_xrite_official_ccdsg_xyz_value()
     xyz_from_lab = extract_96_patch_from_140_patch(xyz_from_lab)
 
     _, displayhdr_xyz = load_displayhdr_patch_xyz()
@@ -415,46 +473,57 @@ def compare_xrite_lab_and_displayhdr():
 
 
 def plot_96_patch_of_140_patch():
-    xyz_from_lab = load_xrite_theoretical_xyz_value()
+    xyz_from_lab = load_xrite_official_ccdsg_xyz_value()
 
     rgb = cs.large_xyz_to_rgb(xyz_from_lab, cs.BT709)
     rgb_srgb = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.SRGB)
 
-    plot_96_patch_of_140_patch_core(rgb=rgb_srgb)
+    plot_96_patch_of_140_patch_core(rgb=rgb_srgb, save_fname="./img/96_patch_of_140_patch.png")
 
 
 def plot_96_patch_of_140_patch_core(
-        rgb, num_of_h=14, num_of_v=10, margin=0.08, save_fname=None):
-    fig, ax = plt.subplots(figsize=(10, 7))
-    ax.set_aspect("equal")
-    ax.axis("off")
-    fig.patch.set_facecolor('black')
-    ax.set_facecolor('black')    
-
-    width = 1 - 2 * margin
-    height = 1 - 2 * margin
-
+        rgb, num_of_h=14, num_of_v=10, patch_margin=0.08, fig_width=10, save_fname=None):
+    
     ref_idx, _ = load_displayhdr_patch_xyz()
 
-    # グリッド全体を [0, ncols] × [0, nrows] とする
+    # パッチの一辺（セル1マス=1 の座標系）
+    patch_size = 1.0 - 2 * patch_margin
+
+    # 左右の外側マージン：パッチサイズの 1/2 相当
+    outer_margin_x = patch_size * 0.65 - patch_margin
+
+    # 上下の外側マージン：少し広めに取りたいので係数だけ大きく
+    #   例: 0.75倍 → お好みで調整してください
+    outer_margin_y = patch_size * 0.65 - patch_margin
+
+    # --- ここがポイント：データの縦横比から figsize を決める ---
+    data_width = num_of_h + 2 * outer_margin_x
+    data_height = num_of_v + 2 * outer_margin_y
+
+    fig_height = fig_width * (data_height / data_width)
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    fig.patch.set_facecolor("black")
+    ax.set_facecolor("black")
+    ax.set_aspect("equal", adjustable="box")
+    ax.axis("off")
+
+    width = 1 - 2 * patch_margin
+    height = 1 - 2 * patch_margin
+
+    # -------- パッチ描画 --------
     for v_idx in range(num_of_v):
         for h_idx in range(num_of_h):
             idx = v_idx * num_of_h + h_idx
             color = rgb[idx]
-            # print(v_idx, h_idx, color)
 
-            # マージンを考慮した矩形描画
-            x = h_idx + margin
-            y = v_idx + margin
-            # print(x, y, width, height)
+            x = h_idx + patch_margin
+            y = v_idx + patch_margin
+
             ax.add_patch(
-                Rectangle(
-                    (x, y), width, height,
-                    facecolor=color,
-                    edgecolor="none"
-                )
+                Rectangle((x, y), patch_size, patch_size,
+                          facecolor=color, edgecolor="none")
             )
-
             if idx not in ref_idx:
                 x0, x1 = x + width * 0.2, x + width * 0.8
                 y0, y1 = y + height * 0.2, y + height * 0.8
@@ -462,33 +531,90 @@ def plot_96_patch_of_140_patch_core(
                 ax.plot([x0, x1], [y0, y1], color="white", lw=2, zorder=5, path_effects=effects)
                 ax.plot([x0, x1], [y1, y0], color="white", lw=2, zorder=5, path_effects=effects)
 
-    ax.set_xlim(0, num_of_h)
-    ax.set_ylim(num_of_v, 0)
+    # グリッド＋外側マージンをそのまま xlim/ylim に
+    ax.set_xlim(-outer_margin_x, num_of_h + outer_margin_x)
+    ax.set_ylim(num_of_v + outer_margin_y, -outer_margin_y)  # 上を 0 行目にするため反転
+
+    # -------- ラベル描画 --------
+    font_color = (0.7, 0.7, 0.7)
+    pe_stroke = [pe.Stroke(linewidth=2, foreground="black"), pe.Normal()]
+
+    # 行番号（1..num_of_v）
+    for v_idx in range(num_of_v):
+        y = v_idx + 0.5  # パッチ中心
+        ax.text(-outer_margin_x * 0.33, y, str(v_idx + 1),
+                va="center", ha="center",
+                color=font_color, fontsize=10, fontweight="bold",
+                path_effects=pe_stroke, zorder=10)
+
+    # 列アルファベット（A..）
+    letters = string.ascii_uppercase[:num_of_h]
+    for h_idx, letter in enumerate(letters):
+        x = h_idx + 0.5  # パッチ中心
+        ax.text(x, num_of_v + outer_margin_y * 0.33, letter,
+                va="center", ha="center",
+                color=font_color, fontsize=10, fontweight="bold",
+                path_effects=pe_stroke, zorder=10)
+
+    # 軸領域を図いっぱいに
+    ax.set_position([0, 0, 1, 1])
+
+    # 図全体の枠
+    fig.add_artist(
+        Rectangle(
+            (0, 0), 1, 1,
+            transform=fig.transFigure,
+            facecolor="none",
+            edgecolor=(0.7, 0.7, 0.7),
+            linewidth=1
+        )
+    )
+
     if save_fname is not None:
-        plt.savefig(save_fname, facecolor=fig.get_facecolor(), dpi=300, bbox_inches='tight')
-    plt.tight_layout()
+        plt.savefig(
+            save_fname,
+            facecolor=fig.get_facecolor(),
+            dpi=100,
+            bbox_inches="tight",
+            pad_inches=0.01,
+        )
+
     plt.show()
 
 
-def plot_display_hdr_96_xyz_patch():
+def plot_display_hdr_96_xyz_patch(
+        num_of_h=14, num_of_v=10, patch_margin=0.08, fig_width=10, save_fname=None):
+    
     ref_idx, large_xyz = load_displayhdr_patch_xyz()
     rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
     rgb_srgb = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.SRGB)
 
-    num_of_h = 14
-    num_of_v = 10
-    margin = 0.08
-    save_fname = None
-    fig, ax = plt.subplots(figsize=(10, 7))
-    ax.set_aspect("equal")
+    # パッチの一辺（セル1マス=1 の座標系）
+    patch_size = 1.0 - 2 * patch_margin
+
+    # 左右の外側マージン：パッチサイズの 1/2 相当
+    outer_margin_x = patch_size * 0.65 - patch_margin
+
+    # 上下の外側マージン：少し広めに取りたいので係数だけ大きく
+    #   例: 0.75倍 → お好みで調整してください
+    outer_margin_y = patch_size * 0.65 - patch_margin
+
+    # --- ここがポイント：データの縦横比から figsize を決める ---
+    data_width = num_of_h + 2 * outer_margin_x
+    data_height = num_of_v + 2 * outer_margin_y
+
+    fig_height = fig_width * (data_height / data_width)
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    fig.patch.set_facecolor("black")
+    ax.set_facecolor("black")
+    ax.set_aspect("equal", adjustable="box")
     ax.axis("off")
-    fig.patch.set_facecolor('black')
-    ax.set_facecolor('black')    
 
-    width = 1 - 2 * margin
-    height = 1 - 2 * margin
+    width = 1 - 2 * patch_margin
+    height = 1 - 2 * patch_margin
 
-    # グリッド全体を [0, ncols] × [0, nrows] とする
+    # -------- パッチ描画 --------
     p_idx = 0
     for v_idx in range(num_of_v):
         for h_idx in range(num_of_h):
@@ -497,21 +623,15 @@ def plot_display_hdr_96_xyz_patch():
                 color = rgb_srgb[p_idx]
                 p_idx += 1
             else:
-                color = [0.0, 0.0, 0.0]
-            # print(v_idx, h_idx, color)
+                color = [0.2, 0.2, 0.2]
 
-            # マージンを考慮した矩形描画
-            x = h_idx + margin
-            y = v_idx + margin
-            # print(x, y, width, height)
+            x = h_idx + patch_margin
+            y = v_idx + patch_margin
+
             ax.add_patch(
-                Rectangle(
-                    (x, y), width, height,
-                    facecolor=color,
-                    edgecolor="none"
-                )
+                Rectangle((x, y), patch_size, patch_size,
+                          facecolor=color, edgecolor="none")
             )
-
             if idx not in ref_idx:
                 x0, x1 = x + width * 0.2, x + width * 0.8
                 y0, y1 = y + height * 0.2, y + height * 0.8
@@ -519,12 +639,108 @@ def plot_display_hdr_96_xyz_patch():
                 ax.plot([x0, x1], [y0, y1], color="white", lw=2, zorder=5, path_effects=effects)
                 ax.plot([x0, x1], [y1, y0], color="white", lw=2, zorder=5, path_effects=effects)
 
-    ax.set_xlim(0, num_of_h)
-    ax.set_ylim(num_of_v, 0)
+    # グリッド＋外側マージンをそのまま xlim/ylim に
+    ax.set_xlim(-outer_margin_x, num_of_h + outer_margin_x)
+    ax.set_ylim(num_of_v + outer_margin_y, -outer_margin_y)  # 上を 0 行目にするため反転
+
+    # -------- ラベル描画 --------
+    font_color = (0.7, 0.7, 0.7)
+    pe_stroke = [pe.Stroke(linewidth=2, foreground="black"), pe.Normal()]
+
+    # 行番号（1..num_of_v）
+    for v_idx in range(num_of_v):
+        y = v_idx + 0.5  # パッチ中心
+        ax.text(-outer_margin_x * 0.33, y, str(v_idx + 1),
+                va="center", ha="center",
+                color=font_color, fontsize=10, fontweight="bold",
+                path_effects=pe_stroke, zorder=10)
+
+    # 列アルファベット（A..）
+    letters = string.ascii_uppercase[:num_of_h]
+    for h_idx, letter in enumerate(letters):
+        x = h_idx + 0.5  # パッチ中心
+        ax.text(x, num_of_v + outer_margin_y * 0.33, letter,
+                va="center", ha="center",
+                color=font_color, fontsize=10, fontweight="bold",
+                path_effects=pe_stroke, zorder=10)
+
+    # 軸領域を図いっぱいに
+    ax.set_position([0, 0, 1, 1])
+
+    # 図全体の枠
+    fig.add_artist(
+        Rectangle(
+            (0, 0), 1, 1,
+            transform=fig.transFigure,
+            facecolor="none",
+            edgecolor=(0.7, 0.7, 0.7),
+            linewidth=1
+        )
+    )
+
     if save_fname is not None:
-        plt.savefig(save_fname, facecolor=fig.get_facecolor(), dpi=300, bbox_inches='tight')
-    plt.tight_layout()
+        plt.savefig(
+            save_fname,
+            facecolor=fig.get_facecolor(),
+            dpi=100,
+            bbox_inches="tight",
+            pad_inches=0.01,
+        )
+
     plt.show()
+
+
+def research_display_hdr_pacth_luminance():
+    valid_idx, displayhdr_xyz = load_displayhdr_patch_xyz()
+
+    # X-Rite data
+    xrite_xyz = load_xrite_official_ccdsg_xyz_value()
+    xrite_xyz = xrite_xyz[valid_idx]
+
+    # COOLPI data
+    ccdsg_sds = get_ccdsg_data_from_coolpi(checker_name="CCDSG")
+    wl_st, wl_ed = int(ccdsg_sds.wavelengths[0]), int(ccdsg_sds.wavelengths[-1])
+    coolpi_xyz = calc_large_xyz_from_sds(
+        sds=ccdsg_sds, spectral_shape=SpectralShape(wl_st, wl_ed, 1)
+    )
+    coolpi_xyz = coolpi_xyz[valid_idx]
+
+    displayhdr_y = displayhdr_xyz[..., 1]
+    xrite_y = xrite_xyz[..., 1]
+    coolpi_y = coolpi_xyz[..., 1]
+    diff_with_xrite = displayhdr_y - xrite_y
+    diff_with_coolpi = displayhdr_y - coolpi_y
+
+    x = np.arange(len(valid_idx))
+    abs_max = np.max(np.abs([diff_with_xrite, diff_with_coolpi]))
+    pad = 1.05 * abs_max if abs_max > 0 else 0.5  # 0 対策でデフォルト幅を確保
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20,
+        figsize=(18, 6),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Title",
+        graph_title_size=None,
+        xlabel="DisplayHDR Patch Index",
+        ylabel="Difference [nits]",
+        axis_label_size=None,
+        legend_size=17,
+        xlim=None,
+        ylim=(-pad, pad),  # 0 を中心に上下対称
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=2,
+        minor_xtick_num=None,
+        minor_ytick_num=None
+    )
+    bar_w = 0.3
+    ax1.bar(x - bar_w/2, diff_with_xrite, width=bar_w, label="Diff vs X-Rite LAB")
+    ax1.bar(x + bar_w/2, diff_with_coolpi, width=bar_w, label="Diff vs COOLPI Spectrum Data")
+
+    y_lumi = (1 - displayhdr_y/np.max(displayhdr_y)) * abs_max
+    ax1.plot(x, y_lumi, '--ok', label="1 - original_luminance (Normalized)")
+    pu.show_and_save(fig=fig, legend_loc='lower right', save_fname=None, show=True)
 
 
 if __name__ == '__main__':
@@ -538,11 +754,13 @@ if __name__ == '__main__':
     # debug_plot_dual_patch_spectrum()
     # debug_plot_dual_patch_spectrum_all()
 
-    # load_xrite_theoretical_xyz_value(kind="before")
-    # load_xrite_theoretical_xyz_value(kind="after")
+    # load_xrite_official_ccdsg_xyz_value(kind="before")
+    # load_xrite_official_ccdsg_xyz_value(kind="after")
 
     # debug_load_displayhdr_patch()
     # compare_xrite_lab_and_displayhdr()
 
     # plot_96_patch_of_140_patch()
-    plot_display_hdr_96_xyz_patch()
+    # plot_display_hdr_96_xyz_patch(save_fname="./img/DisplayHDR_96_patch.png")
+
+    research_display_hdr_pacth_luminance()
