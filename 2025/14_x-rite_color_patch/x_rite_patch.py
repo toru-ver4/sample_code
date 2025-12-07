@@ -94,8 +94,10 @@ def load_cdsg_spectrum_data():
     wavelength = [380 + x * 10 for x in range(num_of_wavelength)]
 
     # print(wavelength)
-    # print(data[..., 1:])
-    data = data[..., 1:].T
+    data = data[..., 1:]
+    print(data.shape)
+    data = conv_v_base_idx_to_h_base_idx(data, num_of_v=10, num_of_h=14).T
+
     ref_data = np.ones((num_of_wavelength, 1))
     # print(data.shape)
     # print(ref_data.shape)
@@ -135,9 +137,9 @@ def plot_color_checker_sg(
     height = 1 - 2 * margin
 
     # グリッド全体を [0, ncols] × [0, nrows] とする
-    for h_idx in range(num_of_h):
-        for v_idx in range(num_of_v):
-            idx = h_idx * num_of_v + v_idx
+    for v_idx in range(num_of_v):
+        for h_idx in range(num_of_h):
+            idx = v_idx * num_of_h + h_idx
             color = rgb[idx]
             # print(v_idx, h_idx, color)
 
@@ -184,6 +186,7 @@ def get_ccdsg_data_from_coolpi(checker_name="CCDSG"):
         sr = ccobj.get_patch_lambda_values(patch_id)
         sr_data[:, idx] = sr
     sr_data /= 100.0
+    sr_data = conv_v_base_idx_to_h_base_idx(sr_data.T, num_of_v=10, num_of_h=14).T
     ref_data = np.ones((num_of_wavelength, 1))
     sr_data = np.append(sr_data, ref_data, axis=1)
 
@@ -367,9 +370,9 @@ def debug_load_displayhdr_patch():
 
 
 def conv_v_base_idx_to_h_base_idx(src_data, num_of_v=10, num_of_h=14):
-    dst_data = src_data.reshape(num_of_v, num_of_h, 3)
+    dst_data = src_data.reshape(num_of_h, num_of_v, -1)
     dst_data = np.transpose(dst_data, (1, 0, 2))
-    dst_data = dst_data.reshape(-1, 3)
+    dst_data = dst_data.reshape(num_of_v * num_of_h, -1)
 
     return dst_data
 
@@ -377,7 +380,7 @@ def conv_v_base_idx_to_h_base_idx(src_data, num_of_v=10, num_of_h=14):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # check_ccdsg_before_nov_2014_data()
-    # check_ccdsg_data(checker_name="CCDSG")
+    check_ccdsg_data(checker_name="CCDSG")
     # check_ccdsg_data(checker_name="XRCCSG")
 
     # debug_plot_single_patch_spectrum()
@@ -387,4 +390,4 @@ if __name__ == '__main__':
     # load_xrite_theoretical_xyz_value(kind="before")
     # load_xrite_theoretical_xyz_value(kind="after")
 
-    debug_load_displayhdr_patch()
+    # debug_load_displayhdr_patch()
