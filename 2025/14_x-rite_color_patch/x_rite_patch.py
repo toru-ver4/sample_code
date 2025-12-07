@@ -17,6 +17,7 @@ from colour.difference import delta_E_CIE2000
 from colour.adaptation import chromatic_adaptation_VonKries
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+import matplotlib.patheffects as pe
 from coolpi.image.colourchecker import ColourCheckerSpectral
 
 import color_space as cs
@@ -141,12 +142,10 @@ def plot_color_checker_sg(
         for h_idx in range(num_of_h):
             idx = v_idx * num_of_h + h_idx
             color = rgb[idx]
-            # print(v_idx, h_idx, color)
 
             # マージンを考慮した矩形描画
             x = h_idx + margin
             y = v_idx + margin
-            # print(x, y, width, height)
             ax.add_patch(
                 Rectangle(
                     (x, y), width, height,
@@ -163,7 +162,7 @@ def plot_color_checker_sg(
     plt.show()
 
 
-def check_ccdsg_before_nov_2014_data():
+def check_ccdsg_before_nov_2014_spectrum_data():
     sds = load_cdsg_spectrum_data()
     large_xyz = calc_large_xyz_from_sds(sds=sds)
     print(large_xyz[0])
@@ -196,7 +195,7 @@ def get_ccdsg_data_from_coolpi(checker_name="CCDSG"):
     return sds
 
 
-def check_ccdsg_data(checker_name="CCDSG"):
+def check_ccdsg_spectrum_data(checker_name="CCDSG"):
     ccdsg_sds = get_ccdsg_data_from_coolpi(checker_name=checker_name)
     wl_st, wl_ed = int(ccdsg_sds.wavelengths[0]), int(ccdsg_sds.wavelengths[-1])
     large_xyz = calc_large_xyz_from_sds(
@@ -336,7 +335,7 @@ def debug_plot_dual_patch_spectrum_all():
     plt.show()
 
 
-def load_xrite_theoretical_xyz_value(kind='before'):
+def load_xrite_theoretical_xyz_value(kind='after'):
     if kind == 'before':
         fname = "./data/ColorCheckerSG_Before_Nov2014.txt"
         skip_rows = 10
@@ -346,27 +345,41 @@ def load_xrite_theoretical_xyz_value(kind='before'):
     else:
         raise ValueError("invalid kind type")
     
-    d50_xyz = np.array([0.964220, 1.0, 0.825210])
-    d65_xyz = np.array([0.950470, 1.0, 1.088830])
-    
     lab = np.loadtxt(fname, skiprows=skip_rows, usecols=(1, 2, 3))
-    # large_xyz = Lab_to_XYZ(lab, illuminant=d50_xy)
-    large_xyz = ty_lab_to_large_xyz(lab=lab, white=d50_xyz)
+    lab = conv_v_base_idx_to_h_base_idx(lab, num_of_h=14, num_of_v=10)
 
-    # d50_xyz = xy_to_XYZ(cs.D50)
-    # d65_xyz = xy_to_XYZ(cs.D65)
+    large_xyz = Lab_to_XYZ(lab, illuminant=cs.D50)
+
+    d50_xyz = xy_to_XYZ(cs.D50)
+    d65_xyz = xy_to_XYZ(cs.D65)
 
     print(f"before_bradford = {large_xyz[0]}, {large_xyz[10]}, {large_xyz[11]}, {large_xyz[20]}")
     large_xyz = chromatic_adaptation_VonKries(large_xyz, d50_xyz, d65_xyz, transform="Bradford")
-    # print(f"after_bradford = {large_xyz[0]}, {large_xyz[10]}, {large_xyz[11]}, {large_xyz[20]}")
 
     return large_xyz
 
 
-def debug_load_displayhdr_patch():
+def check_xrite_threoretical_value(kind="after"):
+    large_xyz = load_xrite_theoretical_xyz_value(kind=kind)
+    rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
+    srgb = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.SRGB)
+
+    plot_color_checker_sg(rgb=srgb)
+
+
+def load_displayhdr_patch_xyz():
     fname = "./data/DisplayHDR_96_Pacth.txt"
-    data = np.loadtxt(fname, skiprows=1, delimiter=",", usecols=(7, 8, 9))
-    print(data)
+    data = np.loadtxt(fname, skiprows=1, delimiter=",", usecols=(0, 7, 8, 9))
+    idx = data[:96, 0].astype(np.uint8) - 1
+    large_xyz = data[:96, 1:] / 100.0
+    
+    return idx, large_xyz
+
+
+def debug_load_displayhdr_patch():
+    idx, large_xyz = load_displayhdr_patch_xyz()
+    print(len(idx))
+    # print(large_xyz)
 
 
 def conv_v_base_idx_to_h_base_idx(src_data, num_of_v=10, num_of_h=14):
@@ -377,11 +390,149 @@ def conv_v_base_idx_to_h_base_idx(src_data, num_of_v=10, num_of_h=14):
     return dst_data
 
 
+def extract_96_patch_from_140_patch(x: np.ndarray) -> np.ndarray:
+    """
+    Parameters
+    ----------
+    x : np.ndarray
+        A tristimulus value. The last number of the shape must be 3.
+    """
+    idx, _ = load_displayhdr_patch_xyz()
+    return x[idx]
+
+
+def compare_xrite_lab_and_displayhdr():
+    xyz_from_lab = load_xrite_theoretical_xyz_value()
+    xyz_from_lab = extract_96_patch_from_140_patch(xyz_from_lab)
+
+    _, displayhdr_xyz = load_displayhdr_patch_xyz()
+
+    for idx in range(len(xyz_from_lab)):
+        xrite = xyz_from_lab[idx, 1]
+        displayhdr = displayhdr_xyz[idx, 1]
+        diff = displayhdr - xrite
+        print(f"idx={idx}, X-Rite={xrite:.4f}, DisplayHDR={displayhdr:.4f}, diff={diff:.4f}")
+
+
+def plot_96_patch_of_140_patch():
+    xyz_from_lab = load_xrite_theoretical_xyz_value()
+
+    rgb = cs.large_xyz_to_rgb(xyz_from_lab, cs.BT709)
+    rgb_srgb = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.SRGB)
+
+    plot_96_patch_of_140_patch_core(rgb=rgb_srgb)
+
+
+def plot_96_patch_of_140_patch_core(
+        rgb, num_of_h=14, num_of_v=10, margin=0.08, save_fname=None):
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax.set_aspect("equal")
+    ax.axis("off")
+    fig.patch.set_facecolor('black')
+    ax.set_facecolor('black')    
+
+    width = 1 - 2 * margin
+    height = 1 - 2 * margin
+
+    ref_idx, _ = load_displayhdr_patch_xyz()
+
+    # グリッド全体を [0, ncols] × [0, nrows] とする
+    for v_idx in range(num_of_v):
+        for h_idx in range(num_of_h):
+            idx = v_idx * num_of_h + h_idx
+            color = rgb[idx]
+            # print(v_idx, h_idx, color)
+
+            # マージンを考慮した矩形描画
+            x = h_idx + margin
+            y = v_idx + margin
+            # print(x, y, width, height)
+            ax.add_patch(
+                Rectangle(
+                    (x, y), width, height,
+                    facecolor=color,
+                    edgecolor="none"
+                )
+            )
+
+            if idx not in ref_idx:
+                x0, x1 = x + width * 0.2, x + width * 0.8
+                y0, y1 = y + height * 0.2, y + height * 0.8
+                effects = [pe.Stroke(linewidth=4, foreground="black"), pe.Normal()]
+                ax.plot([x0, x1], [y0, y1], color="white", lw=2, zorder=5, path_effects=effects)
+                ax.plot([x0, x1], [y1, y0], color="white", lw=2, zorder=5, path_effects=effects)
+
+    ax.set_xlim(0, num_of_h)
+    ax.set_ylim(num_of_v, 0)
+    if save_fname is not None:
+        plt.savefig(save_fname, facecolor=fig.get_facecolor(), dpi=300, bbox_inches='tight')
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_display_hdr_96_xyz_patch():
+    ref_idx, large_xyz = load_displayhdr_patch_xyz()
+    rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
+    rgb_srgb = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.SRGB)
+
+    num_of_h = 14
+    num_of_v = 10
+    margin = 0.08
+    save_fname = None
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax.set_aspect("equal")
+    ax.axis("off")
+    fig.patch.set_facecolor('black')
+    ax.set_facecolor('black')    
+
+    width = 1 - 2 * margin
+    height = 1 - 2 * margin
+
+    # グリッド全体を [0, ncols] × [0, nrows] とする
+    p_idx = 0
+    for v_idx in range(num_of_v):
+        for h_idx in range(num_of_h):
+            idx = v_idx * num_of_h + h_idx
+            if idx in ref_idx:
+                color = rgb_srgb[p_idx]
+                p_idx += 1
+            else:
+                color = [0.0, 0.0, 0.0]
+            # print(v_idx, h_idx, color)
+
+            # マージンを考慮した矩形描画
+            x = h_idx + margin
+            y = v_idx + margin
+            # print(x, y, width, height)
+            ax.add_patch(
+                Rectangle(
+                    (x, y), width, height,
+                    facecolor=color,
+                    edgecolor="none"
+                )
+            )
+
+            if idx not in ref_idx:
+                x0, x1 = x + width * 0.2, x + width * 0.8
+                y0, y1 = y + height * 0.2, y + height * 0.8
+                effects = [pe.Stroke(linewidth=4, foreground="black"), pe.Normal()]
+                ax.plot([x0, x1], [y0, y1], color="white", lw=2, zorder=5, path_effects=effects)
+                ax.plot([x0, x1], [y1, y0], color="white", lw=2, zorder=5, path_effects=effects)
+
+    ax.set_xlim(0, num_of_h)
+    ax.set_ylim(num_of_v, 0)
+    if save_fname is not None:
+        plt.savefig(save_fname, facecolor=fig.get_facecolor(), dpi=300, bbox_inches='tight')
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # check_ccdsg_before_nov_2014_data()
-    check_ccdsg_data(checker_name="CCDSG")
-    # check_ccdsg_data(checker_name="XRCCSG")
+    # check_ccdsg_before_nov_2014_spectrum_data()
+    # check_ccdsg_spectrum_data(checker_name="CCDSG")
+    # check_ccdsg_spectrum_data(checker_name="XRCCSG")
+    # check_xrite_threoretical_value(kind="after")
 
     # debug_plot_single_patch_spectrum()
     # debug_plot_dual_patch_spectrum()
@@ -391,3 +542,7 @@ if __name__ == '__main__':
     # load_xrite_theoretical_xyz_value(kind="after")
 
     # debug_load_displayhdr_patch()
+    # compare_xrite_lab_and_displayhdr()
+
+    # plot_96_patch_of_140_patch()
+    plot_display_hdr_96_xyz_patch()
