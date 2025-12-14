@@ -55,6 +55,12 @@ def ty_lab_to_large_xyz(lab, white=[95.047, 100.000, 108.883]):
     return tstack((large_x, large_y, large_z))
 
 
+def add_icc_profile_to_image(src_fname: str, dst_fname: str, icc_profile_path: str):
+
+
+
+
+
 def ty_large_xyz_to_lab(large_xyz, white=[95.047, 100.000, 108.883]):
     x, y, z = tsplit(large_xyz)
     white = [x / white[1] for x in white]
@@ -129,7 +135,7 @@ def calc_large_xyz_from_sds(
 
 
 def plot_color_checker_sg(
-        rgb, num_of_h=14, num_of_v=10,
+        rgb_bt2020, num_of_h=14, num_of_v=10,
         patch_margin=0.08,
         fig_width=10,
         save_fname=None):
@@ -160,7 +166,7 @@ def plot_color_checker_sg(
     for v_idx in range(num_of_v):
         for h_idx in range(num_of_h):
             idx = v_idx * num_of_h + h_idx
-            color = rgb[idx]
+            color = rgb_bt2020[idx]
 
             x = h_idx + patch_margin
             y = v_idx + patch_margin
@@ -225,9 +231,9 @@ def check_ccdsg_before_nov_2014_spectrum_data():
     sds = load_cdsg_spectrum_data()
     large_xyz = calc_large_xyz_from_sds(sds=sds)
     print(large_xyz[0])
-    srgb_linear = cs.large_xyz_to_rgb(large_xyz, color_space_name=cs.sRGB)
-    srgb = tf.oetf(np.clip(srgb_linear, 0.0, 1.0), tf.SRGB)
-    plot_color_checker_sg(rgb=srgb[:140], save_fname="./img/babel_color_before_nov_2014.png")
+    bt2020_linear = cs.large_xyz_to_rgb(large_xyz, color_space_name=cs.BT2020)
+    bt2020 = tf.oetf(np.clip(bt2020_linear, 0.0, 1.0), tf.SRGB)
+    plot_color_checker_sg(rgb_bt2020=bt2020[:140], save_fname="./img/babel_color_before_nov_2014.png")
 
 
 def get_ccdsg_data_from_coolpi(checker_name="CCDSG"):
@@ -258,7 +264,7 @@ def check_ccdsg_spectrum_data(checker_name="CCDSG"):
     large_xyz = load_coolpi_xyz_value(checker_name=checker_name)
     srgb_linear = cs.large_xyz_to_rgb(large_xyz, color_space_name=cs.sRGB)
     srgb = tf.oetf(np.clip(srgb_linear, 0.0, 1.0), tf.SRGB)
-    plot_color_checker_sg(rgb=srgb[:140], save_fname=f"./img/{checker_name}.png")
+    plot_color_checker_sg(rgb_bt2020=srgb[:140], save_fname=f"./img/{checker_name}.png")
 
 
 def load_coolpi_xyz_value(checker_name="CCDSG"):
@@ -429,7 +435,7 @@ def check_xrite_threoretical_value(kind="after"):
     rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
     srgb = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.SRGB)
 
-    plot_color_checker_sg(rgb=srgb, save_fname=f"./img/ColorChecker_Digital_SG_X-Rite_Official_{kind}_Nov_2024.png")
+    plot_color_checker_sg(rgb_bt2020=srgb, save_fname=f"./img/ColorChecker_Digital_SG_X-Rite_Official_{kind}_Nov_2024.png")
 
 
 def load_displayhdr_patch_xyz():
@@ -480,9 +486,10 @@ def compare_xrite_lab_and_displayhdr():
 
 
 def plot_96_patch_of_140_patch():
-    xyz_from_lab = load_xrite_official_ccdsg_xyz_value()
+    # xyz_from_lab = load_xrite_official_ccdsg_xyz_value()
+    large_xyz = load_coolpi_xyz_value()
 
-    rgb = cs.large_xyz_to_rgb(xyz_from_lab, cs.BT709)
+    rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
     rgb_srgb = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.SRGB)
 
     plot_96_patch_of_140_patch_core(rgb=rgb_srgb, save_fname="./img/96_patch_of_140_patch.png")
@@ -535,8 +542,8 @@ def plot_96_patch_of_140_patch_core(
                 x0, x1 = x + width * 0.2, x + width * 0.8
                 y0, y1 = y + height * 0.2, y + height * 0.8
                 effects = [pe.Stroke(linewidth=4, foreground="black"), pe.Normal()]
-                ax.plot([x0, x1], [y0, y1], color="white", lw=2, zorder=5, path_effects=effects)
-                ax.plot([x0, x1], [y1, y0], color="white", lw=2, zorder=5, path_effects=effects)
+                ax.plot([x0, x1], [y0, y1], color=pu.PINK, lw=2, zorder=5, path_effects=effects)
+                ax.plot([x0, x1], [y1, y0], color=pu.PINK, lw=2, zorder=5, path_effects=effects)
 
     # グリッド＋外側マージンをそのまま xlim/ylim に
     ax.set_xlim(-outer_margin_x, num_of_h + outer_margin_x)
@@ -750,7 +757,7 @@ def research_display_hdr_pacth_luminance():
     pu.show_and_save(fig=fig, legend_loc='lower right', save_fname=None, show=True)
 
 
-def plot_cc_18_patch():
+def plot_cc_18_patch_xy():
     # idx, display_hdr_xyz = load_displayhdr_patch_xyz()
     cc_idx_140 = [
         18, 19, 20, 21, 22, 23,
@@ -872,7 +879,7 @@ def plot_cc_18_patch():
     )
 
 
-def plot_cc_96_patch():
+def plot_cc_96_patch_xy():
     idx_96_of_140, display_hdr_xyz = load_displayhdr_patch_xyz()
     displayhdr_xyY = XYZ_to_xy(display_hdr_xyz)[1:]
 
@@ -968,14 +975,24 @@ def plot_cc_96_patch():
     )
 
 
-def plot_chromaticity_data_all():
-    # plot_cc_18_patch()
-    plot_cc_96_patch()
+def plot_cc_96_patch_ab_plane():
+    idx_96_of_140, display_hdr_xyz = load_displayhdr_patch_xyz()
 
+    ccdsg_official_xyz = load_xrite_official_ccdsg_xyz_value()[idx_96_of_140]
+    ccdsg_official_xyY = XYZ_to_xy(ccdsg_official_xyz)
+
+    rgb = tf.oetf(np.clip(cs.large_xyz_to_rgb(display_hdr_xyz[1:], cs.BT709), 0.0, 1.0), tf.SRGB)
+
+
+def plot_chromaticity_data_all():
+    # plot_cc_18_patch_xy()
+    # plot_cc_96_patch_xy()
+    plot_cc_96_patch_ab_plane()
+    
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # check_ccdsg_before_nov_2014_spectrum_data()
+    check_ccdsg_before_nov_2014_spectrum_data()
     # check_ccdsg_spectrum_data(checker_name="CCDSG")
     # check_ccdsg_spectrum_data(checker_name="XRCCSG")
     # check_xrite_threoretical_value(kind="before")
