@@ -55,10 +55,46 @@ def ty_lab_to_large_xyz(lab, white=[95.047, 100.000, 108.883]):
     return tstack((large_x, large_y, large_z))
 
 
-def add_icc_profile_to_image(src_fname: str, dst_fname: str, icc_profile_path: str):
+def add_icc_profile_to_image(src_fname: str, dst_fname_suffix: str, icc_profile_path: str):
+    """
+    Save ``src_fname`` to a new file in the same folder with ``dst_fname_suffix``
+    inserted before the extension and ``icc_profile_path`` embedded.
 
+    Parameters
+    ----------
+    src_fname : str
+        Source image path.
+    dst_fname_suffix : str
+        Suffix appended to the source filename (before the extension) to form
+        the output filename.
+    icc_profile_path : str
+        ICC profile file path.
+    """
+    if not os.path.isfile(src_fname):
+        raise FileNotFoundError(f"source image not found: {src_fname}")
+    if not os.path.isfile(icc_profile_path):
+        raise FileNotFoundError(f"icc profile not found: {icc_profile_path}")
 
+    try:
+        from PIL import Image
+    except ImportError as exc:  # pragma: no cover - only hit when Pillow is missing
+        raise ImportError("Pillow is required to embed an ICC profile.") from exc
 
+    with open(icc_profile_path, "rb") as f:
+        icc_bytes = f.read()
+
+    src_dir, src_basename = os.path.split(src_fname)
+    src_stem, src_ext = os.path.splitext(src_basename)
+    dst_fname = os.path.join(src_dir, f"{src_stem}{dst_fname_suffix}{src_ext}")
+
+    with Image.open(src_fname) as img:
+        save_kwargs = img.info.copy()
+        save_kwargs.pop("icc_profile", None)  # replace existing profile
+        if "exif" in img.info:
+            save_kwargs["exif"] = img.info["exif"]
+        save_kwargs["icc_profile"] = icc_bytes
+
+        img.save(dst_fname, format=img.format, **save_kwargs)
 
 
 def ty_large_xyz_to_lab(large_xyz, white=[95.047, 100.000, 108.883]):
@@ -223,6 +259,9 @@ def plot_color_checker_sg(
             bbox_inches="tight",
             pad_inches=0.01,
         )
+        add_icc_profile_to_image(
+            save_fname, dst_fname_suffix="_with_profile", icc_profile_path="./img/sRGB_BT2020.icc"
+        )
 
     plt.show()
 
@@ -262,9 +301,9 @@ def get_ccdsg_data_from_coolpi(checker_name="CCDSG"):
 
 def check_ccdsg_spectrum_data(checker_name="CCDSG"):
     large_xyz = load_coolpi_xyz_value(checker_name=checker_name)
-    srgb_linear = cs.large_xyz_to_rgb(large_xyz, color_space_name=cs.sRGB)
-    srgb = tf.oetf(np.clip(srgb_linear, 0.0, 1.0), tf.SRGB)
-    plot_color_checker_sg(rgb_bt2020=srgb[:140], save_fname=f"./img/{checker_name}.png")
+    bt2020_linear = cs.large_xyz_to_rgb(large_xyz, color_space_name=cs.BT2020)
+    bt2020 = tf.oetf(np.clip(bt2020_linear, 0.0, 1.0), tf.SRGB)
+    plot_color_checker_sg(rgb_bt2020=bt2020[:140], save_fname=f"./img/{checker_name}.png")
 
 
 def load_coolpi_xyz_value(checker_name="CCDSG"):
@@ -993,8 +1032,8 @@ def plot_chromaticity_data_all():
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     check_ccdsg_before_nov_2014_spectrum_data()
-    # check_ccdsg_spectrum_data(checker_name="CCDSG")
-    # check_ccdsg_spectrum_data(checker_name="XRCCSG")
+    check_ccdsg_spectrum_data(checker_name="CCDSG")
+    check_ccdsg_spectrum_data(checker_name="XRCCSG")
     # check_xrite_threoretical_value(kind="before")
     # check_xrite_threoretical_value(kind="after")
 
@@ -1012,4 +1051,4 @@ if __name__ == '__main__':
     # plot_display_hdr_96_xyz_patch(save_fname="./img/DisplayHDR_96_patch.png")
 
     # research_display_hdr_pacth_luminance()
-    plot_chromaticity_data_all()
+    # plot_chromaticity_data_all()
