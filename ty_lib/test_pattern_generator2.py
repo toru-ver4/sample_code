@@ -1672,6 +1672,56 @@ def generate_color_checker_xyY_value():
     return xyY
 
 
+def get_color_checker_xyY_value(cc_name="ColorChecker24 - After November 2014"):
+    """
+    Examples
+    --------
+    >>> generate_color_checker_xyY_value()
+    [[ 0.39916181  0.35821703  0.09957404]
+     [ 0.38666482  0.35331627  0.34582235]
+     [ 0.24754052  0.26723926  0.18655796]
+     [ 0.34080597  0.42951053  0.13142126]
+     [ 0.26848903  0.25361348  0.23375919]
+     [ 0.2565283   0.35604216  0.41993184]
+     [ 0.50876153  0.40192304  0.30411666]
+     [ 0.20862318  0.1823299   0.11768058]
+     [ 0.46829356  0.31116359  0.18994308]
+     [ 0.29632139  0.22020755  0.06464193]
+     [ 0.3728984   0.49248238  0.438931  ]
+     [ 0.4746098   0.44046371  0.4264411 ]
+     [ 0.18582484  0.14631664  0.06157595]
+     [ 0.29778907  0.48241582  0.23042375]
+     [ 0.5436873   0.32106297  0.12197455]
+     [ 0.44853251  0.47262115  0.58671043]
+     [ 0.37603747  0.24449703  0.2002475 ]
+     [ 0.19355382  0.26377155  0.19799273]
+     [ 0.31392609  0.33143225  0.91280001]
+     [ 0.3110718   0.3286934   0.58953892]
+     [ 0.31029945  0.32830964  0.36333244]
+     [ 0.31162542  0.32824052  0.1915373 ]
+     [ 0.30724016  0.32465011  0.0883915 ]
+     [ 0.30767643  0.32357895  0.03113289]]
+    """
+    colour_checker_param = CCS_COLOURCHECKERS.get(cc_name)
+
+    data = colour_checker_param.data
+    whitepoint = colour_checker_param.illuminant
+    temp_xyY = []
+    for key in data.keys():
+        temp_xyY.append(data[key])
+    temp_xyY = np.array(temp_xyY)
+    large_xyz = xyY_to_XYZ(temp_xyY)
+    M_CAT = matrix_chromatic_adaptation_VonKries(
+        xyY_to_XYZ(xy_to_xyY(whitepoint)),
+        xyY_to_XYZ(xy_to_xyY(cs.D65)),
+        transform="CAT02",
+    )
+    large_xyz = vecmul(M_CAT, large_xyz)
+    xyY = XYZ_to_xyY(large_xyz)
+
+    return xyY
+
+
 def generate_color_checker_rgb_value(
         color_space=RGB_COLOURSPACE_BT709, target_white=D65_WHITE):
     """

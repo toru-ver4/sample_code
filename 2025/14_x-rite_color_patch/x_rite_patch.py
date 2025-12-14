@@ -24,6 +24,7 @@ from coolpi.image.colourchecker import ColourCheckerSpectral
 import color_space as cs
 import transfer_functions as tf
 import plot_utility as pu
+import test_pattern_generator2 as tpg
 
 ILLUMINANT_D65 = SDS_ILLUMINANTS['D65']
 CIE1931_CMFS = MultiSpectralDistributions(MSDS_CMFS["cie_2_1931"])
@@ -254,14 +255,20 @@ def get_ccdsg_data_from_coolpi(checker_name="CCDSG"):
 
 
 def check_ccdsg_spectrum_data(checker_name="CCDSG"):
+    large_xyz = load_coolpi_xyz_value(checker_name=checker_name)
+    srgb_linear = cs.large_xyz_to_rgb(large_xyz, color_space_name=cs.sRGB)
+    srgb = tf.oetf(np.clip(srgb_linear, 0.0, 1.0), tf.SRGB)
+    plot_color_checker_sg(rgb=srgb[:140], save_fname=f"./img/{checker_name}.png")
+
+
+def load_coolpi_xyz_value(checker_name="CCDSG"):
     ccdsg_sds = get_ccdsg_data_from_coolpi(checker_name=checker_name)
     wl_st, wl_ed = int(ccdsg_sds.wavelengths[0]), int(ccdsg_sds.wavelengths[-1])
     large_xyz = calc_large_xyz_from_sds(
         sds=ccdsg_sds, spectral_shape=SpectralShape(wl_st, wl_ed, 1)
     )
-    srgb_linear = cs.large_xyz_to_rgb(large_xyz, color_space_name=cs.sRGB)
-    srgb = tf.oetf(np.clip(srgb_linear, 0.0, 1.0), tf.SRGB)
-    plot_color_checker_sg(rgb=srgb[:140], save_fname=f"./img/{checker_name}.png")
+
+    return large_xyz
 
 
 def debug_plot_single_patch(
@@ -376,14 +383,14 @@ def debug_plot_dual_patch_spectrum_all():
 
     for v_idx in range(num_of_vertical):
         for h_idx in range(num_of_horizontal):
-            idx = h_idx * num_of_vertical + v_idx
+            idx = v_idx * num_of_horizontal + h_idx
             ax = axes[v_idx][h_idx]
 
-            ax.set_facecolor((*srgb[idx], 0.3))
+            ax.set_facecolor((*srgb[idx], 0.5))
 
             # 2 本の分光特性を重ねて描画
-            ax.plot(wl_1, spd_1_sr[..., idx], '-', lw=1.5)
-            ax.plot(wl_2, spd_2_sr[..., idx], '--', lw=1.5)
+            ax.plot(wl_1, spd_1_sr[..., idx], '-', color=pu.RED, lw=1.5)
+            ax.plot(wl_2, spd_2_sr[..., idx], '--', color=pu.BLUE, lw=1.5)
 
             ax.set_ylim(0.0, 1.0)
             ax.tick_params(labelsize=6)
@@ -422,7 +429,7 @@ def check_xrite_threoretical_value(kind="after"):
     rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
     srgb = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.SRGB)
 
-    plot_color_checker_sg(rgb=srgb)
+    plot_color_checker_sg(rgb=srgb, save_fname=f"./img/ColorChecker_Digital_SG_X-Rite_Official_{kind}_Nov_2024.png")
 
 
 def load_displayhdr_patch_xyz():
@@ -743,11 +750,235 @@ def research_display_hdr_pacth_luminance():
     pu.show_and_save(fig=fig, legend_loc='lower right', save_fname=None, show=True)
 
 
+def plot_cc_18_patch():
+    # idx, display_hdr_xyz = load_displayhdr_patch_xyz()
+    cc_idx_140 = [
+        18, 19, 20, 21, 22, 23,
+        32, 33, 34, 35, 36, 37,
+        46, 47, 48, 49, 50, 51,
+    ]
+    cc_idx_96 = [
+        6, 7, 8, 9, 10, 11,
+        18, 19, 20, 21, 22, 23,
+        30, 31, 32, 33, 34, 35
+    ]
+    ccdsg_official_xyz = load_xrite_official_ccdsg_xyz_value()[cc_idx_140]
+    ccdsg_official_xyY = XYZ_to_xy(ccdsg_official_xyz)
+
+    ccdsg_coolpi_xyz = load_coolpi_xyz_value()[cc_idx_140]
+    ccdsg_coolpi_xyY = XYZ_to_xy(ccdsg_coolpi_xyz)
+
+    _, displayhdr_xyz = load_displayhdr_patch_xyz()
+    displayhdr_xyz = displayhdr_xyz[cc_idx_96]
+    displayhdr_xyY = XYZ_to_xy(displayhdr_xyz)
+
+    cc_clasic_xyY = tpg.get_color_checker_xyY_value()[:18]
+
+    rgb = tf.oetf(np.clip(cs.large_xyz_to_rgb(ccdsg_coolpi_xyz, cs.BT709), 0.0, 1.0), tf.SRGB)
+
+    rate = 1.3
+    xmin = -0.1
+    xmax = 0.8
+    ymin = -0.1
+    ymax = 1.0
+    # プロット用データ準備
+    # ---------------------------------
+    st_wl = 380
+    ed_wl = 780
+    wl_step = 1
+    plot_wl_list = [
+        410, 450, 470, 480, 485, 490, 495,
+        500, 505, 510, 520, 530, 540, 550, 560, 570, 580, 590,
+        600, 620, 690]
+    cmf_xy = pu.calc_horseshoe_chromaticity(
+        st_wl=st_wl, ed_wl=ed_wl, wl_step=wl_step)
+    cmf_xy_norm = pu.calc_normal_pos(
+        xy=cmf_xy, normal_len=0.05, angle_degree=90)
+    wl_list = np.arange(st_wl, ed_wl + 1, wl_step)
+    xy_image = pu.get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, cmf_xy=cmf_xy)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20 * rate,
+        figsize=((xmax - xmin) * 10 * rate,
+                 (ymax - ymin) * 10 * rate),
+        graph_title="ColorChecker 18 Patch",
+        graph_title_size=None,
+        xlabel=None, ylabel=None,
+        axis_label_size=None,
+        legend_size=14 * rate,
+        xlim=(xmin, xmax),
+        ylim=(ymin, ymax),
+        xtick=[x * 0.1 + xmin for x in
+               range(int((xmax - xmin)/0.1) + 1)],
+        ytick=[x * 0.1 + ymin for x in
+               range(int((ymax - ymin)/0.1) + 1)],
+        xtick_size=17 * rate,
+        ytick_size=17 * rate,
+        linewidth=4 * rate,
+        minor_xtick_num=2,
+        minor_ytick_num=2)
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
+    ax1.scatter(
+        ccdsg_official_xyY[..., 0], ccdsg_official_xyY[..., 1], c=rgb, marker='o', s=60, label="ColorChecker Digital SG X-Rite Official Data"
+    )
+    ax1.scatter(
+        ccdsg_coolpi_xyY[..., 0], ccdsg_coolpi_xyY[..., 1], c=rgb, marker='s', s=100, label="ColorChecker Digital SG COOLPI Spectrum Data"
+    )
+
+    # background CC 24
+    ax1.scatter(cc_clasic_xyY[..., 0], cc_clasic_xyY[..., 1], c='black', marker='x', s=120, lw=3, zorder=1)
+    # foreground Cc 24
+    ax1.scatter(
+        cc_clasic_xyY[..., 0], cc_clasic_xyY[..., 1], c=rgb, marker='x', s=80, lw=1, zorder=2, label='ColorChecker 24 - After November 2014'
+    )
+
+    # background DisplayHDR
+    ax1.scatter(displayhdr_xyY[..., 0], displayhdr_xyY[..., 1], c='black', marker='+', s=160, lw=3, zorder=1)
+    # foreground DisplayHDR
+    ax1.scatter(
+        displayhdr_xyY[..., 0], displayhdr_xyY[..., 1], c=rgb, marker='+', s=100, lw=1, zorder=2, label='DisplayHDR'
+    )
+
+    for idx, wl in enumerate(wl_list):
+        if wl not in plot_wl_list:
+            continue
+        pu.draw_wl_annotation(
+            ax1=ax1, wl=wl, rate=rate,
+            st_pos=[cmf_xy_norm[idx, 0], cmf_xy_norm[idx, 1]],
+            ed_pos=[cmf_xy[idx, 0], cmf_xy[idx, 1]])
+    bt709_gamut = pu.get_primaries(name=cs.BT709)
+    ax1.plot(
+        bt709_gamut[:, 0], bt709_gamut[:, 1], '-o', ms=5,
+        markeredgecolor='black', markeredgewidth=1.0, c=pu.BLUE, label="BT.709", lw=1.25*rate
+    )
+    bt2020_gamut = pu.get_primaries(name=cs.BT2020)
+    ax1.plot(
+        bt2020_gamut[:, 0], bt2020_gamut[:, 1], '-o', ms=5,
+        markeredgecolor='black', markeredgewidth=1.0, c=pu.RED, label="BT.2020", lw=1.25*rate
+    )
+    dci_p3_gamut = pu.get_primaries(name=cs.P3_D65)
+    ax1.plot(
+        dci_p3_gamut[:, 0], dci_p3_gamut[:, 1], '-o', ms=5,
+        markeredgecolor='black', markeredgewidth=1.0, c=pu.GREEN, label="DCI-P3", lw=1.25*rate
+    )
+    ax1.plot(
+        [0.3127], [0.3290], 'x', label='D65', ms=12*rate, mew=2*rate,
+        color='k', alpha=0.8)
+    # ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right', fontsize=14,
+        save_fname="./img/chromaticity_18_patch.png", show=True
+    )
+
+
+def plot_cc_96_patch():
+    idx_96_of_140, display_hdr_xyz = load_displayhdr_patch_xyz()
+    displayhdr_xyY = XYZ_to_xy(display_hdr_xyz)[1:]
+
+    ccdsg_official_xyz = load_xrite_official_ccdsg_xyz_value()[idx_96_of_140]
+    ccdsg_official_xyY = XYZ_to_xy(ccdsg_official_xyz)[1:]
+
+    rgb = tf.oetf(np.clip(cs.large_xyz_to_rgb(display_hdr_xyz[1:], cs.BT709), 0.0, 1.0), tf.SRGB)
+
+    rate = 1.3
+    xmin = -0.1
+    xmax = 0.8
+    ymin = -0.1
+    ymax = 1.0
+    # プロット用データ準備
+    # ---------------------------------
+    st_wl = 380
+    ed_wl = 780
+    wl_step = 1
+    plot_wl_list = [
+        410, 450, 470, 480, 485, 490, 495,
+        500, 505, 510, 520, 530, 540, 550, 560, 570, 580, 590,
+        600, 620, 690]
+    cmf_xy = pu.calc_horseshoe_chromaticity(
+        st_wl=st_wl, ed_wl=ed_wl, wl_step=wl_step)
+    cmf_xy_norm = pu.calc_normal_pos(
+        xy=cmf_xy, normal_len=0.05, angle_degree=90)
+    wl_list = np.arange(st_wl, ed_wl + 1, wl_step)
+    xy_image = pu.get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, cmf_xy=cmf_xy)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20 * rate,
+        figsize=((xmax - xmin) * 10 * rate,
+                 (ymax - ymin) * 10 * rate),
+        graph_title="ColorChecker 96 Patch",
+        graph_title_size=None,
+        xlabel=None, ylabel=None,
+        axis_label_size=None,
+        legend_size=14 * rate,
+        xlim=(xmin, xmax),
+        ylim=(ymin, ymax),
+        xtick=[x * 0.1 + xmin for x in
+               range(int((xmax - xmin)/0.1) + 1)],
+        ytick=[x * 0.1 + ymin for x in
+               range(int((ymax - ymin)/0.1) + 1)],
+        xtick_size=17 * rate,
+        ytick_size=17 * rate,
+        linewidth=4 * rate,
+        minor_xtick_num=2,
+        minor_ytick_num=2)
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
+
+    ax1.scatter(
+        ccdsg_official_xyY[..., 0], ccdsg_official_xyY[..., 1], c=rgb, marker='o', s=60, label="ColorChecker Digital SG X-Rite Official Data"
+    )
+
+    # background DisplayHDR
+    ax1.scatter(displayhdr_xyY[..., 0], displayhdr_xyY[..., 1], c='black', marker='+', s=160, lw=3, zorder=1)
+    # foreground DisplayHDR
+    ax1.scatter(
+        displayhdr_xyY[..., 0], displayhdr_xyY[..., 1], c=rgb, marker='+', s=100, lw=1, zorder=2, label='DisplayHDR'
+    )
+
+    for idx_96_of_140, wl in enumerate(wl_list):
+        if wl not in plot_wl_list:
+            continue
+        pu.draw_wl_annotation(
+            ax1=ax1, wl=wl, rate=rate,
+            st_pos=[cmf_xy_norm[idx_96_of_140, 0], cmf_xy_norm[idx_96_of_140, 1]],
+            ed_pos=[cmf_xy[idx_96_of_140, 0], cmf_xy[idx_96_of_140, 1]])
+    bt709_gamut = pu.get_primaries(name=cs.BT709)
+    ax1.plot(
+        bt709_gamut[:, 0], bt709_gamut[:, 1], '-o', ms=5,
+        markeredgecolor='black', markeredgewidth=1.0, c=pu.BLUE, label="BT.709", lw=1.25*rate
+    )
+    bt2020_gamut = pu.get_primaries(name=cs.BT2020)
+    ax1.plot(
+        bt2020_gamut[:, 0], bt2020_gamut[:, 1], '-o', ms=5,
+        markeredgecolor='black', markeredgewidth=1.0, c=pu.RED, label="BT.2020", lw=1.25*rate
+    )
+    dci_p3_gamut = pu.get_primaries(name=cs.P3_D65)
+    ax1.plot(
+        dci_p3_gamut[:, 0], dci_p3_gamut[:, 1], '-o', ms=5,
+        markeredgecolor='black', markeredgewidth=1.0, c=pu.GREEN, label="DCI-P3", lw=1.25*rate
+    )
+    ax1.plot(
+        [0.3127], [0.3290], 'x', label='D65', ms=12*rate, mew=2*rate,
+        color='k', alpha=0.8)
+    # ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right', fontsize=14,
+        save_fname="./img/chromaticity_96_patch.png", show=True
+    )
+
+
+def plot_chromaticity_data_all():
+    # plot_cc_18_patch()
+    plot_cc_96_patch()
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # check_ccdsg_before_nov_2014_spectrum_data()
     # check_ccdsg_spectrum_data(checker_name="CCDSG")
     # check_ccdsg_spectrum_data(checker_name="XRCCSG")
+    # check_xrite_threoretical_value(kind="before")
     # check_xrite_threoretical_value(kind="after")
 
     # debug_plot_single_patch_spectrum()
@@ -763,4 +994,5 @@ if __name__ == '__main__':
     # plot_96_patch_of_140_patch()
     # plot_display_hdr_96_xyz_patch(save_fname="./img/DisplayHDR_96_patch.png")
 
-    research_display_hdr_pacth_luminance()
+    # research_display_hdr_pacth_luminance()
+    plot_chromaticity_data_all()
