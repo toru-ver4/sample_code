@@ -474,7 +474,7 @@ def load_xrite_official_ccdsg_xyz_value(kind='after'):
 
 def check_xrite_threoretical_value(kind="after"):
     large_xyz = load_xrite_official_ccdsg_xyz_value(kind=kind)
-    rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT709)
+    rgb = cs.large_xyz_to_rgb(large_xyz, cs.BT2020)
     srgb = tf.oetf(np.clip(rgb, 0.0, 1.0), tf.SRGB)
 
     plot_color_checker_sg(rgb_bt2020=srgb, save_fname=f"./img/ColorChecker_Digital_SG_X-Rite_Official_{kind}_Nov_2024.png")
@@ -937,10 +937,10 @@ def plot_cc_96_patch_xy_xrite_vs_displayhdr():
     rgb = tf.oetf(np.clip(cs.large_xyz_to_rgb(display_hdr_xyz[1:], cs.BT709), 0.0, 1.0), tf.SRGB)
 
     rate = 1.3
-    xmin = -0.1
+    xmin = -0.0
     xmax = 0.8
-    ymin = -0.1
-    ymax = 1.0
+    ymin = -0.0
+    ymax = 0.9
     # プロット用データ準備
     # ---------------------------------
     st_wl = 380
@@ -962,7 +962,7 @@ def plot_cc_96_patch_xy_xrite_vs_displayhdr():
         fontsize=20 * rate,
         figsize=((xmax - xmin) * 10 * rate,
                  (ymax - ymin) * 10 * rate),
-        graph_title="ColorChecker 96 Patch",
+        graph_title="X-Rite Official vs DisplayHDR v1.2",
         graph_title_size=None,
         xlabel=None, ylabel=None,
         axis_label_size=None,
@@ -981,23 +981,24 @@ def plot_cc_96_patch_xy_xrite_vs_displayhdr():
     ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
 
     ax1.scatter(
-        ccdsg_official_xyY[..., 0], ccdsg_official_xyY[..., 1], c=rgb, marker='o', s=60, label="ColorChecker Digital SG X-Rite Official Data"
+        ccdsg_official_xyY[..., 0], ccdsg_official_xyY[..., 1], c=rgb, marker='o', s=100, label="ColorChecker Digital SG X-Rite Official Data",
+        edgecolors='k', linewidths=0.8,
     )
 
     # background DisplayHDR
     ax1.scatter(displayhdr_xyY[..., 0], displayhdr_xyY[..., 1], c='black', marker='+', s=160, lw=3, zorder=1)
     # foreground DisplayHDR
     ax1.scatter(
-        displayhdr_xyY[..., 0], displayhdr_xyY[..., 1], c=rgb, marker='+', s=100, lw=1, zorder=2, label='DisplayHDR'
+        displayhdr_xyY[..., 0], displayhdr_xyY[..., 1], c=rgb, marker='+', s=100, lw=1, zorder=2, label='DisplayHDR v1.2 Data'
     )
 
-    for idx_96_of_140, wl in enumerate(wl_list):
-        if wl not in plot_wl_list:
-            continue
-        pu.draw_wl_annotation(
-            ax1=ax1, wl=wl, rate=rate,
-            st_pos=[cmf_xy_norm[idx_96_of_140, 0], cmf_xy_norm[idx_96_of_140, 1]],
-            ed_pos=[cmf_xy[idx_96_of_140, 0], cmf_xy[idx_96_of_140, 1]])
+    # for idx_96_of_140, wl in enumerate(wl_list):
+    #     if wl not in plot_wl_list:
+    #         continue
+    #     pu.draw_wl_annotation(
+    #         ax1=ax1, wl=wl, rate=rate,
+    #         st_pos=[cmf_xy_norm[idx_96_of_140, 0], cmf_xy_norm[idx_96_of_140, 1]],
+    #         ed_pos=[cmf_xy[idx_96_of_140, 0], cmf_xy[idx_96_of_140, 1]])
     bt709_gamut = pu.get_primaries(name=cs.BT709)
     ax1.plot(
         bt709_gamut[:, 0], bt709_gamut[:, 1], '-o', ms=5,
@@ -1018,8 +1019,105 @@ def plot_cc_96_patch_xy_xrite_vs_displayhdr():
         color='k', alpha=0.8)
     # ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
     pu.show_and_save(
-        fig=fig, legend_loc='upper right', fontsize=14,
-        save_fname="./img/chromaticity_96_patch.png", show=True
+        fig=fig, legend_loc='upper right', fontsize=12*rate,
+        save_fname="./img/chromaticity_X-Rite_vs_DisplayHDR_patch.png", show=True
+    )
+
+
+def plot_cc_96_patch_coolpi_vs_displayhdr():
+    idx_96_of_140, display_hdr_xyz = load_displayhdr_patch_xyz()
+    displayhdr_xyY = XYZ_to_xy(display_hdr_xyz)[1:]
+
+    ccdsg_official_xyz = load_coolpi_xyz_value()[idx_96_of_140]
+    ccdsg_official_xyY = XYZ_to_xy(ccdsg_official_xyz)[1:]
+
+    rgb = tf.oetf(np.clip(cs.large_xyz_to_rgb(display_hdr_xyz[1:], cs.BT709), 0.0, 1.0), tf.SRGB)
+
+    rate = 1.3
+    xmin = -0.0
+    xmax = 0.8
+    ymin = -0.0
+    ymax = 0.9
+    # プロット用データ準備
+    # ---------------------------------
+    st_wl = 380
+    ed_wl = 780
+    wl_step = 1
+    plot_wl_list = [
+        410, 450, 470, 480, 485, 490, 495,
+        500, 505, 510, 520, 530, 540, 550, 560, 570, 580, 590,
+        600, 620, 690]
+    cmf_xy = pu.calc_horseshoe_chromaticity(
+        st_wl=st_wl, ed_wl=ed_wl, wl_step=wl_step)
+    cmf_xy_norm = pu.calc_normal_pos(
+        xy=cmf_xy, normal_len=0.05, angle_degree=90)
+    wl_list = np.arange(st_wl, ed_wl + 1, wl_step)
+    xy_image = pu.get_chromaticity_image(
+        xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, cmf_xy=cmf_xy)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=20 * rate,
+        figsize=((xmax - xmin) * 10 * rate,
+                 (ymax - ymin) * 10 * rate),
+        graph_title="COOLPI vs DisplayHDR v1.2",
+        graph_title_size=None,
+        xlabel=None, ylabel=None,
+        axis_label_size=None,
+        legend_size=14 * rate,
+        xlim=(xmin, xmax),
+        ylim=(ymin, ymax),
+        xtick=[x * 0.1 + xmin for x in
+               range(int((xmax - xmin)/0.1) + 1)],
+        ytick=[x * 0.1 + ymin for x in
+               range(int((ymax - ymin)/0.1) + 1)],
+        xtick_size=17 * rate,
+        ytick_size=17 * rate,
+        linewidth=4 * rate,
+        minor_xtick_num=2,
+        minor_ytick_num=2)
+    ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
+
+    ax1.scatter(
+        ccdsg_official_xyY[..., 0], ccdsg_official_xyY[..., 1], c=rgb, marker='o', s=100, label="ColorChecker Digital SG X-Rite Official Data",
+        edgecolors='k', linewidths=0.8,
+    )
+
+    # background DisplayHDR
+    ax1.scatter(displayhdr_xyY[..., 0], displayhdr_xyY[..., 1], c='black', marker='+', s=160, lw=3, zorder=1)
+    # foreground DisplayHDR
+    ax1.scatter(
+        displayhdr_xyY[..., 0], displayhdr_xyY[..., 1], c=rgb, marker='+', s=100, lw=1, zorder=2, label='DisplayHDR v1.2 Data'
+    )
+
+    # for idx_96_of_140, wl in enumerate(wl_list):
+    #     if wl not in plot_wl_list:
+    #         continue
+    #     pu.draw_wl_annotation(
+    #         ax1=ax1, wl=wl, rate=rate,
+    #         st_pos=[cmf_xy_norm[idx_96_of_140, 0], cmf_xy_norm[idx_96_of_140, 1]],
+    #         ed_pos=[cmf_xy[idx_96_of_140, 0], cmf_xy[idx_96_of_140, 1]])
+    bt709_gamut = pu.get_primaries(name=cs.BT709)
+    ax1.plot(
+        bt709_gamut[:, 0], bt709_gamut[:, 1], '-o', ms=5,
+        markeredgecolor='black', markeredgewidth=1.0, c=pu.BLUE, label="BT.709", lw=1.25*rate
+    )
+    bt2020_gamut = pu.get_primaries(name=cs.BT2020)
+    ax1.plot(
+        bt2020_gamut[:, 0], bt2020_gamut[:, 1], '-o', ms=5,
+        markeredgecolor='black', markeredgewidth=1.0, c=pu.RED, label="BT.2020", lw=1.25*rate
+    )
+    dci_p3_gamut = pu.get_primaries(name=cs.P3_D65)
+    ax1.plot(
+        dci_p3_gamut[:, 0], dci_p3_gamut[:, 1], '-o', ms=5,
+        markeredgecolor='black', markeredgewidth=1.0, c=pu.GREEN, label="DCI-P3", lw=1.25*rate
+    )
+    ax1.plot(
+        [0.3127], [0.3290], 'x', label='D65', ms=12*rate, mew=2*rate,
+        color='k', alpha=0.8)
+    # ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
+    pu.show_and_save(
+        fig=fig, legend_loc='upper right', fontsize=12*rate,
+        save_fname="./img/chromaticity_COOLPI_vs_DisplayHDR_patch.png", show=True
     )
 
 
@@ -1032,10 +1130,10 @@ def plot_cc_96_patch_xy(save_fname):
     rgb = tf.oetf(np.clip(cs.large_xyz_to_rgb(ccdsg_official_xyz, cs.BT709), 0.0, 1.0), tf.SRGB)
 
     rate = 1.3
-    xmin = -0.1
+    xmin = -0.0
     xmax = 0.8
-    ymin = -0.1
-    ymax = 1.0
+    ymin = -0.0
+    ymax = 0.9
     # プロット用データ準備
     # ---------------------------------
     st_wl = 380
@@ -1080,13 +1178,13 @@ def plot_cc_96_patch_xy(save_fname):
         edgecolors='k', linewidths=0.8,
     )
 
-    for idx_96_of_140, wl in enumerate(wl_list):
-        if wl not in plot_wl_list:
-            continue
-        pu.draw_wl_annotation(
-            ax1=ax1, wl=wl, rate=rate,
-            st_pos=[cmf_xy_norm[idx_96_of_140, 0], cmf_xy_norm[idx_96_of_140, 1]],
-            ed_pos=[cmf_xy[idx_96_of_140, 0], cmf_xy[idx_96_of_140, 1]])
+    # for idx_96_of_140, wl in enumerate(wl_list):
+    #     if wl not in plot_wl_list:
+    #         continue
+    #     pu.draw_wl_annotation(
+    #         ax1=ax1, wl=wl, rate=rate,
+    #         st_pos=[cmf_xy_norm[idx_96_of_140, 0], cmf_xy_norm[idx_96_of_140, 1]],
+    #         ed_pos=[cmf_xy[idx_96_of_140, 0], cmf_xy[idx_96_of_140, 1]])
     bt709_gamut = pu.get_primaries(name=cs.BT709)
     ax1.plot(
         bt709_gamut[:, 0], bt709_gamut[:, 1], '-o', ms=5,
@@ -1107,7 +1205,7 @@ def plot_cc_96_patch_xy(save_fname):
         color='k', alpha=0.8)
     # ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
     pu.show_and_save(
-        fig=fig, legend_loc=None, fontsize=14, save_fname=save_fname, show=True
+        fig=fig, legend_loc="upper right", fontsize=16*rate, save_fname=save_fname, show=True
     )
 
 
@@ -1118,10 +1216,10 @@ def plot_cc_24_patch_xy(save_fname):
     rgb = tf.oetf(np.clip(cs.large_xyz_to_rgb(cc_official_xyz, cs.BT709), 0.0, 1.0), tf.SRGB)
 
     rate = 1.3
-    xmin = -0.1
+    xmin = -0.0
     xmax = 0.8
-    ymin = -0.1
-    ymax = 1.0
+    ymin = -0.0
+    ymax = 0.9
     # プロット用データ準備
     # ---------------------------------
     st_wl = 380
@@ -1166,13 +1264,13 @@ def plot_cc_24_patch_xy(save_fname):
         edgecolors='k', linewidths=0.8,
     )
 
-    for idx_96_of_140, wl in enumerate(wl_list):
-        if wl not in plot_wl_list:
-            continue
-        pu.draw_wl_annotation(
-            ax1=ax1, wl=wl, rate=rate,
-            st_pos=[cmf_xy_norm[idx_96_of_140, 0], cmf_xy_norm[idx_96_of_140, 1]],
-            ed_pos=[cmf_xy[idx_96_of_140, 0], cmf_xy[idx_96_of_140, 1]])
+    # for idx_96_of_140, wl in enumerate(wl_list):
+    #     if wl not in plot_wl_list:
+    #         continue
+    #     pu.draw_wl_annotation(
+    #         ax1=ax1, wl=wl, rate=rate,
+    #         st_pos=[cmf_xy_norm[idx_96_of_140, 0], cmf_xy_norm[idx_96_of_140, 1]],
+    #         ed_pos=[cmf_xy[idx_96_of_140, 0], cmf_xy[idx_96_of_140, 1]])
     bt709_gamut = pu.get_primaries(name=cs.BT709)
     ax1.plot(
         bt709_gamut[:, 0], bt709_gamut[:, 1], '-o', ms=5,
@@ -1193,7 +1291,7 @@ def plot_cc_24_patch_xy(save_fname):
         color='k', alpha=0.8)
     # ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
     pu.show_and_save(
-        fig=fig, legend_loc=None, fontsize=14, save_fname=save_fname, show=True
+        fig=fig, legend_loc="upper right", fontsize=16*rate, save_fname=save_fname, show=True
     )
 
 
@@ -1339,7 +1437,7 @@ def plot_cc_24_patch_ch_plane(save_fname):
     pu.show_and_save(fig=fig, legend_loc=None, save_fname=save_fname, show=True)
 
 
-def plot_cc_140_patch_wcg_xy_with_id(save_fname):
+def plot_cc_140_patch_wcg_xy_with_id(save_fname, include_str: str | None = None, show: bool = True):
     ccdsg_official_xyz = load_xrite_official_ccdsg_xyz_value()
     ccdsg_official_xy = XYZ_to_xy(ccdsg_official_xyz)
     cow_str = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N"]
@@ -1348,10 +1446,10 @@ def plot_cc_140_patch_wcg_xy_with_id(save_fname):
     rgb = tf.oetf(np.clip(cs.large_xyz_to_rgb(ccdsg_official_xyz, cs.BT709), 0.0, 1.0), tf.SRGB)
 
     rate = 3.0
-    xmin = -0.0
-    xmax = 0.8
+    xmin = 0.1
+    xmax = 0.7
     ymin = -0.0
-    ymax = 0.8
+    ymax = 0.7
     # プロット用データ準備
     # ---------------------------------
     st_wl = 380
@@ -1370,10 +1468,10 @@ def plot_cc_140_patch_wcg_xy_with_id(save_fname):
         xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, cmf_xy=cmf_xy)
 
     fig, ax1 = pu.plot_1_graph(
-        fontsize=20 * rate,
+        fontsize=16 * rate,
         figsize=((xmax - xmin) * 10 * rate,
                  (ymax - ymin) * 10 * rate),
-        graph_title="ColorChecker 96 Patchs",
+        graph_title="ColorChecker Digital SG 140 Patchs",
         graph_title_size=None,
         xlabel=None, ylabel=None,
         axis_label_size=None,
@@ -1381,25 +1479,41 @@ def plot_cc_140_patch_wcg_xy_with_id(save_fname):
         xlim=(xmin, xmax),
         ylim=(ymin, ymax),
         xtick=[x * 0.1 + xmin for x in
-               range(int((xmax - xmin)/0.1) + 1)],
+               range(int((xmax - xmin)/0.1 + 0.5) + 1)],
         ytick=[x * 0.1 + ymin for x in
-               range(int((ymax - ymin)/0.1) + 1)],
-        xtick_size=15 * rate,
-        ytick_size=15 * rate,
+               range(int((ymax - ymin)/0.1 + 0.5) + 1)],
+        xtick_size=10 * rate,
+        ytick_size=10 * rate,
         linewidth=4 * rate,
         minor_xtick_num=2,
         minor_ytick_num=2)
     ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
 
     for idx in range(len(ccdsg_official_xy)):
-        ax1.scatter(
-            ccdsg_official_xy[idx, 0], ccdsg_official_xy[idx, 1], c=rgb[idx], marker='o', s=240,
-            edgecolors='k', linewidths=0.8,
-        )
         row_idx = idx // 14
         cow_idx = idx % 14
         id_str = cow_str[cow_idx] + row_str[row_idx]
-        print(f"{row_idx}, {cow_idx}, {id_str}")
+        # print(f"{row_idx}, {cow_idx}, {id_str}")
+
+        if include_str is None:
+            pass
+        else:
+            if include_str in id_str:
+                pass
+            else:
+                continue
+
+        ax1.scatter(
+            ccdsg_official_xy[idx, 0], ccdsg_official_xy[idx, 1], color=rgb[idx], marker='o', s=500,
+            edgecolors='k', linewidths=0.8,
+        )
+
+        ax1.text(
+            ccdsg_official_xy[idx, 0], ccdsg_official_xy[idx, 1],
+            id_str,
+            fontsize=4.5*rate, ha='center', va='center', color='white', weight='bold',
+            path_effects=[pe.withStroke(linewidth=1.5, foreground='black')]
+        )
 
     bt709_gamut = pu.get_primaries(name=cs.BT709)
     ax1.plot(
@@ -1417,24 +1531,35 @@ def plot_cc_140_patch_wcg_xy_with_id(save_fname):
         markeredgecolor='black', markeredgewidth=1.0, c=pu.GREEN, label="DCI-P3", lw=1.25*rate
     )
     ax1.plot(
-        [0.3127], [0.3290], 'x', label='D65', ms=12*rate, mew=2*rate,
+        [0.3127], [0.3290], 'x', label='D65', ms=8*rate, mew=2*rate,
         color='k', alpha=0.8)
     # ax1.imshow(xy_image, extent=(xmin, xmax, ymin, ymax), alpha=0.5)
     pu.show_and_save(
-        fig=fig, legend_loc=None, fontsize=14, save_fname=save_fname, show=True
+        fig=fig, legend_loc="upper right", fontsize=10*rate, save_fname=save_fname, show=show
     )
+
+
+def check_row_cow_140_patch():
+    cow_str_list = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N"]
+    row_str_list = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+    target_str_list = cow_str_list + row_str_list
+
+    for target_str in target_str_list:
+        save_fname = f"./img/140_patch_xy-plane_xrite_official_with_id_{target_str}.png"
+        plot_cc_140_patch_wcg_xy_with_id(save_fname=save_fname, include_str=target_str, show=False)
 
 
 def plot_chromaticity_data_all():
     # plot_cc_18_patch_xy()
-    # plot_cc_96_patch_xy_xrite_vs_displayhdr()
+    plot_cc_96_patch_xy_xrite_vs_displayhdr()
+    plot_cc_96_patch_coolpi_vs_displayhdr()
     # plot_cc_96_patch_xy(save_fname="./img/96_patch_xy-plane_xrite_official.png")
     # plot_cc_24_patch_xy(save_fname="./img/24_patch_xy-plane_xrite_official.png")
     # plot_cc_96_patch_ab_plane(save_fname="./img/96_patch_ab-plane_xrite_official.png")
     # plot_cc_96_patch_ch_plane(save_fname="./img/96_patch_ch-plane_xrite_official.png")
     # plot_cc_24_patch_ab_plane(save_fname="./img/24_patch_ab-plane_xrite_official.png")
     # plot_cc_24_patch_ch_plane(save_fname="./img/24_patch_ch-plane_xrite_official.png")
-    plot_cc_140_patch_wcg_xy_with_id(save_fname="./img/140_patch_xy-plane_xrite_official_with_id.png")
+    # plot_cc_140_patch_wcg_xy_with_id(save_fname="./img/140_patch_xy-plane_xrite_official_with_id.png")
 
 
 if __name__ == '__main__':
@@ -1447,7 +1572,7 @@ if __name__ == '__main__':
 
     # debug_plot_single_patch_spectrum()
     # debug_plot_dual_patch_spectrum()
-    # debug_plot_dual_patch_spectrum_all()
+    debug_plot_dual_patch_spectrum_all()
 
     # load_xrite_official_ccdsg_xyz_value(kind="before")
     # load_xrite_official_ccdsg_xyz_value(kind="after")
@@ -1459,4 +1584,5 @@ if __name__ == '__main__':
     # plot_display_hdr_96_xyz_patch(save_fname="./img/DisplayHDR_96_patch.png")
 
     # research_display_hdr_pacth_luminance()
-    plot_chromaticity_data_all()
+    # plot_chromaticity_data_all()
+    # check_row_cow_140_patch()
