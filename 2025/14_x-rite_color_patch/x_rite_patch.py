@@ -444,8 +444,24 @@ def debug_plot_dual_patch_spectrum_all():
             ax.tick_params(labelsize=6)
             ax.grid(True, color="#cccccc", linewidth=0.5, linestyle='--')
 
-    fig.tight_layout()
-    plt.show()
+    handles = [
+        plt.Line2D([], [], color=pu.RED, lw=1.5, linestyle='-',
+                   label="BabelColor dataset, 45˚/0˚ geometry"),
+        plt.Line2D([], [], color=pu.BLUE, lw=1.5, linestyle='--',
+                   label="COOLPI dataset, Integrated Sphere (SCI)"),
+    ]
+    fig.legend(
+        handles=handles, loc="upper right",
+        bbox_to_anchor=(0.99, 0.99), ncol=1, frameon=False
+    )
+    fig.suptitle(
+        "ColorChecker SG spectral comparison",
+        fontsize=48, y=0.985
+    )
+
+    fig.tight_layout(rect=[0, 0, 0.93, 0.97])
+
+    pu.show_and_save(fig=fig, legend_loc=None, save_fname="./img/spetrum_plot.png", show=True)
 
 
 def load_xrite_official_ccdsg_xyz_value(kind='after'):
