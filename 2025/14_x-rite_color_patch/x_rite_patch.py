@@ -1094,7 +1094,7 @@ def plot_cc_96_patch_coolpi_vs_displayhdr():
     ax1.plot(cmf_xy[..., 0], cmf_xy[..., 1], '-k', lw=2*rate, label=None)
 
     ax1.scatter(
-        ccdsg_official_xyY[..., 0], ccdsg_official_xyY[..., 1], c=rgb, marker='o', s=100, label="ColorChecker Digital SG X-Rite Official Data",
+        ccdsg_official_xyY[..., 0], ccdsg_official_xyY[..., 1], c=rgb, marker='o', s=100, label="COOLPI Data",
         edgecolors='k', linewidths=0.8,
     )
 
@@ -1567,7 +1567,7 @@ def check_row_cow_140_patch():
 
 def plot_chromaticity_data_all():
     # plot_cc_18_patch_xy()
-    plot_cc_96_patch_xy_xrite_vs_displayhdr()
+    # plot_cc_96_patch_xy_xrite_vs_displayhdr()
     plot_cc_96_patch_coolpi_vs_displayhdr()
     # plot_cc_96_patch_xy(save_fname="./img/96_patch_xy-plane_xrite_official.png")
     # plot_cc_24_patch_xy(save_fname="./img/24_patch_xy-plane_xrite_official.png")
@@ -1588,7 +1588,7 @@ if __name__ == '__main__':
 
     # debug_plot_single_patch_spectrum()
     # debug_plot_dual_patch_spectrum()
-    debug_plot_dual_patch_spectrum_all()
+    # debug_plot_dual_patch_spectrum_all()
 
     # load_xrite_official_ccdsg_xyz_value(kind="before")
     # load_xrite_official_ccdsg_xyz_value(kind="after")
@@ -1600,5 +1600,5 @@ if __name__ == '__main__':
     # plot_display_hdr_96_xyz_patch(save_fname="./img/DisplayHDR_96_patch.png")
 
     # research_display_hdr_pacth_luminance()
-    # plot_chromaticity_data_all()
+    plot_chromaticity_data_all()
     # check_row_cow_140_patch()
