@@ -232,7 +232,7 @@ RUN groupadd -g ${GID} ${USER_NAME} \
 # Git init settings
 RUN git config --global user.name toru.yoshihara \
     && git config --global user.email dummy_address@gmail.com \
-    && git config --global core.autocrlf true
+    && git config --global core.autocrlf false
 
 WORKDIR /work/src
 USER ${USER_NAME}
