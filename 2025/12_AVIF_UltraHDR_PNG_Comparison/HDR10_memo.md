@@ -10,7 +10,7 @@
   * IP、HDMI、またはその他の映像配信ソースから HDR10 メディアプロファイル* を受信・処理できること。加えて、その他のメディアプロファイルもサポートされる場合がある。
   * 画像を表示する前に、適切な Electro-Optical Transfer Function (EOTF：電気光学変換関数) を適用すること。
 * ここで HDR10 Media Profile というものが出てくる
-* で、その中にめtデータとして SMPTE ST 2086 と MaxFALL, MaxCLL が定義されてる
+* で、その中にメタデータとして SMPTE ST 2086 と MaxFALL, MaxCLL が定義されてる
 
 ## SMPTE ST 2086 について
 
