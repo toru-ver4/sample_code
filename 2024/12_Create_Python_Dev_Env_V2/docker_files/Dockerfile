@@ -229,12 +229,12 @@ RUN groupadd -g ${GID} ${USER_NAME} \
     && usermod -aG sudo ${USER_NAME} \
     && chage -d 0 ${USER_NAME}
 
+WORKDIR /work/src
+USER ${USER_NAME}
+
 # Git init settings
 RUN git config --global user.name toru.yoshihara \
     && git config --global user.email dummy_address@gmail.com \
     && git config --global core.autocrlf false
-
-WORKDIR /work/src
-USER ${USER_NAME}
 
 CMD ["bash"]
