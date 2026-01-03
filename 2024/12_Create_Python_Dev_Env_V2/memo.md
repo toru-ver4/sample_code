@@ -64,8 +64,8 @@ docker push takuver4/ty_env_v2:rev06
 ## run
 
 ```powershell
-docker-compose up -d
+docker compose up -d
   or
-docker run -it -P --name ty_env_v2_rev06 -v C:\Users\toruv\OneDrive\work\sample_code:/work/src --rm takuver4/ty_env_v2:rev06 bash
-docker run -itd -P --platform linux/amd64 --name ty_env_v2_rev06 -v /Users/toru/Work/sample_code:/work/src -e PYTHONPATH=/work/src/ty_lib --rm takuver4/ty_env_v2:rev04
+docker run -it -P --name ty_env_v2_rev06 -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src --rm takuver4/ty_env_v2:rev06 bash
+docker run -itd -P --platform linux/amd64 --name ty_env_v2_rev06 -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src -e PYTHONPATH=/work/src/ty_lib --rm takuver4/ty_env_v2:rev04
 ```

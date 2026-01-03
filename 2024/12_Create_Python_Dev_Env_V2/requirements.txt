@@ -14,7 +14,7 @@ ipywidgets
 pysimplegui
 jupyterlab
 # wavio
-# pyside2
+pyside2
 conan
 imagecodecs
 coolpi

@@ -1,7 +1,8 @@
-ARG DEBIAN_VERSION="bookworm"
-ARG PYTHON_VERSION="3.12"
+ARG PYTHON_VERSION="3.13"
+ARG IMAGE_TYPE="slim"
+ARG DEBIAN_VERSION="trixie"
 
-FROM python:${PYTHON_VERSION}-${DEBIAN_VERSION} AS builder
+FROM python:${PYTHON_VERSION}-${IMAGE_TYPE}-${DEBIAN_VERSION} AS builder
 
 # Avoid clearing `DEBIAN_VERSION`
 ARG DEBIAN_VERSION
@@ -40,22 +41,31 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         libraw-dev \
         libwebp-dev \
         libx265-dev \
+        libxcb-cursor0 \
+        libx11-xcb1 \
+        libxcb1 \
+        libxcb-shm0 \
+        libxcb-randr0 \
+        libxcb-image0 \
+        libxcb-keysyms1 \
+        libxcb-icccm4 \
+        libxcb-xfixes0 \
+        libxcb-render-util0 \
+        libxkbcommon0 \
+        libxkbcommon-x11-0 \
+        libxml2-dev \
         libyaml-cpp-dev \
         llvm \
         ninja-build \
         pybind11-dev \
+        python3-tk \
+        tk-dev \
+        sudo \
+        unzip \
+        wget \
         yasm \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-# Intall libpng
-RUN git clone https://github.com/pnggroup/libpng.git \
-    && cd libpng \
-    && ./configure \
-    && make check \
-    && make install \
-    && cd /root/local \
-    && rm -rf /root/local/libpng
 
 # Install lubultrahdr
 ########################################
@@ -78,7 +88,7 @@ RUN pip install --upgrade pip \
         && pip install --no-cache-dir -r /root/local/requirements.txt
 
 # Install libheif
-RUN git clone https://github.com/strukturag/libheif.git -b v1.20.2 \
+RUN git clone https://github.com/strukturag/libheif.git -b v1.21.1 \
     && cd libheif \
     && mkdir build \
     && cd build \
@@ -91,7 +101,7 @@ RUN git clone https://github.com/strukturag/libheif.git -b v1.20.2 \
 # Install OpencolorIO
 RUN mkdir /tmp/ociobuild \
         && cd /tmp/ociobuild \
-        && git clone https://github.com/AcademySoftwareFoundation/OpenColorIO.git /root/local/OpenColorIO -b v2.4.2 \
+        && git clone https://github.com/AcademySoftwareFoundation/OpenColorIO.git /root/local/OpenColorIO -b v2.5.0 \
         && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOCIO_INSTALL_EXT_PACKAGES=MISSING -DOCIO_BUILD_PYTHON=0 -DOCIO_VERBOSE=1 /root/local/OpenColorIO \
         && make -j16 \
         && make install \
@@ -99,12 +109,8 @@ RUN mkdir /tmp/ociobuild \
         && rm -rf /root/local/OpenColorIO /tmp/ociobuild
 
 # Install OpenImageIO
-#########################################
-# Please fix checkout 8530a87
-#########################################
-RUN git clone https://github.com/OpenImageIO/oiio.git \
+RUN git clone https://github.com/OpenImageIO/oiio.git -b v3.1.8.0 \
         && cd oiio \
-        && git checkout 8530a87 \
         && mkdir build \
         && cd build \
         && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DPYTHON_VERSION=${PYTHON_VERSION} -DUSE_PYTHON=1 -DVERBOSE=1 -DSTOP_ON_WARNING=0 .. \
@@ -174,7 +180,7 @@ RUN git clone https://github.com/AOMediaCodec/libavif.git -b v1.3.0 libavif_aom 
     && rm -rf /root/local/libavif_aom
 
 # install pngcheck
-RUN git clone https://github.com/toru-ver4/pngcheck.git -b add_srgb_to_rec2020_primaries \
+RUN git clone https://github.com/pnggroup/pngcheck.git -b v4.0.1 \
     && cd pngcheck \
     && mkdir build && cd build \
     && cmake -DPNGCHECK_USE_SYSTEM_ZLIB=OFF .. \
@@ -210,11 +216,25 @@ RUN mkdir /home/font_install \
     && fc-cache -f -v \
     && rm -rf /home/font_install/morisawa-biz-ud-gothic
 
+RUN ldconfig
+
+# User Settings
+ARG UID=1000
+# GID 1000 is used for docker group
+ARG GID=1001
+ARG USER_NAME="devuser"
+
+RUN groupadd -g ${GID} ${USER_NAME} \
+    && useradd -m -s /bin/bash -u ${UID} -g ${GID} -p '$1$jQHQ4kCa$qx6X2s6ee1GqpGszqZNtV0' ${USER_NAME} \
+    && usermod -aG sudo ${USER_NAME} \
+    && chage -d 0 ${USER_NAME}
+
 # Git init settings
 RUN git config --global user.name toru.yoshihara \
     && git config --global user.email dummy_address@gmail.com \
     && git config --global core.autocrlf true
 
-RUN ldconfig
+WORKDIR /work/src
+USER ${USER_NAME}
 
 CMD ["bash"]
