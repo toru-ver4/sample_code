@@ -32,9 +32,13 @@
   * Desired Content Min Luminance data
 * このうち、Desired Content Max Frame-average Luminance data は FALL の Sink版だと考える
 
-## 検証すべき項目の組み合わせ
+## PNG のメタデータを整理しましょう
 
-|No | Codec | Container |
-|:-------:|:-------:|:-------:|
-| 1 | HEVC | MP4 |
-| 2 | HEVC | MOV |
+* MDCV
+  * Mastering display color primary chromaticities
+  * Mastering display whote point chromaticity
+  * Mastering display maximum luminance
+  * Mastering display minimum luminance
+* CLLI
+  * Maximum Content Light Level (MaxCLL)
+  * Maximum Frame-Average Light Level (MaxFALL)
