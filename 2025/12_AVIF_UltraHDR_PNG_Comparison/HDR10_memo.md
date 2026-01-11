@@ -52,7 +52,6 @@ Dynamic Range and Mastering InfoFrame に情報あり
 * Maximum Content Light Level
 * Maximum Frame-average Light Level
 
-
 ### PNG のメタデータを整理しましょう
 
 * MDCV
@@ -73,13 +72,30 @@ Dynamic Range and Mastering InfoFrame に情報あり
 
 ## Sink側の情報
 
-### EDID の HDR Static Metadata Data Block について
+### EDID
 
-当時の俺は、なんで EDID すなわちモニター側の情報を調べたんだろう。調べるべきは AVI Info Frame では…
-
-* 以下の 3つが含まれる
+* HDR Static Metadata Data Block の中に以下の 3つの指標がある
   * Desired Content Max Luminance data
+    * This is the content’s absolute peak luminance (in cd/m2) (likely only in a small area of the screen) that the display prefers for optimal content rendering.
   * Desired Content Max Frame-average Luminance data
+    * This is the content’s max frame-average luminance (in cd/m2) that the display prefers for optimal content rendering
   * Desired Content Min Luminance data
-* このうち、Desired Content Max Frame-average Luminance data は FALL の Sink版だと考える
+    * This is the minimum value of the content (in cd/m2) that the display prefers for optimal content rendering
 
+## 確認する項目
+
+* AVIF without Gain Map
+* PNG
+* av1
+* hevc
+
+### 除外したやつリスト
+
+* AVIF with Gain Map
+  * Gain Map が絡むと訳がわからなくなる
+* JPEG XL
+  * MDCV, CLLI 非サポート
+* UltraHDR
+  * MDCV, CLLI 非サポート
+* HEIF
+  * サポートされてるブラウザが少ない
