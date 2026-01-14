@@ -1,0 +1,10 @@
+from pathlib import Path
+import os
+import sys
+import subprocess
+
+import numpy as np
+
+
+if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))

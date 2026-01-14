@@ -13,7 +13,7 @@ def xy_chromaticities_to_cta861_int(primaries: np.ndarray):
     return np.round(primaries / 0.00002).astype(np.uint32)
 
 
-def calc_master_display_str(
+def calc_master_display_str_hevc(
         color_space_str: str = cs.BT2020,
         white_point: np.ndarray = cs.D65,
         min_lumiannce: float = 0.0001,
@@ -41,7 +41,31 @@ def calc_master_display_str(
     return master_display_str
 
 
-def encode_hdr10_using_ffmpeg(
+def calc_master_display_str_av1(
+        color_space_str: str = cs.BT2020,
+        white_point: np.ndarray = cs.D65,
+        min_lumiannce: float = 0.0001,
+        max_lumiannce: float = 1000
+):
+    xy_primaries = cs.get_primaries(color_space_name=color_space_str)
+    # RGB to GBR
+    xy_primaries = np.roll(xy_primaries, shift=-1, axis=0)
+
+    # add white
+    xy_primaries = np.vstack([xy_primaries, white_point])
+    print(xy_primaries)
+
+    master_display_str = "mastering-display="\
+        + f"G({xy_primaries[0, 0]},{xy_primaries[0, 1]})"\
+        + f"B({xy_primaries[1, 0]},{xy_primaries[1, 1]})"\
+        + f"R({xy_primaries[2, 0]},{xy_primaries[2, 1]})"\
+        + f"WP({xy_primaries[3, 0]},{xy_primaries[3, 1]})"\
+        + f"L({max_lumiannce},{min_lumiannce})"
+    
+    return master_display_str
+
+
+def encode_hdr10_using_ffmpeg_h265(
     mastering_display_color_space=cs.BT2020,
     mastering_display_white_point=cs.D65,
     mastering_display_min_luminance=0.0,
@@ -54,7 +78,7 @@ def encode_hdr10_using_ffmpeg(
     src_png_name = "./src_img/1920x1080_ST2084_Rec.2020.png"
     dst_bitstream_name = str(Path(dst_mp4_name).with_suffix(".h265"))
     length_sec = 10
-    mastering_display_str = calc_master_display_str(
+    mastering_display_str = calc_master_display_str_hevc(
         color_space_str=mastering_display_color_space,
         white_point=mastering_display_white_point,
         min_lumiannce=mastering_display_min_luminance,
@@ -62,23 +86,20 @@ def encode_hdr10_using_ffmpeg(
     )
     max_fall_str = f"max-cll={max_cll},{max_fall}"
     if mastering_display_color_space == cs.BT2020:
-        primary_str = "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"
+        cicp_str = "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:range=limited"
     elif mastering_display_color_space == cs.P3_D65:
-        primary_str = "colorprim=smpte432:transfer=smpte2084:colormatrix=bt709"
+        cicp_str = "colorprim=smpte432:transfer=smpte2084:colormatrix=bt709:range=limited"
     elif mastering_display_color_space == cs.BT709:
-        primary_str = "colorprim=bt709:transfer=smpte2084:colormatrix=bt709"
+        cicp_str = "colorprim=bt709:transfer=smpte2084:colormatrix=bt709:range=limited"
     else:
         raise ValueError("invalid mastering_display_color_space parameter")
-    x265_params = f'"{primary_str}:{mastering_display_str}:{max_fall_str}"'
+    x265_params = f'{cicp_str}:{mastering_display_str}:{max_fall_str}'
 
     ops = [
         '-loop', '1',
         '-framerate', '24',
         '-t', f"{length_sec}",
         '-i', src_png_name,
-        '-color_primaries', 'bt2020',
-        '-color_trc', 'smpte2084',
-        '-colorspace', 'bt2020nc',
         '-c:v', 'libx265',
         '-x265-params', x265_params,
         '-pix_fmt', 'yuv420p10le',
@@ -88,7 +109,8 @@ def encode_hdr10_using_ffmpeg(
         '-color_primaries', 'bt2020',
         '-color_trc', 'smpte2084',
         '-colorspace', 'bt2020nc',
-        str(dst_mp4_name), '-y'
+        '-color_range', 'tv',
+        str(dst_mp4_name), '-y',
     ]
     args = [cmd] + ops
     print(" ".join(args))
@@ -100,7 +122,77 @@ def encode_hdr10_using_ffmpeg(
         "-c", "copy",
         "-an",
         "-bsf", "hevc_mp4toannexb",
-        dst_bitstream_name
+        dst_bitstream_name, '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
+def encode_hdr10_using_ffmpeg_av1(
+    mastering_display_color_space=cs.BT2020,
+    mastering_display_white_point=cs.D65,
+    mastering_display_min_luminance=0.0,
+    mastering_display_max_luminance=1000,
+    max_fall=10000,
+    max_cll=10000,
+    dst_mp4_name="./video/test_10000-nits_av1.mp4",
+):
+    """
+    References:
+    - https://gitlab.com/AOMediaCodec/SVT-AV1/-/blob/master/Docs/Parameters.md#2-av1-metadata
+    """
+    cmd = "ffmpeg"
+    src_png_name = "./src_img/1920x1080_ST2084_Rec.2020.png"
+    length_sec = 10
+
+    if mastering_display_color_space == cs.BT2020:
+        cicp_str = "color-primaries=9:transfer-characteristics=16:matrix-coefficients=9:color-range=0"
+    elif mastering_display_color_space == cs.P3_D65:
+        cicp_str = "color-primaries=12:transfer-characteristics=16:matrix-coefficients=1:color-range=0"
+    elif mastering_display_color_space == cs.BT709:
+        cicp_str = "color-primaries=1:transfer-characteristics=1:matrix-coefficients=1:color-range=0"
+
+    mastering_display_str = calc_master_display_str_av1(
+        color_space_str=mastering_display_color_space,
+        white_point=mastering_display_white_point,
+        min_lumiannce=mastering_display_min_luminance,
+        max_lumiannce=mastering_display_max_luminance
+    )
+
+    content_light_str = f"content-light={max_cll},{max_fall}"
+
+    # Note: do not include shell quotes here; pass the raw string as one argv token.
+    svtav1_params = f'{mastering_display_str}:{content_light_str}:{cicp_str}'
+
+    ops = [
+        '-loop', '1',
+        '-framerate', '24',
+        '-t', f"{length_sec}",
+        '-i', src_png_name,
+        '-c:v', 'libsvtav1',
+        '-svtav1-params', svtav1_params,
+        '-pix_fmt', 'yuv420p10le',
+        '-qp', '0',
+        '-movflags', '+write_colr',
+        '-color_primaries', 'bt2020',
+        '-color_trc', 'smpte2084',
+        '-colorspace', 'bt2020nc',
+        '-color_range', 'tv',
+        str(dst_mp4_name), '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+    # extract bitstream data
+    dst_bitstream_name = str(Path(dst_mp4_name).with_suffix(".h265"))
+    ops = [
+        "-i", dst_mp4_name,
+        "-c", "copy",
+        "-an",
+        "-f", "obu",
+        dst_bitstream_name, '-y'
     ]
     args = [cmd] + ops
     print(" ".join(args))
@@ -120,22 +212,22 @@ def debug():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    encode_hdr10_using_ffmpeg(
+    # encode_hdr10_using_ffmpeg_h265(
+    #     mastering_display_color_space=cs.BT2020,
+    #     mastering_display_white_point=cs.D65,
+    #     mastering_display_min_luminance=0.0,
+    #     mastering_display_max_luminance=10000,
+    #     max_fall=10000,
+    #     max_cll=10000,
+    #     dst_mp4_name="./video/test_10000-nits_h265.mp4"
+    # )
+
+    encode_hdr10_using_ffmpeg_av1(
         mastering_display_color_space=cs.BT2020,
         mastering_display_white_point=cs.D65,
         mastering_display_min_luminance=0.0,
-        mastering_display_max_luminance=10000,
+        mastering_display_max_luminance=1000,
         max_fall=10000,
         max_cll=10000,
-        dst_mp4_name="./video/test_10000-nits.mp4"
-    )
-
-    encode_hdr10_using_ffmpeg(
-        mastering_display_color_space=cs.BT2020,
-        mastering_display_white_point=cs.D65,
-        mastering_display_min_luminance=0.0,
-        mastering_display_max_luminance=0.0,
-        max_fall=0,
-        max_cll=0,
-        dst_mp4_name="./video/test_00000-nits.mp4"
+        dst_mp4_name="./video/test_10000-nits_av1.mp4"
     )
