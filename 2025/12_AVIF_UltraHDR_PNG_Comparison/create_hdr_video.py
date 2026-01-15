@@ -212,15 +212,15 @@ def debug():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # encode_hdr10_using_ffmpeg_h265(
-    #     mastering_display_color_space=cs.BT2020,
-    #     mastering_display_white_point=cs.D65,
-    #     mastering_display_min_luminance=0.0,
-    #     mastering_display_max_luminance=10000,
-    #     max_fall=10000,
-    #     max_cll=10000,
-    #     dst_mp4_name="./video/test_10000-nits_h265.mp4"
-    # )
+    encode_hdr10_using_ffmpeg_h265(
+        mastering_display_color_space=cs.BT2020,
+        mastering_display_white_point=cs.D65,
+        mastering_display_min_luminance=0.0,
+        mastering_display_max_luminance=10000,
+        max_fall=10000,
+        max_cll=10000,
+        dst_mp4_name="./video/test_10000-nits_h265.mp4"
+    )
 
     encode_hdr10_using_ffmpeg_av1(
         mastering_display_color_space=cs.BT2020,

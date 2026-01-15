@@ -195,6 +195,24 @@ RUN git clone https://github.com/ProgramMax/png_cicp_editor.git -b v3.0 \
     && cp ./Build/png_cicp_editor /usr/local/bin/ \
     && rm -rf /root/local/png_cicp_editor
 
+# Install Bento4 (mp4dump)
+RUN git clone https://github.com/axiomatic-systems/Bento4.git \
+    && cd Bento4 \
+    && mkdir cmakebuild \
+    && cd cmakebuild \
+    && cmake -DCMAKE_BUILD_TYPE=Release .. \
+    && make & make install \
+    && cd ../../ \
+    && rm -rf Bento4
+
+# Install GPAC for mp4 container edit
+RUN git clone https://github.com/gpac/gpac.git \
+    && cd gpac \
+    && ./configure \
+    && make & make install \
+    && cd ../ \
+    && rm -rf gpac
+
 # Install Noto Fonts
 RUN mkdir font_install \
     && cd font_install \
