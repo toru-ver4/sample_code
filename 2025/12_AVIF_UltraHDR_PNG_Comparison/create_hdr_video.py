@@ -72,6 +72,7 @@ def encode_hdr10_using_ffmpeg_h265(
     mastering_display_max_luminance=1000,
     max_fall=10000,
     max_cll=10000,
+    framerate=24,
     dst_mp4_name="./video/test.mp4"
 ):
     cmd = "ffmpeg"
@@ -95,34 +96,31 @@ def encode_hdr10_using_ffmpeg_h265(
         raise ValueError("invalid mastering_display_color_space parameter")
     x265_params = f'{cicp_str}:{mastering_display_str}:{max_fall_str}'
 
+    # create bitstream data
     ops = [
         '-loop', '1',
-        '-framerate', '24',
+        '-framerate', f'{framerate}',
         '-t', f"{length_sec}",
         '-i', src_png_name,
         '-c:v', 'libx265',
         '-x265-params', x265_params,
         '-pix_fmt', 'yuv420p10le',
         '-qp', '0',
-        '-movflags', '+write_colr',
-        '-tag:v', 'hvc1',
-        '-color_primaries', 'bt2020',
-        '-color_trc', 'smpte2084',
-        '-colorspace', 'bt2020nc',
-        '-color_range', 'tv',
-        str(dst_mp4_name), '-y',
+        '-f', 'hevc',
+        str(dst_bitstream_name), '-y',
     ]
     args = [cmd] + ops
     print(" ".join(args))
     subprocess.run(args)
 
-    # extract bitstream data
+    # create mp4 container using MP4Box
+    cmd = "MP4Box"
+    param_str = f"{dst_bitstream_name}:fmt=hevc:fps={framerate}"
     ops = [
-        "-i", dst_mp4_name,
-        "-c", "copy",
-        "-an",
-        "-bsf", "hevc_mp4toannexb",
-        dst_bitstream_name, '-y'
+        "-new",
+        "-add",
+        param_str,
+        dst_mp4_name
     ]
     args = [cmd] + ops
     print(" ".join(args))
@@ -136,6 +134,7 @@ def encode_hdr10_using_ffmpeg_av1(
     mastering_display_max_luminance=1000,
     max_fall=10000,
     max_cll=10000,
+    framerate=24,
     dst_mp4_name="./video/test_10000-nits_av1.mp4",
 ):
     """
@@ -144,6 +143,7 @@ def encode_hdr10_using_ffmpeg_av1(
     """
     cmd = "ffmpeg"
     src_png_name = "./src_img/1920x1080_ST2084_Rec.2020.png"
+    dst_bitstream_name = str(Path(dst_mp4_name).with_suffix(".obu"))
     length_sec = 10
 
     if mastering_display_color_space == cs.BT2020:
@@ -167,32 +167,28 @@ def encode_hdr10_using_ffmpeg_av1(
 
     ops = [
         '-loop', '1',
-        '-framerate', '24',
+        '-framerate', f'{framerate}',
         '-t', f"{length_sec}",
         '-i', src_png_name,
         '-c:v', 'libsvtav1',
         '-svtav1-params', svtav1_params,
         '-pix_fmt', 'yuv420p10le',
         '-qp', '0',
-        '-movflags', '+write_colr',
-        '-color_primaries', 'bt2020',
-        '-color_trc', 'smpte2084',
-        '-colorspace', 'bt2020nc',
-        '-color_range', 'tv',
-        str(dst_mp4_name), '-y'
+        '-f', 'obu',
+        str(dst_bitstream_name), '-y'
     ]
     args = [cmd] + ops
     print(" ".join(args))
     subprocess.run(args)
 
-    # extract bitstream data
-    dst_bitstream_name = str(Path(dst_mp4_name).with_suffix(".h265"))
+    # create mp4 container using MP4Box
+    cmd = "MP4Box"
+    param_str = f"{dst_bitstream_name}:fmt=obu:fps={framerate}"
     ops = [
-        "-i", dst_mp4_name,
-        "-c", "copy",
-        "-an",
-        "-f", "obu",
-        dst_bitstream_name, '-y'
+        "-new",
+        "-add",
+        param_str,
+        dst_mp4_name
     ]
     args = [cmd] + ops
     print(" ".join(args))
@@ -219,6 +215,7 @@ if __name__ == '__main__':
         mastering_display_max_luminance=10000,
         max_fall=10000,
         max_cll=10000,
+        framerate=24,
         dst_mp4_name="./video/test_10000-nits_h265.mp4"
     )
 
@@ -226,8 +223,9 @@ if __name__ == '__main__':
         mastering_display_color_space=cs.BT2020,
         mastering_display_white_point=cs.D65,
         mastering_display_min_luminance=0.0,
-        mastering_display_max_luminance=1000,
+        mastering_display_max_luminance=10000,
         max_fall=10000,
         max_cll=10000,
+        framerate=24,
         dst_mp4_name="./video/test_10000-nits_av1.mp4"
     )
