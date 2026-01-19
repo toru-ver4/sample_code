@@ -78,6 +78,7 @@ def encode_hdr10_using_ffmpeg_h265(
     cmd = "ffmpeg"
     src_png_name = "./src_img/1920x1080_ST2084_Rec.2020.png"
     dst_bitstream_name = str(Path(dst_mp4_name).with_suffix(".h265"))
+    dst_mov_name = str(Path(dst_mp4_name).with_suffix(".mov"))
     length_sec = 10
     mastering_display_str = calc_master_display_str_hevc(
         color_space_str=mastering_display_color_space,
@@ -126,6 +127,19 @@ def encode_hdr10_using_ffmpeg_h265(
     print(" ".join(args))
     subprocess.run(args)
 
+    # create mov container using MP4Box
+    cmd = "MP4Box"
+    param_str = f"{dst_bitstream_name}:fmt=hevc:fps={framerate}"
+    ops = [
+        "-new",
+        "-add",
+        param_str,
+        dst_mov_name
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
 
 def encode_hdr10_using_ffmpeg_av1(
     mastering_display_color_space=cs.BT2020,
@@ -144,6 +158,7 @@ def encode_hdr10_using_ffmpeg_av1(
     cmd = "ffmpeg"
     src_png_name = "./src_img/1920x1080_ST2084_Rec.2020.png"
     dst_bitstream_name = str(Path(dst_mp4_name).with_suffix(".obu"))
+    dst_mov_name = str(Path(dst_mp4_name).with_suffix(".mov"))
     length_sec = 10
 
     if mastering_display_color_space == cs.BT2020:
@@ -189,6 +204,19 @@ def encode_hdr10_using_ffmpeg_av1(
         "-add",
         param_str,
         dst_mp4_name
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+    # create mov container using MP4Box
+    cmd = "MP4Box"
+    param_str = f"{dst_bitstream_name}:fmt=obu:fps={framerate}"
+    ops = [
+        "-new",
+        "-add",
+        param_str,
+        dst_mov_name
     ]
     args = [cmd] + ops
     print(" ".join(args))

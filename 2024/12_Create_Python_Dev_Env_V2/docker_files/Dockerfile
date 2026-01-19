@@ -54,6 +54,7 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         libxkbcommon0 \
         libxkbcommon-x11-0 \
         libxml2-dev \
+        libxml2-utils \
         libyaml-cpp-dev \
         llvm \
         ninja-build \
@@ -249,6 +250,9 @@ RUN groupadd -g ${GID} ${USER_NAME} \
 
 WORKDIR /work/src
 USER ${USER_NAME}
+
+ENV LANG=ja_JP.UTF-8
+ENV LC_ALL=ja_JP.UTF-8
 
 # Git init settings
 RUN git config --global user.name toru.yoshihara \
