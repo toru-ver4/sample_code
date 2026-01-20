@@ -41,6 +41,15 @@
 
 ## Source側の情報
 
+### SMPTE St 2086
+
+タイトルに "Mastering Display Color Volume Metadata Supporting High Luminance and Wide Color Gamut Images" が入っている前提で、以下が定義されている。
+
+* Display Primaries
+* Chromaticity of White Point
+* Maximum Display Mastering Luminance
+* Minimum Display Mastering Luminance
+
 ### CTA
 
 Dynamic Range and Mastering InfoFrame に情報あり
@@ -99,3 +108,52 @@ Dynamic Range and Mastering InfoFrame に情報あり
   * MDCV, CLLI 非サポート
 * HEIF
   * サポートされてるブラウザが少ない
+
+### MP4 とか AV1 とか AVIF のあれ
+
+* colr とかの格納場所が定義された文書
+
+* ISO/IEC 14496-12	VisualSampleEntry 内に colr を含められると明記
+* ISO/IEC 14496-15	AVC SampleEntry（avc1/avc3）に colr が optional と明示
+* ISO/IEC 23008-15	HEVC SampleEntry（hvc1/hev1）で同様に optional と記述
+* ISO/IEC 14496-30	AV1 SampleEntry（av01）にも optional box として指定
+
+### HEVC bitstream
+
+* SPS の VUI parameters 
+  * colour_primaries
+  * transfer_characteristics
+  * matrix_coeffs
+  * video_full_range_flag
+
+* SEI の Mastering display colour volume
+  * display_primaries_x
+  * display_primaries_y
+  * white_point_x
+  * white_point_y
+  * max_display_mastering_luminance
+  * min_display_mastering_luminance
+
+* SEI の Content light level information
+  * max_content_light_level
+  * max_pic_average_light_level
+
+### AVI OBU
+
+* Sequence header OBU の Color config
+  * color_primaries
+  * transfer_characteristics
+  * matrix_coefficients
+  * color_range
+
+* Metadata OBU syntax の Metadata high dynamic range mastering display color volume
+  * primary_chromaticity_x
+  * primary_chromaticity_y
+  * white_point_chromaticity_x
+  * white_point_chromaticity_y
+  * luminance_max
+  * luminance_min
+
+* Metadata OBU syntax の Metadata high dynamic range content light level
+  * max_cll
+  * max_fall
