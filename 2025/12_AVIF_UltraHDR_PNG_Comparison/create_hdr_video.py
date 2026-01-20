@@ -178,7 +178,7 @@ def encode_hdr10_using_ffmpeg_av1(
     content_light_str = f"content-light={max_cll},{max_fall}"
 
     # Note: do not include shell quotes here; pass the raw string as one argv token.
-    svtav1_params = f'{mastering_display_str}:{content_light_str}:{cicp_str}'
+    svtav1_params = f'{mastering_display_str}:{content_light_str}:{cicp_str}:crf=1'
 
     ops = [
         '-loop', '1',
@@ -188,7 +188,6 @@ def encode_hdr10_using_ffmpeg_av1(
         '-c:v', 'libsvtav1',
         '-svtav1-params', svtav1_params,
         '-pix_fmt', 'yuv420p10le',
-        '-qp', '0',
         '-f', 'obu',
         str(dst_bitstream_name), '-y'
     ]
@@ -223,6 +222,86 @@ def encode_hdr10_using_ffmpeg_av1(
     subprocess.run(args)
 
 
+def encode_hdr10_using_ffmpeg_avif(
+    mastering_display_color_space=cs.BT2020,
+    mastering_display_white_point=cs.D65,
+    mastering_display_min_luminance=0.0,
+    mastering_display_max_luminance=1000,
+    max_fall=10000,
+    max_cll=10000,
+    dst_avif_name="./video/test_10000-nits_av1.avif",
+):
+    """
+    References:
+    - https://gitlab.com/AOMediaCodec/SVT-AV1/-/blob/master/Docs/Parameters.md#2-av1-metadata
+    """
+    cmd = "ffmpeg"
+    src_png_name = "./src_img/1920x1080_ST2084_Rec.2020.png"
+    dst_bitstream_name = str(Path(dst_avif_name).with_suffix(".obu"))
+    dst_mov_name = str(Path(dst_avif_name).with_suffix(".mov"))
+    length_sec = 10
+
+    if mastering_display_color_space == cs.BT2020:
+        cicp_str = "color-primaries=9:transfer-characteristics=16:matrix-coefficients=9:color-range=1"
+    elif mastering_display_color_space == cs.P3_D65:
+        cicp_str = "color-primaries=12:transfer-characteristics=16:matrix-coefficients=1:color-range=1"
+    elif mastering_display_color_space == cs.BT709:
+        cicp_str = "color-primaries=1:transfer-characteristics=1:matrix-coefficients=1:color-range=1"
+
+    mastering_display_str = calc_master_display_str_av1(
+        color_space_str=mastering_display_color_space,
+        white_point=mastering_display_white_point,
+        min_lumiannce=mastering_display_min_luminance,
+        max_lumiannce=mastering_display_max_luminance
+    )
+
+    content_light_str = f"content-light={max_cll},{max_fall}"
+
+    # Note: do not include shell quotes here; pass the raw string as one argv token.
+    svtav1_params = f'{mastering_display_str}:{content_light_str}:{cicp_str}:crf=1'
+
+    ops = [
+        '-loop', '1',
+        '-t', f"{length_sec}",
+        '-i', src_png_name,
+        '-frames:v', '1',
+        '-c:v', 'libsvtav1',
+        '-svtav1-params', svtav1_params,
+        '-pix_fmt', 'yuv420p10le',
+        '-f', 'obu',
+        str(dst_bitstream_name), '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+    # # create mp4 container using MP4Box
+    # cmd = "MP4Box"
+    # param_str = f"{dst_bitstream_name}:fmt=obu:fps={framerate}"
+    # ops = [
+    #     "-new",
+    #     "-add",
+    #     param_str,
+    #     dst_avif_name
+    # ]
+    # args = [cmd] + ops
+    # print(" ".join(args))
+    # subprocess.run(args)
+
+    # # create mov container using MP4Box
+    # cmd = "MP4Box"
+    # param_str = f"{dst_bitstream_name}:fmt=obu:fps={framerate}"
+    # ops = [
+    #     "-new",
+    #     "-add",
+    #     param_str,
+    #     dst_mov_name
+    # ]
+    # args = [cmd] + ops
+    # print(" ".join(args))
+    # subprocess.run(args)
+
+
 def debug():
     pass
     # display_str = calc_master_display_str(
@@ -236,24 +315,34 @@ def debug():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    encode_hdr10_using_ffmpeg_h265(
-        mastering_display_color_space=cs.BT2020,
-        mastering_display_white_point=cs.D65,
-        mastering_display_min_luminance=0.0,
-        mastering_display_max_luminance=10000,
-        max_fall=10000,
-        max_cll=10000,
-        framerate=24,
-        dst_mp4_name="./video/test_10000-nits_h265.mp4"
-    )
+    # encode_hdr10_using_ffmpeg_h265(
+    #     mastering_display_color_space=cs.BT2020,
+    #     mastering_display_white_point=cs.D65,
+    #     mastering_display_min_luminance=0.0,
+    #     mastering_display_max_luminance=10000,
+    #     max_fall=10000,
+    #     max_cll=10000,
+    #     framerate=24,
+    #     dst_mp4_name="./video/test_10000-nits_h265.mp4"
+    # )
 
-    encode_hdr10_using_ffmpeg_av1(
+    # encode_hdr10_using_ffmpeg_av1(
+    #     mastering_display_color_space=cs.BT2020,
+    #     mastering_display_white_point=cs.D65,
+    #     mastering_display_min_luminance=0.0,
+    #     mastering_display_max_luminance=10000,
+    #     max_fall=10000,
+    #     max_cll=10000,
+    #     framerate=24,
+    #     dst_mp4_name="./video/test_10000-nits_av1.mp4"
+    # )
+
+    encode_hdr10_using_ffmpeg_avif(
         mastering_display_color_space=cs.BT2020,
         mastering_display_white_point=cs.D65,
         mastering_display_min_luminance=0.0,
         mastering_display_max_luminance=10000,
         max_fall=10000,
         max_cll=10000,
-        framerate=24,
-        dst_mp4_name="./video/test_10000-nits_av1.mp4"
+        dst_avif_name="./video/test_10000-nits_avif.avif"
     )

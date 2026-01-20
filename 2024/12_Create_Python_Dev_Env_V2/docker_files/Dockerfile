@@ -36,6 +36,7 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         libopenjp2-7-dev \
         libopenvdb-dev \
         libpystring-dev \
+        libsvtav1enc-dev \
         libtbb-dev \
         libtiff-dev \
         libraw-dev \
@@ -174,7 +175,7 @@ RUN git clone https://github.com/AOMediaCodec/libavif.git -b v1.3.0 libavif_aom 
     && $SHELL ./libjpeg.cmd \
     && $SHELL ./zlibpng.cmd \
     && cd .. \
-    && cmake -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON \
+    && cmake -S . -B build -DBUILD_SHARED_LIBS=OFF -DAVIF_CODEC_AOM=LOCAL -DAVIF_CODEC_SVT=SYSTEM -DAVIF_LIBYUV=LOCAL -DAVIF_LIBSHARPYUV=LOCAL -DAVIF_JPEG=LOCAL -DAVIF_ZLIBPNG=LOCAL -DAVIF_BUILD_APPS=ON \
     && cmake --build build --parallel \
     && cmake --install build \
     && cd /root/local \

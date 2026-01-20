@@ -14,10 +14,6 @@ from colour.io import read_image
 tp_module_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../08_UltraHDR_part2/"))
 sys.path.insert(0, tp_module_path)
 
-from create_ultrahdr_image import (
-    craete_files_for_ultrahdr_app_scenario4
-)
-
 
 def png_to_avif(
         png_fname: str,
@@ -71,13 +67,6 @@ def main():
         cll=10000,
         pall=10000
     )
-
-    # # Ultra HDR
-    # craete_files_for_ultrahdr_app_scenario4(
-    #     hdr_fname=src_hdr_img_fname,
-    #     sdr_fname=src_sdr_img_fname,
-    #     hdr_capacity_max=1.0
-    # )
 
 
 if __name__ == '__main__':
