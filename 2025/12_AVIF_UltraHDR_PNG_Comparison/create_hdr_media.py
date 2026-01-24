@@ -1,11 +1,21 @@
 from pathlib import Path
 import os
 import subprocess
+from itertools import product
 
 import numpy as np
 
 import test_pattern_generator2 as tpg
 import color_space as cs
+
+MDCV_PRIMARIES_LIST = [cs.BT709, cs.BT2020]
+MDCV_LUMINANCE_LIST = [100, 10000]
+CLLI_LUMINANCE_LIST = [100, 10000]
+
+KIND_AV1 = "av1"
+KIND_HEVC = "hevc"
+KIND_AVIF = "avif"
+KIND_PNG = "png"
 
 
 def xy_chromaticities_to_cta861_int(primaries: np.ndarray):
@@ -64,7 +74,7 @@ def calc_master_display_str_av1(
     return master_display_str
 
 
-def encode_hdr10_using_ffmpeg_h265(
+def encode_hdr10_using_ffmpeg_mp4box_hevc_core(
     mastering_display_color_space=cs.BT2020,
     mastering_display_white_point=cs.D65,
     mastering_display_min_luminance=0.0,
@@ -72,12 +82,13 @@ def encode_hdr10_using_ffmpeg_h265(
     max_fall=10000,
     max_cll=10000,
     framerate=24,
-    dst_mp4_name="./video/test.mp4"
+    dst_fname_without_ext="./video/test"
 ):
     cmd = "ffmpeg"
     src_png_name = "./src_img/1920x1080_ST2084_Rec.2020.png"
-    dst_bitstream_name = str(Path(dst_mp4_name).with_suffix(".h265"))
+    dst_mp4_name = dst_fname_without_ext + ".mp4"
     dst_mov_name = str(Path(dst_mp4_name).with_suffix(".mov"))
+    dst_bitstream_name = str(Path(dst_mp4_name).with_suffix(".h265"))
     length_sec = 10
     mastering_display_str = calc_master_display_str_hevc(
         color_space_str=mastering_display_color_space,
@@ -86,18 +97,12 @@ def encode_hdr10_using_ffmpeg_h265(
         max_lumiannce=mastering_display_max_luminance
     )
     max_fall_str = f"max-cll={max_cll},{max_fall}"
-    if mastering_display_color_space == cs.BT2020:
-        cicp_str = "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:range=limited"
-    elif mastering_display_color_space == cs.P3_D65:
-        cicp_str = "colorprim=smpte432:transfer=smpte2084:colormatrix=bt709:range=limited"
-    elif mastering_display_color_space == cs.BT709:
-        cicp_str = "colorprim=bt709:transfer=smpte2084:colormatrix=bt709:range=limited"
-    else:
-        raise ValueError("invalid mastering_display_color_space parameter")
+    cicp_str = "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:range=limited"
     x265_params = f'{cicp_str}:{mastering_display_str}:{max_fall_str}'
 
     # create bitstream data
     ops = [
+        '-hide_banner',
         '-loop', '1',
         '-framerate', f'{framerate}',
         '-t', f"{length_sec}",
@@ -140,7 +145,7 @@ def encode_hdr10_using_ffmpeg_h265(
     subprocess.run(args)
 
 
-def encode_hdr10_using_ffmpeg_av1(
+def encode_hdr10_using_ffmpeg_mp4box_av1_core(
     mastering_display_color_space=cs.BT2020,
     mastering_display_white_point=cs.D65,
     mastering_display_min_luminance=0.0,
@@ -148,7 +153,7 @@ def encode_hdr10_using_ffmpeg_av1(
     max_fall=10000,
     max_cll=10000,
     framerate=24,
-    dst_mp4_name="./video/test_10000-nits_av1.mp4",
+    dst_fname_without_ext="./video/test",    
 ):
     """
     References:
@@ -156,16 +161,12 @@ def encode_hdr10_using_ffmpeg_av1(
     """
     cmd = "ffmpeg"
     src_png_name = "./src_img/1920x1080_ST2084_Rec.2020.png"
+    dst_mp4_name= dst_fname_without_ext + ".mp4"
     dst_bitstream_name = str(Path(dst_mp4_name).with_suffix(".obu"))
     dst_mov_name = str(Path(dst_mp4_name).with_suffix(".mov"))
     length_sec = 10
 
-    if mastering_display_color_space == cs.BT2020:
-        cicp_str = "color-primaries=9:transfer-characteristics=16:matrix-coefficients=9:color-range=0"
-    elif mastering_display_color_space == cs.P3_D65:
-        cicp_str = "color-primaries=12:transfer-characteristics=16:matrix-coefficients=1:color-range=0"
-    elif mastering_display_color_space == cs.BT709:
-        cicp_str = "color-primaries=1:transfer-characteristics=1:matrix-coefficients=1:color-range=0"
+    cicp_str = "color-primaries=9:transfer-characteristics=16:matrix-coefficients=9:color-range=0"
 
     mastering_display_str = calc_master_display_str_av1(
         color_space_str=mastering_display_color_space,
@@ -180,6 +181,7 @@ def encode_hdr10_using_ffmpeg_av1(
     svtav1_params = f'{mastering_display_str}:{content_light_str}:{cicp_str}:crf=1'
 
     ops = [
+        '-hide_banner',
         '-loop', '1',
         '-framerate', f'{framerate}',
         '-t', f"{length_sec}",
@@ -221,31 +223,182 @@ def encode_hdr10_using_ffmpeg_av1(
     subprocess.run(args)
 
 
-def encode_hdr10_using_ffmpeg_avif(
+def png_to_avif(
+        png_fname: str,
+        avif_fname: str,
+        bit_depth: int = 10,
+        cicp: list[int] = [1, 1, 1],
+        cll: int = 0,
+        pall: int = 0
+):
+    cmd = [
+        "avifenc", png_fname,
+        "-d", f"{bit_depth}",
+        "--cicp", f"{cicp[0]}/{cicp[1]}/{cicp[2]}",
+        "-c", "aom",
+        "--clli", f"{cll},{pall}",
+        "--lossless",
+        "--ignore-exif",
+        avif_fname
+    ]
+    print(" ".join(cmd))
+    subprocess.run(cmd)
+
+
+def extract_obu_from_avif_using_ffmpeg(avif_fname):
+    output_fname = str(Path(avif_fname).with_suffix(".obu"))
+    cmd = [
+        "ffmpeg", "-hide_banner",
+        "-i", avif_fname,
+        "-map", "0:v:0",
+        "-c", "copy",
+        "-f", "obu",
+        output_fname,
+        '-y'
+    ]
+    print(" ".join(cmd))
+    subprocess.run(cmd)
+
+
+def encode_hdr10_using_avifenc_avif_core(
+        cll_luminance: int,
+        pall_luminance: int,
+        dst_fname_without_ext: str):
+    src_hdr_img_fname = "./src_img/1920x1080_ST2084_Rec.2020.png"
+
+    # AVIF
+    dst_avif_fname = dst_fname_without_ext + ".avif"
+    png_to_avif(
+        png_fname=src_hdr_img_fname,
+        avif_fname=dst_avif_fname,
+        bit_depth=10,
+        cicp=[9, 16, 0],
+        cll=cll_luminance,
+        pall=pall_luminance
+    )
+
+    extract_obu_from_avif_using_ffmpeg(avif_fname=dst_avif_fname)
+
+
+def make_media_file_name_without_ext(
+        kind: str,
+        suffix: str | None,
+        mdcv_primaries: str | None,
+        mdcv_luminance: int | None,
+        clli_luminance: int):
+    def convert_none_str_if_none(x):
+        return x if x is not None else "None"
+    suffix_str = suffix if suffix is not None else ""
+    mdcv_primaries_str = convert_none_str_if_none(mdcv_primaries)
+    mdcv_luminance_str = convert_none_str_if_none(mdcv_luminance)
+    clli_luminance_str = convert_none_str_if_none(clli_luminance)
+    dst_dir = "./hdr_media"
+    file_name = f"{dst_dir}/{kind}_mdcv-p-{mdcv_primaries_str}_mdcv-l-{mdcv_luminance_str}_"
+    file_name += f"clli-{clli_luminance_str}{suffix_str}"
+
+    return file_name
+
+
+def encode_hdr10_using_ffmpeg_mp4box_hevc(
+        mdcv_primaries_list: list[str],
+        mdcv_luminance_list: list[int],
+        clli_luminance_list: list[int]):
+    for mdcv_primaries, mdcv_luminance, clli_luminance\
+        in product(mdcv_primaries_list, mdcv_luminance_list, clli_luminance_list):
+        print(mdcv_primaries, mdcv_luminance, clli_luminance)
+
+        file_name_without_ext = make_media_file_name_without_ext(
+            kind=KIND_HEVC,
+            suffix=None,
+            mdcv_primaries=mdcv_primaries,
+            mdcv_luminance=mdcv_luminance,
+            clli_luminance=clli_luminance
+        )
+
+        encode_hdr10_using_ffmpeg_mp4box_hevc_core(
+            mastering_display_color_space=mdcv_primaries,
+            mastering_display_white_point=cs.D65,
+            mastering_display_min_luminance=0,
+            mastering_display_max_luminance=mdcv_luminance,
+            max_fall=clli_luminance,
+            max_cll=clli_luminance,
+            framerate=24,
+            dst_fname_without_ext=file_name_without_ext
+        )
+
+
+def encode_hdr10_using_ffmpeg_mp4box_av1(
+        mdcv_primaries_list: list[str],
+        mdcv_luminance_list: list[int],
+        clli_luminance_list: list[int]):
+    for mdcv_primaries, mdcv_luminance, clli_luminance\
+        in product(mdcv_primaries_list, mdcv_luminance_list, clli_luminance_list):
+        print(mdcv_primaries, mdcv_luminance, clli_luminance)
+
+        file_name_without_ext = make_media_file_name_without_ext(
+            kind=KIND_AV1,
+            suffix=None,
+            mdcv_primaries=mdcv_primaries,
+            mdcv_luminance=mdcv_luminance,
+            clli_luminance=clli_luminance
+        )
+
+        encode_hdr10_using_ffmpeg_mp4box_av1_core(
+            mastering_display_color_space=mdcv_primaries,
+            mastering_display_white_point=cs.D65,
+            mastering_display_min_luminance=0,
+            mastering_display_max_luminance=mdcv_luminance,
+            max_fall=clli_luminance,
+            max_cll=clli_luminance,
+            framerate=24,
+            dst_fname_without_ext=file_name_without_ext
+        )
+
+
+def encode_hdr10_using_avifenc_avif(
+        mdcv_primaries_list: list[str] | None,
+        mdcv_luminance_list: list[int] | None,
+        clli_luminance_list: list[int]):
+    def default_none_list(x):
+        return x if x is not None else [None]
+    mdcv_primaries_list = default_none_list(mdcv_primaries_list)
+    mdcv_luminance_list = default_none_list(mdcv_luminance_list)
+    for mdcv_primaries, mdcv_luminance, clli_luminance\
+        in product(mdcv_primaries_list, mdcv_luminance_list, clli_luminance_list):
+
+        file_name_without_ext = make_media_file_name_without_ext(
+            kind=KIND_AVIF,
+            suffix=None,
+            mdcv_primaries=mdcv_primaries,
+            mdcv_luminance=mdcv_luminance,
+            clli_luminance=clli_luminance
+        )
+
+        encode_hdr10_using_avifenc_avif_core(
+            cll_luminance=clli_luminance,
+            pall_luminance=clli_luminance,
+            dst_fname_without_ext=file_name_without_ext
+        )
+
+
+def encode_hdr10_using_ffmpeg_png_core(
     mastering_display_color_space=cs.BT2020,
     mastering_display_white_point=cs.D65,
     mastering_display_min_luminance=0.0,
     mastering_display_max_luminance=1000,
     max_fall=10000,
     max_cll=10000,
-    dst_avif_name="./video/test_10000-nits_av1.avif",
+    framerate=24,
+    dst_fname_without_ext="./video/test",    
 ):
-    """
-    References:
-    - https://gitlab.com/AOMediaCodec/SVT-AV1/-/blob/master/Docs/Parameters.md#2-av1-metadata
-    """
     cmd = "ffmpeg"
     src_png_name = "./src_img/1920x1080_ST2084_Rec.2020.png"
-    dst_bitstream_name = str(Path(dst_avif_name).with_suffix(".obu"))
-    dst_mov_name = str(Path(dst_avif_name).with_suffix(".mov"))
+    dst_png_name= dst_fname_without_ext + ".png"
+    dst_bitstream_name = str(Path(dst_png_name).with_name(f"{Path(dst_png_name).stem}_png.obu"))
+
     length_sec = 10
 
-    if mastering_display_color_space == cs.BT2020:
-        cicp_str = "color-primaries=9:transfer-characteristics=16:matrix-coefficients=9:color-range=1"
-    elif mastering_display_color_space == cs.P3_D65:
-        cicp_str = "color-primaries=12:transfer-characteristics=16:matrix-coefficients=1:color-range=1"
-    elif mastering_display_color_space == cs.BT709:
-        cicp_str = "color-primaries=1:transfer-characteristics=1:matrix-coefficients=1:color-range=1"
+    cicp_str = "color-primaries=9:transfer-characteristics=16:matrix-coefficients=9:color-range=0"
 
     mastering_display_str = calc_master_display_str_av1(
         color_space_str=mastering_display_color_space,
@@ -260,10 +413,11 @@ def encode_hdr10_using_ffmpeg_avif(
     svtav1_params = f'{mastering_display_str}:{content_light_str}:{cicp_str}:crf=1'
 
     ops = [
+        '-hide_banner',
         '-loop', '1',
+        '-framerate', f'{framerate}',
         '-t', f"{length_sec}",
         '-i', src_png_name,
-        '-frames:v', '1',
         '-c:v', 'libsvtav1',
         '-svtav1-params', svtav1_params,
         '-pix_fmt', 'yuv420p10le',
@@ -274,31 +428,48 @@ def encode_hdr10_using_ffmpeg_avif(
     print(" ".join(args))
     subprocess.run(args)
 
-    # # create mp4 container using MP4Box
-    # cmd = "MP4Box"
-    # param_str = f"{dst_bitstream_name}:fmt=obu:fps={framerate}"
-    # ops = [
-    #     "-new",
-    #     "-add",
-    #     param_str,
-    #     dst_avif_name
-    # ]
-    # args = [cmd] + ops
-    # print(" ".join(args))
-    # subprocess.run(args)
+    # convert to PNG
+    ops = [
+        '-hide_banner',
+        '-f', 'obu',
+        '-i', dst_bitstream_name,
+        '-frames:v', '1',
+        '-update', '1',
+        dst_png_name, '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
 
-    # # create mov container using MP4Box
-    # cmd = "MP4Box"
-    # param_str = f"{dst_bitstream_name}:fmt=obu:fps={framerate}"
-    # ops = [
-    #     "-new",
-    #     "-add",
-    #     param_str,
-    #     dst_mov_name
-    # ]
-    # args = [cmd] + ops
-    # print(" ".join(args))
-    # subprocess.run(args)
+
+def encode_hdr10_using_ffmpeg_png(
+        mdcv_primaries_list: list[str] | None,
+        mdcv_luminance_list: list[int] | None,
+        clli_luminance_list: list[int]):
+
+    for mdcv_primaries, mdcv_luminance, clli_luminance\
+        in product(mdcv_primaries_list, mdcv_luminance_list, clli_luminance_list):
+
+        file_name_without_ext = make_media_file_name_without_ext(
+            kind=KIND_PNG,
+            suffix=None,
+            mdcv_primaries=mdcv_primaries,
+            mdcv_luminance=mdcv_luminance,
+            clli_luminance=clli_luminance
+        )
+        print(file_name_without_ext)
+
+        encode_hdr10_using_ffmpeg_png_core(
+            mastering_display_color_space=cs.BT2020,
+            mastering_display_white_point=cs.D65,
+            mastering_display_min_luminance=0.0,
+            mastering_display_max_luminance=1000,
+            max_fall=10000,
+            max_cll=10000,
+            framerate=24,
+            dst_fname_without_ext=file_name_without_ext
+        )
+        break
 
 
 def debug():
@@ -314,34 +485,30 @@ def debug():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # encode_hdr10_using_ffmpeg_h265(
-    #     mastering_display_color_space=cs.BT2020,
-    #     mastering_display_white_point=cs.D65,
-    #     mastering_display_min_luminance=0.0,
-    #     mastering_display_max_luminance=10000,
-    #     max_fall=10000,
-    #     max_cll=10000,
-    #     framerate=24,
-    #     dst_mp4_name="./video/test_10000-nits_h265.mp4"
+    mdcv_primaries_list = MDCV_PRIMARIES_LIST
+    mdcv_luminance_list = MDCV_LUMINANCE_LIST
+    clli_luminance_list = CLLI_LUMINANCE_LIST
+
+    # encode_hdr10_using_ffmpeg_mp4box_hevc(
+    #     mdcv_primaries_list=mdcv_primaries_list,
+    #     mdcv_luminance_list=mdcv_luminance_list,
+    #     clli_luminance_list=clli_luminance_list
     # )
 
-    # encode_hdr10_using_ffmpeg_av1(
-    #     mastering_display_color_space=cs.BT2020,
-    #     mastering_display_white_point=cs.D65,
-    #     mastering_display_min_luminance=0.0,
-    #     mastering_display_max_luminance=10000,
-    #     max_fall=10000,
-    #     max_cll=10000,
-    #     framerate=24,
-    #     dst_mp4_name="./video/test_10000-nits_av1.mp4"
+    # encode_hdr10_using_ffmpeg_mp4box_av1(
+    #     mdcv_primaries_list=mdcv_primaries_list,
+    #     mdcv_luminance_list=mdcv_luminance_list,
+    #     clli_luminance_list=clli_luminance_list
     # )
 
-    encode_hdr10_using_ffmpeg_avif(
-        mastering_display_color_space=cs.BT2020,
-        mastering_display_white_point=cs.D65,
-        mastering_display_min_luminance=0.0,
-        mastering_display_max_luminance=10000,
-        max_fall=10000,
-        max_cll=10000,
-        dst_avif_name="./video/test_10000-nits_avif.avif"
+    # encode_hdr10_using_avifenc_avif(
+    #     mdcv_primaries_list=None,  # not supported by avifenc
+    #     mdcv_luminance_list=None,  # not supported by avifenc
+    #     clli_luminance_list=clli_luminance_list
+    # )
+
+    encode_hdr10_using_ffmpeg_png(
+        mdcv_primaries_list=mdcv_primaries_list,
+        mdcv_luminance_list=mdcv_luminance_list,
+        clli_luminance_list=clli_luminance_list,
     )

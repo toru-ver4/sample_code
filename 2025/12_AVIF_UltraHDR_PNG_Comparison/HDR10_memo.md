@@ -75,7 +75,7 @@ Dynamic Range and Mastering InfoFrame に情報あり
 ### AVIF
 
 * [AV1-ISOBMFF](https://aomediacodec.github.io/av1-isobmff/)
-* [AV1 Spec](https://aomediacodec.github.io/av1-avif)
+* [AVIF Spec](https://aomediacodec.github.io/av1-avif)
 
 * mdcv と clli はスペックとして存在
 
@@ -157,3 +157,17 @@ Dynamic Range and Mastering InfoFrame に情報あり
 * Metadata OBU syntax の Metadata high dynamic range content light level
   * max_cll
   * max_fall
+
+
+### libavif メモ
+
+* MDCV に相当するデータは扱わないっぽい
+* colr box は avifReadColorNclxProperty で読んでる
+* "clli" はこの文字で検索すれば出てくる
+* OBU のパースは以下で行ってる
+  * avifdec.c の avifDecoderParse 
+  * read.c の avifDecoderReset -> avifSequenceHeaderParse
+  * ただし、avifSequenceHeaderParse は 'colr' ボックスから情報が取得できなかった場合のみ。つまり、colrボックスが存在していれば気にされない
+* エンコード時、OBU には cicp情報は埋め込まれない
+  * そのため、初期値の 2/2/2 のままになってる
+  * https://gitlab.com/webmproject/libaom/-/blob/v3.13.1/av1/av1_cx_iface.c?ref_type=tags#L432-L434
