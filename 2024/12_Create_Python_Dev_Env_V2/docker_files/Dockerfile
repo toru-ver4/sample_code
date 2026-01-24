@@ -16,6 +16,7 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         build-essential \
         clang \
         cmake \
+        dasel \
         doxygen \
         ffmpeg \
         git \
