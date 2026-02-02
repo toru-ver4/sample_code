@@ -8,9 +8,13 @@ import numpy as np
 import test_pattern_generator2 as tpg
 import color_space as cs
 
-MDCV_PRIMARIES_LIST = [cs.BT709, cs.BT2020]
-MDCV_LUMINANCE_LIST = [100, 10000]
-CLLI_LUMINANCE_LIST = [100, 10000]
+MDCV_PRIMARIES_LIST = [cs.BT709, cs.BT2020, None]
+MDCV_LUMINANCE_LIST = [100, 10000, None]
+CLLI_LUMINANCE_LIST = [100, 10000, None]
+
+# MDCV_PRIMARIES_LIST = [None]
+# MDCV_LUMINANCE_LIST = [None]
+# CLLI_LUMINANCE_LIST = [None]
 
 KIND_AV1 = "av1"
 KIND_HEVC = "hevc"
@@ -28,6 +32,9 @@ def calc_master_display_str_hevc(
         min_lumiannce: float = 0.0001,
         max_lumiannce: float = 1000
 ):
+    if color_space_str is None and max_lumiannce is None:
+        return None
+
     xy_primaries = cs.get_primaries(color_space_name=color_space_str)
     # RGB to GBR
     xy_primaries = np.roll(xy_primaries, shift=-1, axis=0)
@@ -56,6 +63,9 @@ def calc_master_display_str_av1(
         min_lumiannce: float = 0.0001,
         max_lumiannce: float = 1000
 ):
+    if (color_space_str is None) and (max_lumiannce is None):
+        return None
+
     xy_primaries = cs.get_primaries(color_space_name=color_space_str)
     # RGB to GBR
     xy_primaries = np.roll(xy_primaries, shift=-1, axis=0)
@@ -84,6 +94,9 @@ def encode_hdr10_using_ffmpeg_mp4box_hevc_core(
     framerate=24,
     dst_fname_without_ext="./video/test"
 ):
+    def add_x265_params(param):
+        return f":{param}" if param is not None else ""
+
     cmd = "ffmpeg"
     src_png_name = "./src_img/1920x1080_ST2084_Rec.2020.png"
     dst_mp4_name = dst_fname_without_ext + ".mp4"
@@ -96,20 +109,28 @@ def encode_hdr10_using_ffmpeg_mp4box_hevc_core(
         min_lumiannce=mastering_display_min_luminance,
         max_lumiannce=mastering_display_max_luminance
     )
-    max_fall_str = f"max-cll={max_cll},{max_fall}"
+    max_fall_str = f"max-cll={max_cll},{max_fall}" if max_fall is not None else None
     cicp_str = "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:range=limited"
-    x265_params = f'{cicp_str}:{mastering_display_str}:{max_fall_str}'
+    x265_params = f"{cicp_str}"
+    x265_params += add_x265_params(mastering_display_str)
+    x265_params += add_x265_params(max_fall_str)
 
     # create bitstream data
     ops = [
         '-hide_banner',
         '-loop', '1',
+        '-color_primaries', 'bt2020',
+        '-color_trc', 'smpte2084',
+        '-colorspace', 'bt2020nc',
         '-framerate', f'{framerate}',
         '-t', f"{length_sec}",
         '-i', src_png_name,
         '-c:v', 'libx265',
         '-x265-params', x265_params,
         '-pix_fmt', 'yuv420p10le',
+        '-color_primaries', 'bt2020',
+        '-color_trc', 'smpte2084',
+        '-colorspace', 'bt2020nc',
         '-qp', '0',
         '-f', 'hevc',
         str(dst_bitstream_name), '-y',
@@ -159,6 +180,9 @@ def encode_hdr10_using_ffmpeg_mp4box_av1_core(
     References:
     - https://gitlab.com/AOMediaCodec/SVT-AV1/-/blob/master/Docs/Parameters.md#2-av1-metadata
     """
+    def add_svtav1_params(param):
+        return f":{param}" if param is not None else ""
+
     cmd = "ffmpeg"
     src_png_name = "./src_img/1920x1080_ST2084_Rec.2020.png"
     dst_mp4_name= dst_fname_without_ext + ".mp4"
@@ -175,19 +199,28 @@ def encode_hdr10_using_ffmpeg_mp4box_av1_core(
         max_lumiannce=mastering_display_max_luminance
     )
 
-    content_light_str = f"content-light={max_cll},{max_fall}"
+    content_light_str = f"content-light={max_cll},{max_fall}" if max_fall is not None else None
 
     # Note: do not include shell quotes here; pass the raw string as one argv token.
-    svtav1_params = f'{mastering_display_str}:{content_light_str}:{cicp_str}:crf=1'
+    svtav1_params = "crf=1"
+    svtav1_params += add_svtav1_params(mastering_display_str)
+    svtav1_params += add_svtav1_params(content_light_str)
+    svtav1_params += add_svtav1_params(cicp_str)
 
     ops = [
         '-hide_banner',
         '-loop', '1',
+        '-color_primaries', 'bt2020',
+        '-color_trc', 'smpte2084',
+        '-colorspace', 'bt2020nc',
         '-framerate', f'{framerate}',
         '-t', f"{length_sec}",
         '-i', src_png_name,
         '-c:v', 'libsvtav1',
         '-svtav1-params', svtav1_params,
+        '-color_primaries', 'bt2020',
+        '-color_trc', 'smpte2084',
+        '-colorspace', 'bt2020nc',
         '-pix_fmt', 'yuv420p10le',
         '-f', 'obu',
         str(dst_bitstream_name), '-y'
@@ -228,19 +261,24 @@ def png_to_avif(
         avif_fname: str,
         bit_depth: int = 10,
         cicp: list[int] = [1, 1, 1],
-        cll: int = 0,
-        pall: int = 0
+        cll: int | None = 0,
+        pall: int | None = 0
 ):
     cmd = [
         "avifenc", png_fname,
         "-d", f"{bit_depth}",
         "--cicp", f"{cicp[0]}/{cicp[1]}/{cicp[2]}",
         "-c", "aom",
-        "--clli", f"{cll},{pall}",
         "--lossless",
         "--ignore-exif",
         avif_fname
     ]
+    if (cll is None) or (pall is None):
+        pass
+    else:
+        cmd.insert(-2, "--clli")
+        cmd.insert(-2, f"{cll},{pall}")
+
     print(" ".join(cmd))
     subprocess.run(cmd)
 
@@ -307,6 +345,11 @@ def encode_hdr10_using_ffmpeg_mp4box_hevc(
         in product(mdcv_primaries_list, mdcv_luminance_list, clli_luminance_list):
         print(mdcv_primaries, mdcv_luminance, clli_luminance)
 
+        if (mdcv_primaries is None) and (mdcv_luminance is not None):
+            continue
+        if (mdcv_primaries is not None) and (mdcv_luminance is None):
+            continue
+
         file_name_without_ext = make_media_file_name_without_ext(
             kind=KIND_HEVC,
             suffix=None,
@@ -335,6 +378,11 @@ def encode_hdr10_using_ffmpeg_mp4box_av1(
         in product(mdcv_primaries_list, mdcv_luminance_list, clli_luminance_list):
         print(mdcv_primaries, mdcv_luminance, clli_luminance)
 
+        if (mdcv_primaries is None) and (mdcv_luminance is not None):
+            continue
+        if (mdcv_primaries is not None) and (mdcv_luminance is None):
+            continue
+
         file_name_without_ext = make_media_file_name_without_ext(
             kind=KIND_AV1,
             suffix=None,
@@ -358,7 +406,7 @@ def encode_hdr10_using_ffmpeg_mp4box_av1(
 def encode_hdr10_using_avifenc_avif(
         mdcv_primaries_list: list[str] | None,
         mdcv_luminance_list: list[int] | None,
-        clli_luminance_list: list[int]):
+        clli_luminance_list: list[int] | None):
     def default_none_list(x):
         return x if x is not None else [None]
     mdcv_primaries_list = default_none_list(mdcv_primaries_list)
@@ -391,37 +439,45 @@ def encode_hdr10_using_ffmpeg_png_core(
     framerate=24,
     dst_fname_without_ext="./video/test",    
 ):
+    def add_x265_params(param):
+        return f":{param}" if param is not None else ""
+
     cmd = "ffmpeg"
     src_png_name = "./src_img/1920x1080_ST2084_Rec.2020.png"
     dst_png_name= dst_fname_without_ext + ".png"
-    dst_bitstream_name = str(Path(dst_png_name).with_name(f"{Path(dst_png_name).stem}_png.obu"))
+    dst_bitstream_name = str(Path(dst_png_name).with_name(f"{Path(dst_png_name).stem}.h265"))
 
-    length_sec = 10
+    cicp_str = "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:range=limited"
 
-    cicp_str = "color-primaries=9:transfer-characteristics=16:matrix-coefficients=9:color-range=0"
-
-    mastering_display_str = calc_master_display_str_av1(
+    mastering_display_str = calc_master_display_str_hevc(
         color_space_str=mastering_display_color_space,
         white_point=mastering_display_white_point,
         min_lumiannce=mastering_display_min_luminance,
         max_lumiannce=mastering_display_max_luminance
     )
-
-    content_light_str = f"content-light={max_cll},{max_fall}"
-
     # Note: do not include shell quotes here; pass the raw string as one argv token.
-    svtav1_params = f'{mastering_display_str}:{content_light_str}:{cicp_str}:crf=1'
+    max_fall_str = f"max-cll={max_cll},{max_fall}" if max_fall is not None else None
+    x265_params = f"{cicp_str}"
+    x265_params += add_x265_params(mastering_display_str)
+    x265_params += add_x265_params(max_fall_str)
 
     ops = [
         '-hide_banner',
         '-loop', '1',
+        '-color_primaries', 'bt2020',
+        '-color_trc', 'smpte2084',
+        '-colorspace', 'bt2020nc',
         '-framerate', f'{framerate}',
-        '-t', f"{length_sec}",
         '-i', src_png_name,
-        '-c:v', 'libsvtav1',
-        '-svtav1-params', svtav1_params,
-        '-pix_fmt', 'yuv420p10le',
-        '-f', 'obu',
+        '-frames:v', "1",
+        '-c:v', 'libx265',
+        '-x265-params', x265_params,
+        '-color_primaries', 'bt2020',
+        '-color_trc', 'smpte2084',
+        '-colorspace', 'bt2020nc',
+        '-pix_fmt', 'yuv444p12le',
+        '-qp', '0',
+        '-f', 'hevc',
         str(dst_bitstream_name), '-y'
     ]
     args = [cmd] + ops
@@ -431,7 +487,7 @@ def encode_hdr10_using_ffmpeg_png_core(
     # convert to PNG
     ops = [
         '-hide_banner',
-        '-f', 'obu',
+        '-f', 'hevc',
         '-i', dst_bitstream_name,
         '-frames:v', '1',
         '-update', '1',
@@ -445,10 +501,15 @@ def encode_hdr10_using_ffmpeg_png_core(
 def encode_hdr10_using_ffmpeg_png(
         mdcv_primaries_list: list[str] | None,
         mdcv_luminance_list: list[int] | None,
-        clli_luminance_list: list[int]):
+        clli_luminance_list: list[int] | None):
 
     for mdcv_primaries, mdcv_luminance, clli_luminance\
         in product(mdcv_primaries_list, mdcv_luminance_list, clli_luminance_list):
+
+        if (mdcv_primaries is None) and (mdcv_luminance is not None):
+            continue
+        if (mdcv_primaries is not None) and (mdcv_luminance is None):
+            continue
 
         file_name_without_ext = make_media_file_name_without_ext(
             kind=KIND_PNG,
@@ -460,16 +521,15 @@ def encode_hdr10_using_ffmpeg_png(
         print(file_name_without_ext)
 
         encode_hdr10_using_ffmpeg_png_core(
-            mastering_display_color_space=cs.BT2020,
+            mastering_display_color_space=mdcv_primaries,
             mastering_display_white_point=cs.D65,
             mastering_display_min_luminance=0.0,
-            mastering_display_max_luminance=1000,
-            max_fall=10000,
-            max_cll=10000,
+            mastering_display_max_luminance=mdcv_luminance,
+            max_fall=clli_luminance,
+            max_cll=clli_luminance,
             framerate=24,
             dst_fname_without_ext=file_name_without_ext
         )
-        break
 
 
 def debug():

@@ -13,37 +13,56 @@ WORKDIR /root/local
 RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/apt/sources.list \
     && echo "deb http://security.debian.org/ ${DEBIAN_VERSION}-security main" >> /etc/apt/sources.list \
     && apt-get update && apt-get install -y --no-install-recommends \
+        autoconf \
+        automake \
         build-essential \
         clang \
         cmake \
         dasel \
         doxygen \
-        ffmpeg \
         git \
+        git-core \
         imagemagick \
+        libaom-dev \
+        libass-dev \
         libboost-all-dev \
+        libdav1d-dev \
+        libx264-dev \
         libde265-dev \
         libexpat1-dev \
         libfreetype-dev \
+        libfreetype6-dev \
         libgif-dev \
         libgl1-mesa-dev \
         libglu1-mesa-dev \
+        libgnutls28-dev \
         libheif-dev \
         libimath-dev \
         libjpeg-dev \
         liblcms2-dev \
+        libmp3lame-dev \
         libopencv-dev \
         libopenexr-dev \
         libopenjp2-7-dev \
         libopenvdb-dev \
+        libvdpau-dev \
         libpystring-dev \
+        libraw-dev \
+        libsdl2-dev \
         libsvtav1enc-dev \
         libtbb-dev \
         libtiff-dev \
-        libraw-dev \
+        libtool \
+        libunistring-dev \
+        libva-dev \
+        libvorbis-dev \
+        libvpx-dev \
         libwebp-dev \
+        libxcb1-dev \
         libx265-dev \
         libxcb-cursor0 \
+        libxcb-shm0-dev \
+        libxcb-xfixes0-dev \
         libx11-xcb1 \
         libxcb1 \
         libxcb-shm0 \
@@ -59,16 +78,112 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         libxml2-utils \
         libyaml-cpp-dev \
         llvm \
+        locales \
+        meson \
+        nasm \
         ninja-build \
+        pkg-config \
         pybind11-dev \
         python3-tk \
+        texinfo \
         tk-dev \
         sudo \
         unzip \
         wget \
         yasm \
+        zlib1g-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+
+# Install FFmpeg
+RUN mkdir -p ~/ffmpeg_sources /opt/my_ffmpeg /opt/my_ffmpeg_out
+
+# Insatll libfdk-aac for FFmpeg
+RUN cd ~/ffmpeg_sources \
+    && git -C fdk-aac pull 2> /dev/null || git clone --depth 1 https://github.com/mstorsjo/fdk-aac \
+    && cd fdk-aac \
+    && autoreconf -fiv \
+    && ./configure --prefix="/opt/my_ffmpeg/" --disable-shared \
+    && make -j 16 \
+    && make install \
+    && cd ~/ && rm -rf ./ffmpeg_sources/fdk-aac
+
+RUN cd ~/ffmpeg_sources \
+    && git -C aom pull 2> /dev/null || git clone --depth 1 https://aomedia.googlesource.com/aom \
+    && mkdir -p aom_build \
+    && cd aom_build \
+    && PATH="/opt/my_ffmpeg/bin:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="/opt/my_ffmpeg/" -DENABLE_TESTS=OFF -DENABLE_NASM=on ../aom \
+    && PATH="/opt/my_ffmpeg/bin:$PATH" make -j 16 \
+    && make install \
+    && cd ~/ && rm -rf ./ffmpeg_sources/aom
+
+RUN cd ~/ffmpeg_sources \
+    && git -C SVT-AV1 pull 2> /dev/null || git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git \
+    && mkdir -p SVT-AV1/build \
+    && cd SVT-AV1/build \
+    && PATH="/opt/my_ffmpeg/bin:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="/opt/my_ffmpeg/" -DCMAKE_BUILD_TYPE=Release -DBUILD_DEC=OFF -DBUILD_SHARED_LIBS=OFF .. \
+    && PATH="/opt/my_ffmpeg/bin:$PATH" make -j16 \
+    && make install \
+    && cd ~/ && rm -rf ./ffmpeg_sources/SVT-AV1
+
+RUN cd ~/ffmpeg_sources \
+    && git -C dav1d pull 2> /dev/null || git clone --depth 1 https://code.videolan.org/videolan/dav1d.git \
+    && mkdir -p dav1d/build \
+    && cd dav1d/build \
+    && meson setup -Denable_tools=false -Denable_tests=false --default-library=static .. --prefix "/opt/my_ffmpeg" --libdir="/opt/my_ffmpeg/lib" \
+    && ninja -j16 \
+    && ninja install \
+    && cd ~/ && rm -rf ./ffmpeg_sources/dav1d
+
+RUN cd ~/'ffmpeg_sources' \
+    && git -C vmaf pull 2> /dev/null || git clone --depth 1 https://github.com/Netflix/vmaf.git \
+    && mkdir -p 'vmaf/libvmaf/build' \
+    && cd 'vmaf/libvmaf/build' \
+    && meson setup -Denable_tests=false -Denable_docs=false --buildtype=release --default-library=static '../' --prefix "/opt/my_ffmpeg/" --bindir="/opt/my_ffmpeg/bin" --libdir="/opt/my_ffmpeg/lib" \
+    && ninja -j16 \
+    && ninja install \
+    && cd ~/ && rm -rf ./ffmpeg_sources/vmaf
+
+RUN cd ~/ffmpeg_sources \
+    && git -C opus pull 2> /dev/null || git clone --depth 1 https://github.com/xiph/opus.git \
+    && cd opus \
+    && ./autogen.sh \
+    && ./configure --prefix="/opt/my_ffmpeg" --disable-shared \
+    && make -j16 \
+    && make install \
+    && cd ~/ && rm -rf ./ffmpeg_sources/opus
+
+RUN cd ~/ffmpeg_sources \
+    && git clone https://github.com/toru-ver4/FFmpeg_png_mdcv.git ffmpeg \
+    && cd ffmpeg \
+    && PATH="/opt/my_ffmpeg/bin:$PATH" PKG_CONFIG_PATH="/opt/my_ffmpeg/lib/pkgconfig" ./configure \
+        --prefix="/opt/my_ffmpeg_out" \
+        --pkg-config-flags="--static" \
+        --extra-cflags="-I/opt/my_ffmpeg/include" \
+        --extra-ldflags="-L/opt/my_ffmpeg/lib" \
+        --extra-libs="-lpthread -lm" \
+        --ld="g++" \
+        --bindir="/opt/my_ffmpeg_out/bin" \
+        --enable-gpl \
+        --enable-gnutls \
+        --enable-libaom \
+        --enable-libass \
+        --enable-libfdk-aac \
+        --enable-libfreetype \
+        --enable-libmp3lame \
+        --enable-libopus \
+        --enable-libsvtav1 \
+        --enable-libdav1d \
+        --enable-libvorbis \
+        --enable-libvpx \
+        --enable-libx264 \
+        --enable-libx265 \
+        --enable-nonfree \
+    && PATH="/opt/my_ffmpeg_out/bin:$PATH" make -j16 \
+    && make install \
+    && hash -r \
+    && cd ~/ && rm -rf ./ffmpeg_sources/ffmpeg
 
 # Install lubultrahdr
 ########################################
@@ -204,7 +319,7 @@ RUN git clone https://github.com/axiomatic-systems/Bento4.git \
     && mkdir cmakebuild \
     && cd cmakebuild \
     && cmake -DCMAKE_BUILD_TYPE=Release .. \
-    && make & make install \
+    && make -j16 && make install \
     && cd ../../ \
     && rm -rf Bento4
 
@@ -212,17 +327,17 @@ RUN git clone https://github.com/axiomatic-systems/Bento4.git \
 RUN git clone https://github.com/gpac/gpac.git \
     && cd gpac \
     && ./configure \
-    && make & make install \
+    && make -j16 && make install \
     && cd ../ \
     && rm -rf gpac
 
-# Install Noto Fonts
+# Install Noto Fonts (Noto Sans CJK JP - Japanese only)
 RUN mkdir font_install \
     && cd font_install \
-    && wget https://noto-website-2.storage.googleapis.com/pkgs/NotoSansCJKjp-hinted.zip \
-    && unzip NotoSansCJKjp-hinted.zip \
+    && wget -O NotoSansCJKjp.zip https://github.com/googlefonts/noto-cjk/releases/download/Sans2.004/06_NotoSansCJKjp.zip \
+    && unzip NotoSansCJKjp.zip \
     && mkdir -p /usr/share/fonts/opentype/noto \
-    && cp *otf /usr/share/fonts/opentype/noto \
+    && find . -name '*.otf' -exec cp -v {} /usr/share/fonts/opentype/noto/ \; \
     && fc-cache -f -v \
     && cd .. \
     && rm -rf font_install
@@ -239,6 +354,9 @@ RUN mkdir /home/font_install \
 
 RUN ldconfig
 
+RUN sed -i 's/^# *\(ja_JP.UTF-8 UTF-8\)/\1/' /etc/locale.gen \
+    && locale-gen
+
 # User Settings
 ARG UID=1000
 # GID 1000 is used for docker group
@@ -252,6 +370,7 @@ RUN groupadd -g ${GID} ${USER_NAME} \
 
 WORKDIR /work/src
 USER ${USER_NAME}
+ENV PATH="/opt/my_ffmpeg_out/bin:${PATH}"
 
 ENV LANG=ja_JP.UTF-8
 ENV LC_ALL=ja_JP.UTF-8

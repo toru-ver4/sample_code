@@ -24,6 +24,8 @@ except ImportError:
     from colour.algebra import vector_dot
 from colour.adaptation import matrix_chromatic_adaptation_VonKries
 from colour import RGB_COLOURSPACES, CCS_COLOURCHECKERS
+from imagecodecs import JPEGXR, imread
+from colour.io import write_image
 import math
 from jzazbz import jzczhz_to_jzazbz
 
@@ -3176,6 +3178,18 @@ def png_to_jxl(
     ]
     print(" ".join(cmd))
     subprocess.run(cmd)
+
+
+def jxr_to_exr(src_fname="./Windows_HDR_Capture/600.jxr"):
+    if not JPEGXR.available:
+        print("JPEG XR is not supported")
+        return
+
+    dst_fname = src_fname.replace(".jxr", ".exr")
+    image = imread(src_fname) * 0.8
+    image = image[..., :3]  # remove alpha
+    print(image.dtype)
+    write_image(image=image, path=dst_fname)
 
 
 if __name__ == '__main__':
