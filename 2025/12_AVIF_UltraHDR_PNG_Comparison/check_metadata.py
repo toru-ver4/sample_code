@@ -136,6 +136,6 @@ def dump_png_chunk_with_pngcheck_core(input_file):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # dump_container_with_mp4box()
-    # dump_bitstream_with_gpac()
+    dump_container_with_mp4box()
+    dump_bitstream_with_gpac()
     dump_png_chunk_with_pngcheck()
