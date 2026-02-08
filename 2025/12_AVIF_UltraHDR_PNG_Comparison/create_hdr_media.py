@@ -12,8 +12,8 @@ MDCV_PRIMARIES_LIST = [cs.BT709, cs.BT2020, None]
 MDCV_LUMINANCE_LIST = [100, 10000, None]
 CLLI_LUMINANCE_LIST = [100, 10000, None]
 
-# MDCV_PRIMARIES_LIST = [None]
-# MDCV_LUMINANCE_LIST = [None]
+# MDCV_PRIMARIES_LIST = [cs.BT709]
+# MDCV_LUMINANCE_LIST = [10000]
 # CLLI_LUMINANCE_LIST = [None]
 
 KIND_AV1 = "av1"
@@ -109,7 +109,7 @@ def encode_hdr10_using_ffmpeg_mp4box_hevc_core(
         min_lumiannce=mastering_display_min_luminance,
         max_lumiannce=mastering_display_max_luminance
     )
-    max_fall_str = f"max-cll={max_cll},{max_fall}" if max_fall is not None else None
+    max_fall_str = f"max-cll={max_cll},{max_fall}" if max_fall is not None else "no-cll=1"
     cicp_str = "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:range=limited"
     x265_params = f"{cicp_str}"
     x265_params += add_x265_params(mastering_display_str)
@@ -549,26 +549,26 @@ if __name__ == '__main__':
     mdcv_luminance_list = MDCV_LUMINANCE_LIST
     clli_luminance_list = CLLI_LUMINANCE_LIST
 
-    encode_hdr10_using_ffmpeg_mp4box_hevc(
-        mdcv_primaries_list=mdcv_primaries_list,
-        mdcv_luminance_list=mdcv_luminance_list,
-        clli_luminance_list=clli_luminance_list
-    )
+    # encode_hdr10_using_ffmpeg_mp4box_hevc(
+    #     mdcv_primaries_list=mdcv_primaries_list,
+    #     mdcv_luminance_list=mdcv_luminance_list,
+    #     clli_luminance_list=clli_luminance_list
+    # )
 
-    encode_hdr10_using_ffmpeg_mp4box_av1(
-        mdcv_primaries_list=mdcv_primaries_list,
-        mdcv_luminance_list=mdcv_luminance_list,
-        clli_luminance_list=clli_luminance_list
-    )
+    # encode_hdr10_using_ffmpeg_mp4box_av1(
+    #     mdcv_primaries_list=mdcv_primaries_list,
+    #     mdcv_luminance_list=mdcv_luminance_list,
+    #     clli_luminance_list=clli_luminance_list
+    # )
 
-    encode_hdr10_using_avifenc_avif(
-        mdcv_primaries_list=None,  # not supported by avifenc
-        mdcv_luminance_list=None,  # not supported by avifenc
-        clli_luminance_list=clli_luminance_list
-    )
+    # encode_hdr10_using_avifenc_avif(
+    #     mdcv_primaries_list=None,  # not supported by avifenc
+    #     mdcv_luminance_list=None,  # not supported by avifenc
+    #     clli_luminance_list=clli_luminance_list
+    # )
 
-    encode_hdr10_using_ffmpeg_png(
-        mdcv_primaries_list=mdcv_primaries_list,
-        mdcv_luminance_list=mdcv_luminance_list,
-        clli_luminance_list=clli_luminance_list,
-    )
+    # encode_hdr10_using_ffmpeg_png(
+    #     mdcv_primaries_list=mdcv_primaries_list,
+    #     mdcv_luminance_list=mdcv_luminance_list,
+    #     clli_luminance_list=clli_luminance_list,
+    # )

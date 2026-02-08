@@ -171,3 +171,8 @@ Dynamic Range and Mastering InfoFrame に情報あり
 * エンコード時、OBU には cicp情報は埋め込まれない
   * そのため、初期値の 2/2/2 のままになってる
   * https://gitlab.com/webmproject/libaom/-/blob/v3.13.1/av1/av1_cx_iface.c?ref_type=tags#L432-L434
+
+
+### Test のメモ
+
+* AV1 の OBU の primary_chromaticity_x は gpac でダンプすると display_primaries_x に名前が変わる
