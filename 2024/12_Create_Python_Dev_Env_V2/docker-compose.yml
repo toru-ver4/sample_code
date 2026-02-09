@@ -1,6 +1,6 @@
 services:
   python_dev:
-    image: takuver4/ty_env_v2:rev08
+    image: takuver4/ty_env_v2:rev09
     restart: unless-stopped
 
     environment:

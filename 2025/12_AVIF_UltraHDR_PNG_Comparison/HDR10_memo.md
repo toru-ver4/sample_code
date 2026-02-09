@@ -176,3 +176,5 @@ Dynamic Range and Mastering InfoFrame に情報あり
 ### Test のメモ
 
 * AV1 の OBU の primary_chromaticity_x は gpac でダンプすると display_primaries_x に名前が変わる
+* MP4Box で AV1のコンテナ作ると MasteringDisplayColourVolumeBox の GBR が BRG になってた
+* FFmpeg で side data から MDCV を作る時のアドレス計算ミスがあった

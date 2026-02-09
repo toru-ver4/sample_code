@@ -324,7 +324,7 @@ RUN git clone https://github.com/axiomatic-systems/Bento4.git \
     && rm -rf Bento4
 
 # Install GPAC for mp4 container edit
-RUN git clone https://github.com/gpac/gpac.git \
+RUN git clone https://github.com/toru-ver4/gpac.git \
     && cd gpac \
     && ./configure \
     && make -j16 && make install \
