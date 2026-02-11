@@ -549,23 +549,23 @@ if __name__ == '__main__':
     mdcv_luminance_list = MDCV_LUMINANCE_LIST
     clli_luminance_list = CLLI_LUMINANCE_LIST
 
-    encode_hdr10_using_ffmpeg_mp4box_hevc(
-        mdcv_primaries_list=mdcv_primaries_list,
-        mdcv_luminance_list=mdcv_luminance_list,
-        clli_luminance_list=clli_luminance_list
-    )
-
-    encode_hdr10_using_ffmpeg_mp4box_av1(
-        mdcv_primaries_list=mdcv_primaries_list,
-        mdcv_luminance_list=mdcv_luminance_list,
-        clli_luminance_list=clli_luminance_list
-    )
-
-    # encode_hdr10_using_avifenc_avif(
-    #     mdcv_primaries_list=None,  # not supported by avifenc
-    #     mdcv_luminance_list=None,  # not supported by avifenc
+    # encode_hdr10_using_ffmpeg_mp4box_hevc(
+    #     mdcv_primaries_list=mdcv_primaries_list,
+    #     mdcv_luminance_list=mdcv_luminance_list,
     #     clli_luminance_list=clli_luminance_list
     # )
+
+    # encode_hdr10_using_ffmpeg_mp4box_av1(
+    #     mdcv_primaries_list=mdcv_primaries_list,
+    #     mdcv_luminance_list=mdcv_luminance_list,
+    #     clli_luminance_list=clli_luminance_list
+    # )
+
+    encode_hdr10_using_avifenc_avif(
+        mdcv_primaries_list=None,  # not supported by avifenc
+        mdcv_luminance_list=None,  # not supported by avifenc
+        clli_luminance_list=clli_luminance_list
+    )
 
     # encode_hdr10_using_ffmpeg_png(
     #     mdcv_primaries_list=mdcv_primaries_list,

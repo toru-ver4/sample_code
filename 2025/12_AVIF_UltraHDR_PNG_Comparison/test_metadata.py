@@ -86,135 +86,135 @@ def calc_expected_hevc_primaries_float(primary_str: str) -> list[list[float | No
     return primaries
 
 
-# class TestHevcMetadata(unittest.TestCase):
+class TestHevcMetadata(unittest.TestCase):
 
-#     def test_bitstream_metadata(self):
-#         for mdcv_primaries, mdcv_luminance, clli_luminance\
-#             in product(MDCV_PRIMARIES_LIST, MDCV_LUMINANCE_LIST, CLLI_LUMINANCE_LIST):
-#             # print(f"[TEST Condition] mdcv_primaries={mdcv_primaries}, mdcv_luminance={mdcv_luminance}, clli_lumiannce={clli_luminance}")
-#             file_name_without_ext = make_media_file_name_without_ext(
-#                 kind=KIND_HEVC,
-#                 suffix=None,
-#                 mdcv_primaries=mdcv_primaries,
-#                 mdcv_luminance=mdcv_luminance,
-#                 clli_luminance=clli_luminance
-#             )
-#             file_name = file_name_without_ext + ".h265"
-#             if os.path.exists(file_name) is False:
-#                 continue
-#             json_file = f"./data/{Path(file_name).name}.json"
-#             with open(json_file, "r", encoding="utf-8") as f:
-#                 data = json.load(f)
+    def test_bitstream_metadata(self):
+        for mdcv_primaries, mdcv_luminance, clli_luminance\
+            in product(MDCV_PRIMARIES_LIST, MDCV_LUMINANCE_LIST, CLLI_LUMINANCE_LIST):
+            # print(f"[TEST Condition] mdcv_primaries={mdcv_primaries}, mdcv_luminance={mdcv_luminance}, clli_lumiannce={clli_luminance}")
+            file_name_without_ext = make_media_file_name_without_ext(
+                kind=KIND_HEVC,
+                suffix=None,
+                mdcv_primaries=mdcv_primaries,
+                mdcv_luminance=mdcv_luminance,
+                clli_luminance=clli_luminance
+            )
+            file_name = file_name_without_ext + ".h265"
+            if os.path.exists(file_name) is False:
+                continue
+            json_file = f"./data/{Path(file_name).name}.json"
+            with open(json_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
 
-#             cicp_expected_dict = {
-#                 "-colour_primaries": 9,
-#                 "-transfer_characteristic": 16,
-#                 "-matrix_coeffs": 9,
-#                 "-video_full_range_flag": 0,
-#             }
-#             for key, expected_value in cicp_expected_dict.items():
-#                 actual_values = find_values_by_key(data, key)
-#                 self.assertNotEqual(actual_values, [])
-#                 for actual_value in actual_values:
-#                     # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
-#                     self.assertEqual(int(actual_value), expected_value)
+            cicp_expected_dict = {
+                "-colour_primaries": 9,
+                "-transfer_characteristic": 16,
+                "-matrix_coeffs": 9,
+                "-video_full_range_flag": 0,
+            }
+            for key, expected_value in cicp_expected_dict.items():
+                actual_values = find_values_by_key(data, key)
+                self.assertNotEqual(actual_values, [])
+                for actual_value in actual_values:
+                    # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
+                    self.assertEqual(int(actual_value), expected_value)
 
-#             expected_primaries = calc_expected_hevc_primaries_float(primary_str=mdcv_primaries)
-#             mdcv_primaries_dict = {
-#                 "-display_primaries_x": [expected_primaries[ii][0] for ii in [1, 2, 0]],
-#                 "-display_primaries_y": [expected_primaries[ii][1] for ii in [1, 2, 0]],
-#             }
-#             for key, expected_value in mdcv_primaries_dict.items():
-#                 actual_values = find_values_by_key(data, key)
-#                 if None in expected_value:
-#                     # print(f"[ASSERT] {key} actual={actual_values} expected={expected_value}")
-#                     self.assertEqual(actual_values, [])
-#                 else:
-#                     self.assertNotEqual(actual_values, [])
-#                     for actual_value in actual_values:
-#                         # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
-#                         arr = np.fromstring(actual_value, sep=" ")
-#                         np.testing.assert_almost_equal(arr, np.array(expected_value), decimal=4)
+            expected_primaries = calc_expected_hevc_primaries_float(primary_str=mdcv_primaries)
+            mdcv_primaries_dict = {
+                "-display_primaries_x": [expected_primaries[ii][0] for ii in [1, 2, 0]],
+                "-display_primaries_y": [expected_primaries[ii][1] for ii in [1, 2, 0]],
+            }
+            for key, expected_value in mdcv_primaries_dict.items():
+                actual_values = find_values_by_key(data, key)
+                if None in expected_value:
+                    # print(f"[ASSERT] {key} actual={actual_values} expected={expected_value}")
+                    self.assertEqual(actual_values, [])
+                else:
+                    self.assertNotEqual(actual_values, [])
+                    for actual_value in actual_values:
+                        # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
+                        arr = np.fromstring(actual_value, sep=" ")
+                        np.testing.assert_almost_equal(arr, np.array(expected_value), decimal=4)
 
-#             parent_str = "SEIMessage"
-#             mdcv_clli_expected_dict = {
-#                 "-white_point_x": (parent_str, 0.3127 if mdcv_primaries else None),
-#                 "-white_point_y": (parent_str, 0.3290 if mdcv_primaries else None),
-#                 "-max_display_mastering_luminance": (parent_str, mdcv_luminance if mdcv_luminance else None),
-#                 "-min_display_mastering_luminance": (parent_str, 0 if mdcv_luminance else None),
-#                 "-max_content_light_level": (parent_str, clli_luminance),
-#                 "-max_pic_average_light_level": (parent_str, clli_luminance),
-#             }
+            parent_str = "SEIMessage"
+            mdcv_clli_expected_dict = {
+                "-white_point_x": (parent_str, 0.3127 if mdcv_primaries else None),
+                "-white_point_y": (parent_str, 0.3290 if mdcv_primaries else None),
+                "-max_display_mastering_luminance": (parent_str, mdcv_luminance if mdcv_luminance else None),
+                "-min_display_mastering_luminance": (parent_str, 0 if mdcv_luminance else None),
+                "-max_content_light_level": (parent_str, clli_luminance),
+                "-max_pic_average_light_level": (parent_str, clli_luminance),
+            }
 
-#             for key, (parent_key, expected_value) in mdcv_clli_expected_dict.items():
-#                 actual_values = find_values_by_key(data, key, parent_key=parent_key)
-#                 if expected_value is None:
-#                     # print(f"[ASSERT] {key} actual={actual_values} expected={expected_value}")
-#                     self.assertEqual(actual_values, [])
-#                 else:
-#                     self.assertNotEqual(actual_values, [])
-#                     for actual_value in actual_values:
-#                         # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
-#                         self.assertAlmostEqual(float(actual_value), expected_value, places=4)
+            for key, (parent_key, expected_value) in mdcv_clli_expected_dict.items():
+                actual_values = find_values_by_key(data, key, parent_key=parent_key)
+                if expected_value is None:
+                    # print(f"[ASSERT] {key} actual={actual_values} expected={expected_value}")
+                    self.assertEqual(actual_values, [])
+                else:
+                    self.assertNotEqual(actual_values, [])
+                    for actual_value in actual_values:
+                        # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
+                        self.assertAlmostEqual(float(actual_value), expected_value, places=4)
 
-#     def test_mp4_container_metadata(self):
-#         for mdcv_primaries, mdcv_luminance, clli_luminance, ext_str,\
-#             in product(MDCV_PRIMARIES_LIST, MDCV_LUMINANCE_LIST, CLLI_LUMINANCE_LIST, [".mp4", ".mov"]):
-#             # print(f"[TEST Condition] mdcv_primaries={mdcv_primaries}, mdcv_luminance={mdcv_luminance}, clli_lumiannce={clli_luminance}, ext_str={ext_str}")
-#             file_name_without_ext = make_media_file_name_without_ext(
-#                 kind=KIND_HEVC,
-#                 suffix=None,
-#                 mdcv_primaries=mdcv_primaries,
-#                 mdcv_luminance=mdcv_luminance,
-#                 clli_luminance=clli_luminance
-#             )
-#             file_name = file_name_without_ext + ext_str
-#             if os.path.exists(file_name) is False:
-#                 continue
-#             json_file = f"./data/{Path(file_name).name}.json"
-#             with open(json_file, "r", encoding="utf-8") as f:
-#                 data = json.load(f)
+    def test_mp4_container_metadata(self):
+        for mdcv_primaries, mdcv_luminance, clli_luminance, ext_str,\
+            in product(MDCV_PRIMARIES_LIST, MDCV_LUMINANCE_LIST, CLLI_LUMINANCE_LIST, [".mp4", ".mov"]):
+            # print(f"[TEST Condition] mdcv_primaries={mdcv_primaries}, mdcv_luminance={mdcv_luminance}, clli_lumiannce={clli_luminance}, ext_str={ext_str}")
+            file_name_without_ext = make_media_file_name_without_ext(
+                kind=KIND_HEVC,
+                suffix=None,
+                mdcv_primaries=mdcv_primaries,
+                mdcv_luminance=mdcv_luminance,
+                clli_luminance=clli_luminance
+            )
+            file_name = file_name_without_ext + ext_str
+            if os.path.exists(file_name) is False:
+                continue
+            json_file = f"./data/{Path(file_name).name}.json"
+            with open(json_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
 
-#             cicp_expected_dict = {
-#                 "-colour_primaries": 9,
-#                 "-transfer_characteristic": 16,
-#                 "-matrix_coeffs": 9,
-#                 "-video_full_range_flag": 0,
-#             }
-#             for key, expected_value in cicp_expected_dict.items():
-#                 actual_values = find_values_by_key(data, key)
-#                 self.assertNotEqual(actual_values, [])
-#                 for actual_value in actual_values:
-#                     # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
-#                     self.assertEqual(int(actual_value), expected_value)
+            cicp_expected_dict = {
+                "-colour_primaries": 9,
+                "-transfer_characteristic": 16,
+                "-matrix_coeffs": 9,
+                "-video_full_range_flag": 0,
+            }
+            for key, expected_value in cicp_expected_dict.items():
+                actual_values = find_values_by_key(data, key)
+                self.assertNotEqual(actual_values, [])
+                for actual_value in actual_values:
+                    # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
+                    self.assertEqual(int(actual_value), expected_value)
 
-#             expected_primaries = calc_expected_hevc_primaries_int(primary_str=mdcv_primaries)
-#             mdcv_box_name = "MasteringDisplayColourVolumeBox"
-#             clli_box_name = "ContentLightLevelBox"
-#             mdcv_dict = {
-#                 "-display_primaries_0_x": (mdcv_box_name, expected_primaries[1][0]),
-#                 "-display_primaries_0_y": (mdcv_box_name, expected_primaries[1][1]),
-#                 "-display_primaries_1_x": (mdcv_box_name, expected_primaries[2][0]),
-#                 "-display_primaries_1_y": (mdcv_box_name, expected_primaries[2][1]),
-#                 "-display_primaries_2_x": (mdcv_box_name, expected_primaries[0][0]),
-#                 "-display_primaries_2_y": (mdcv_box_name, expected_primaries[0][1]),
-#                 '-white_point_x': (mdcv_box_name, None if mdcv_primaries is None else int(round(0.3127 / 0.00002))),
-#                 '-white_point_y': (mdcv_box_name, None if mdcv_primaries is None else int(round(0.3290 / 0.00002))),
-#                 '-max_display_mastering_luminance': (mdcv_box_name, None if mdcv_luminance is None else int(round((mdcv_luminance) / 0.0001))),
-#                 '-min_display_mastering_luminance': (mdcv_box_name, None if mdcv_luminance is None else int(round(0 / 0.0001))),
-#                 '-max_content_light_level': (clli_box_name, clli_luminance),
-#                 '-max_pic_average_light_level': (clli_box_name, clli_luminance),
-#             }
-#             for key, (parent_key, expected_value) in mdcv_dict.items():
-#                 actual_values = find_values_by_key(data, key, parent_key=parent_key)
-#                 if expected_value is None:
-#                     # print(f"[ASSERT] {key} actual={actual_values} expected={expected_value}")
-#                     self.assertEqual(actual_values, [])
-#                 else:
-#                     self.assertNotEqual(actual_values, [])
-#                     for actual_value in actual_values:
-#                         # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
-#                         self.assertAlmostEqual(int(actual_value), expected_value, delta=1)
+            expected_primaries = calc_expected_hevc_primaries_int(primary_str=mdcv_primaries)
+            mdcv_box_name = "MasteringDisplayColourVolumeBox"
+            clli_box_name = "ContentLightLevelBox"
+            mdcv_dict = {
+                "-display_primaries_0_x": (mdcv_box_name, expected_primaries[1][0]),
+                "-display_primaries_0_y": (mdcv_box_name, expected_primaries[1][1]),
+                "-display_primaries_1_x": (mdcv_box_name, expected_primaries[2][0]),
+                "-display_primaries_1_y": (mdcv_box_name, expected_primaries[2][1]),
+                "-display_primaries_2_x": (mdcv_box_name, expected_primaries[0][0]),
+                "-display_primaries_2_y": (mdcv_box_name, expected_primaries[0][1]),
+                '-white_point_x': (mdcv_box_name, None if mdcv_primaries is None else int(round(0.3127 / 0.00002))),
+                '-white_point_y': (mdcv_box_name, None if mdcv_primaries is None else int(round(0.3290 / 0.00002))),
+                '-max_display_mastering_luminance': (mdcv_box_name, None if mdcv_luminance is None else int(round((mdcv_luminance) / 0.0001))),
+                '-min_display_mastering_luminance': (mdcv_box_name, None if mdcv_luminance is None else int(round(0 / 0.0001))),
+                '-max_content_light_level': (clli_box_name, clli_luminance),
+                '-max_pic_average_light_level': (clli_box_name, clli_luminance),
+            }
+            for key, (parent_key, expected_value) in mdcv_dict.items():
+                actual_values = find_values_by_key(data, key, parent_key=parent_key)
+                if expected_value is None:
+                    # print(f"[ASSERT] {key} actual={actual_values} expected={expected_value}")
+                    self.assertEqual(actual_values, [])
+                else:
+                    self.assertNotEqual(actual_values, [])
+                    for actual_value in actual_values:
+                        # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
+                        self.assertAlmostEqual(int(actual_value), expected_value, delta=1)
 
 
 class TestAv1Metadata(unittest.TestCase):
@@ -300,7 +300,6 @@ class TestAv1Metadata(unittest.TestCase):
             if os.path.exists(file_name) is False:
                 continue
             json_file = f"./data/{Path(file_name).name}.json"
-            print(f"json_file = {json_file}")
             with open(json_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
@@ -346,6 +345,111 @@ class TestAv1Metadata(unittest.TestCase):
                         self.assertAlmostEqual(int(actual_value), expected_value, delta=1)
 
 
+class TestAvifMetadata(unittest.TestCase):
+    def test_bitstream_metadata(self):
+        for mdcv_primaries, mdcv_luminance, clli_luminance\
+            in product(MDCV_PRIMARIES_LIST, MDCV_LUMINANCE_LIST, CLLI_LUMINANCE_LIST):
+            # print(f"[TEST Condition] mdcv_primaries={mdcv_primaries}, mdcv_luminance={mdcv_luminance}, clli_lumiannce={clli_luminance}")
+            file_name_without_ext = make_media_file_name_without_ext(
+                kind=KIND_AVIF,
+                suffix=None,
+                mdcv_primaries=mdcv_primaries,
+                mdcv_luminance=mdcv_luminance,
+                clli_luminance=clli_luminance
+            )
+            file_name = file_name_without_ext + ".obu"
+            if os.path.exists(file_name) is False:
+                continue
+            json_file = f"./data/{Path(file_name).name}.json"
+            with open(json_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            cicp_expected_dict = {
+                "-color_primaries": 2,
+                "-transfer_characteristics": 2,
+                "-matrix_coefficients": 2,
+                "-color_range": 1,
+            }
+            for key, expected_value in cicp_expected_dict.items():
+                actual_values = find_values_by_key(data, key)
+                self.assertNotEqual(actual_values, [])
+                for actual_value in actual_values:
+                    # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
+                    self.assertEqual(int(actual_value), expected_value)
+
+            mdcv_primaries_dict = {
+                "-display_primaries_x": ("OBU", None),
+                "-display_primaries_y": ("OBU", None),
+                "-white_point_x": ("OBU", None),
+                "-white_point_y": ("OBU", None),
+                '-max_display_mastering_luminance': ("OBU", None),
+                '-min_display_mastering_luminance': ("OBU", None),
+                '-max_content_light_level': ("OBU", None),
+                '-max_pic_average_light_level': ("OBU", None),
+            }
+            for key, (parent_key, expected_value) in mdcv_primaries_dict.items():
+                actual_values = find_values_by_key(data, key, parent_key=parent_key)
+                if expected_value is None:
+                    # print(f"[ASSERT] {key} actual={actual_values} expected={expected_value}")
+                    self.assertEqual(actual_values, [])
+                else:
+                    self.assertNotEqual(actual_values, [])
+                    for actual_value in actual_values:
+                        # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
+                        arr = np.fromstring(actual_value, sep=" ")
+                        np.testing.assert_almost_equal(arr, np.array(expected_value), decimal=4)
+
+    def test_container_metadata(self):
+        for mdcv_primaries, mdcv_luminance, clli_luminance, container_ext\
+            in product(MDCV_PRIMARIES_LIST, MDCV_LUMINANCE_LIST, CLLI_LUMINANCE_LIST, [".avif"]):
+            # print(f"[TEST Condition] mdcv_primaries={mdcv_primaries}, mdcv_luminance={mdcv_luminance}, clli_lumiannce={clli_luminance}")
+            file_name_without_ext = make_media_file_name_without_ext(
+                kind=KIND_AVIF,
+                suffix=None,
+                mdcv_primaries=mdcv_primaries,
+                mdcv_luminance=mdcv_luminance,
+                clli_luminance=clli_luminance
+            )
+            file_name = file_name_without_ext + container_ext
+            if os.path.exists(file_name) is False:
+                continue
+            json_file = f"./data/{Path(file_name).name}.json"
+            with open(json_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            cicp_expected_dict = {
+                "-colour_primaries": 9,
+                "-transfer_characteristics": 16,
+                "-matrix_coefficients": 0,
+                "-full_range_flag": 1,
+            }
+            for key, expected_value in cicp_expected_dict.items():
+                actual_values = find_values_by_key(data, key)
+                self.assertNotEqual(actual_values, [])
+                for actual_value in actual_values:
+                    # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
+                    self.assertEqual(int(actual_value), expected_value)
+
+
+            clli_box_name = "ContentLightLevelBox"
+            mdcv_dict = {
+                '-max_content_light_level': (clli_box_name, clli_luminance),
+                '-max_pic_average_light_level': (clli_box_name, clli_luminance),
+            }
+            for key, (parent_key, expected_value) in mdcv_dict.items():
+                actual_values = find_values_by_key(data, key, parent_key=parent_key)
+                if expected_value is None:
+                    # print(f"[ASSERT] {key} actual={actual_values} expected={expected_value}")
+                    self.assertEqual(actual_values, [])
+                else:
+                    self.assertNotEqual(actual_values, [])
+                    for actual_value in actual_values:
+                        # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
+                        self.assertEqual(int(actual_value), expected_value)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     unittest.main()
+    # unittest.main(defaultTest="TestHevcMetadata.test_bitstream_metadata")
+    # unittest.main(defaultTest="TestAvifMetadata.test_container_metadata")

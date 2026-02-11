@@ -158,6 +158,11 @@ Dynamic Range and Mastering InfoFrame に情報あり
   * max_cll
   * max_fall
 
+### AVIF Container
+
+* CICP
+  * 
+
 
 ### libavif メモ
 
@@ -168,10 +173,15 @@ Dynamic Range and Mastering InfoFrame に情報あり
   * avifdec.c の avifDecoderParse 
   * read.c の avifDecoderReset -> avifSequenceHeaderParse
   * ただし、avifSequenceHeaderParse は 'colr' ボックスから情報が取得できなかった場合のみ。つまり、colrボックスが存在していれば気にされない
-* エンコード時、OBU には cicp情報は埋め込まれない
-  * そのため、初期値の 2/2/2 のままになってる
+* エンコード時、OBU には cicp情報は埋め込まない
+  * 以下のURLにかかれている通り、CICP が 2/2/2 以外の場合、「colr に nclx は存在し、かつ、Sequence Header OBU と一致しなければならない」という制約あり
+    * https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/codec_aom.c#L868-L870
+  * 簡略化のために OBU は 2/2/2 になってる
   * https://gitlab.com/webmproject/libaom/-/blob/v3.13.1/av1/av1_cx_iface.c?ref_type=tags#L432-L434
-
+  * ただし、color range は埋め込まれる
+* エンコード時、OBU には mdcv, clli の情報は埋め込まれない
+  * とりあえずソースコード上には埋め込んでいる形跡が無かった。
+  * 仕様書的に許可されているかは、ISOBMFF を買ってないので断言できない…スマソ
 
 ### Test のメモ
 
