@@ -456,7 +456,7 @@ def encode_hdr10_using_ffmpeg_png_core(
         max_lumiannce=mastering_display_max_luminance
     )
     # Note: do not include shell quotes here; pass the raw string as one argv token.
-    max_fall_str = f"max-cll={max_cll},{max_fall}" if max_fall is not None else None
+    max_fall_str = f"max-cll={max_cll},{max_fall}" if max_fall is not None else "no-cll=1"
     x265_params = f"{cicp_str}"
     x265_params += add_x265_params(mastering_display_str)
     x265_params += add_x265_params(max_fall_str)
@@ -561,14 +561,14 @@ if __name__ == '__main__':
     #     clli_luminance_list=clli_luminance_list
     # )
 
-    encode_hdr10_using_avifenc_avif(
-        mdcv_primaries_list=None,  # not supported by avifenc
-        mdcv_luminance_list=None,  # not supported by avifenc
-        clli_luminance_list=clli_luminance_list
-    )
-
-    # encode_hdr10_using_ffmpeg_png(
-    #     mdcv_primaries_list=mdcv_primaries_list,
-    #     mdcv_luminance_list=mdcv_luminance_list,
-    #     clli_luminance_list=clli_luminance_list,
+    # encode_hdr10_using_avifenc_avif(
+    #     mdcv_primaries_list=None,  # not supported by avifenc
+    #     mdcv_luminance_list=None,  # not supported by avifenc
+    #     clli_luminance_list=clli_luminance_list
     # )
+
+    encode_hdr10_using_ffmpeg_png(
+        mdcv_primaries_list=mdcv_primaries_list,
+        mdcv_luminance_list=mdcv_luminance_list,
+        clli_luminance_list=clli_luminance_list,
+    )

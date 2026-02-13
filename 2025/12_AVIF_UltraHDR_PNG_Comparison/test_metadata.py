@@ -22,6 +22,7 @@ from create_hdr_media import (
     KIND_PNG,
     make_media_file_name_without_ext
 )
+from parse_png_chunk_dump import parse_png_chunk_dump
 
 import color_space as cs
 
@@ -448,8 +449,148 @@ class TestAvifMetadata(unittest.TestCase):
                         self.assertEqual(int(actual_value), expected_value)
 
 
+class TestPngMetadata(unittest.TestCase):
+    def test_bitstream_metadata(self):
+        for mdcv_primaries, mdcv_luminance, clli_luminance\
+            in product(MDCV_PRIMARIES_LIST, MDCV_LUMINANCE_LIST, CLLI_LUMINANCE_LIST):
+            # print(f"[TEST Condition] mdcv_primaries={mdcv_primaries}, mdcv_luminance={mdcv_luminance}, clli_lumiannce={clli_luminance}")
+            file_name_without_ext = make_media_file_name_without_ext(
+                kind=KIND_PNG,
+                suffix=None,
+                mdcv_primaries=mdcv_primaries,
+                mdcv_luminance=mdcv_luminance,
+                clli_luminance=clli_luminance
+            )
+            file_name = file_name_without_ext + ".h265"
+            if os.path.exists(file_name) is False:
+                continue
+            json_file = f"./data/{Path(file_name).name}.json"
+            with open(json_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            cicp_expected_dict = {
+                "-colour_primaries": 9,
+                "-transfer_characteristic": 16,
+                "-matrix_coeffs": 9,
+                "-video_full_range_flag": 0,
+            }
+            for key, expected_value in cicp_expected_dict.items():
+                actual_values = find_values_by_key(data, key)
+                self.assertNotEqual(actual_values, [])
+                for actual_value in actual_values:
+                    # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
+                    self.assertEqual(int(actual_value), expected_value)
+
+            expected_primaries = calc_expected_hevc_primaries_float(primary_str=mdcv_primaries)
+            mdcv_primaries_dict = {
+                "-display_primaries_x": [expected_primaries[ii][0] for ii in [1, 2, 0]],
+                "-display_primaries_y": [expected_primaries[ii][1] for ii in [1, 2, 0]],
+            }
+            for key, expected_value in mdcv_primaries_dict.items():
+                actual_values = find_values_by_key(data, key)
+                # print(f"[ASSERT] {key} actual={actual_values} expected={expected_value}")
+                if None in expected_value:
+                    self.assertEqual(actual_values, [])
+                else:
+                    self.assertNotEqual(actual_values, [])
+                    for actual_value in actual_values:
+                        arr = np.fromstring(actual_value, sep=" ")
+                        np.testing.assert_almost_equal(arr, np.array(expected_value), decimal=4)
+
+            parent_str = "SEIMessage"
+            mdcv_clli_expected_dict = {
+                "-white_point_x": (parent_str, 0.3127 if mdcv_primaries else None),
+                "-white_point_y": (parent_str, 0.3290 if mdcv_primaries else None),
+                "-max_display_mastering_luminance": (parent_str, mdcv_luminance if mdcv_luminance else None),
+                "-min_display_mastering_luminance": (parent_str, 0 if mdcv_luminance else None),
+                "-max_content_light_level": (parent_str, clli_luminance),
+                "-max_pic_average_light_level": (parent_str, clli_luminance),
+            }
+
+            for key, (parent_key, expected_value) in mdcv_clli_expected_dict.items():
+                actual_values = find_values_by_key(data, key, parent_key=parent_key)
+                # print(f"[ASSERT] {key} actual={actual_values} expected={expected_value}")
+                if expected_value is None:
+                    self.assertEqual(actual_values, [])
+                else:
+                    self.assertNotEqual(actual_values, [])
+                    for actual_value in actual_values:
+                        self.assertAlmostEqual(float(actual_value), expected_value, places=4)
+
+    def test_chunk_data(self):
+        for mdcv_primaries, mdcv_luminance, clli_luminance\
+            in product(MDCV_PRIMARIES_LIST, MDCV_LUMINANCE_LIST, CLLI_LUMINANCE_LIST):
+            # print(f"[TEST Condition] mdcv_primaries={mdcv_primaries}, mdcv_luminance={mdcv_luminance}, clli_lumiannce={clli_luminance}")
+            file_name_without_ext = make_media_file_name_without_ext(
+                kind=KIND_PNG,
+                suffix=None,
+                mdcv_primaries=mdcv_primaries,
+                mdcv_luminance=mdcv_luminance,
+                clli_luminance=clli_luminance
+            )
+            file_name = file_name_without_ext + ".png"
+            if os.path.exists(file_name) is False:
+                continue
+            parse_file = f"./data/{Path(file_name).name}.txt"
+            parse_data = parse_png_chunk_dump(parse_file)
+
+            cicp_expected_dict = {
+                "chromaticity": np.concatenate([[cs.D65], cs.get_primaries(cs.BT2020)]),
+                "range": "Full range",
+            }
+            for key, expected_value in cicp_expected_dict.items():
+                if isinstance(expected_value, np.ndarray):
+                    np.testing.assert_almost_equal(parse_data['cicp'][key], expected_value, decimal=4)
+                elif isinstance(expected_value, str):
+                    self.assertEqual(parse_data['cicp'][key], expected_value)
+                else:
+                    pass
+
+            mdcv_expected_dict = {
+                "chromaticity": None if mdcv_primaries is None else np.concatenate([[cs.D65], cs.get_primaries(mdcv_primaries)]),
+                "luminance_cd_m2": None if mdcv_luminance is None else np.array([mdcv_luminance, 0.0]),
+            }
+            for key, expected_value in mdcv_expected_dict.items():
+                if expected_value is None:
+                    self.assertEqual(parse_data['mdcv'], expected_value)
+                else:
+                    np.testing.assert_almost_equal(parse_data['mdcv'][key], expected_value, decimal=4)
+
+            clli_expected_dict = {
+                "light_level_cd_m2": None if clli_luminance is None else np.array([clli_luminance, clli_luminance]),
+            }
+            for key, expected_value in clli_expected_dict.items():
+                if expected_value is None:
+                    self.assertEqual(parse_data['clli'], expected_value)
+                else:
+                    np.testing.assert_almost_equal(parse_data['clli'][key], expected_value, decimal=4)
+
+            """
+                'cicp': 
+                    {'chromaticity': 
+                        array([[ 0.3127,  0.329 ],
+                            [ 0.708 ,  0.292 ],
+                            [ 0.17  ,  0.797 ],
+                            [ 0.131 ,  0.046 ]]),
+                    'range': 'Full range'
+                    },
+                'mdcv':
+                    {'chromaticity':
+                        array([[ 0.3127,  0.329 ],
+                            [ 0.64  ,  0.33  ],
+                            [ 0.3   ,  0.6   ],
+                            [ 0.15  ,  0.06  ]]),
+                    'luminance_cd_m2': array([ 10000.,      0.])
+                    },
+                'clli':
+                    {'light_level_cd_m2': array([ 100.,  100.])}
+                    }
+            """
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    unittest.main()
+    # unittest.main()
     # unittest.main(defaultTest="TestHevcMetadata.test_bitstream_metadata")
     # unittest.main(defaultTest="TestAvifMetadata.test_container_metadata")
+    unittest.main(defaultTest="TestPngMetadata.test_chunk_data")
