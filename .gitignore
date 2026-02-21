@@ -316,5 +316,7 @@ BenchmarkDotNet.Artifacts/
 2025/12_AVIF_UltraHDR_PNG_Comparison/bin/**
 2025/12_AVIF_UltraHDR_PNG_Comparison/data/*.json
 2025/12_AVIF_UltraHDR_PNG_Comparison/data/*.xml
+2025/12_AVIF_UltraHDR_PNG_Comparison/data/*.txt
 2025/12_AVIF_UltraHDR_PNG_Comparison/debug/**
+2025/12_AVIF_UltraHDR_PNG_Comparison/hdr_media/**
 2025/13_Educational_Audio_Visual_Video/asset/**
