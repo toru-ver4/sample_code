@@ -1242,7 +1242,13 @@ pngcheck \
   </table>
 </div>
 
-# 7. 参考資料
+# 7. 感想
+
+ブログを書くのに凄く時間がかかった。こういう自分の勉強を兼ねた技術調査って生成AI に丸投げするのは難しいなぁ、と思いながら記事を書いていた。
+
+ソースコードの読解や規格文書の精読などは生成AI が大活躍してくれたので、もっと活用例を増やしていきたいところである。
+
+# 8. 参考資料
 
 * Recommendation ITU-T H.274 (V3), "Versatile supplemental enhancement information messages for coded video bitstreams", https://www.itu.int/rec/T-REC-H.274-202309-S/en
 * gpac/gpac, "MP4Box Wiki", https://github.com/gpac/gpac/wiki/MP4Box 
