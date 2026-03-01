@@ -1,7 +1,7 @@
 # 1. 背景
 
 * 筆者はこれまで、HDR の動画・静止画コンテンツを [Windows 上で正しく表示する方法](https://trev16.hatenablog.com/entry/2024/07/30/195204) について調査をしてきた
-* [PNG の検証](https://trev16.hatenablog.com/entry/2025/09/27/154448) をしている中で CLLI のメタデータによってコンテンツの見え方が大きく変わることに気づき、HDRコンテンツのメタデータが表示に与える影響を改めて確認したいと考えた
+* [PNG の検証](https://trev16.hatenablog.com/entry/2025/09/27/154448) をしている中で CLLI のメタデータによってコンテンツの見え方が大きく変わることに気づき、HDR コンテンツのメタデータが表示に与える影響を改めて確認したいと考えた
 * 確認作業のためには、そもそも 正しくメタデータを付与する 作業が必要となる
 * それを行うことにした
 
@@ -14,7 +14,7 @@
     * コンテナ: MP4、MOV
   * 静止画
     * AVIF、PNG
-* [CICP](https://www.w3.org/TR/png-3/#cICP-chunk)、[MDCV](https://www.w3.org/TR/png-3/#mDCV-chunk)、[CLLI](https://www.w3.org/TR/png-3/#cLLI-chunk) のメタデータ の詳細については以下の記事を参照
+* [CICP](https://www.w3.org/TR/png-3/#cICP-chunk)、[MDCV](https://www.w3.org/TR/png-3/#mDCV-chunk)、[CLLI](https://www.w3.org/TR/png-3/#cLLI-chunk) のメタデータの詳細については以下の記事を参照
 
 [https://trev16.hatenablog.com/entry/2026/02/14/204125:embed:cite]
 
@@ -22,7 +22,7 @@
 
 #### 3.1. まとめ
 
-* HEVC、AV1、AVIF、PNG の 4フォーマットに対してメタデータの埋め込みに成功した
+* HEVC、AV1、AVIF、PNG の 4 フォーマットに対してメタデータの埋め込みに成功した
   * ただし、AVIF だけは MDCV の埋め込みが [libavif 側で未実装](https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/write.c#L723) だったため実現できなかった
   * メタデータの内容が正しいことは [gpac](https://wiki.gpac.io/Filters/Filters/)/[MP4Box](https://wiki.gpac.io/MP4Box/MP4Box/)/[pngcheck](https://github.com/pnggroup/pngcheck) などをパーサー代わりに使いテストコードを作成して確認した ((ただし、一部の規格文書は金銭的な都合で買えておらず、テスト内容が正しいことを裏付ける公式なデータは無い)) ((本当は買うべきなんだろうけど、Nintendo Switch 2 本体が買えるくらいの値段なので買うのは厳しい))
 * メタデータの埋め込みは 2026年2月時点では簡単ではなく、HEVC、AV1、PNG は図1 のように中間ファイルの生成が必要であった
@@ -32,17 +32,17 @@
 
 #### 3.2. 筆者が理解したこと
 
-* MP4/MOV の CICP、MDCV、CLLI情報は bitstream の情報から生成可能
-  * 筆者はこれまで MP4/MOV コンテナ生成時に別途 CICP、MDCV、CLLI情報を与えるものだと勘違いしていた
+* MP4/MOV の CICP、MDCV、CLLI 情報は bitstream の情報から生成可能
+  * 筆者はこれまで MP4/MOV コンテナ生成時に別途 CICP、MDCV、CLLI 情報を与えるものだと勘違いしていた
 * [gpac](https://wiki.gpac.io/Filters/Filters/) で bitstream のメタ情報をダンプした場合、[人間が解釈しやすいように変換](https://github.com/gpac/gpac/blob/v26.02.0/src/filters/inspect.c#L501-L529) してくれてる
   * 読みやすい一方で、規格文書と値が異なるのでテストコードを作成する際は注意が必要
-* AVIF は bitstream と AVIFコンテナとでメタデータの値が一致しない
+* AVIF は bitstream と AVIF コンテナとでメタデータの値が一致しない
   * bitstream の CICP は 2/2/2 に固定化され、MDCV と CLLI の情報は埋め込まれない（libavif の仕様。詳細は後述）
   * もしも AVIF から bitstream だけを抽出して何らかの処理を行うことがあれば注意が必要 ((そんな使い方は誰もしないと思うが))
-* 筆者が調べたところ PNG に`mDCV`、`cLLI` chunk を埋め込めるツールは FFmpeg のみであった
-  * `mDCV`、`cLLI` chunk を積極的に使いたいと思っている人は殆どいない？ 
+* 筆者が調べたところ PNG に `mDCV`、`cLLI` chunk を埋め込めるツールは FFmpeg のみであった
+  * `mDCV`、`cLLI` chunk を積極的に使いたいと思っている人はほとんどいない？ 
 * 関連情報を調べていた所 [ITU-R H.274](https://www.itu.int/rec/T-REC-H.274/en) で追加された Content colour volume は定義が分かりやすくて良かった
-  * MDCV、CLLI は 今後は Content colour volume に置き換わるのでは、と勝手に予想している
+  * MDCV、CLLI は今後は Content colour volume に置き換わるのでは、と勝手に予想している
 
 #### 3.3. 作成したファイル
 
@@ -113,7 +113,7 @@ HDRに対応したフォーマットは数多くある。今回は動画・静�
 
 * ST 2084 対応
 * MDCV / CLLI 対応
-* Chromium系ブラウザで表示可能
+* Chromium 系ブラウザで表示可能
 
 筆者が各種フォーマットに対して調査した結果を以下の表に示す。
 
@@ -128,7 +128,7 @@ HDRに対応したフォーマットは数多くある。今回は動画・静�
         <th>選定</th>
         <th>ST 2084 対応</th>
         <th>MDCV / CLLI 対応</th>
-        <th>Chromium系ブラウザで表示可能</th>
+        <th>Chromium 系ブラウザで表示可能</th>
       </tr>
     </thead>
     <tbody>
@@ -199,11 +199,11 @@ HDRに対応したフォーマットは数多くある。今回は動画・静�
   </table>
 </div>
 
-※bitstream としては非対応<span style="color: #ff5252"><要出典></span>。[WebMコンテナ](https://www.webmproject.org/docs/container/) のみでサポート
+※bitstream としては非対応<span style="color: #ff5252">&lt;要出典&gt;</span>。[WebM コンテナ](https://www.webmproject.org/docs/container/) のみでサポート
 
 #### 5.2. 用意したメタデータの組み合わせ
 
-CICP、MDCV、CLLI に埋め込むパラメータは以下の15通りを用意し、後述の動作確認で意図した値が書き込まれているか確認できるようにした。ただし、AVIF に関しては [libavif に MDCV を埋め込む実装が存在しなかった](https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/write.c#L723) ので MDCV は埋め込んでいない。ご了承頂きたい。
+CICP、MDCV、CLLI に埋め込むパラメータは以下の15通りを用意し、後述の動作確認で意図した値が書き込まれているか確認できるようにした。ただし、AVIF に関しては [libavif に MDCV を埋め込む実装が存在しなかった](https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/write.c#L723) ので MDCV は埋め込んでいない。ご了承いただきたい。
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
@@ -216,7 +216,7 @@ CICP、MDCV、CLLI に埋め込むパラメータは以下の15通りを用意�
         <th>CICP ((4番目の Video Full Range Flag は、動画は 0 (Limited) を、静止画は 1 (Full) を設定した))</th>
         <th>MDCV RGBW</th>
         <th>MDCV Luminance ((Mastering display maximum luminance のみを設定、Mastering display minimum luminance は 0 固定とした))</th>
-        <th>CLLI Luminance ((MaxCLL と MaxCLL の値は同じ値とした))</th>
+        <th>CLLI Luminance ((MaxCLL と MaxFALL の値は同じ値とした))</th>
       </tr>
     </thead>
     <tbody>
@@ -338,13 +338,13 @@ AVIF 以外は少々特殊な手順を踏んでいる。その理由も含めて
 
 ##### 5.4.1. 概要
 
-HEVC、AV1 のファイルは MP4 のコンテナに入れる形とした。実は MOV コンテナも作成して確認をしていたのだが、特に差異を確認できなかったので本記事では MP4コンテナを使う前提で説明をする 。
+HEVC、AV1 のファイルは MP4 のコンテナに入れる形とした。実は MOV コンテナも作成して確認をしていたのだが、特に差異を確認できなかったので本記事では MP4 コンテナを使う前提で説明をする。
 
 MP4 ファイルの作成は下図のように [FFmpeg](https://ffmpeg.org/ffmpeg.html) で bitstream を作成してから [MP4Box](https://github.com/gpac/gpac/wiki/MP4Box) を使う方式を取った。
 
 <figure class="figure-image figure-image-fotolife" title="図xx. HEVC、AV1 の MP4 ファイル作成手順">[f:id:takuver4:20260217212250p:plain:w650]<figcaption>図xx. HEVC、AV1 の MP4 ファイル作成手順</figcaption></figure>
 
-メタデータは FFmpeg のコマンドライン引数として与え、MP4Box ではメタデータを与えていない。これは <span style="color: #ff5252">MP4 コンテナの CICP、MDCV、CLLI の Box情報は bitstream に含まれるデータから生成される</span>ことを意味する。
+メタデータは FFmpeg のコマンドライン引数として与え、MP4Box ではメタデータを与えていない。これは <span style="color: #ff5252">MP4 コンテナの CICP、MDCV、CLLI の Box 情報は bitstream に含まれるデータから生成される</span>ことを意味する。
 
 FFmpeg のみで完結せずに MP4Box を使用した理由は、FFmpeg では MDCV、CLLI の書き込みが上手く行かなかったからである。AI を使いながら調べて分かったことは以下。
 
@@ -404,7 +404,7 @@ ffmpeg -hide_banner \
 * `-color_primaries`、`-color_trc`、`-colorspace`は FFmpeg に <span style="color: #ff5252">余計な色変換を行わせない</span> ため指定
 * `-x265-params`は CICP、MDCV、CLLI の情報を bitstream に埋め込むために指定。意味は [ x265 のドキュメント](https://x265.readthedocs.io/en/master/cli.html) を参照
   * 補足だが NVENC ではメタデータが埋め込めなかったので x265 を使用した
-* `-svtav1-params`は CICP、MDCV、CLLI の情報を bitstream に埋め込むために指定。意味は [STV-AV1 のドキュメント](https://gitlab.com/AOMediaCodec/SVT-AV1/-/blob/master/Docs/Parameters.md) を参照
+* `-svtav1-params`は CICP、MDCV、CLLI の情報を bitstream に埋め込むために指定。意味は [SVT-AV1 のドキュメント](https://gitlab.com/AOMediaCodec/SVT-AV1/-/blob/master/Docs/Parameters.md) を参照
   * 補足だが libaom ではメタデータが埋め込めなかったので SVT-AV1 を使用した
 
 次に MP4Box で使用したコマンドライン引数を以下に示す。
@@ -432,7 +432,7 @@ MP4Box -new \
 
 ##### 5.5.1. 概要
 
-AVIF の作成は下図のように libavif のビルド時に生成される avifenc コマンドを使って行った。なお、図を見て分かるように MDCV の情報は付与していない。これは libavif 側で [MDCV の情報を埋め込む実装が無かったから](https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/write.c#L723) である。ご了承頂きたい。
+AVIF の作成は下図のように libavif のビルド時に生成される avifenc コマンドを使って行った。なお、図を見て分かるように MDCV の情報は付与していない。これは libavif 側で [MDCV の情報を埋め込む実装が無かったから](https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/write.c#L723) である。ご了承いただきたい。
 
 <figure class="figure-image figure-image-fotolife" title="図xx. AVIFファイル作成手順">[f:id:takuver4:20260219070405p:plain:w350]<figcaption>図xx. AVIFファイル作成手順</figcaption></figure>
 
@@ -520,8 +520,8 @@ ffmpeg \
 
 一部の引数について、箇条書きで補足説明をしておく。
 
-- 対象が静止画の PNG だったので `-pix_fmt yuv444p12le` という 4:4:4 の設定を使用した
-  - ただし HEVC の Full Range には [不安があった](https://trev16.hatenablog.com/entry/2025/03/20/155546) ので`-x265-params`には`range=limited`を設定した
+* 対象が静止画の PNG だったので `-pix_fmt yuv444p12le` という 4:4:4 の設定を使用した
+  * ただし HEVC の Full Range には [不安があった](https://trev16.hatenablog.com/entry/2025/03/20/155546) ので `-x265-params` には `range=limited` を設定した
 
 # 6. 詳細 (メタデータ確認)
 
@@ -529,7 +529,7 @@ ffmpeg \
 
 #### 6.1. 方針
 
-作成した HEVC、AV1、AVIF、PNG ファイルのメタデータが表1 の通りとなっているか確認した。
+作成した HEVC、AV1、AVIF、PNG ファイルのメタデータが表3 の通りとなっているか確認した。
 筆者にはバイナリのパーサーを作る能力は無いので、[gpac](https://gpac.io/)、[MP4Box](https://gpac.io/)、[pngcheck](https://github.com/pnggroup/pngcheck) らのツールを併用してメタデータをテキストとして出力し、その値を確認する方針を取った。
 
 以下で、HEVC、AV1、AVIF、PNG の各種フォーマットでの具体的な確認方法を述べていく。
@@ -822,11 +822,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
         </td>
       </tr>
       <tr>
-        <td>-display_primaries_y ((AV1 の正式な文言は "primary_chromaticity_y" なのだが、gpac が出力時に "display_primaries_y" としたため、テストコードもこの文字列を使った 
-
-[https://github.com/gpac/gpac/blob/v26.02.0/src/filters/inspect.c#L501-L529:title]
-
-))</td>
+        <td>-display_primaries_y ((AV1 の正式な文言は "primary_chromaticity_y" なのだが、gpac が出力時に "display_primaries_y" としたため、テストコードもこの文字列を使った https://github.com/gpac/gpac/blob/v26.02.0/src/filters/inspect.c#L501-L529))</td>
         <td>設定した y 色度を 1/65535 で割った整数値であること、R, G, B の順であること</td>
       </tr>
       <tr>
@@ -886,9 +882,9 @@ dasel \
 
 JSON に変換した後は、メタデータが以下の表の通りか一つずつ確認するテストコードを書いた。なお、AV1 の MP4 コンテナ確認に関しては補足が3点ある。
 
-1点目、MP4 コンテナでのデータの持ち方は AV1 も HEVC も同じなので<要出典>、確認内容は原則として HEVC の時と同じである。
+1点目、MP4 コンテナでのデータの持ち方は AV1 も HEVC も同じなので&lt;要出典&gt;、確認内容は原則として HEVC の時と同じである。
 
-2点目、確認事項は HEVC と同じなのだが、AV1 と HEVC とでは <span style="color: #ff5252">bitstream での情報の持ち方</span>に差異がある。例えば xy色度は HEVC が 0.00002、AV1 は (1/65535) で割った値を保持している。こういったデータ形式の差に起因する量子化誤差の発生はテストの際に許容している。
+2点目、確認事項は HEVC と同じなのだが、AV1 と HEVC とでは <span style="color: #ff5252">bitstream での情報の持ち方</span>に差異がある。例えば xy 色度は HEVC が 0.00002、AV1 は (1/65535) で割った値を保持している。こういったデータ形式の差に起因する量子化誤差の発生はテストの際に許容している。
 
 3点目、先ほどの HEVC と AV1 の bitstream のデータ形式の違いは、MP4 コンテナ変換時に [gf_av1_format_mdcv_to_mpeg](https://github.com/gpac/gpac/blob/v26.02.0/src/media_tools/av_parsers.c#L2384-L2411) という関数で処理されるのだが、RGB to GBR のデータ並べ替えのコードに誤りがあった。そのため、今回のテストでは [筆者のローカルで修正した](https://github.com/toru-ver4/gpac/commit/0df998e4ad40833d64d256462c34e82867a33917#diff-85593a2543dbc09dce05fbe45b933dcc7a837880b482bd12858c4497ae796314) MP4Box をビルドして使用した。
 
@@ -926,7 +922,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
       </tr>
       <tr>
         <td>-display_primaries_0_y</td>
-        <td>設定した Green の x 色度を 0.00002 で割った整数値であること&lt;要出典&gt;</td>
+        <td>設定した Green の y 色度を 0.00002 で割った整数値であること&lt;要出典&gt;</td>
       </tr>
       <tr>
         <td>-display_primaries_1_x</td>
@@ -934,7 +930,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
       </tr>
       <tr>
         <td>-display_primaries_1_y</td>
-        <td>設定した Blue の x 色度を 0.00002 で割った整数値であること&lt;要出典&gt;</td>
+        <td>設定した Blue の y 色度を 0.00002 で割った整数値であること&lt;要出典&gt;</td>
       </tr>
       <tr>
         <td>-display_primaries_2_x</td>
@@ -942,7 +938,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
       </tr>
       <tr>
         <td>-display_primaries_2_y</td>
-        <td>設定した Red の x 色度を 0.00002 で割った整数値であること&lt;要出典&gt;</td>
+        <td>設定した Red の y 色度を 0.00002 で割った整数値であること&lt;要出典&gt;</td>
       </tr>
       <tr>
         <td>-white_point_x</td>
@@ -950,7 +946,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
       </tr>
       <tr>
         <td>-white_point_y</td>
-        <td>設定した x 色度を 0.00002 で割った整数値であること&lt;要出典&gt;</td>
+        <td>設定した y 色度を 0.00002 で割った整数値であること&lt;要出典&gt;</td>
       </tr>
       <tr>
         <td>-max_display_mastering_luminance</td>
@@ -1009,7 +1005,7 @@ dasel \
 
 <br>
 
-JSON に変換した後は、メタデータが以下の表の通りか一つずつ確認するテストコードを書いた。なお、bitstream の比較に関しては 2点の特記事項がある。
+JSON に変換した後は、メタデータが以下の表の通りか一つずつ確認するテストコードを書いた。なお、コンテナ側の確認に関しては 2点の特記事項がある。
 
 1点目、Video Full Range Flag を除く CICP の値は全て 2 (Unspecified) となっている。これは libavif の仕様である。[ソースコードに記載されているコメント](https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/codec_aom.c#L868-L875) を要約すると「CICP を 2/2/2（Unspecified）にするのは、ISOBMFF の colr/nclx と整合性を保ちつつ、色記述を省略してビットを節約するため」である。
 
@@ -1103,7 +1099,7 @@ dasel \
 JSON に変換した後は、メタデータが以下の表の通りか一つずつ確認するテストコードを書いた。なお、bitstream の比較に関しては 2点の特記事項がある。
 
 1点目、AVIF コンテナ側には CICP 情報が正しく埋め込まれている。
-2点目、MDCV情報は bitstream と同様にコンテナにも埋め込まれない。CLLI のみが埋め込まれる。
+2点目、MDCV 情報は bitstream と同様にコンテナにも埋め込まれない。CLLI のみが埋め込まれる。
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
@@ -1227,11 +1223,11 @@ pngcheck \
         <td>"Full range" であること</td>
       </tr>
       <tr>
-        <td>mdcv (chromaticity)</td>
+        <td>mDCV (chromaticity)</td>
         <td>WRGB の xy 色度が設定した値であること</td>
       </tr>
       <tr>
-        <td>mdcv (luminance)</td>
+        <td>mDCV (luminance)</td>
         <td>Maximum luminance は指定した輝度 (cd/㎡)、Minimum luminance は 0 (cd/㎡) であること</td>
       </tr>
       <tr>
