@@ -1,11 +1,11 @@
-# 背景
+# 1. 背景
 
 * 筆者はこれまで、HDR の動画・静止画コンテンツを [Windows 上で正しく表示する方法](https://trev16.hatenablog.com/entry/2024/07/30/195204) について調査をしてきた
 * [PNG の検証](https://trev16.hatenablog.com/entry/2025/09/27/154448) をしている中で CLLI のメタデータによってコンテンツの見え方が大きく変わることに気づき、HDRコンテンツのメタデータが表示に与える影響を改めて確認したいと考えた
 * 確認作業のためには、そもそも 正しくメタデータを付与する 作業が必要となる
 * それを行うことにした
 
-# 目的
+# 2. 目的
 
 * HDR の動画・静止画コンテンツに [CICP](https://www.w3.org/TR/png-3/#cICP-chunk)、[MDCV](https://www.w3.org/TR/png-3/#mDCV-chunk)、[CLLI](https://www.w3.org/TR/png-3/#cLLI-chunk) のメタデータを正しく付与する方法をまとめる
 * 使用する動画・静止画のフォーマットは以下の通り
@@ -18,9 +18,9 @@
 
 [https://trev16.hatenablog.com/entry/2026/02/14/204125:embed:cite]
 
-# 結論
+# 3. 結論
 
-#### まとめ
+#### 3.1. まとめ
 
 * HEVC、AV1、AVIF、PNG の 4フォーマットに対してメタデータの埋め込みに成功した
   * ただし、AVIF だけは MDCV の埋め込みが [libavif 側で未実装](https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/write.c#L723) だったため実現できなかった
@@ -30,7 +30,7 @@
 
 <figure class="figure-image figure-image-fotolife" title="図1. HEVC、AV1、PNG にメタデータを埋め込む際の処理概要">[f:id:takuver4:20260301130946p:plain:w600]<figcaption>図1. HEVC、AV1、PNG にメタデータを埋め込む際の処理概要</figcaption></figure>
 
-#### 筆者が理解したこと
+#### 3.2. 筆者が理解したこと
 
 * MP4/MOV の CICP、MDCV、CLLI情報は bitstream の情報から生成可能
   * 筆者はこれまで MP4/MOV コンテナ生成時に別途 CICP、MDCV、CLLI情報を与えるものだと勘違いしていた
@@ -44,14 +44,14 @@
 * 関連情報を調べていた所 [ITU-R H.274](https://www.itu.int/rec/T-REC-H.274/en) で追加された Content colour volume は定義が分かりやすくて良かった
   * MDCV、CLLI は 今後は Content colour volume に置き換わるのでは、と勝手に予想している
 
-#### 作成したファイル
+#### 3.3. 作成したファイル
 
 様々な値のメタデータを埋め込んだ、計126個のファイルを以下に添付しておく。
 
 [https://drive.google.com/file/d/15tASRelJ3flvfpi9eR3prR0ZQnU1vCNj/view?usp=drive_link:embed:cite]
 
 
-# 作業環境
+# 4. 作業環境
 
 ファイル生成は以下の環境で行った。
 
@@ -104,9 +104,10 @@
     </tbody>
   </table>
 </div>
-# 詳細 (ファイル生成)
 
-#### HEVC、AV1、AVIF、PNG の選定理由
+# 5. 詳細 (ファイル生成)
+
+#### 5.1. HEVC、AV1、AVIF、PNG の選定理由
 
 HDRに対応したフォーマットは数多くある。今回は動画・静止画フォーマットの中で HEVC、AV1、AVIF、PNG を選んだ条件は以下である。
 
@@ -200,7 +201,7 @@ HDRに対応したフォーマットは数多くある。今回は動画・静�
 
 ※bitstream としては非対応<span style="color: #ff5252"><要出典></span>。[WebMコンテナ](https://www.webmproject.org/docs/container/) のみでサポート
 
-#### 用意したメタデータの組み合わせ
+#### 5.2. 用意したメタデータの組み合わせ
 
 CICP、MDCV、CLLI に埋め込むパラメータは以下の15通りを用意し、後述の動作確認で意図した値が書き込まれているか確認できるようにした。ただし、AVIF に関しては [libavif に MDCV を埋め込む実装が存在しなかった](https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/write.c#L723) ので MDCV は埋め込んでいない。ご了承頂きたい。
 
@@ -328,14 +329,14 @@ CICP、MDCV、CLLI に埋め込むパラメータは以下の15通りを用意�
   </table>
 </div>
 
-#### 各種フォーマットにメタデータを埋め込む手順
+#### 5.3. 各種フォーマットにメタデータを埋め込む手順
 
 ここから先は、各種フォーマットにメタデータをどう埋め込んだかを解説する。
 AVIF 以外は少々特殊な手順を踏んでいる。その理由も含めて説明する。
 
-#### HEVC、AV1
+#### 5.4. HEVC、AV1
 
-##### 概要
+##### 5.4.1. 概要
 
 HEVC、AV1 のファイルは MP4 のコンテナに入れる形とした。実は MOV コンテナも作成して確認をしていたのだが、特に差異を確認できなかったので本記事では MP4コンテナを使う前提で説明をする 。
 
@@ -353,7 +354,7 @@ FFmpeg のみで完結せずに MP4Box を使用した理由は、FFmpeg では 
 
 ということで代替案として [MP4Box](https://github.com/gpac/gpac/wiki/MP4Box) コマンドを使うことにした。MP4Box は ISOBMFF を処理するためのコマンドラインツールである。
 
-##### コマンドライン引数
+##### 5.4.2. コマンドライン引数
 
 続いて使用した FFmpeg および MP4Box のコマンドライン引数を説明する。FFmpeg で使用したコマンドライン引数は以下の通りである。入出力のファイル名は筆者の環境のままなので若干読みづらいが、そこはご容赦願いたい。
 
@@ -427,15 +428,15 @@ MP4Box -new \
 * fps=24 を付けたのは、規格上 H.265/AV1 の bitstream はフレームレート情報を含めなくても成立するためである ((今回の検証ではフレームレートの確認はしないので、本当に念の為に加えた引数である))
 
 
-#### AVIF
+#### 5.5. AVIF
 
-##### 概要
+##### 5.5.1. 概要
 
 AVIF の作成は下図のように libavif のビルド時に生成される avifenc コマンドを使って行った。なお、図を見て分かるように MDCV の情報は付与していない。これは libavif 側で [MDCV の情報を埋め込む実装が無かったから](https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/write.c#L723) である。ご了承頂きたい。
 
 <figure class="figure-image figure-image-fotolife" title="図xx. AVIFファイル作成手順">[f:id:takuver4:20260219070405p:plain:w350]<figcaption>図xx. AVIFファイル作成手順</figcaption></figure>
 
-##### コマンドライン引数
+##### 5.5.2. コマンドライン引数
 
 avifenc コマンドで使用したコマンドライン引数を以下に示す。
 
@@ -458,9 +459,9 @@ avifenc \
   * 余談だが SVT-AV1 は YCbCr 形式にしか対応してなかった
 * `--ignore-exif`はワーニング表示を消すため（これは筆者環境の問題なのか…？）
 
-#### PNG
+#### 5.6. PNG
 
-##### 概要
+##### 5.6.1. 概要
 
 CICP、MDCV、CLLI の情報を持つ PNG ファイルは下図のように 2段階で FFmpeg コマンドを叩いて作成した。
 理由は PNG に MDCV、CLLI を書き込めるツールは FFmpeg だけだったからである。
@@ -472,7 +473,7 @@ HEVC、AV1 で説明したように MDCV、CLLI を書き込むには side_data 
 
 ただし、ブログ作成時点の FFmpeg の libavcodec/pngenc.c には MDCV のアドレス計算ミスがあったので、[ローカルで修正したもの](https://github.com/toru-ver4/FFmpeg_png_mdcv/commit/eb78d47428cbae85f6e01d702ca69802764ebdd2) をビルドして使用した。
 
-##### コマンドライン引数
+##### 5.6.2. コマンドライン引数
 
 メタデータ付きの PNG 作成に使用したコマンドライン引数は以下の通り。初めに以下の通りに bitstream を作成した。
 
@@ -522,22 +523,22 @@ ffmpeg \
 - 対象が静止画の PNG だったので `-pix_fmt yuv444p12le` という 4:4:4 の設定を使用した
   - ただし HEVC の Full Range には [不安があった](https://trev16.hatenablog.com/entry/2025/03/20/155546) ので`-x265-params`には`range=limited`を設定した
 
-# 詳細 (メタデータ確認)
+# 6. 詳細 (メタデータ確認)
 
 ここでは、作成したファイルのメタデータの確認方法を述べる。最初に大まかな方針を述べ、その後に具体的な手順を説明する。
 
-#### 方針
+#### 6.1. 方針
 
 作成した HEVC、AV1、AVIF、PNG ファイルのメタデータが表1 の通りとなっているか確認した。
 筆者にはバイナリのパーサーを作る能力は無いので、[gpac](https://gpac.io/)、[MP4Box](https://gpac.io/)、[pngcheck](https://github.com/pnggroup/pngcheck) らのツールを併用してメタデータをテキストとして出力し、その値を確認する方針を取った。
 
 以下で、HEVC、AV1、AVIF、PNG の各種フォーマットでの具体的な確認方法を述べていく。
 
-#### HEVC
+#### 6.2. HEVC
 
-##### bitstream
+##### 6.2.1. bitstream
 
-HEVC の bitstream は gpac コマンドを使って XML に変換した後、 [dasel](https://github.com/TomWright/dasel) を使って JSON 変換した。XML から JSON に変換した理由は 「JSON の方が要素ごとに改行が入って見やすかった」という割とどうでもいいものである。通常は XML で良いと考える。
+HEVC の bitstream は gpac コマンドを使って XML に変換した後、[dasel](https://github.com/TomWright/dasel) を使って JSON 変換した。XML から JSON に変換した理由は 「JSON の方が要素ごとに改行が入って見やすかった」という割とどうでもいいものである。通常は XML で良いと考える。
 
 使用したコマンドの具体例を以下に示す。
 
@@ -562,27 +563,27 @@ JSON に変換した後は、以下の表に示す値が期待値通りか一つ
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表3. HDR メタデータ指定時の各オプションと特記事項
+    表3. HDR メタデータ指定時の各オプションと確認内容
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
       <tr>
         <th>項目</th>
-        <th>特記事項</th>
+        <th>確認内容</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>-colour_primaries</td>
-        <td>-</td>
+        <td> 9 であること</td>
       </tr>
       <tr>
         <td>-transfer_characteristic</td>
-        <td>-</td>
+        <td> 16 であること</td>
       </tr>
       <tr>
         <td>-matrix_coeffs</td>
-        <td>-</td>
+        <td> 9 であること</td>
       </tr>
       <tr>
         <td>-video_full_range_flag</td>
@@ -630,7 +631,7 @@ JSON に変換した後は、以下の表に示す値が期待値通りか一つ
   </table>
 </div>
 
-##### MP4 コンテナ
+##### 6.2.2. MP4 コンテナ
 
 HEVC の MP4 コンテナは MP4Box コマンドを使って XML に変換した後、 [dasel](https://github.com/TomWright/dasel) を使って JSON 変換した。XML から JSON に変換した理由は 「JSON の方が要素ごとに改行が入って見やすかった」という割とどうでもいいものである。通常は XML で良いと考える。
 
@@ -654,31 +655,31 @@ dasel \
 
 <br>
 
-JSON に変換した後は、メタデータが以下の表の通りか一つずつ確認するテストコードを書いた。なお、特記事項に「要出典」の文字列があるように、筆者が金銭的な問題で [ISO/IEC 14496-12](https://www.iso.org/standard/83102.html) を購入できていないため、期待値が本当にこの値で正しいことの裏取りは取れていない(( MP4Box 以外の FFmpeg の実装を ChatGPT 先生に調べてもらったところ、この値だったので間違っている可能性は低いと筆者は考えている)) 。
+JSON に変換した後は、メタデータが以下の表の通りか一つずつ確認するテストコードを書いた。なお、確認内容に「要出典」の文字列があるように、筆者が金銭的な問題で [ISO/IEC 14496-12](https://www.iso.org/standard/83102.html) を購入できていないため、期待値が本当にこの値で正しいことの裏取りは取れていない(( MP4Box 以外の FFmpeg の実装を ChatGPT 先生に調べてもらったところ、この値だったので間違っている可能性は低いと筆者は考えている)) 。
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表4. HDR メタデータ指定時の各オプションと特記事項（色度割当明示版）
+    表4. HDR メタデータ指定時の各オプションと確認内容（色度割当明示版）
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
       <tr>
         <th>項目</th>
-        <th>特記事項</th>
+        <th>確認内容</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>-colour_primaries</td>
-        <td>-</td>
+        <td>9 であること</td>
       </tr>
       <tr>
         <td>-transfer_characteristic</td>
-        <td>-</td>
+        <td> 16 であること</td>
       </tr>
       <tr>
         <td>-matrix_coeffs</td>
-        <td>-</td>
+        <td> 9 であること</td>
       </tr>
       <tr>
         <td>-video_full_range_flag</td>
@@ -758,9 +759,9 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
   </table>
 </div>
 
-#### AV1
+#### 6.3. AV1
 
-##### bitstream
+##### 6.3.1. bitstream
 
 AV1 の bitstream も HEVC と同様に gpac コマンドを使って XML に変換した後、 [dasel](https://github.com/TomWright/dasel) を使って JSON 変換した。
 
@@ -787,27 +788,27 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表5. AV1 / gpac における HDR メタデータ項目と特記事項
+    表5. AV1 / gpac における HDR メタデータ項目と確認内容
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
       <tr>
         <th>項目</th>
-        <th>特記事項</th>
+        <th>確認内容</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>-color_primaries</td>
-        <td>-</td>
+        <td>9 であること</td>
       </tr>
       <tr>
         <td>-transfer_characteristics</td>
-        <td>-</td>
+        <td>16 であること</td>
       </tr>
       <tr>
         <td>-matrix_coefficients</td>
-        <td>-</td>
+        <td>9 であること</td>
       </tr>
       <tr>
         <td>-color_range</td>
@@ -859,7 +860,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
   </table>
 </div>
 
-##### MP4 コンテナ
+##### 6.3.2. MP4 コンテナ
 
 AV1 の MP4 コンテナも HEVC と同様に MP4Box コマンドを使って XML に変換した後、 [dasel](https://github.com/TomWright/dasel) を使って JSON 変換した。
 
@@ -893,27 +894,27 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表6. HDR メタデータ指定時の各オプションと特記事項（色成分別指定）
+    表6. HDR メタデータ指定時の各オプションと確認内容（色成分別指定）
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
       <tr>
         <th>項目</th>
-        <th>特記事項</th>
+        <th>確認内容</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>-color_primaries</td>
-        <td>-</td>
+        <td>9 であること</td>
       </tr>
       <tr>
         <td>-transfer_characteristics</td>
-        <td>-</td>
+        <td>16 であること</td>
       </tr>
       <tr>
         <td>-matrix_coefficients</td>
-        <td>-</td>
+        <td>9 であること</td>
       </tr>
       <tr>
         <td>-color_range</td>
@@ -971,11 +972,11 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
   </table>
 </div>
 
-#### AVIF
+#### 6.4. AVIF
 
 AVIF も HEVC や AV1 と同じく bitstream と AVIF コンテナの両方の確認を行った。ただし、avifenc コマンドを使った AVIF 作成では bitstream が自動的には生成されないので、FFmpeg を使って AVIF から bitstream を抽出する処理を別途行った。詳細を以下で述べていく。
 
-##### bitstream
+##### 6.4.1. bitstream
 
 AVIF から FFmpeg を使い bitstream を抽出し、その後に gpac コマンドを使って XML に変換と [dasel](https://github.com/TomWright/dasel) を使った JSON 変換を行った。
 
@@ -1022,7 +1023,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
     <thead>
       <tr>
         <th>項目</th>
-        <th>特記事項</th>
+        <th>確認内容</th>
       </tr>
     </thead>
     <tbody>
@@ -1078,7 +1079,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
   </table>
 </div>
 
-##### AVIF コンテナ
+##### 6.4.2. AVIF コンテナ
 
 これまでと同様に MP4Box コマンドを使って XML に変換した後、 [dasel](https://github.com/TomWright/dasel) を使って JSON 変換した。
 
@@ -1112,7 +1113,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
     <thead>
       <tr>
         <th>項目</th>
-        <th>特記事項</th>
+        <th>確認内容</th>
       </tr>
     </thead>
     <tbody>
@@ -1186,7 +1187,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <br>
 
-#### PNG
+#### 6.5. PNG
 
 PNG は [pngcheck](https://github.com/pnggroup/pngcheck) というコマンドを使って chunk の情報をテキストとして出力し、それを解析する方針とした。
 
@@ -1209,7 +1210,7 @@ pngcheck \
     <thead>
       <tr>
         <th>項目</th>
-        <th>特記事項</th>
+        <th>確認内容</th>
       </tr>
     </thead>
     <tbody>
@@ -1241,7 +1242,7 @@ pngcheck \
   </table>
 </div>
 
-# 参考資料
+# 7. 参考資料
 
 * Recommendation ITU-T H.274 (V3), "Versatile supplemental enhancement information messages for coded video bitstreams", https://www.itu.int/rec/T-REC-H.274-202309-S/en
 * gpac/gpac, "MP4Box Wiki", https://github.com/gpac/gpac/wiki/MP4Box 
