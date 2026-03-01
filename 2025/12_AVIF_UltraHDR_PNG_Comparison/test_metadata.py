@@ -11,8 +11,7 @@ THIS_FILE = Path(__file__).resolve()
 THIS_DIR = THIS_FILE.parent
 if str(THIS_DIR) not in sys.path:
     sys.path.insert(0, str(THIS_DIR))
-
-from create_hdr_media import (
+from create_hdr_media import (  # noqa: E402
     MDCV_PRIMARIES_LIST,
     MDCV_LUMINANCE_LIST,
     CLLI_LUMINANCE_LIST,
@@ -22,11 +21,10 @@ from create_hdr_media import (
     KIND_PNG,
     make_media_file_name_without_ext
 )
-from parse_png_chunk_dump import parse_png_chunk_dump
+from parse_png_chunk_dump import parse_png_chunk_dump # noqa: E402
 
-import color_space as cs
-
-from typing import Any
+import color_space as cs # noqa: E402
+from typing import Any # noqa: E402
 
 
 def find_values_by_key(
@@ -431,9 +429,19 @@ class TestAvifMetadata(unittest.TestCase):
                     # print(f"[ASSERT] {key} actual={actual_value} expected={expected_value}")
                     self.assertEqual(int(actual_value), expected_value)
 
-
+            mdcv_box_name = "MasteringDisplayColourVolumeBox"
             clli_box_name = "ContentLightLevelBox"
             mdcv_dict = {
+                "-display_primaries_0_x": (mdcv_box_name, None),
+                "-display_primaries_0_y": (mdcv_box_name, None),
+                "-display_primaries_1_x": (mdcv_box_name, None),
+                "-display_primaries_1_y": (mdcv_box_name, None),
+                "-display_primaries_2_x": (mdcv_box_name, None),
+                "-display_primaries_2_y": (mdcv_box_name, None),
+                '-white_point_x': (mdcv_box_name, None),
+                '-white_point_y': (mdcv_box_name, None),
+                '-max_display_mastering_luminance': (mdcv_box_name, None),
+                '-min_display_mastering_luminance': (mdcv_box_name, None),
                 '-max_content_light_level': (clli_box_name, clli_luminance),
                 '-max_pic_average_light_level': (clli_box_name, clli_luminance),
             }
@@ -535,6 +543,7 @@ class TestPngMetadata(unittest.TestCase):
             parse_data = parse_png_chunk_dump(parse_file)
 
             cicp_expected_dict = {
+                "eotf": "Rec. ITU-R BT.2100-2 perceptual quantization (PQ) system",
                 "chromaticity": np.concatenate([[cs.D65], cs.get_primaries(cs.BT2020)]),
                 "range": "Full range",
             }
@@ -565,32 +574,10 @@ class TestPngMetadata(unittest.TestCase):
                 else:
                     np.testing.assert_almost_equal(parse_data['clli'][key], expected_value, decimal=4)
 
-            """
-                'cicp': 
-                    {'chromaticity': 
-                        array([[ 0.3127,  0.329 ],
-                            [ 0.708 ,  0.292 ],
-                            [ 0.17  ,  0.797 ],
-                            [ 0.131 ,  0.046 ]]),
-                    'range': 'Full range'
-                    },
-                'mdcv':
-                    {'chromaticity':
-                        array([[ 0.3127,  0.329 ],
-                            [ 0.64  ,  0.33  ],
-                            [ 0.3   ,  0.6   ],
-                            [ 0.15  ,  0.06  ]]),
-                    'luminance_cd_m2': array([ 10000.,      0.])
-                    },
-                'clli':
-                    {'light_level_cd_m2': array([ 100.,  100.])}
-                    }
-            """
-
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # unittest.main()
+    unittest.main()
     # unittest.main(defaultTest="TestHevcMetadata.test_bitstream_metadata")
     # unittest.main(defaultTest="TestAvifMetadata.test_container_metadata")
-    unittest.main(defaultTest="TestPngMetadata.test_chunk_data")
+    # unittest.main(defaultTest="TestPngMetadata.test_chunk_data")

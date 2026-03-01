@@ -188,3 +188,144 @@ Dynamic Range and Mastering InfoFrame に情報あり
 * AV1 の OBU の primary_chromaticity_x は gpac でダンプすると display_primaries_x に名前が変わる
 * MP4Box で AV1のコンテナ作ると MasteringDisplayColourVolumeBox の GBR が BRG になってた
 * FFmpeg で side data から MDCV を作る時のアドレス計算ミスがあった
+
+| 項目 | 特記事項 |
+|:---------:|:---------:|
+| -colour_primaries | - |
+| -transfer_characteristic | - |
+| -matrix_coeffs | - |
+| -video_full_range_flag | Limited Range なので 0 であること |
+| -display_primaries_x | 設定した x色度を 0.00002 で割った整数値であること、G, B, R の順であること |
+| -display_primaries_y | 設定した y色度を 0.00002 で割った整数値であること、G, B, R の順であること  |
+| -white_point_x | 設定した x色度を 0.00002 で割った整数値であること |
+| -white_point_y | 設定した x色度を 0.00002 で割った整数値であること |
+| -max_display_mastering_luminance | 設定した輝度 (cd/㎡) を 0.0001 で割った整数値であること |
+| -min_display_mastering_luminance | 0 であること (今回は 0 固定としたため) |
+| -max_content_light_level | 設定した輝度 (cd/㎡) を示す整数値であること |
+| -max_pic_average_light_level | 設定した輝度 (cd/㎡) を示す整数値であること |
+
+
+| 項目 | 特記事項 |
+|:---------:|:---------:|
+| -colour_primaries | - |
+| -transfer_characteristic | - |
+| -matrix_coeffs | - |
+| -video_full_range_flag | Limited Range なので 0 であること |
+| -display_primaries_0_x | 設定した Green の x色度を 0.00002 で割った整数値であること<要出典> |
+| -display_primaries_0_y | 設定した Green の x色度を 0.00002 で割った整数値であること<要出典> |
+| -display_primaries_1_x | 設定した Blue の x色度を 0.00002 で割った整数値であること<要出典> |
+| -display_primaries_1_y | 設定した Blue の x色度を 0.00002 で割った整数値であること<要出典> |
+| -display_primaries_2_x | 設定した Red の x色度を 0.00002 で割った整数値であること<要出典> |
+| -display_primaries_2_y | 設定した Red の x色度を 0.00002 で割った整数値であること<要出典> |
+| -white_point_x | 設定した x色度を 0.00002 で割った整数値であること<要出典> |
+| -white_point_y | 設定した x色度を 0.00002 で割った整数値であること<要出典> |
+| -max_display_mastering_luminance | 設定した輝度 (cd/㎡) を 0.0001 で割った整数値であること<要出典> |
+| -min_display_mastering_luminance | 0 であること (今回は 0 固定としたため) |
+| -max_content_light_level | 設定した輝度 (cd/㎡) を示す整数値であること<要出典> |
+| -max_pic_average_light_level | 設定した輝度 (cd/㎡) を示す整数値であること<要出典> |
+
+| 項目 | 特記事項 |
+|:---------:|:---------:|
+|-color_primaries | - |
+|-transfer_characteristics | - |
+|-matrix_coefficients | - |
+|-color_range | Limited Range なので 0 であること |
+|-display_primaries_x ((AV1 の正式な文言は "primary_chromaticity_x" なのだが、gpac が出力時に "display_primaries_x" としたため、テストコードもこの文字列を使った)) | 設定した x色度を 1/65535 で割った整数値であること、R, G, B の順であること ((詳細は AV1 Bitstream & Decoding Process Specification (Version 1.0.0 with Errata 1) の 6.7.4. Metadata high dynamic range mastering display color volume semantics の項目を参照))|
+|-display_primaries_y ((AV1 の正式な文言は "primary_chromaticity_y" なのだが、gpac が出力時に "display_primaries_y" としたため、テストコードもこの文字列を使った))  | 設定した y色度を 1/65535 で割った整数値であること、R, G, B の順であること |
+|-white_point_x ((AV1 の正式な文言は "white_point_chromaticity_x" なのだが、gpac が出力時に "white_point_x" としたため、テストコードもこの文字列を使った)) | 設定した x色度を 1/65535 で割った整数値であること |
+|-white_point_y ((AV1 の正式な文言は "white_point_chromaticity_y" なのだが、gpac が出力時に "white_point_y" としたため、テストコードもこの文字列を使った)) | 設定した y色度を 1/65535 で割った整数値であること |
+|-max_display_mastering_luminance ((AV1 の正式な文言は "luminance_max" なのだが、gpac が出力時に "max_display_mastering_luminance" としたため、テストコードもこの文字列を使った)) | 設定した輝度 (cd/㎡) を示す整数値であること ((AV1 の規格では 24-bit 整数、8-bit 小数の固定小数点フォーマットなのだが、gpac がダンプ時に cd/㎡ の単位に変換しているので、今回は cd/㎡ 単位で比較した https://github.com/gpac/gpac/blob/v26.02.0/src/filters/inspect.c#L501-L529)) |
+|-min_display_mastering_luminance ((AV1 の正式な文言は "luminance_min" なのだが、gpac が出力時に "min_display_mastering_luminance" としたため、テストコードもこの文字列を使った)) | 0 であること（今回は 0 固定としたため） |
+|-max_content_light_level ((AV1 の正式な文言は "luminance_max" なのだが、gpac が出力時に "max_content_light_level" としたため、テストコードもこの文字列を使った)) | 設定した輝度 (cd/㎡) を示す整数値であること  |
+|-max_pic_average_light_level ((AV1 の正式な文言は "max_fall" なのだが、gpac が出力時に "max_pic_average_light_level" としたため、テストコードもこの文字列を使った)) | 設定した輝度 (cd/㎡) を示す整数値であること |
+
+| 項目 | 特記事項 |
+|:---------:|:---------:|
+| -color_primaries | - |
+| -transfer_characteristics | - |
+| -matrix_coefficients | - |
+| -color_range | Limited Range なので 0 であること |
+| -display_primaries_0_x | 設定した Green の x色度を 0.00002 で割った整数値であること<要出典> |
+| -display_primaries_0_y | 設定した Green の x色度を 0.00002 で割った整数値であること<要出典> |
+| -display_primaries_1_x | 設定した Blue の x色度を 0.00002 で割った整数値であること<要出典> |
+| -display_primaries_1_y | 設定した Blue の x色度を 0.00002 で割った整数値であること<要出典> |
+| -display_primaries_2_x | 設定した Red の x色度を 0.00002 で割った整数値であること<要出典> |
+| -display_primaries_2_y | 設定した Red の x色度を 0.00002 で割った整数値であること<要出典> |
+| -white_point_x | 設定した x色度を 0.00002 で割った整数値であること<要出典> |
+| -white_point_y | 設定した x色度を 0.00002 で割った整数値であること<要出典> |
+| -max_display_mastering_luminance | 設定した輝度 (cd/㎡) を 0.0001 で割った整数値であること<要出典> |
+| -min_display_mastering_luminance | 0 であること (今回は 0 固定としたため) |
+| -max_content_light_level | 設定した輝度 (cd/㎡) を示す整数値であること<要出典> |
+| -max_pic_average_light_level | 設定した輝度 (cd/㎡) を示す整数値であること<要出典> |
+
+
+| 項目 | 特記事項 |
+|:---------:|:---------:|
+| -color_primaries | 2 (Unspecified) であること |
+| -transfer_characteristics | 2 (Unspecified) であること  |
+| -matrix_coefficients | 2 (Unspecified) であること  |
+| -color_range | Full Range なので 1 であること  |
+| -display_primaries_x | 存在しないこと  |
+| -display_primaries_y | 存在しないこと  |
+| -white_point_x | 存在しないこと  |
+| -white_point_y | 存在しないこと  |
+| -max_display_mastering_luminance | 存在しないこと  |
+| -min_display_mastering_luminance | 存在しないこと  |
+| -max_content_light_level | 存在しないこと  |
+| -max_pic_average_light_level | 存在しないこと  |
+
+
+| 項目 | 特記事項 |
+|:---------:|:---------:|
+| -color_primaries | 9 であること |
+| -transfer_characteristics | 16 であること |
+| -matrix_coefficients | 9 であること |
+| -color_range | Full Range なので 1 であること |
+| -display_primaries_0_x | 存在しないこと |
+| -display_primaries_0_y | 存在しないこと |
+| -display_primaries_1_x | 存在しないこと |
+| -display_primaries_1_y | 存在しないこと |
+| -display_primaries_2_x | 存在しないこと |
+| -display_primaries_2_y | 存在しないこと |
+| -white_point_x | 存在しないこと |
+| -white_point_y | 存在しないこと |
+| -max_display_mastering_luminance | 存在しないこと |
+| -min_display_mastering_luminance | 存在しないこと |
+| -max_content_light_level | 設定した輝度 (cd/㎡) を示す整数値であること<要出典> |
+| -max_pic_average_light_level | 設定した輝度 (cd/㎡) を示す整数値であること<要出典> |
+
+
+            cicp_expected_dict = {
+                "chromaticity": np.concatenate([[cs.D65], cs.get_primaries(cs.BT2020)]),
+                "range": "Full range",
+            }
+            for key, expected_value in cicp_expected_dict.items():
+                if isinstance(expected_value, np.ndarray):
+                    np.testing.assert_almost_equal(parse_data['cicp'][key], expected_value, decimal=4)
+                elif isinstance(expected_value, str):
+                    self.assertEqual(parse_data['cicp'][key], expected_value)
+                else:
+                    pass
+
+            mdcv_expected_dict = {
+                "chromaticity": None if mdcv_primaries is None else np.concatenate([[cs.D65], cs.get_primaries(mdcv_primaries)]),
+                "luminance_cd_m2": None if mdcv_luminance is None else np.array([mdcv_luminance, 0.0]),
+            }
+            for key, expected_value in mdcv_expected_dict.items():
+                if expected_value is None:
+                    self.assertEqual(parse_data['mdcv'], expected_value)
+                else:
+                    np.testing.assert_almost_equal(parse_data['mdcv'][key], expected_value, decimal=4)
+
+            clli_expected_dict = {
+                "light_level_cd_m2": None if clli_luminance is None else np.array([clli_luminance, clli_luminance]),
+            }
+
+| 項目 | 特記事項 |
+|:---------:|:---------:|
+| cICP (eotf) ((筆者の都合で eotf と書いたが colorimetry の方が適切かも？)) | ITU-R BT.2100-PQ を示す文字列であること |
+| cICP (chromaticity) | WRGB の xy色度が BT.2020 であること |
+| cICP (range) | "Full range" であること |
+| mdcv (chromaticity) | WRGB の xy色度が設定した値であること |
+| mdcv (luminance) | Maximum luminance は指定した輝度 (cd/㎡)、Minimum luminance は 0 (cd/㎡) であること |
+| cLLI | Maximum content light level と Maximum frame average light level の双方が指定した輝度 (cd/㎡) であること |

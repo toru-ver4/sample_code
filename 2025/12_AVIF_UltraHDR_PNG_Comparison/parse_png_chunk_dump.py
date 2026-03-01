@@ -69,6 +69,25 @@ def _parse_primaries(chunk_text: str) -> np.ndarray | None:
     return np.array([found[name] for name in _PRIMARY_ORDER], dtype=np.float64)
 
 
+def _parse_cicp_eotf(chunk_text: str) -> str | None:
+    lines = chunk_text.splitlines()
+    header_idx = None
+    for idx, line in enumerate(lines):
+        if _CHUNK_HEADER_RE.search(line):
+            header_idx = idx
+            break
+
+    if header_idx is None:
+        return None
+
+    for line in lines[header_idx + 1 :]:
+        eotf = line.strip()
+        if eotf:
+            return eotf
+
+    return None
+
+
 def parse_png_chunk_dump(dump_txt_file: str | Path) -> dict[str, Any]:
     """Parse pngcheck dump text and extract cICP/mDCV/cLLI metadata.
 
@@ -89,6 +108,7 @@ def parse_png_chunk_dump(dump_txt_file: str | Path) -> dict[str, Any]:
         primaries = _parse_primaries(cicp_text)
         range_match = _RANGE_RE.search(cicp_text)
         cicp_data = {
+            "eotf": _parse_cicp_eotf(cicp_text),
             "chromaticity": primaries,
             "range": None if range_match is None else range_match.group(1).capitalize() + " range",
         }

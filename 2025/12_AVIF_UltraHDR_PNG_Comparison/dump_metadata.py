@@ -44,11 +44,11 @@ def dump_container_with_mp4box():
 
 
 def convert_xml_to_json(xml_file, json_file):
+    cmd = ["dasel"]
+    ops = ['-f', xml_file, '-r', 'xml', '-w', "json"]
+    args = cmd + ops
+    print(" ".join(args) + f" > {json_file}")
     with open(json_file, "w", encoding="utf-8") as f:
-        cmd = ["dasel"]
-        ops = ['-f', xml_file, '-r', 'xml', '-w', "json"]
-        args = cmd + ops
-        print(" ".join(args) + f" > {json_file}")
         subprocess.run(args, stdout=f)
 
 
@@ -134,8 +134,30 @@ def dump_png_chunk_with_pngcheck_core(input_file):
         subprocess.run(args, stdout=f)
 
 
+def dump_param_combination_list_for_blog():
+    print("| No | CICP | MDCV RGBW | MDCV Luminance | CLLI Luminance |")
+    print("|:------:|:------:|:------:|:------:|:------:|")
+    idx = 1
+    for mdcv_primaries, mdcv_luminance, clli_luminance\
+        in product(MDCV_PRIMARIES_LIST, MDCV_LUMINANCE_LIST, CLLI_LUMINANCE_LIST):
+        if (mdcv_primaries is None) and (mdcv_luminance is not None):
+            continue
+        if (mdcv_primaries is not None) and (mdcv_luminance is None):
+            continue
+        print(f"| {idx} ", end="")
+        print("| 9-16-9-* ", end="")
+        print(f"| {mdcv_primaries if mdcv_primaries else 'Not present'} ", end="")
+        print(f"| {mdcv_luminance if mdcv_luminance else 'Not present'} ", end="")
+        print(f"| {clli_luminance if clli_luminance else 'Not present'} ", end="")
+        print("|")
+
+        idx += 1
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # dump_container_with_mp4box()
+    dump_container_with_mp4box()
     dump_bitstream_with_gpac()
     dump_png_chunk_with_pngcheck()
+
+    # dump_param_combination_list_for_blog()
