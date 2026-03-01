@@ -57,7 +57,7 @@
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表. 検証環境および使用ソフトウェアのバージョン
+    表1. 検証環境および使用ソフトウェアのバージョン
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -118,7 +118,7 @@ HDRに対応したフォーマットは数多くある。今回は動画・静�
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表. 各画像・映像フォーマットにおける HDR 関連機能対応状況
+    表2. 各画像・映像フォーマットにおける HDR 関連機能対応状況
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -206,7 +206,7 @@ CICP、MDCV、CLLI に埋め込むパラメータは以下の15通りを用意�
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表1. CICP と HDR 静的メタデータ（MDCV / CLLI）の組み合わせ例
+    表3. CICP と HDR 静的メタデータ（MDCV / CLLI）の組み合わせ例
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -562,7 +562,7 @@ JSON に変換した後は、以下の表に示す値が期待値通りか一つ
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表. HDR メタデータ指定時の各オプションと特記事項
+    表3. HDR メタデータ指定時の各オプションと特記事項
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -658,7 +658,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表. HDR メタデータ指定時の各オプションと特記事項（色度割当明示版）
+    表4. HDR メタデータ指定時の各オプションと特記事項（色度割当明示版）
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -787,7 +787,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表. AV1 / gpac における HDR メタデータ項目と特記事項
+    表5. AV1 / gpac における HDR メタデータ項目と特記事項
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -893,7 +893,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表. HDR メタデータ指定時の各オプションと特記事項（色成分別指定）
+    表6. HDR メタデータ指定時の各オプションと特記事項（色成分別指定）
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -1016,7 +1016,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表. メタデータ未指定（Unspecified）時の各オプション条件
+    表7. メタデータ未指定（Unspecified）時の各オプション条件
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -1106,7 +1106,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表. CICP 指定あり・MDCV 省略時の各オプション条件
+    表8. CICP 指定あり・MDCV 省略時の各オプション条件
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -1203,7 +1203,7 @@ pngcheck \
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表. cICP / MDCV / CLLI による HDR メタデータの意味付け
+    表9. cICP / MDCV / CLLI による HDR メタデータの意味付け
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
