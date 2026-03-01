@@ -2,8 +2,8 @@
 
 * 筆者はこれまで、HDR の動画・静止画コンテンツを [Windows 上で正しく表示する方法](https://trev16.hatenablog.com/entry/2024/07/30/195204) について調査をしてきた
 * [PNG の検証](https://trev16.hatenablog.com/entry/2025/09/27/154448) をしている中で CLLI のメタデータによってコンテンツの見え方が大きく変わることに気づき、HDR コンテンツのメタデータが表示に与える影響を改めて確認したいと考えた
-* 確認作業のためには、そもそも 正しくメタデータを付与する 作業が必要となる
-* それを行うことにした
+* この確認作業を行うには「正しくメタデータが付与された HDR コンテンツ」が必要となる
+* 今回はそれを生成する作業を行うことにした
 
 # 2. 目的
 
@@ -24,7 +24,7 @@
 
 * HEVC、AV1、AVIF、PNG の 4 フォーマットに対してメタデータの埋め込みに成功した
   * ただし、AVIF だけは MDCV の埋め込みが [libavif 側で未実装](https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/write.c#L723) だったため実現できなかった
-  * メタデータの内容が正しいことは [gpac](https://wiki.gpac.io/Filters/Filters/)/[MP4Box](https://wiki.gpac.io/MP4Box/MP4Box/)/[pngcheck](https://github.com/pnggroup/pngcheck) などをパーサー代わりに使いテストコードを作成して確認した ((ただし、一部の規格文書は金銭的な都合で買えておらず、テスト内容が正しいことを裏付ける公式なデータは無い)) ((本当は買うべきなんだろうけど、Nintendo Switch 2 本体が買えるくらいの値段なので買うのは厳しい))
+  * メタデータの内容が正しいことは [gpac](https://wiki.gpac.io/Filters/Filters/)/[MP4Box](https://wiki.gpac.io/MP4Box/MP4Box/)/[pngcheck](https://github.com/pnggroup/pngcheck) などをパーサー代わりに使ってテストコードを作成し、確認した ((ただし、一部の規格文書は金銭的な都合で買えておらず、テスト内容が正しいことを裏付ける公式なデータは無い)) ((本当は買うべきなんだろうけど、Nintendo Switch 2 本体が買えるくらいの値段なので買うのは厳しい))
 * メタデータの埋め込みは 2026年2月時点では簡単ではなく、HEVC、AV1、PNG は図1 のように中間ファイルの生成が必要であった
   * 加えてソースコードに若干の修正も必要であった（詳細は「4. 作業環境」の項目を参照）
 
@@ -41,7 +41,7 @@
   * もしも AVIF から bitstream だけを抽出して何らかの処理を行うことがあれば注意が必要 ((そんな使い方は誰もしないと思うが))
 * 筆者が調べたところ PNG に `mDCV`、`cLLI` chunk を埋め込めるツールは FFmpeg のみであった
   * `mDCV`、`cLLI` chunk を積極的に使いたいと思っている人はほとんどいない？ 
-* 関連情報を調べていた所 [ITU-R H.274](https://www.itu.int/rec/T-REC-H.274/en) で追加された Content colour volume は定義が分かりやすくて良かった
+* 関連情報を調べていたところ [ITU-R H.274](https://www.itu.int/rec/T-REC-H.274/en) で追加された Content colour volume は定義が分かりやすくて良かった
   * MDCV、CLLI は今後は Content colour volume に置き換わるのでは、と勝手に予想している
 
 #### 3.3. 作成したファイル
@@ -109,7 +109,7 @@
 
 #### 5.1. HEVC、AV1、AVIF、PNG の選定理由
 
-HDRに対応したフォーマットは数多くある。今回は動画・静止画フォーマットの中で HEVC、AV1、AVIF、PNG を選んだ条件は以下である。
+HDR に対応したフォーマットは数多くある。今回、動画・静止画フォーマットの中で HEVC、AV1、AVIF、PNG を選定した条件は以下である。
 
 * ST 2084 対応
 * MDCV / CLLI 対応
@@ -338,19 +338,19 @@ AVIF 以外は少々特殊な手順を踏んでいる。その理由も含めて
 
 ##### 5.4.1. 概要
 
-HEVC、AV1 のファイルは MP4 のコンテナに入れる形とした。実は MOV コンテナも作成して確認をしていたのだが、特に差異を確認できなかったので本記事では MP4 コンテナを使う前提で説明をする。
+HEVC、AV1 のファイルは MP4 のコンテナに入れる形とした。実は MOV コンテナも作成して確認していたのだが、特に差異を確認できなかったので本記事では MP4 コンテナを使う前提で説明する。
 
 MP4 ファイルの作成は下図のように [FFmpeg](https://ffmpeg.org/ffmpeg.html) で bitstream を作成してから [MP4Box](https://github.com/gpac/gpac/wiki/MP4Box) を使う方式を取った。
 
 <figure class="figure-image figure-image-fotolife" title="図xx. HEVC、AV1 の MP4 ファイル作成手順">[f:id:takuver4:20260217212250p:plain:w650]<figcaption>図xx. HEVC、AV1 の MP4 ファイル作成手順</figcaption></figure>
 
-メタデータは FFmpeg のコマンドライン引数として与え、MP4Box ではメタデータを与えていない。これは <span style="color: #ff5252">MP4 コンテナの CICP、MDCV、CLLI の Box 情報は bitstream に含まれるデータから生成される</span>ことを意味する。
+メタデータは FFmpeg のコマンドライン引数として与え、MP4Box ではメタデータを与えていない。これは <span style="color: #ff5252">MP4 コンテナの CICP、MDCV、CLLI の Box 情報は bitstream に含まれるデータから生成される</span> ということを意味する。
 
-FFmpeg のみで完結せずに MP4Box を使用した理由は、FFmpeg では MDCV、CLLI の書き込みが上手く行かなかったからである。AI を使いながら調べて分かったことは以下。
+FFmpeg だけで完結させずに MP4Box を使用した理由は、FFmpeg では MDCV、CLLI の書き込みが上手く行かなかったからである。AI を使いながら調べて分かったことは以下。
 
 * FFmpeg では [libavformat/movenc.c](https://github.com/FFmpeg/FFmpeg/blob/master/libavformat/movenc.c) にて MP4 コンテナにデータを書き込む処理を行っている
 * movenc.c には `mov_write_mdcv_tag` や `mov_write_clli_tag` などの関数があり、ソースコード上は書き込めるように見える
-* しかし、今回のようにソースを静止画の PNG ファイルにすると [side_data](https://github.com/FFmpeg/FFmpeg/blob/33b215d1554a14e87416a24f8e6034312e629af7/libavformat/movenc.c#L2656-L2658) に情報が入らず書き込みが行われない
+* しかし、今回のようにソースを静止画の PNG ファイルにすると [side_data](https://github.com/FFmpeg/FFmpeg/blob/33b215d1554a14e87416a24f8e6034312e629af7/libavformat/movenc.c#L2656-L2658) に情報が入らず、書き込みが行われない
 
 ということで代替案として [MP4Box](https://github.com/gpac/gpac/wiki/MP4Box) コマンドを使うことにした。MP4Box は ISOBMFF を処理するためのコマンドラインツールである。
 
@@ -425,7 +425,7 @@ MP4Box -new \
 
 1点だけ引数の補足説明をしておく。
 
-* fps=24 を付けたのは、規格上 H.265/AV1 の bitstream はフレームレート情報を含めなくても成立するためである ((今回の検証ではフレームレートの確認はしないので、本当に念の為に加えた引数である))
+* `fps=24` を付けたのは、規格上 H.265/AV1 の bitstream はフレームレート情報を含めなくても成立するためである ((今回の検証ではフレームレートの確認はしないので、本当に念のために加えた引数である))
 
 
 #### 5.5. AVIF
@@ -457,7 +457,7 @@ avifenc \
 * `--cicp`の Matrix Coefficients が`0`なのは RGB エンコードを指定したため
 * `-c aom` としてコーデックを libaom にしたのは RGB でエンコードを行うため
   * 余談だが SVT-AV1 は YCbCr 形式にしか対応してなかった
-* `--ignore-exif`はワーニング表示を消すため（これは筆者環境の問題なのか…？）
+* `--ignore-exif`は警告表示を消すため（これは筆者環境の問題なのか…？）
 
 #### 5.6. PNG
 
@@ -469,7 +469,7 @@ CICP、MDCV、CLLI の情報を持つ PNG ファイルは下図のように 2段
 <figure class="figure-image figure-image-fotolife" title="図xx. PNG ファイル作成手順">[f:id:takuver4:20260301102831p:plain:w650]<figcaption>図xx. PNG ファイル作成手順</figcaption></figure>
 
 HEVC、AV1 で説明したように MDCV、CLLI を書き込むには side_data に適切にデータを入れる必要があるのだが、
-一度 bitstream を作ってから PNG に変換した場合は上手く行ったのでこの方式を取った ((改めて考えると、もう少し工夫すれば HEVC と AV1 も同じ手が使えたのかもしれない…))。
+一度 bitstream を作ってから PNG に変換した場合は上手く行ったので、この方式を取った ((改めて考えると、もう少し工夫すれば HEVC と AV1 も同じ手が使えたのかもしれない…))。
 
 ただし、ブログ作成時点の FFmpeg の libavcodec/pngenc.c には MDCV のアドレス計算ミスがあったので、[ローカルで修正したもの](https://github.com/toru-ver4/FFmpeg_png_mdcv/commit/eb78d47428cbae85f6e01d702ca69802764ebdd2) をビルドして使用した。
 
@@ -563,7 +563,7 @@ JSON に変換した後は、以下の表に示す値が期待値通りか一つ
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表3. HDR メタデータ指定時の各オプションと確認内容
+    表4. HDR メタデータ指定時の各オプションと確認内容
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -659,7 +659,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表4. HDR メタデータ指定時の各オプションと確認内容（色度割当明示版）
+    表5. HDR メタデータ指定時の各オプションと確認内容（色度割当明示版）
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -788,7 +788,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表5. AV1 / gpac における HDR メタデータ項目と確認内容
+    表6. AV1 / gpac における HDR メタデータ項目と確認内容
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -890,7 +890,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表6. HDR メタデータ指定時の各オプションと確認内容（色成分別指定）
+    表7. HDR メタデータ指定時の各オプションと確認内容（色成分別指定）
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -1013,7 +1013,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表7. メタデータ未指定（Unspecified）時の各オプション条件
+    表8. メタデータ未指定（Unspecified）時の各オプション条件
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -1103,7 +1103,7 @@ JSON に変換した後は、メタデータが以下の表の通りか一つず
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表8. CICP 指定あり・MDCV 省略時の各オプション条件
+    表9. CICP 指定あり・MDCV 省略時の各オプション条件
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
@@ -1200,7 +1200,7 @@ pngcheck \
 
 <div style="text-align: center; margin: 1.5em 0;">
   <div style="font-weight: bold; margin-bottom: 0.5em;">
-    表9. cICP / MDCV / CLLI による HDR メタデータの意味付け
+    表10. cICP / MDCV / CLLI による HDR メタデータの意味付け
   </div>
   <table style="margin-left: auto; margin-right: auto; border-collapse: collapse;">
     <thead>
