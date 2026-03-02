@@ -132,6 +132,15 @@ static void SaveAsJXR_Float16RGBA(
     ComPtr<IWICBitmapFrameEncode> frame;
     ComPtr<IPropertyBag2> props;
     ThrowIfFailed(encoder->CreateNewFrame(frame.GetAddressOf(), props.GetAddressOf()), "CreateNewFrame failed");
+
+    // Request lossless JPEG XR encoding.
+    PROPBAG2 option{};
+    option.pstrName = const_cast<LPOLESTR>(L"Lossless");
+    VARIANT value{};
+    value.vt = VT_BOOL;
+    value.boolVal = VARIANT_TRUE;
+    ThrowIfFailed(props->Write(1, &option, &value), "Set Lossless property failed");
+
     ThrowIfFailed(frame->Initialize(props.Get()), "Frame Initialize failed");
 
     ThrowIfFailed(frame->SetSize(width, height), "SetSize failed");
