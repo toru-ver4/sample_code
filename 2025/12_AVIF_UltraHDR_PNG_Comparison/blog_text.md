@@ -1,7 +1,7 @@
 # 1. 背景
 
 * 筆者はこれまで、HDR の動画・静止画コンテンツを [Windows 上で正しく表示する方法](https://trev16.hatenablog.com/entry/2024/07/30/195204) について調査をしてきた
-* [PNG の検証](https://trev16.hatenablog.com/entry/2025/09/27/154448) をしている中で CLLI のメタデータによってコンテンツの見え方が大きく変わることに気づき、HDR コンテンツのメタデータが表示に与える影響を改めて確認したいと考えた
+* [PNG の検証](https://trev16.hatenablog.com/entry/2025/09/27/154448) をしている中で [CLLI](https://www.w3.org/TR/png-3/#cLLI-chunk) のメタデータによってコンテンツの見え方が大きく変わることに気づき、HDR コンテンツのメタデータが表示に与える影響を改めて確認したくなった
 * この確認作業を行うには「正しくメタデータが付与された HDR コンテンツ」が必要となる
 * 今回はそれを生成する作業を行うことにした
 
@@ -24,8 +24,8 @@
 
 * HEVC、AV1、AVIF、PNG の 4 フォーマットに対してメタデータの埋め込みに成功した
   * ただし、AVIF だけは MDCV の埋め込みが [libavif 側で未実装](https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/write.c#L723) だったため実現できなかった
-  * メタデータの内容が正しいことは [gpac](https://wiki.gpac.io/Filters/Filters/)/[MP4Box](https://wiki.gpac.io/MP4Box/MP4Box/)/[pngcheck](https://github.com/pnggroup/pngcheck) などをパーサー代わりに使ってテストコードを作成し、確認した ((ただし、一部の規格文書は金銭的な都合で買えておらず、テスト内容が正しいことを裏付ける公式なデータは無い)) ((本当は買うべきなんだろうけど、Nintendo Switch 2 本体が買えるくらいの値段なので買うのは厳しい))
-* メタデータの埋め込みは 2026年2月時点では簡単ではなく、HEVC、AV1、PNG は図1 のように中間ファイルの生成が必要であった
+  * メタデータの内容が正しいことは [gpac](https://wiki.gpac.io/Filters/Filters/)/[MP4Box](https://wiki.gpac.io/MP4Box/MP4Box/)/[pngcheck](https://github.com/pnggroup/pngcheck) などをパーサー代わりに使い、テストコードを作成して確認した ((ただし、一部の規格文書は金銭的な都合で買えておらず、テスト内容が正しいことを裏付ける公式なデータは無い。本当は買うべきなんだろが、Nintendo Switch 2 本体が買えるくらいの値段なので買うのは厳しい))
+* メタデータの埋め込みは 2026年3月時点では簡単ではなく、HEVC、AV1、PNG は図1 のように中間ファイルの生成が必要であった
   * 加えてソースコードに若干の修正も必要であった（詳細は「4. 作業環境」の項目を参照）
 
 <figure class="figure-image figure-image-fotolife" title="図1. HEVC、AV1、PNG にメタデータを埋め込む際の処理概要">[f:id:takuver4:20260301130946p:plain:w600]<figcaption>図1. HEVC、AV1、PNG にメタデータを埋め込む際の処理概要</figcaption></figure>
@@ -33,14 +33,14 @@
 #### 3.2. 筆者が理解したこと
 
 * MP4/MOV の CICP、MDCV、CLLI 情報は bitstream の情報から生成可能
-  * 筆者はこれまで MP4/MOV コンテナ生成時に別途 CICP、MDCV、CLLI 情報を与えるものだと勘違いしていた
-* [gpac](https://wiki.gpac.io/Filters/Filters/) で bitstream のメタ情報をダンプした場合、[人間が解釈しやすいように変換](https://github.com/gpac/gpac/blob/v26.02.0/src/filters/inspect.c#L501-L529) してくれてる
-  * 読みやすい一方で、規格文書と値が異なるのでテストコードを作成する際は注意が必要
-* AVIF は bitstream と AVIF コンテナとでメタデータの値が一致しない
+  * 筆者は MP4/MOV コンテナ生成時に CICP / MDCV / CLLI 情報をコマンドライン引数で与えるものだと勘違いしていた
+* [gpac](https://wiki.gpac.io/Filters/Filters/) で bitstream のメタ情報をダンプした場合、[人間が解釈しやすいように変換](https://github.com/gpac/gpac/blob/v26.02.0/src/filters/inspect.c#L501-L529) してくれる
+  * 読みやすい一方で、国際標準とはフォーマットが異なるのでテストコードを作成する際は注意が必要
+* AVIF は bitstream と コンテナ とでメタデータの値が一致しない
   * bitstream の CICP は 2/2/2 に固定化され、MDCV と CLLI の情報は埋め込まれない（libavif の仕様。詳細は後述）
   * もしも AVIF から bitstream だけを抽出して何らかの処理を行うことがあれば注意が必要 ((そんな使い方は誰もしないと思うが))
-* 筆者が調べたところ PNG に `mDCV`、`cLLI` chunk を埋め込めるツールは FFmpeg のみであった
-  * `mDCV`、`cLLI` chunk を積極的に使いたいと思っている人はほとんどいない？ 
+** 筆者が調べたところ PNG に`mDCV`、`cLLI`chunk を埋め込めるツールは FFmpeg のみであった
+  * `mDCV`、`cLLI`chunk を積極的に使いたいと思っている人はほとんどいない？ 
 * 関連情報を調べていたところ [ITU-R H.274](https://www.itu.int/rec/T-REC-H.274/en) で追加された Content colour volume は定義が分かりやすくて良かった
   * MDCV、CLLI は今後は Content colour volume に置き換わるのでは、と勝手に予想している
 
@@ -199,7 +199,7 @@ HDR に対応したフォーマットは数多くある。今回、動画・静�
   </table>
 </div>
 
-※bitstream としては非対応<span style="color: #ff5252">&lt;要出典&gt;</span>。[WebM コンテナ](https://www.webmproject.org/docs/container/) のみでサポート
+※VP9は（AV1のような）bitstream側でのHDR静的メタデータ運搬ではなく、[コンテナ側（WebM/MP4）で mdcv / clli などとして保持する方式](https://www.loc.gov/preservation/digital/formats/fdd/fdd000579.shtml) である。
 
 #### 5.2. 用意したメタデータの組み合わせ
 
@@ -213,7 +213,7 @@ CICP、MDCV、CLLI に埋め込むパラメータは以下の15通りを用意�
     <thead>
       <tr>
         <th>No</th>
-        <th>CICP ((4番目の Video Full Range Flag は、動画は 0 (Limited) を、静止画は 1 (Full) を設定した))</th>
+        <th>CICP ((3番目の Matrix Coefficients は動画は 9 (Rec. ITU-R BT.2100-2 Y′CbCr) を、静止画は 0 (Identity, RGB444用) を設定した )) ((4番目の Video Full Range Flag は、動画は 0 (Limited) を、静止画は 1 (Full) を設定した))</th>
         <th>MDCV RGBW</th>
         <th>MDCV Luminance ((Mastering display maximum luminance のみを設定、Mastering display minimum luminance は 0 固定とした))</th>
         <th>CLLI Luminance ((MaxCLL と MaxFALL の値は同じ値とした))</th>
@@ -222,105 +222,105 @@ CICP、MDCV、CLLI に埋め込むパラメータは以下の15通りを用意�
     <tbody>
       <tr>
         <td>1</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>ITU-R BT.709</td>
         <td>100</td>
         <td>100</td>
       </tr>
       <tr>
         <td>2</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>ITU-R BT.709</td>
         <td>100</td>
         <td>10000</td>
       </tr>
       <tr>
         <td>3</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>ITU-R BT.709</td>
         <td>100</td>
         <td>Not present</td>
       </tr>
       <tr>
         <td>4</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>ITU-R BT.709</td>
         <td>10000</td>
         <td>100</td>
       </tr>
       <tr>
         <td>5</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>ITU-R BT.709</td>
         <td>10000</td>
         <td>10000</td>
       </tr>
       <tr>
         <td>6</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>ITU-R BT.709</td>
         <td>10000</td>
         <td>Not present</td>
       </tr>
       <tr>
         <td>7</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>ITU-R BT.2020</td>
         <td>100</td>
         <td>100</td>
       </tr>
       <tr>
         <td>8</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>ITU-R BT.2020</td>
         <td>100</td>
         <td>10000</td>
       </tr>
       <tr>
         <td>9</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>ITU-R BT.2020</td>
         <td>100</td>
         <td>Not present</td>
       </tr>
       <tr>
         <td>10</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>ITU-R BT.2020</td>
         <td>10000</td>
         <td>100</td>
       </tr>
       <tr>
         <td>11</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>ITU-R BT.2020</td>
         <td>10000</td>
         <td>10000</td>
       </tr>
       <tr>
         <td>12</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>ITU-R BT.2020</td>
         <td>10000</td>
         <td>Not present</td>
       </tr>
       <tr>
         <td>13</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>Not present</td>
         <td>Not present</td>
         <td>100</td>
       </tr>
       <tr>
         <td>14</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>Not present</td>
         <td>Not present</td>
         <td>10000</td>
       </tr>
       <tr>
         <td>15</td>
-        <td>9-16-9-*</td>
+        <td>9-16-*-*</td>
         <td>Not present</td>
         <td>Not present</td>
         <td>Not present</td>
@@ -342,14 +342,14 @@ HEVC、AV1 のファイルは MP4 のコンテナに入れる形とした。実�
 
 MP4 ファイルの作成は下図のように [FFmpeg](https://ffmpeg.org/ffmpeg.html) で bitstream を作成してから [MP4Box](https://github.com/gpac/gpac/wiki/MP4Box) を使う方式を取った。
 
-<figure class="figure-image figure-image-fotolife" title="図xx. HEVC、AV1 の MP4 ファイル作成手順">[f:id:takuver4:20260217212250p:plain:w650]<figcaption>図xx. HEVC、AV1 の MP4 ファイル作成手順</figcaption></figure>
+<figure class="figure-image figure-image-fotolife" title="図2. HEVC、AV1 の MP4 ファイル作成手順">[f:id:takuver4:20260217212250p:plain:w650]<figcaption>図2. HEVC、AV1 の MP4 ファイル作成手順</figcaption></figure>
 
 メタデータは FFmpeg のコマンドライン引数として与え、MP4Box ではメタデータを与えていない。これは <span style="color: #ff5252">MP4 コンテナの CICP、MDCV、CLLI の Box 情報は bitstream に含まれるデータから生成される</span> ということを意味する。
 
 FFmpeg だけで完結させずに MP4Box を使用した理由は、FFmpeg では MDCV、CLLI の書き込みが上手く行かなかったからである。AI を使いながら調べて分かったことは以下。
 
 * FFmpeg では [libavformat/movenc.c](https://github.com/FFmpeg/FFmpeg/blob/master/libavformat/movenc.c) にて MP4 コンテナにデータを書き込む処理を行っている
-* movenc.c には `mov_write_mdcv_tag` や `mov_write_clli_tag` などの関数があり、ソースコード上は書き込めるように見える
+* movenc.c には`mov_write_mdcv_tag`や`mov_write_clli_tag`などの関数があり、ソースコード上は書き込めるように見える
 * しかし、今回のようにソースを静止画の PNG ファイルにすると [side_data](https://github.com/FFmpeg/FFmpeg/blob/33b215d1554a14e87416a24f8e6034312e629af7/libavformat/movenc.c#L2656-L2658) に情報が入らず、書き込みが行われない
 
 ということで代替案として [MP4Box](https://github.com/gpac/gpac/wiki/MP4Box) コマンドを使うことにした。MP4Box は ISOBMFF を処理するためのコマンドラインツールである。
@@ -425,7 +425,7 @@ MP4Box -new \
 
 1点だけ引数の補足説明をしておく。
 
-* `fps=24` を付けたのは、規格上 H.265/AV1 の bitstream はフレームレート情報を含めなくても成立するためである ((今回の検証ではフレームレートの確認はしないので、本当に念のために加えた引数である))
+* `fps=24`を付けたのは、規格上 H.265/AV1 の bitstream はフレームレート情報を含めなくても成立するためである ((今回の検証ではフレームレートの確認はしないので、本当に念のために加えた引数である))
 
 
 #### 5.5. AVIF
@@ -434,7 +434,7 @@ MP4Box -new \
 
 AVIF の作成は下図のように libavif のビルド時に生成される avifenc コマンドを使って行った。なお、図を見て分かるように MDCV の情報は付与していない。これは libavif 側で [MDCV の情報を埋め込む実装が無かったから](https://github.com/AOMediaCodec/libavif/blob/v1.3.0/src/write.c#L723) である。ご了承いただきたい。
 
-<figure class="figure-image figure-image-fotolife" title="図xx. AVIFファイル作成手順">[f:id:takuver4:20260219070405p:plain:w350]<figcaption>図xx. AVIFファイル作成手順</figcaption></figure>
+<figure class="figure-image figure-image-fotolife" title="図3. AVIFファイル作成手順">[f:id:takuver4:20260219070405p:plain:w350]<figcaption>図3. AVIFファイル作成手順</figcaption></figure>
 
 ##### 5.5.2. コマンドライン引数
 
@@ -455,7 +455,7 @@ avifenc \
 いくつかの引数について、以下に箇条書きで補足説明をしておく。
 
 * `--cicp`の Matrix Coefficients が`0`なのは RGB エンコードを指定したため
-* `-c aom` としてコーデックを libaom にしたのは RGB でエンコードを行うため
+* `-c aom`としてコーデックを libaom にしたのは RGB でエンコードを行うため
   * 余談だが SVT-AV1 は YCbCr 形式にしか対応してなかった
 * `--ignore-exif`は警告表示を消すため（これは筆者環境の問題なのか…？）
 
@@ -466,7 +466,7 @@ avifenc \
 CICP、MDCV、CLLI の情報を持つ PNG ファイルは下図のように 2段階で FFmpeg コマンドを叩いて作成した。
 理由は PNG に MDCV、CLLI を書き込めるツールは FFmpeg だけだったからである。
 
-<figure class="figure-image figure-image-fotolife" title="図xx. PNG ファイル作成手順">[f:id:takuver4:20260301102831p:plain:w650]<figcaption>図xx. PNG ファイル作成手順</figcaption></figure>
+<figure class="figure-image figure-image-fotolife" title="図4. PNG ファイル作成手順">[f:id:takuver4:20260301102831p:plain:w650]<figcaption>図4. PNG ファイル作成手順</figcaption></figure>
 
 HEVC、AV1 で説明したように MDCV、CLLI を書き込むには side_data に適切にデータを入れる必要があるのだが、
 一度 bitstream を作ってから PNG に変換した場合は上手く行ったので、この方式を取った ((改めて考えると、もう少し工夫すれば HEVC と AV1 も同じ手が使えたのかもしれない…))。
@@ -520,8 +520,8 @@ ffmpeg \
 
 一部の引数について、箇条書きで補足説明をしておく。
 
-* 対象が静止画の PNG だったので `-pix_fmt yuv444p12le` という 4:4:4 の設定を使用した
-  * ただし HEVC の Full Range には [不安があった](https://trev16.hatenablog.com/entry/2025/03/20/155546) ので `-x265-params` には `range=limited` を設定した
+* 対象が静止画の PNG だったので`-pix_fmt yuv444p12le`という 4:4:4 の設定を使用した
+  * ただし HEVC の Full Range には [不安があった](https://trev16.hatenablog.com/entry/2025/03/20/155546) ので`-x265-params`には`range=limited`を設定した
 
 # 6. 詳細 (メタデータ確認)
 
@@ -633,7 +633,7 @@ JSON に変換した後は、以下の表に示す値が期待値通りか一つ
 
 ##### 6.2.2. MP4 コンテナ
 
-HEVC の MP4 コンテナは MP4Box コマンドを使って XML に変換した後、 [dasel](https://github.com/TomWright/dasel) を使って JSON 変換した。XML から JSON に変換した理由は 「JSON の方が要素ごとに改行が入って見やすかった」という割とどうでもいいものである。通常は XML で良いと考える。
+HEVC の MP4 コンテナは MP4Box コマンドを使って XML に変換した後、 [dasel](https://github.com/TomWright/dasel) を使って JSON 変換した（JSON に変換した理由は前述の通り）。
 
 使用したコマンドの具体例を以下に示す。
 
