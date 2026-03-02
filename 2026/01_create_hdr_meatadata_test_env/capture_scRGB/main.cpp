@@ -16,6 +16,8 @@
 #include <dxgi1_2.h>
 
 #include <wincodec.h> // WIC
+#include <algorithm>
+#include <vector>
 
 // C++/WinRT
 #include <winrt/base.h>
@@ -145,12 +147,49 @@ static void SaveAsJXR_Float16RGBA(
     ThrowIfFailed(encoder->Commit(), "Encoder Commit failed");
 }
 
+static BOOL CALLBACK EnumMonitorsProc(HMONITOR monitor, HDC, LPRECT, LPARAM userData)
+{
+    auto monitors = reinterpret_cast<std::vector<HMONITOR>*>(userData);
+    monitors->push_back(monitor);
+    return TRUE;
+}
+
+static std::vector<HMONITOR> EnumerateMonitorsOrdered()
+{
+    std::vector<HMONITOR> monitors;
+    if (!EnumDisplayMonitors(nullptr, nullptr, EnumMonitorsProc, reinterpret_cast<LPARAM>(&monitors))) {
+        ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()), "EnumDisplayMonitors failed");
+    }
+
+    std::sort(monitors.begin(), monitors.end(), [](HMONITOR a, HMONITOR b) {
+        MONITORINFOEXW ia{};
+        MONITORINFOEXW ib{};
+        ia.cbSize = sizeof(ia);
+        ib.cbSize = sizeof(ib);
+        GetMonitorInfoW(a, &ia);
+        GetMonitorInfoW(b, &ib);
+        if (ia.rcMonitor.top != ib.rcMonitor.top) {
+            return ia.rcMonitor.top < ib.rcMonitor.top;
+        }
+        return ia.rcMonitor.left < ib.rcMonitor.left;
+    });
+
+    return monitors;
+}
+
 int wmain(int argc, wchar_t** argv)
 {
-    if (argc < 2) {
-        wprintf(L"Usage: %s output.jxr\n", argv[0]);
+    if (argc < 3) {
+        wprintf(L"Usage: %s <display-number> <output.jxr>\n", argv[0]);
         return 2;
     }
+    wchar_t* end = nullptr;
+    long displayNumber = wcstol(argv[1], &end, 10);
+    if (end == argv[1] || *end != L'\0' || displayNumber <= 0) {
+        wprintf(L"Invalid display-number: %s\n", argv[1]);
+        return 2;
+    }
+    const wchar_t* outputPath = argv[2];
 
     // COM + WinRT init
     ThrowIfFailed(CoInitializeEx(nullptr, COINIT_MULTITHREADED), "CoInitializeEx failed");
@@ -161,8 +200,35 @@ int wmain(int argc, wchar_t** argv)
     auto d3d = CreateD3D11Device(ctx);
     auto winrtDev = CreateWinRTD3DDevice(d3d.Get());
 
-    // Primary monitor (簡易：主モニタを対象)
-    HMONITOR mon = MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY);
+    auto monitors = EnumerateMonitorsOrdered();
+    if (displayNumber > static_cast<long>(monitors.size())) {
+        wprintf(L"Display-number out of range: %ld (available: 1..%zu)\n", displayNumber, monitors.size());
+        for (size_t i = 0; i < monitors.size(); ++i) {
+            MONITORINFOEXW info{};
+            info.cbSize = sizeof(info);
+            if (GetMonitorInfoW(monitors[i], &info)) {
+                wprintf(L"  %zu: %s rect=(%ld,%ld)-(%ld,%ld)\n",
+                        i + 1,
+                        info.szDevice,
+                        info.rcMonitor.left,
+                        info.rcMonitor.top,
+                        info.rcMonitor.right,
+                        info.rcMonitor.bottom);
+            }
+        }
+        return 2;
+    }
+
+    HMONITOR mon = monitors[displayNumber - 1];
+    {
+        MONITORINFOEXW info{};
+        info.cbSize = sizeof(info);
+        if (GetMonitorInfoW(mon, &info)) {
+            wprintf(L"Capturing display %ld: %s\n", displayNumber, info.szDevice);
+        } else {
+            wprintf(L"Capturing display %ld\n", displayNumber);
+        }
+    }
 
     auto item = CreateItemForMonitor(mon);
     auto size = item.Size();
@@ -229,7 +295,7 @@ int wmain(int argc, wchar_t** argv)
 
     // mapped.pData は RGBA half-float (interleaved) として扱える
     // stride は mapped.RowPitch
-    SaveAsJXR_Float16RGBA(argv[1],
+    SaveAsJXR_Float16RGBA(outputPath,
                          reinterpret_cast<const uint16_t*>(mapped.pData),
                          desc.Width,
                          desc.Height,
@@ -237,7 +303,7 @@ int wmain(int argc, wchar_t** argv)
 
     ctx->Unmap(staging.Get(), 0);
 
-    wprintf(L"Saved: %s\n", argv[1]);
+    wprintf(L"Saved: %s\n", outputPath);
 
     CoUninitialize();
     return 0;
