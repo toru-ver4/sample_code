@@ -11,12 +11,12 @@ import ctypes
 import logging
 import subprocess
 import sys
-from ctypes import wintypes
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
 from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
+from screeninfo import get_monitors
 
 BASE_URL = "https://toru-ver4.github.io/pages_test/MDCV_CLLI_Test/index.html"
 LINK_TEXT_LIST = [
@@ -77,25 +77,6 @@ CAPTURE_OUTPUT_DIR = SCRIPT_DIR / "capture_img"
 user32 = ctypes.windll.user32
 
 
-class RECT(ctypes.Structure):
-    _fields_ = [
-        ("left", wintypes.LONG),
-        ("top", wintypes.LONG),
-        ("right", wintypes.LONG),
-        ("bottom", wintypes.LONG),
-    ]
-
-
-class MONITORINFOEXW(ctypes.Structure):
-    _fields_ = [
-        ("cbSize", wintypes.DWORD),
-        ("rcMonitor", RECT),
-        ("rcWork", RECT),
-        ("dwFlags", wintypes.DWORD),
-        ("szDevice", wintypes.WCHAR * 32),
-    ]
-
-
 def setup_logger() -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -128,40 +109,22 @@ def set_dpi_awareness() -> None:
 
 def get_display2_geometry() -> tuple[int, int, int, int]:
     logging.info("Detecting Display No.2 geometry")
-    monitors: list[dict[str, Any]] = []
-
-    monitor_enum_proc = ctypes.WINFUNCTYPE(
-        wintypes.BOOL,
-        wintypes.HMONITOR,
-        wintypes.HDC,
-        ctypes.POINTER(RECT),
-        wintypes.LPARAM,
-    )
-
-    def _callback(hmonitor: int, _hdc: int, _lprc: Any, _lparam: int) -> bool:
-        info = MONITORINFOEXW()
-        info.cbSize = ctypes.sizeof(MONITORINFOEXW)
-        if user32.GetMonitorInfoW(hmonitor, ctypes.byref(info)):
-            left = int(info.rcMonitor.left)
-            top = int(info.rcMonitor.top)
-            width = int(info.rcMonitor.right - info.rcMonitor.left)
-            height = int(info.rcMonitor.bottom - info.rcMonitor.top)
-            monitors.append(
-                {
-                    "device": str(info.szDevice),
-                    "left": left,
-                    "top": top,
-                    "width": width,
-                    "height": height,
-                }
-            )
-        return True
-
-    if not user32.EnumDisplayMonitors(0, 0, monitor_enum_proc(_callback), 0):
-        raise RuntimeError("EnumDisplayMonitors failed")
-
-    if not monitors:
+    raw_monitors = get_monitors()
+    if not raw_monitors:
         raise RuntimeError("No monitors found")
+
+    monitors: list[dict[str, Any]] = []
+    for monitor in raw_monitors:
+        device = str(getattr(monitor, "name", "") or "")
+        monitors.append(
+            {
+                "device": device,
+                "left": int(monitor.x),
+                "top": int(monitor.y),
+                "width": int(monitor.width),
+                "height": int(monitor.height),
+            }
+        )
 
     for monitor in monitors:
         logging.info(
@@ -178,9 +141,8 @@ def get_display2_geometry() -> tuple[int, int, int, int]:
             logging.info("Using monitor device=%s", monitor["device"])
             return monitor["left"], monitor["top"], monitor["width"], monitor["height"]
 
-    monitors_sorted = sorted(monitors, key=lambda item: item["device"])
-    if len(monitors_sorted) >= 2:
-        monitor = monitors_sorted[1]
+    if len(monitors) >= 2:
+        monitor = monitors[1]
         logging.warning("DISPLAY2 not found explicitly; fallback to second monitor: %s", monitor["device"])
         return monitor["left"], monitor["top"], monitor["width"], monitor["height"]
 
