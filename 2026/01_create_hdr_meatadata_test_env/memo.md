@@ -93,7 +93,7 @@ DWM での コンポジット後（デスクトップ全体）の scRGB の生�
 
 もしも「その仕様は実現不可能である」といった事があれば行って下さい。
 
-# ChatGPT 文言
+### ChatGPT 文言
 
 ■背景
 スクリプトやプログラムを組んで以下のことをしたいと考えている。
@@ -105,3 +105,245 @@ DWM での コンポジット後（デスクトップ全体）の scRGB の生�
 ■調査して欲しい内容
 上記の操作を半自動で行うための仕組みが存在していれば教えて欲しい。
 
+### ChatGPT 文言
+
+■背景
+スクリプトやプログラムを組んで以下のことをしたいと考えている。
+* Windows 11 の Chrome/Edge で特定の WebページA(https://toru-ver4.github.io/pages_test/MDCV_CLLI_Test/index.html)を開く
+  * なお Chrome/Edge はキオスクモードで起動し、全画面表示状態を維持するものとする
+  * また試験はデュアルモニター環境で行い、スクリプトの制御は Display No.1（この No は Windows の System -> Display の No と一致）に、ブラウザの表示は Display No.2 に行うものとする
+* WebページA には評価用画像・動画へのリンクが多数記載されている
+* スクリプトは事前に、WebページAの評価用画像・動画へのリンクが付与されたテキストのリストを持っている
+  * テキストの例は "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.png" である
+* スクリプトは上から順にテキストのリストを読み取り、テキストと一致するWebページAのリンクを開き、WebページB を表示する
+* WebページB を開いた後は 5秒ほど待った後、画面キャプチャのコマンド .\capture_scRGB\build\my_capture_app.exe を叩く
+* コマンドの引数は `.\capture_scRGB\build\my_capture_app.exe 2 <output.jxr>`
+  * ただし、<output.jxr> は .\capture_img\<リンクのテキストからフォルダ名と拡張子を取り除いたもの>.jxr とする
+  * 例えば ".\capture_img\png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.jxr" となる
+* 画面キャプチャが終わったあとは、WebページBを閉じて WebページAに戻る
+* その後は「WebページAの評価用画像・動画へのリンクが付与されたテキストのリスト」のリンクに対して手順を繰り返す
+* 「WebページAの評価用画像・動画へのリンクが付与されたテキストのリスト」は以下の通り
+
+```
+link_text_list = [
+    ./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.mp4
+    ./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.mp4
+    ./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.mp4
+    ./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.mp4
+    ./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.mp4
+    ./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.mp4
+    ./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.mp4
+    ./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.mp4
+    ./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.mp4
+    ./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.mp4
+    ./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.mp4
+    ./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.mp4
+    ./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-100.mp4
+    ./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-10000.mp4
+    ./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-None.mp4
+    ./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.mp4
+    ./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.mp4
+    ./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.mp4
+    ./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.mp4
+    ./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.mp4
+    ./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.mp4
+    ./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.mp4
+    ./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.mp4
+    ./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.mp4
+    ./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.mp4
+    ./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.mp4
+    ./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.mp4
+    ./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-100.mp4
+    ./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-10000.mp4
+    ./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-None.mp4
+    ./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-100.avif
+    ./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-10000.avif
+    ./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-None.avif
+    ./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.png
+    ./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.png
+    ./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.png
+    ./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.png
+    ./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.png
+    ./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.png
+    ./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.png
+    ./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.png
+    ./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.png
+    ./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.png
+    ./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.png
+    ./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.png
+    ./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-100.png
+    ./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-10000.png
+    ./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-None.png
+]
+```
+
+■調査して欲しい内容
+上記の操作はスクリプト言語で可能か教えて欲しい。
+また可能であれば、どの言語が楽か知りたい。
+一方で Python での実装難易度も教えて欲しい。可能ならPythonで実装したい
+
+
+## CodeX
+
+あなたは Windows 自動化と Playwright に精通した Python エンジニアです。
+以下の要件を満たす 実行可能な Python スクリプト一式 を作成してください。
+
+■ 目的
+
+Windows 11 環境で Microsoft Edge または Chrome を起動し、
+
+・Display No.2 にウィンドウを配置
+・起動時から「全画面相当」で表示（キオスクは使用しない）
+・指定のリンクを順番に開く
+・5秒待機
+・外部キャプチャEXEを実行
+・ページを閉じて元ページへ戻る
+・すべてのリンクで繰り返す
+
+■ 使用技術
+
+・Python 3.11 以上
+・Playwright (sync API)
+・subprocess
+・pathlib
+・必要に応じて pywin32 または ctypes（Display No.2への移動に使用）
+
+■ 起動仕様（重要）
+
+キオスクは使用しない。
+以下のいずれかの方法で「起動時から全画面相当」にすること：
+
+優先順位：
+
+Chromium 起動引数で全画面開始
+--start-fullscreen
+--start-maximized
+--window-position
+--window-size
+
+起動後に Playwright API で viewport をモニタ2サイズに変更
+
+必要なら Win32 API でウィンドウをモニタ2へ移動
+
+■ モニタ仕様
+
+・Display No.1 = スクリプト制御用
+・Display No.2 = ブラウザ表示用
+・Windows の「設定 → ディスプレイ」の番号と一致
+・Display No.2 の解像度を取得し、そのサイズで表示すること
+・DPIスケーリング環境でも動作すること
+
+■ 処理対象URL
+
+WebページA：
+https://toru-ver4.github.io/pages_test/MDCV_CLLI_Test/index.html
+
+■ リンクリスト
+
+link_text_list = [
+"./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.mp4",
+"./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.mp4",
+"./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.mp4",
+"./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.mp4",
+"./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.mp4",
+"./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.mp4",
+"./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.mp4",
+"./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.mp4",
+"./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.mp4",
+"./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.mp4",
+"./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.mp4",
+"./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.mp4",
+"./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-100.mp4",
+"./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-10000.mp4",
+"./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-None.mp4",
+"./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.mp4",
+"./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.mp4",
+"./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.mp4",
+"./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.mp4",
+"./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.mp4",
+"./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.mp4",
+"./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.mp4",
+"./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.mp4",
+"./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.mp4",
+"./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.mp4",
+"./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.mp4",
+"./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.mp4",
+"./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-100.mp4",
+"./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-10000.mp4",
+"./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-None.mp4",
+"./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-100.avif",
+"./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-10000.avif",
+"./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-None.avif",
+"./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.png",
+"./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.png",
+"./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.png",
+"./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.png",
+"./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.png",
+"./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.png",
+"./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.png",
+"./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.png",
+"./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.png",
+"./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.png",
+"./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.png",
+"./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.png",
+"./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-100.png",
+"./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-10000.png",
+"./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-None.png"
+]
+
+■ 処理仕様
+
+各リンクについて：
+
+WebページAを開く
+
+該当リンクと一致する href を持つリンクをクリック
+テキスト一致または href一致で可
+
+WebページBが表示されたら5秒待機
+
+以下コマンドを実行
+
+.\capture_scRGB\build\my_capture_app.exe 2 <output_path>
+
+<output_path> の生成規則
+
+"./metadata_img/png_xxx.png"
+→ "png_xxx.jxr"
+→ ".\capture_img\png_xxx.jxr"
+
+・フォルダ名削除
+・拡張子削除
+・.jxr に変更
+
+ページBを閉じてWebページAへ戻る
+
+■ 要件
+
+・例外処理を適切に実装
+・各ステップでログ出力
+・途中失敗時でも次のリンクへ進める設計
+・実行前に playwright install が必要である旨コメント記載
+・main() エントリポイントを持つ
+・Windows専用でよい
+
+■ 出力形式
+
+単一の hdr10_test.py ファイルとして完成形を出力
+
+必要な pip インストール一覧を先頭コメントに記載
+
+実行方法もコメントで記載
+
+コード内に TODO を残さない
+
+■ 実装の安定性優先
+
+・クリックより page.goto() の方が安定する場合は直接URL遷移可
+・ウィンドウハンドル取得が必要なら実装すること
+・確実にDisplay No.2で全画面相当を最優先
+
+■ 最後に
+
+コードは「そのまま実行可能」な完成形で出力すること。
+説明文は不要。コードのみ出力すること。
