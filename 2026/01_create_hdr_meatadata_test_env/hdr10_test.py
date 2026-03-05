@@ -12,11 +12,9 @@ import logging
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 from urllib.parse import urljoin
 
 from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
-from screeninfo import get_monitors
 
 BASE_URL = "https://toru-ver4.github.io/pages_test/MDCV_CLLI_Test/index.html"
 LINK_TEXT_LIST = [
@@ -73,6 +71,8 @@ LINK_TEXT_LIST = [
 SCRIPT_DIR = Path(__file__).resolve().parent
 CAPTURE_EXE = SCRIPT_DIR / "capture_scRGB" / "build" / "my_capture_app.exe"
 CAPTURE_OUTPUT_DIR = SCRIPT_DIR / "capture_img"
+CAPTURE_TARGET_DISPLAY_NUMBER = 2
+DISPLAY_GEOMETRY = (0, 0, 1920, 1080)
 
 user32 = ctypes.windll.user32
 
@@ -105,48 +105,6 @@ def set_dpi_awareness() -> None:
         user32.SetProcessDPIAware()
     except Exception:
         logging.warning("Failed to set DPI awareness")
-
-
-def get_display2_geometry() -> tuple[int, int, int, int]:
-    logging.info("Detecting Display No.2 geometry")
-    raw_monitors = get_monitors()
-    if not raw_monitors:
-        raise RuntimeError("No monitors found")
-
-    monitors: list[dict[str, Any]] = []
-    for monitor in raw_monitors:
-        device = str(getattr(monitor, "name", "") or "")
-        monitors.append(
-            {
-                "device": device,
-                "left": int(monitor.x),
-                "top": int(monitor.y),
-                "width": int(monitor.width),
-                "height": int(monitor.height),
-            }
-        )
-
-    for monitor in monitors:
-        logging.info(
-            "Monitor found: device=%s rect=(%d,%d %dx%d)",
-            monitor["device"],
-            monitor["left"],
-            monitor["top"],
-            monitor["width"],
-            monitor["height"],
-        )
-
-    for monitor in monitors:
-        if monitor["device"].upper().endswith("DISPLAY2"):
-            logging.info("Using monitor device=%s", monitor["device"])
-            return monitor["left"], monitor["top"], monitor["width"], monitor["height"]
-
-    if len(monitors) >= 2:
-        monitor = monitors[1]
-        logging.warning("DISPLAY2 not found explicitly; fallback to second monitor: %s", monitor["device"])
-        return monitor["left"], monitor["top"], monitor["width"], monitor["height"]
-
-    raise RuntimeError("Display No.2 was not found")
 
 
 def launch_browser(playwright: Playwright, left: int, top: int, width: int, height: int) -> Browser:
@@ -201,7 +159,7 @@ def make_capture_output_path(href: str) -> Path:
 
 
 def run_capture_exe(output_path: Path) -> None:
-    cmd = [str(CAPTURE_EXE), "2", str(output_path)]
+    cmd = [str(CAPTURE_EXE), str(CAPTURE_TARGET_DISPLAY_NUMBER), str(output_path)]
     logging.info("Running capture command: %s", " ".join(cmd))
     subprocess.run(cmd, cwd=str(SCRIPT_DIR), check=True)
 
@@ -241,12 +199,14 @@ def main() -> int:
 
     CAPTURE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    try:
-        left, top, width, height = get_display2_geometry()
-    except Exception:
-        logging.exception("Failed to get Display No.2 geometry")
-        return 1
-
+    left, top, width, height = DISPLAY_GEOMETRY
+    logging.info(
+        "Using configured geometry: left=%d top=%d width=%d height=%d",
+        left,
+        top,
+        width,
+        height,
+    )
     with sync_playwright() as playwright:
         browser: Browser | None = None
         try:
