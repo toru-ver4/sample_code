@@ -12,6 +12,7 @@ import logging
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 from urllib.parse import urljoin
 
 from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
@@ -73,6 +74,7 @@ CAPTURE_EXE = SCRIPT_DIR / "capture_scRGB" / "build" / "my_capture_app.exe"
 CAPTURE_OUTPUT_DIR = SCRIPT_DIR / "capture_img"
 CAPTURE_TARGET_DISPLAY_NUMBER = 2
 DISPLAY_GEOMETRY = (0, 0, 1920, 1080)
+CAPTURE_WAIT_SECONDS = 2
 
 user32 = ctypes.windll.user32
 
@@ -133,6 +135,17 @@ def launch_browser(playwright: Playwright, left: int, top: int, width: int, heig
     raise RuntimeError(f"Failed to launch any Chromium browser: {last_error}")
 
 
+def make_capture_output_path(href: str) -> Path:
+    out_name = f"{Path(Path(href).name).stem}.jxr"
+    return CAPTURE_OUTPUT_DIR / out_name
+
+
+def run_capture_exe(output_path: Path) -> None:
+    cmd = [str(CAPTURE_EXE), str(CAPTURE_TARGET_DISPLAY_NUMBER), str(output_path)]
+    logging.info("Running capture command: %s", " ".join(cmd))
+    subprocess.run(cmd, cwd=str(SCRIPT_DIR), check=True)
+
+
 def enforce_window_on_display2(page: Page, left: int, top: int, width: int, height: int) -> None:
     logging.info("Enforcing browser window bounds on Display No.2")
     session = page.context.new_cdp_session(page)
@@ -153,18 +166,43 @@ def enforce_window_on_display2(page: Page, left: int, top: int, width: int, heig
     page.set_viewport_size({"width": width, "height": height})
 
 
-def make_capture_output_path(href: str) -> Path:
-    out_name = f"{Path(Path(href).name).stem}.jxr"
-    return CAPTURE_OUTPUT_DIR / out_name
+def apply_cdp_fullscreen_on_display(page: Page, left: int, top: int, width: int, height: int) -> None:
+    logging.info("Applying fullscreen via CDP on target display")
+    page.bring_to_front()
+    session = page.context.new_cdp_session(page)
+    window_id = session.send("Browser.getWindowForTarget")["windowId"]
+    session.send(
+        "Browser.setWindowBounds",
+        {
+            "windowId": window_id,
+            "bounds": {
+                "windowState": "normal",
+                "left": left,
+                "top": top,
+                "width": width,
+                "height": height,
+            },
+        },
+    )
+    session.send(
+        "Browser.setWindowBounds",
+        {
+            "windowId": window_id,
+            "bounds": {"windowState": "fullscreen"},
+        },
+    )
+    page.wait_for_timeout(500)
 
 
-def run_capture_exe(output_path: Path) -> None:
-    cmd = [str(CAPTURE_EXE), str(CAPTURE_TARGET_DISPLAY_NUMBER), str(output_path)]
-    logging.info("Running capture command: %s", " ".join(cmd))
-    subprocess.run(cmd, cwd=str(SCRIPT_DIR), check=True)
-
-
-def process_one_link(context: BrowserContext, page_a: Page, href: str) -> None:
+def process_one_link(
+    context: BrowserContext,
+    page_a: Page,
+    href: str,
+    left: int,
+    top: int,
+    width: int,
+    height: int,
+) -> None:
     logging.info("Processing link: %s", href)
     page_a.bring_to_front()
     page_a.goto(BASE_URL, wait_until="domcontentloaded", timeout=60000)
@@ -178,8 +216,9 @@ def process_one_link(context: BrowserContext, page_a: Page, href: str) -> None:
         logging.info("Opening page B: %s", target_url)
         page_b.bring_to_front()
         page_b.goto(target_url, wait_until="load", timeout=60000)
-        logging.info("Waiting 5 seconds")
-        page_b.wait_for_timeout(5000)
+        apply_cdp_fullscreen_on_display(page_b, left, top, width, height)
+        logging.info("Waiting %.1f seconds", CAPTURE_WAIT_SECONDS)
+        page_b.wait_for_timeout(int(CAPTURE_WAIT_SECONDS * 1000))
         output_path = make_capture_output_path(href)
         logging.info("Capture output path: %s", output_path)
         run_capture_exe(output_path)
@@ -219,7 +258,7 @@ def main() -> int:
             for idx, href in enumerate(LINK_TEXT_LIST, start=1):
                 logging.info("[%d/%d] Start", idx, len(LINK_TEXT_LIST))
                 try:
-                    process_one_link(context, page_a, href)
+                    process_one_link(context, page_a, href, left, top, width, height)
                     logging.info("[%d/%d] Success", idx, len(LINK_TEXT_LIST))
                 except Exception:
                     logging.exception("[%d/%d] Failed for href=%s", idx, len(LINK_TEXT_LIST), href)
