@@ -1,7 +1,12 @@
 import os
+from pathlib import Path
 
 import numpy as np
-from screeninfo import get_monitors
+from colour.difference import delta_E_CIE2000
+from colour import XYZ_to_Lab
+
+from test_pattern_generator2 import img_read_as_float, get_colorchecker_ref_lab
+import color_space as cs
 
 STEP_RAMP_ST_POS_H_FHD = 60
 STEP_RAMP_ED_POS_H_FHD = 1856
@@ -16,8 +21,8 @@ CC_ED_POS_V_FHD = 512
 
 def get_step_ramp_pos_list(img_width, img_height):
     """
-    pos_list = (num_of_color, num_of_step, num_of_pos)
-    pos = (pos_v, pos_h)
+    pos_list = (num_of_color, num_of_step, num_of_coordinate)
+    num_of_coordinate = (pos_v, pos_h)
     """
     st_pos_h = int(STEP_RAMP_ST_POS_H_FHD / 1920 * img_width)
     ed_pos_h = int(STEP_RAMP_ED_POS_H_FHD / 1920 * img_width)
@@ -37,7 +42,11 @@ def get_step_ramp_pos_list(img_width, img_height):
     return pos_list
 
 
-def get_cc_pos_list(img_width, img_height):
+def get_colorchecker_pos_list(img_width, img_height):
+    """
+    pos_list = (24, num_of_coordinate)
+    num_of_coordinate = (pos_v, pos_h)
+    """
     st_pos_h = int(CC_ST_POS_H_FHD / 1920 * img_width)
     ed_pos_h = int(CC_ED_POS_H_FHD / 1920 * img_width)
     pos_h_list = np.linspace(st_pos_h, ed_pos_h, 6, dtype=np.uint16)
@@ -53,11 +62,65 @@ def get_cc_pos_list(img_width, img_height):
     for h_idx in range(6):
         pos_list[:, h_idx, 0] = pos_v_list.reshape(1, 1, -1)
 
-    return pos_list
+    return pos_list.reshape(-1, 2)
+
+
+def read_jxr_as_bt2020_linear(fname: str):
+    scrgb_img = img_read_as_float(fname)
+    bt2020_img = cs.rgb_to_rgb(scrgb_img, cs.BT709, cs.BT2020)
+
+    return bt2020_img
+
+
+def get_step_ramp_7colors(img: np.ndarray, pos_list: list):
+    pos_list = np.array(pos_list, dtype=np.uint16)
+    step_ramp_data = img[pos_list[:, :, 0], pos_list[:, :, 1]]
+    
+    return step_ramp_data
+
+
+def get_colorchecker_colors(img: np.ndarray, pos_list: list):
+    pos_list = np.array(pos_list, dtype=np.uint16)
+    cc_color = img[pos_list[:, 0], pos_list[:, 1]]
+    
+    return cc_color
+
+
+def conv_bt2020_rgb_to_lab(rgb_linear):
+    large_xyz = cs.rgb_to_large_xyz(rgb_linear, cs.BT2020)
+    lab = XYZ_to_Lab(large_xyz)
+    
+    return lab
+
+
+def calc_bt2020_colorchecker_de2000(rgb_linear):
+    ref_lab = get_colorchecker_ref_lab()
+    target_lab = conv_bt2020_rgb_to_lab(rgb_linear=rgb_linear)
+    de2000 = delta_E_CIE2000(ref_lab, target_lab)
+
+    return de2000
+
+
+def plot_colorchecker_and_step_ramp_7color(img_fname:str):
+    graph_fname = f"./graph_img/{Path(img_fname).stem}"
+    print(graph_fname)
+
+
+def debug_each_function():
+    step_ramp_pos_list = get_step_ramp_pos_list(img_width=1920, img_height=1080)
+    cc_pos_list = get_colorchecker_pos_list(img_width=1920, img_height=1080)
+    debug_img_fname = "./capture_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.jxr"
+    img = read_jxr_as_bt2020_linear(debug_img_fname)
+    # step_ramp_7colors = get_step_ramp_7colors(img=img, pos_list=step_ramp_pos_list)
+    cc_colors = get_colorchecker_colors(img=img, pos_list=cc_pos_list)
+    # print(cc_colors)
+    calc_bt2020_colorchecker_de2000(rgb_linear=cc_colors)
+
+
+def analyze_capture_data():
+    pass
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    step_ramp_pos_list = get_step_ramp_pos_list(img_width=1920, img_height=1080)
-    cc_pos_list = get_cc_pos_list(img_width=1920, img_height=1080)
-    print(cc_pos_list)
+    debug_each_function()

@@ -72,9 +72,11 @@ LINK_TEXT_LIST = [
 SCRIPT_DIR = Path(__file__).resolve().parent
 CAPTURE_EXE = SCRIPT_DIR / "capture_scRGB" / "build" / "my_capture_app.exe"
 CAPTURE_OUTPUT_DIR = SCRIPT_DIR / "capture_img"
-CAPTURE_TARGET_DISPLAY_NUMBER = 2
-DISPLAY_GEOMETRY = (0, 0, 1920, 1080)
+CAPTURE_TARGET_DISPLAY_NUMBER = 1
+DISPLAY_GEOMETRY = (-1920, 0, 1920, 1080)
 CAPTURE_WAIT_SECONDS = 2
+# DISPLAY_GEOMETRY = (0, 0, 1920, 1080)
+# CAPTURE_WAIT_SECONDS = 1
 
 user32 = ctypes.windll.user32
 
@@ -230,7 +232,7 @@ def process_one_link(
 
 def main() -> int:
     setup_logger()
-    set_dpi_awareness()
+    # set_dpi_awareness()
 
     if not CAPTURE_EXE.exists():
         logging.error("Capture EXE not found: %s", CAPTURE_EXE)
