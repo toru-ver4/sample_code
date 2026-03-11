@@ -1,0 +1,44 @@
+{
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0",
+  "mediaQueries": {
+    "dynamicRangeStandard": true,
+    "dynamicRangeHigh": true,
+    "colorGamutSrgb": true,
+    "colorGamutP3": true,
+    "colorGamutRec2020": false,
+    "videoDynamicRangeStandard": false,
+    "videoDynamicRangeHigh": false,
+    "videoColorGamutSrgb": false,
+    "videoColorGamutP3": false,
+    "videoColorGamutRec2020": false,
+    "forcedColorsNone": true,
+    "forcedColorsActive": false,
+    "prefersContrastNoPreference": true,
+    "prefersContrastMore": false,
+    "prefersColorSchemeLight": false,
+    "prefersColorSchemeDark": true
+  },
+  "screen": {
+    "width": 3072,
+    "height": 1728,
+    "availWidth": 3072,
+    "availHeight": 1680,
+    "colorDepth": 30,
+    "pixelDepth": 30,
+    "devicePixelRatio": 1.25,
+    "orientationType": "landscape-primary",
+    "orientationAngle": 0,
+    "isExtended": true
+  },
+  "canvas2d": {
+    "defaultContext": true,
+    "displayP3Context": true,
+    "float16Context": true,
+    "displayP3Float16Context": true
+  },
+  "webgl": {
+    "supported": true,
+    "drawingBufferColorSpace": "srgb",
+    "unpackColorSpace": "srgb"
+  }
+}

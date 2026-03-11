@@ -390,3 +390,154 @@ line color は3刺激値に合わせてください。例えば Cyan - B の lin
 
 グラフは現在は  show して下さい。後でコメントアウトできるようにしておいて下さい。
 グラフは `output_graph_name`の名前で保存して下さい。
+
+### ChatGPT
+
+以下の内容を読んで調査をお願いします。
+
+■背景
+Playwright というブラウザ制御のフレームワークを使って様々なHDRコンテンツの描画を行い、
+そのスクリーンショットを撮影して描画結果の解析をしようと考えています。
+
+事前確認として「E2E の同等性検証」のような形で、
+私が普段使っているブラウザの状態と、Playwright経由で起動するブラウザの状態が、色関連の描画で一致することを確認したいです。
+
+■調査依頼
+おそらくですが、以下のような内容を手動起動のブラウザと Playwright経由のブラウザの双方でダンプして、
+値を比較するのが良いと考えています。
+
+```
+({
+  dynamicRangeHigh: matchMedia("(dynamic-range: high)").matches,
+  colorGamutRec2020: matchMedia("(color-gamut: rec2020)").matches,
+})
+```
+
+ただ、残念ながら私はブラウザのパラメータに疎く、色・輝度に関連するパラメータにどのようなものがあるか分かりません。
+お手数ですが、調査してダンプすべきパラメータの一覧を作成して下さい。
+
+その際、ブラウザのコンソールで確認する方法と Playwright の Pythonスクリプトで確認する方法の2通りを提示して下さい。
+
+以下を得た。
+
+```
+(() => {
+  const mm = (q) => {
+    try {
+      return matchMedia(q).matches;
+    } catch {
+      return null;
+    }
+  };
+
+  const safe = (fn) => {
+    try {
+      return fn();
+    } catch (e) {
+      return { error: String(e) };
+    }
+  };
+
+  const canvas2dInfo = safe(() => {
+    const canvas = document.createElement("canvas");
+
+    const ctxDefault = canvas.getContext("2d");
+    const ctxP3 = canvas.getContext("2d", { colorSpace: "display-p3" });
+    const ctxFloat16 = canvas.getContext("2d", { colorType: "float16" });
+    const ctxP3Float16 = canvas.getContext("2d", {
+      colorSpace: "display-p3",
+      colorType: "float16",
+    });
+
+    return {
+      defaultContext: !!ctxDefault,
+      displayP3Context: !!ctxP3,
+      float16Context: !!ctxFloat16,
+      displayP3Float16Context: !!ctxP3Float16,
+    };
+  });
+
+  const webglInfo = safe(() => {
+    const canvas = document.createElement("canvas");
+    const gl =
+      canvas.getContext("webgl2") ||
+      canvas.getContext("webgl") ||
+      canvas.getContext("experimental-webgl");
+
+    if (!gl) {
+      return { supported: false };
+    }
+
+    return {
+      supported: true,
+      drawingBufferColorSpace:
+        "drawingBufferColorSpace" in gl ? gl.drawingBufferColorSpace : null,
+      unpackColorSpace:
+        "unpackColorSpace" in gl ? gl.unpackColorSpace : null,
+    };
+  });
+
+  const result = {
+    timestamp: new Date().toISOString(),
+    url: location.href,
+    title: document.title,
+    userAgent: navigator.userAgent,
+
+    mediaQueries: {
+      dynamicRangeStandard: mm("(dynamic-range: standard)"),
+      dynamicRangeHigh: mm("(dynamic-range: high)"),
+
+      colorGamutSrgb: mm("(color-gamut: srgb)"),
+      colorGamutP3: mm("(color-gamut: p3)"),
+      colorGamutRec2020: mm("(color-gamut: rec2020)"),
+
+      videoDynamicRangeStandard: mm("(video-dynamic-range: standard)"),
+      videoDynamicRangeHigh: mm("(video-dynamic-range: high)"),
+
+      videoColorGamutSrgb: mm("(video-color-gamut: srgb)"),
+      videoColorGamutP3: mm("(video-color-gamut: p3)"),
+      videoColorGamutRec2020: mm("(video-color-gamut: rec2020)"),
+
+      forcedColorsNone: mm("(forced-colors: none)"),
+      forcedColorsActive: mm("(forced-colors: active)"),
+
+      prefersContrastNoPreference: mm("(prefers-contrast: no-preference)"),
+      prefersContrastMore: mm("(prefers-contrast: more)"),
+
+      prefersColorSchemeLight: mm("(prefers-color-scheme: light)"),
+      prefersColorSchemeDark: mm("(prefers-color-scheme: dark)"),
+    },
+
+    screen: {
+      width: screen.width,
+      height: screen.height,
+      availWidth: screen.availWidth,
+      availHeight: screen.availHeight,
+      colorDepth: screen.colorDepth,
+      pixelDepth: screen.pixelDepth,
+      devicePixelRatio: window.devicePixelRatio,
+      orientationType: screen.orientation?.type ?? null,
+      orientationAngle: screen.orientation?.angle ?? null,
+      isExtended: "isExtended" in screen ? screen.isExtended : null,
+    },
+
+    canvas2d: canvas2dInfo,
+    webgl: webglInfo,
+  };
+
+  const json = JSON.stringify(result, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "dump.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  return result;
+})();
+```

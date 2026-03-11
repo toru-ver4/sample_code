@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import ctypes
+import json
 import logging
 import subprocess
 import sys
@@ -19,66 +20,172 @@ from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_
 
 BASE_URL = "https://toru-ver4.github.io/pages_test/MDCV_CLLI_Test/index.html"
 LINK_TEXT_LIST = [
-    "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.mp4",
-    "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.mp4",
-    "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.mp4",
-    "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.mp4",
-    "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.mp4",
-    "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.mp4",
-    "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.mp4",
-    "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.mp4",
-    "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.mp4",
-    "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.mp4",
-    "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.mp4",
-    "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.mp4",
-    "./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-100.mp4",
-    "./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-10000.mp4",
-    "./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-None.mp4",
-    "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.mp4",
-    "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.mp4",
-    "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.mp4",
-    "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.mp4",
-    "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.mp4",
-    "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.mp4",
-    "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.mp4",
-    "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.mp4",
-    "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.mp4",
-    "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.mp4",
-    "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.mp4",
-    "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.mp4",
-    "./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-100.mp4",
-    "./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-10000.mp4",
-    "./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-None.mp4",
-    "./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-100.avif",
-    "./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-10000.avif",
-    "./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-None.avif",
-    "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.png",
-    "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.png",
-    "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.png",
-    "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.png",
-    "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.png",
-    "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.png",
-    "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.png",
-    "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.png",
-    "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.png",
-    "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.png",
-    "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.png",
-    "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.png",
+    # "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.mp4",
+    # "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.mp4",
+    # "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.mp4",
+    # "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.mp4",
+    # "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.mp4",
+    # "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.mp4",
+    # "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.mp4",
+    # "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.mp4",
+    # "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.mp4",
+    # "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.mp4",
+    # "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.mp4",
+    # "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.mp4",
+    # "./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-100.mp4",
+    # "./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-10000.mp4",
+    # "./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-None.mp4",
+    # "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.mp4",
+    # "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.mp4",
+    # "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.mp4",
+    # "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.mp4",
+    # "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.mp4",
+    # "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.mp4",
+    # "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.mp4",
+    # "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.mp4",
+    # "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.mp4",
+    # "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.mp4",
+    # "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.mp4",
+    # "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.mp4",
+    # "./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-100.mp4",
+    # "./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-10000.mp4",
+    # "./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-None.mp4",
+    # "./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-100.avif",
+    # "./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-10000.avif",
+    # "./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-None.avif",
+    # "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.png",
+    # "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.png",
+    # "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.png",
+    # "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.png",
+    # "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.png",
+    # "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.png",
+    # "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.png",
+    # "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.png",
+    # "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.png",
+    # "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.png",
+    # "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.png",
+    # "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.png",
     "./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-100.png",
     "./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-10000.png",
     "./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-None.png",
 ]
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+DATA_DIR = SCRIPT_DIR / "data"
+PLAYWRIGHT_ENVIRONMENT_PATH = DATA_DIR / "playwright_environment.json"
 CAPTURE_EXE = SCRIPT_DIR / "capture_scRGB" / "build" / "my_capture_app.exe"
 CAPTURE_OUTPUT_DIR = SCRIPT_DIR / "capture_img"
 CAPTURE_TARGET_DISPLAY_NUMBER = 1
 DISPLAY_GEOMETRY = (-1920, 0, 1920, 1080)
 CAPTURE_WAIT_SECONDS = 2
 # DISPLAY_GEOMETRY = (0, 0, 1920, 1080)
-# CAPTURE_WAIT_SECONDS = 1
+# CAPTURE_WAIT_SECONDS = 2
 
 user32 = ctypes.windll.user32
+
+JS_DUMP = r"""
+() => {
+  const mm = (q) => {
+    try {
+      return matchMedia(q).matches;
+    } catch {
+      return null;
+    }
+  };
+
+  const safe = (fn) => {
+    try {
+      return fn();
+    } catch (e) {
+      return { error: String(e) };
+    }
+  };
+
+  const canvas2dInfo = safe(() => {
+    const canvas = document.createElement("canvas");
+
+    const ctxDefault = canvas.getContext("2d");
+    const ctxP3 = canvas.getContext("2d", { colorSpace: "display-p3" });
+    const ctxFloat16 = canvas.getContext("2d", { colorType: "float16" });
+    const ctxP3Float16 = canvas.getContext("2d", {
+      colorSpace: "display-p3",
+      colorType: "float16",
+    });
+
+    return {
+      defaultContext: !!ctxDefault,
+      displayP3Context: !!ctxP3,
+      float16Context: !!ctxFloat16,
+      displayP3Float16Context: !!ctxP3Float16,
+    };
+  });
+
+  const webglInfo = safe(() => {
+    const canvas = document.createElement("canvas");
+    const gl =
+      canvas.getContext("webgl2") ||
+      canvas.getContext("webgl") ||
+      canvas.getContext("experimental-webgl");
+
+    if (!gl) {
+      return { supported: false };
+    }
+
+    return {
+      supported: true,
+      drawingBufferColorSpace:
+        "drawingBufferColorSpace" in gl ? gl.drawingBufferColorSpace : null,
+      unpackColorSpace:
+        "unpackColorSpace" in gl ? gl.unpackColorSpace : null,
+    };
+  });
+
+  return {
+    userAgent: navigator.userAgent,
+
+    mediaQueries: {
+      dynamicRangeStandard: mm("(dynamic-range: standard)"),
+      dynamicRangeHigh: mm("(dynamic-range: high)"),
+
+      colorGamutSrgb: mm("(color-gamut: srgb)"),
+      colorGamutP3: mm("(color-gamut: p3)"),
+      colorGamutRec2020: mm("(color-gamut: rec2020)"),
+
+      videoDynamicRangeStandard: mm("(video-dynamic-range: standard)"),
+      videoDynamicRangeHigh: mm("(video-dynamic-range: high)"),
+
+      videoColorGamutSrgb: mm("(video-color-gamut: srgb)"),
+      videoColorGamutP3: mm("(video-color-gamut: p3)"),
+      videoColorGamutRec2020: mm("(video-color-gamut: rec2020)"),
+
+      forcedColorsNone: mm("(forced-colors: none)"),
+      forcedColorsActive: mm("(forced-colors: active)"),
+
+      prefersContrastNoPreference: mm("(prefers-contrast: no-preference)"),
+      prefersContrastMore: mm("(prefers-contrast: more)"),
+
+      prefersColorSchemeLight: mm("(prefers-color-scheme: light)"),
+      prefersColorSchemeDark: mm("(prefers-color-scheme: dark)"),
+    },
+
+    screen: {
+      width: screen.width,
+      height: screen.height,
+      availWidth: screen.availWidth,
+      availHeight: screen.availHeight,
+      colorDepth: screen.colorDepth,
+      pixelDepth: screen.pixelDepth,
+      devicePixelRatio: window.devicePixelRatio,
+      orientationType: screen.orientation?.type ?? null,
+      orientationAngle: screen.orientation?.angle ?? null,
+      isExtended: "isExtended" in screen ? screen.isExtended : null,
+    },
+
+    canvas2d: canvas2dInfo,
+    webgl: webglInfo,
+  };
+}
+"""
 
 
 def setup_logger() -> None:
@@ -127,7 +234,11 @@ def launch_browser(playwright: Playwright, left: int, top: int, width: int, heig
     for channel, name in launch_trials:
         try:
             logging.info("Launching browser: %s", name)
-            kwargs: dict[str, Any] = {"headless": False, "args": args}
+            kwargs: dict[str, Any] = {
+                "headless": False,
+                "args": args,
+                "ignore_default_args": ["--force-color-profile=srgb"],
+            }
             if channel is not None:
                 kwargs["channel"] = channel
             return playwright.chromium.launch(**kwargs)
@@ -196,6 +307,17 @@ def apply_cdp_fullscreen_on_display(page: Page, left: int, top: int, width: int,
     page.wait_for_timeout(500)
 
 
+def dump_playwright_environment(page: Page) -> None:
+    logging.info("Dumping Playwright browser environment: %s", PLAYWRIGHT_ENVIRONMENT_PATH)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    page.goto("about:blank", wait_until="load", timeout=60000)
+    result = page.evaluate(JS_DUMP)
+    PLAYWRIGHT_ENVIRONMENT_PATH.write_text(
+        json.dumps(result, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
 def process_one_link(
     context: BrowserContext,
     page_a: Page,
@@ -254,6 +376,7 @@ def main() -> int:
             browser = launch_browser(playwright, left, top, width, height)
             context = browser.new_context(viewport={"width": width, "height": height})
             page_a = context.new_page()
+            dump_playwright_environment(page_a)
             page_a.goto(BASE_URL, wait_until="domcontentloaded", timeout=60000)
             enforce_window_on_display2(page_a, left, top, width, height)
 
