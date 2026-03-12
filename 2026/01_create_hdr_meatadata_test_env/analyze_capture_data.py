@@ -122,10 +122,10 @@ def plot_all_data(capture_file_name: str, output_graph_dir: str):
 
 
 def create_param_list():
-    # mhc_profile_list = ["BT.709-100nits", "BT.2020-10000nits"]
-    # sdr_content_brightness_list = ["SDR-80nits", "SDR-204nits"]
-    mhc_profile_list = ["BT.2020-10000nits"]
-    sdr_content_brightness_list = ["SDR-204nits"]
+    mhc_profile_list = ["BT.709-100nits", "BT.2020-10000nits"]
+    sdr_content_brightness_list = ["SDR-80nits", "SDR-204nits"]
+    # mhc_profile_list = ["BT.2020-10000nits"]
+    # sdr_content_brightness_list = ["SDR-204nits"]
 
     for mhc_profile, sdr_content_brightness in product(mhc_profile_list, sdr_content_brightness_list):
         os_settings_dir = f"{mhc_profile}_{sdr_content_brightness}/"

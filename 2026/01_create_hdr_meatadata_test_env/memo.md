@@ -541,3 +541,42 @@ Playwright というブラウザ制御のフレームワークを使って様々
   return result;
 })();
 ```
+
+### ブラウザパラメータに関するメモ
+
+| カテゴリ | パラメータ | 意味（筆者解釈）| 使うか |
+|:-------:|:-------:|:-------:|:-------:|
+| - | userAgent | ブラウザの基本情報 | Y |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | dynamicRangeStandard |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | dynamicRangeHigh |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | colorGamutSrgb |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | colorGamutP3 |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | colorGamutRec2020 |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | videoDynamicRangeStandard |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | videoDynamicRangeHigh |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | videoColorGamutSrgb |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | videoColorGamutP3 |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | videoColorGamutRec2020 |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | forcedColorsNone |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | forcedColorsActive |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | prefersContrastNoPreference |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | prefersContrastMore |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | prefersColorSchemeLight |   |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | prefersColorSchemeDark |   |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | width |    |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | height |    |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | availWidth |    |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | availHeight |    |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | colorDepth |    |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | pixelDepth |    |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | devicePixelRatio |    |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | orientationType |    |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | orientationAngle |    |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | isExtended |    |
+| Canvas - 2d | defaultContext |    |
+| Canvas - 2d | displayP3Context |    |
+| Canvas - 2d | float16Context |    |
+| Canvas - 2d | displayP3Float16Context |    |
+| Canvas - webgl | supported |    |
+| Canvas - webgl | drawingBufferColorSpace |    |
+| Canvas - webgl | unpackColorSpace |    |
