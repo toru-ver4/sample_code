@@ -573,8 +573,8 @@ Playwright というブラウザ制御のフレームワークを使って様々
 | [Screen](https://www.w3.org/TR/cssom-view-1/) | orientationType |    |
 | [Screen](https://www.w3.org/TR/cssom-view-1/) | orientationAngle |    |
 | [Screen](https://www.w3.org/TR/cssom-view-1/) | isExtended |    |
-| Canvas - 2d | defaultContext |    |
-| Canvas - 2d | displayP3Context |    |
+| Canvas - 2d | defaultContext | Canvas2D API が存在するか確認 |
+| Canvas - 2d | displayP3Context | "display-p3" の color space に対応しているか確認。"srgb-linear" と "display-p3-linear" はほぼ使われないらしく確認しない |
 | Canvas - 2d | float16Context |    |
 | Canvas - 2d | displayP3Float16Context |    |
 | Canvas - webgl | supported |    |
