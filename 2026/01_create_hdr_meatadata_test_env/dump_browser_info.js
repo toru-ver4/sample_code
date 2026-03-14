@@ -1,125 +1,195 @@
-(() => {
+(async () => {
   const mm = (q) => {
     try {
-      return matchMedia(q).matches;
-    } catch {
+      return window.matchMedia(q).matches;
+    } catch (e) {
       return null;
     }
   };
 
-  const safe = (fn) => {
+  const safe = async (fn) => {
     try {
-      return fn();
+      return await fn();
     } catch (e) {
       return { error: String(e) };
     }
   };
 
-  const detectBrowser = () => {
-    const ua = navigator.userAgent;
-
-    const rules = [
-      { name: "Edge", regex: /Edg\/(\d+)/ },
-      { name: "Chrome", regex: /Chrome\/(\d+)/ },
-      { name: "Firefox", regex: /Firefox\/(\d+)/ },
-      { name: "Safari", regex: /Version\/(\d+).+Safari/ }
-    ];
-
-    for (const r of rules) {
-      const m = ua.match(r.regex);
-      if (m) {
-        return {
-          name: r.name,
-          version: m[1]
-        };
+  const detectColorBitsPerComponent = () => {
+    for (let bits = 48; bits >= 1; bits--) {
+      if (mm(`(color: ${bits})`) || mm(`(min-color: ${bits})`)) {
+        return bits;
       }
     }
+    return 0;
+  };
+
+  const getCanvas2dInfo = () => {
+    const canvas = document.createElement("canvas");
+
+    const test2d = (options, expected = {}) => {
+      try {
+        const c = document.createElement("canvas");
+        const ctx =
+          options === undefined
+            ? c.getContext("2d")
+            : c.getContext("2d", options);
+
+        if (!ctx) return false;
+        if (typeof ctx.getContextAttributes !== "function") return null;
+
+        const actual = ctx.getContextAttributes();
+        return Object.entries(expected).every(([k, v]) => actual?.[k] === v);
+      } catch (e) {
+        return { error: String(e) };
+      }
+    };
 
     return {
-      name: "Unknown",
-      version: "0"
+      supported: !!canvas.getContext("2d"),
+      displayP3: test2d(
+        { colorSpace: "display-p3" },
+        { colorSpace: "display-p3" }
+      ),
+      float16: test2d(
+        { colorType: "float16" },
+        { colorType: "float16" }
+      ),
+      displayP3Float16: test2d(
+        { colorSpace: "display-p3", colorType: "float16" },
+        { colorSpace: "display-p3", colorType: "float16" }
+      ),
     };
   };
 
-  const canvas2dInfo = safe(() => {
-    const test2d = (options, expected = {}) => {
+  const getWebglInfo = () => {
+    try {
       const canvas = document.createElement("canvas");
-      const ctx =
-        options === undefined
-          ? canvas.getContext("2d")
-          : canvas.getContext("2d", options);
 
-      if (!ctx) return false;
+      const gl =
+        canvas.getContext("webgl2") ||
+        canvas.getContext("webgl") ||
+        canvas.getContext("experimental-webgl");
 
-      if (typeof ctx.getContextAttributes !== "function") {
-        return null;
+      if (!gl) {
+        return { supported: false };
       }
 
-      const actual = ctx.getContextAttributes();
-      return Object.entries(expected).every(([k, v]) => actual?.[k] === v);
-    };
-
-    const base = (() => {
-      const canvas = document.createElement("canvas");
-      return !!canvas.getContext("2d");
-    })();
-
-    const displayP3 = test2d(
-      { colorSpace: "display-p3" },
-      { colorSpace: "display-p3" }
-    );
-
-    const float16 = test2d(
-      { colorType: "float16" },
-      { colorType: "float16" }
-    );
-
-    const displayP3Float16 = test2d(
-      { colorSpace: "display-p3", colorType: "float16" },
-      { colorSpace: "display-p3", colorType: "float16" }
-    );
-
-    return {
-      "2d": base,
-      "display-p3": displayP3,
-      "float16": float16,
-      "display-p3 + float16": displayP3Float16
-    };
-  });
-
-  const webglInfo = safe(() => {
-    const canvas = document.createElement("canvas");
-
-    const gl =
-      canvas.getContext("webgl2") ||
-      canvas.getContext("webgl") ||
-      canvas.getContext("experimental-webgl");
-
-    if (!gl) {
-      return {
-        supported: false,
-        drawingBufferColorSpace: null,
-        unpackColorSpace: null,
+      const info = {
+        supported: true,
+        context: gl instanceof WebGL2RenderingContext ? "webgl2" : "webgl",
       };
-    }
 
+      try {
+        info.drawingBufferColorSpace = gl.drawingBufferColorSpace ?? null;
+      } catch (e) {
+        info.drawingBufferColorSpace = { error: String(e) };
+      }
+
+      try {
+        info.unpackColorSpace = gl.unpackColorSpace ?? null;
+      } catch (e) {
+        info.unpackColorSpace = { error: String(e) };
+      }
+
+      try {
+        const r = gl.getParameter(gl.RED_BITS);
+        const g = gl.getParameter(gl.GREEN_BITS);
+        const b = gl.getParameter(gl.BLUE_BITS);
+        const a = gl.getParameter(gl.ALPHA_BITS);
+        info.drawingBufferFormat = `RGBA${r + g + b + a}`;
+        info.channelBits = { r, g, b, a };
+      } catch (e) {
+        info.drawingBufferFormat = { error: String(e) };
+      }
+
+      return info;
+    } catch (e) {
+      return { supported: false, error: String(e) };
+    }
+  };
+
+  const getMediaCapabilitiesInfo = async () => {
+    if (!("mediaCapabilities" in navigator)) {
+      return { supported: false, results: {} };
+    }
+  
+    const probes = {
+      h264_sdr: {
+        type: "file",
+        video: {
+          contentType: 'video/mp4; codecs="avc1.640028"',
+          width: 1920,
+          height: 1080,
+          bitrate: 8000000,
+          framerate: 30
+        }
+      },
+      hevc_hdr_pq: {
+        type: "file",
+        video: {
+          contentType: 'video/mp4; codecs="hvc1.2.4.L153.B0"',
+          width: 3840,
+          height: 2160,
+          bitrate: 20000000,
+          framerate: 60,
+          colorGamut: "rec2020",
+          transferFunction: "pq",
+          hdrMetadataType: "smpteSt2086"
+        }
+      },
+      av1_hdr_pq: {
+        type: "file",
+        video: {
+          contentType: 'video/mp4; codecs="av01.0.10M.10.0.110.09.16.09.0"',
+          width: 3840,
+          height: 2160,
+          bitrate: 20000000,
+          framerate: 60,
+          colorGamut: "rec2020",
+          transferFunction: "pq",
+          hdrMetadataType: "smpteSt2086"
+        }
+      },
+      vp9_hdr_pq: {
+        type: "file",
+        video: {
+          contentType: 'video/webm; codecs="vp09.02.10.10.01.09.16.09.01"',
+          width: 3840,
+          height: 2160,
+          bitrate: 20000000,
+          framerate: 60,
+          colorGamut: "rec2020",
+          transferFunction: "pq"
+        }
+      }
+    };
+  
+    const results = {};
+    for (const [name, config] of Object.entries(probes)) {
+      try {
+        const r = await navigator.mediaCapabilities.decodingInfo(config);
+        results[name] = !!r?.supported;
+      } catch (e) {
+        results[name] = false;
+      }
+    }
+  
     return {
       supported: true,
-      drawingBufferColorSpace:
-        "drawingBufferColorSpace" in gl ? gl.drawingBufferColorSpace : null,
-      unpackColorSpace:
-        "unpackColorSpace" in gl ? gl.unpackColorSpace : null,
+      results,
     };
-  });
+  };
 
-  const browser = detectBrowser();
-
-  const result = {
+  const data = {
     timestamp: new Date().toISOString(),
-    url: location.href,
-    title: document.title,
+    location: {
+      href: location.href,
+      origin: location.origin,
+      pathname: location.pathname,
+    },
     userAgent: navigator.userAgent,
-
+    platform: navigator.platform,
     mediaQueries: {
       "dynamic-range: standard": mm("(dynamic-range: standard)"),
       "dynamic-range: high": mm("(dynamic-range: high)"),
@@ -135,16 +205,11 @@
       "video-color-gamut: p3": mm("(video-color-gamut: p3)"),
       "video-color-gamut: rec2020": mm("(video-color-gamut: rec2020)"),
 
-      "forced-colors: none": mm("(forced-colors: none)"),
-      "forced-colors: active": mm("(forced-colors: active)"),
-
-      "prefers-contrast: no-preference": mm("(prefers-contrast: no-preference)"),
-      "prefers-contrast: more": mm("(prefers-contrast: more)"),
-
       "prefers-color-scheme: light": mm("(prefers-color-scheme: light)"),
       "prefers-color-scheme: dark": mm("(prefers-color-scheme: dark)"),
-    },
 
+      colorBitsPerComponent: detectColorBitsPerComponent(),
+    },
     screen: {
       width: screen.width,
       height: screen.height,
@@ -153,34 +218,28 @@
       colorDepth: screen.colorDepth,
       pixelDepth: screen.pixelDepth,
       devicePixelRatio: window.devicePixelRatio,
-      orientationType: screen.orientation?.type ?? null,
-      orientationAngle: screen.orientation?.angle ?? null,
-      isExtended: "isExtended" in screen ? screen.isExtended : null,
     },
-
-    canvas2d: canvas2dInfo,
-    webgl: webglInfo,
+    canvas2d: getCanvas2dInfo(),
+    webgl: getWebglInfo(),
+    mediaCapabilities: await getMediaCapabilitiesInfo(),
   };
 
-  const json = JSON.stringify(result, null, 2);
-
-  const date = new Date().toISOString().slice(0, 10);
-
-  const filename =
-    `dump-browser-info_${date}_${browser.name}-${browser.version}.json`;
-
+  const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: "application/json" });
-  const blobUrl = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(blob);
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const filename = `browser-capability-dump-${timestamp}.json`;
 
   const a = document.createElement("a");
-  a.href = blobUrl;
+  a.href = url;
   a.download = filename;
-
   document.body.appendChild(a);
   a.click();
   a.remove();
 
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-  return result;
+  console.log("Downloaded:", filename);
+  console.log(data);
 })();
