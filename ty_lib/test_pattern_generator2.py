@@ -28,8 +28,14 @@ from colour import RGB_COLOURSPACES, CCS_COLOURCHECKERS
 from imagecodecs import JPEGXR, imread
 from colour.io import write_image
 import math
-from jzazbz import jzczhz_to_jzazbz
 
+from OpenImageIO import (
+    ImageSpec,
+    ImageOutput,
+    UINT16
+)
+
+from jzazbz import jzczhz_to_jzazbz
 import transfer_functions as tf
 import create_gamut_booundary_lut as cgbl
 import font_control as fc
@@ -3236,6 +3242,26 @@ def jxr_to_exr(src_fname="./Windows_HDR_Capture/600.jxr"):
     image = image[..., :3]  # remove alpha
     print(image.dtype)
     write_image(image=image, path=dst_fname)
+
+
+def scrgb_jxr_to_rec2100_pq_png(src_fname="./Windows_HDR_Capture/600.jxr"):
+    if not JPEGXR.available:
+        print("JPEG XR is not supported")
+        return
+
+    dst_fname = src_fname.replace(".jxr", ".png")
+    image_scrgb = imread(src_fname) * 0.8  # normalize sdr white value from 1.25 to 1.0
+    image_scrgb = image_scrgb[..., :3]  # remove alpha
+    image_bt2020 = cs.rgb_to_rgb(rgb=image_scrgb, src_color_space_name=cs.BT709, dst_color_space_name=cs.BT2020)
+    image_bt2100_pq = tf.oetf_from_luminance(np.clip(image_bt2020, 0.0, 100.0) * 100, tf.ST2084)
+
+    output = ImageOutput.create(filename=dst_fname)
+    yres, xres, channels = image_bt2100_pq.shape
+    image_spec = ImageSpec(xres, yres, channels, UINT16)
+    image_spec.attribute("CICP", "int[4]", [9, 16, 0, 1])
+    output.open(filename=dst_fname, spec=image_spec)
+    output.write_image(image_bt2100_pq)
+    output.close()
 
 
 if __name__ == '__main__':

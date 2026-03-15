@@ -37,7 +37,7 @@ from create_hdr_media import (  # noqa: E402
 
 STEP_RAMP_POS = get_step_ramp_pos_list(img_width=1920, img_height=1080)
 COLORCHECKER_POS = get_colorchecker_pos_list(img_width=1920, img_height=1080)
-COLOR_CHECKER_GM22_COLOR = generate_color_checker_rgb_value() ** (1/2.2)
+COLOR_CHECKER_GM22_COLOR = np.clip(generate_color_checker_rgb_value(), 0.0, 1.0) ** (1/2.2)
 
 
 def plot_all_data(capture_file_name: str, output_graph_dir: str):

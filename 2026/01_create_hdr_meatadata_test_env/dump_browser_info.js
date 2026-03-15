@@ -55,7 +55,7 @@
         { colorType: "float16" },
         { colorType: "float16" }
       ),
-      displayP3Float16: test2d(
+      "displayP3 + float16": test2d(
         { colorSpace: "display-p3", colorType: "float16" },
         { colorSpace: "display-p3", colorType: "float16" }
       ),
@@ -97,8 +97,7 @@
         const g = gl.getParameter(gl.GREEN_BITS);
         const b = gl.getParameter(gl.BLUE_BITS);
         const a = gl.getParameter(gl.ALPHA_BITS);
-        info.drawingBufferFormat = `RGBA${r + g + b + a}`;
-        info.channelBits = { r, g, b, a };
+        info.drawingBufferFormat = `R${r}G${g}B${b}A${a}`;
       } catch (e) {
         info.drawingBufferFormat = { error: String(e) };
       }
@@ -111,7 +110,7 @@
 
   const getMediaCapabilitiesInfo = async () => {
     if (!("mediaCapabilities" in navigator)) {
-      return { supported: false, results: {} };
+      return { supported: false };
     }
   
     const probes = {
@@ -177,7 +176,7 @@
   
     return {
       supported: true,
-      results,
+      ...results,
     };
   };
 
@@ -189,18 +188,13 @@
       pathname: location.pathname,
     },
     userAgent: navigator.userAgent,
-    platform: navigator.platform,
     mediaQueries: {
-      "dynamic-range: standard": mm("(dynamic-range: standard)"),
       "dynamic-range: high": mm("(dynamic-range: high)"),
-
       "color-gamut: srgb": mm("(color-gamut: srgb)"),
       "color-gamut: p3": mm("(color-gamut: p3)"),
       "color-gamut: rec2020": mm("(color-gamut: rec2020)"),
 
-      "video-dynamic-range: standard": mm("(video-dynamic-range: standard)"),
       "video-dynamic-range: high": mm("(video-dynamic-range: high)"),
-
       "video-color-gamut: srgb": mm("(video-color-gamut: srgb)"),
       "video-color-gamut: p3": mm("(video-color-gamut: p3)"),
       "video-color-gamut: rec2020": mm("(video-color-gamut: rec2020)"),
@@ -210,6 +204,7 @@
 
       colorBitsPerComponent: detectColorBitsPerComponent(),
     },
+    mediaCapabilities: await getMediaCapabilitiesInfo(),
     screen: {
       width: screen.width,
       height: screen.height,
@@ -221,7 +216,6 @@
     },
     canvas2d: getCanvas2dInfo(),
     webgl: getWebglInfo(),
-    mediaCapabilities: await getMediaCapabilitiesInfo(),
   };
 
   const json = JSON.stringify(data, null, 2);

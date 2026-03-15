@@ -66,6 +66,12 @@ def load_10bit_limited_ref_data():
     return img_full
 
 
+def create_playwrite_wrong_hdr_image():
+    tpg.scrgb_jxr_to_rec2100_pq_png("./capture_img/right_profile_png_mdcv-p-None_mdcv-l-None_clli-None.jxr")
+    tpg.scrgb_jxr_to_rec2100_pq_png("./capture_img/wrong_profile_png_mdcv-p-None_mdcv-l-None_clli-None.jxr")
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    debug_ffmpeg_defference()
+    # debug_ffmpeg_defference()
+    create_playwrite_wrong_hdr_image()

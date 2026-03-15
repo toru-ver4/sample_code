@@ -394,39 +394,38 @@ line color は3刺激値に合わせてください。例えば Cyan - B の lin
 
 ### ブラウザパラメータに関するメモ
 
-| カテゴリ | パラメータ | 意味（筆者解釈）| 使うか |
-|:-------:|:-------:|:-------:|:-------:|
-| - | userAgent | ブラウザの基本情報 | Y |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "dynamic-range: standard" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "dynamic-range: high" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "color-gamut: srgb" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "color-gamut: p3" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "color-gamut: rec2020" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "video-dynamic-range: standard" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "video-dynamic-range: high" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "video-color-gamut: srgb" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "video-color-gamut: p3" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "video-color-gamut: rec2020" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "forced-colors: none" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "forced-colors: active" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "prefers-contrast: no-preference" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "prefers-contrast: more" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "prefers-color-scheme: light" |   |
-| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "prefers-color-scheme: dark" |   |
-| [Screen](https://www.w3.org/TR/cssom-view-1/) | "width" |    |  |
-| [Screen](https://www.w3.org/TR/cssom-view-1/) | "height" |    |  |
-| [Screen](https://www.w3.org/TR/cssom-view-1/) | "availWidth" |    |  |
-| [Screen](https://www.w3.org/TR/cssom-view-1/) | "availHeight" |    |  |
-| [Screen](https://www.w3.org/TR/cssom-view-1/) | "colorDepth" |    |  |
-| [Screen](https://www.w3.org/TR/cssom-view-1/) | "pixelDepth" |    |  |
-| [Screen](https://www.w3.org/TR/cssom-view-1/) | "devicePixelRatio" |    |  |
-| [Screen](https://www.w3.org/TR/cssom-view-1/) | "orientationType" |    |  |
-| [Screen](https://www.w3.org/TR/cssom-view-1/) | "orientationAngle" |    |  |
-| [Screen](https://www.w3.org/TR/cssom-view-1/) | "isExtended" |    | N |
-| [Canvas - 2d](https://html.spec.whatwg.org/multipage/canvas.html) | "2d" | Canvas2D API が存在するか確認 | Y |
-| [Canvas - 2d](https://html.spec.whatwg.org/multipage/canvas.html) | "display-p3" | "display-p3" の color space に対応しているか確認。"srgb-linear" と "display-p3-linear" はほぼ使われないらしく確認しない | Y |
-| [Canvas - 2d](https://html.spec.whatwg.org/multipage/canvas.html) | "float16" |  16-bit の浮動小数点をサポートしているか  | Y |
-| [Canvas - 2d](https://html.spec.whatwg.org/multipage/canvas.html) | "display-p3 + float16" の組み合わせをサポートしているか ((個人的には「組み合わせ」の検証は不要だと思ったのだが、ChatGPT先生が「組み合わせが成立する保証は仕様に書かれていない」と強固に主張するので、一応確認することにした))|  Y  |
-| Canvas - webgl | "supported" |  webgl をサポートしているか   | Y  |
-| Canvas - webgl | "drawingBufferColorSpace" |  drawing buffer のカラースペース  | Y  |
-| Canvas - webgl | "unpackColorSpace" |  TexImageSource をテクスチャに変換する時のカラースペース？  |  Y  |
+| カテゴリ | パラメータ | 意味（筆者解釈）|
+|:-------:|:-------:|:-------:|
+| - | User Agent | ["User-Agent" header field](https://www.rfc-editor.org/rfc/rfc9110.html#name-user-agent) の中身 |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "dynamic-range: high" | 次の3点を全てサポートしているか<br>high peak brightness / high contrast ratio / 8-bit を超える bit深度 |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "color-gamut: srgb" | sRGB 色域をサポートしているか |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "color-gamut: p3" | Display-P3 色域をサポートしているか |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "color-gamut: rec2020" | Rec.2020 色域をサポートしているか |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "video-dynamic-range: high" | video plane が 次の3点を全てサポートしているか<br>high peak brightness / high contrast ratio / 8-bit を超える bit深度 |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "video-color-gamut: srgb" | video plane が sRGB 色域をサポートしているか ((video plane が急に出てきたが、調べるとブラウザは video とその他を分けて描画する仕組みがあるらしく (bi-plane)、その場合に video を描画するところを video plane と呼ぶっぽい)) |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "video-color-gamut: p3" | video plane が Display P3 色域をサポートしているか |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "video-color-gamut: rec2020" | video plane が Rec.2020 色域をサポートしているか |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "prefers-color-scheme: light" | ユーザーが light theme を希望しているか |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "prefers-color-scheme: dark" | ユーザーが dark theme を希望しているか |
+| [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | [color depth](https://www.w3.org/TR/mediaqueries-5/#color) | "color" と "min-color" を使って求めた bit深度情報 |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | "width" | [Web-exposed screen area](https://www.w3.org/TR/cssom-view-1/#web-exposed-screen-area) の width |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | "height" | [Web-exposed screen area](https://www.w3.org/TR/cssom-view-1/#web-exposed-screen-area) の height |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | "availWidth" | [Web-exposed available screen area](https://www.w3.org/TR/cssom-view-1/#web-exposed-available-screen-area) の width |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | "availHeight" | [Web-exposed available screen area](https://www.w3.org/TR/cssom-view-1/#web-exposed-available-screen-area) の height |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | "colorDepth" | 出力デバイスのピクセルに割り当てられた color depth |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | "pixelDepth" | "colorDepth" と同じ値 (IE系の値？) |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | "devicePixelRatio" | ピクセル拡大率 ((CSS の 1px が実際のデバイスでは何px で標示されているかを調べて比率を揉めたもの)) |
+| [Canvas 2D](https://html.spec.whatwg.org/multipage/canvas.html) | "supported" | Canvas 2D API が存在するか |
+| [Canvas 2D](https://html.spec.whatwg.org/multipage/canvas.html) | "displayP3" | "display-p3" の color space に対応しているか(("srgb-linear" と "display-p3-linear" はほぼ使われないらしく確認しない)) |
+| [Canvas 2D](https://html.spec.whatwg.org/multipage/canvas.html) | "float16" | 16-bit の浮動小数点をサポートしているか |
+| [Canvas 2D](https://html.spec.whatwg.org/multipage/canvas.html) | "displayP3 + Float16" | "display-p3 + float16" の組み合わせをサポートしているか ((個人的には「組み合わせ」の検証は不要だと思ったのだが、ChatGPT先生が「組み合わせが時に成立すること仕様書で保証されていない」と強固に主張するので、一応確認することにした)) |
+| [WebGL](https://www.khronos.org/webgl/) | "supported" | WebGL をサポートしているか |
+| [WebGL](https://www.khronos.org/webgl/) | "context" | WebGL のバージョン |
+| [WebGL](https://www.khronos.org/webgl/) | "drawingBufferColorSpace" | drawing buffer のカラースペース |
+| [WebGL](https://www.khronos.org/webgl/) | "unpackColorSpace" |TexImageSource をテクスチャに変換する時のカラースペース？|
+| [WebGL](https://www.khronos.org/webgl/) | "drawingBufferFormat"  | drawing buffer のフォーマット ((RGBA の bit深度から生成した文字列。WebGLの公式ページで定義している名称とは異なるので注意が必要)) |
+| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "supported" |  Media Capabilities API が利用可能か |
+| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "h264_sdr" |  H.264 の SDR動画のデコードが可能か |
+| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "hevc_hdr_pq" | H.265 の HDR (Rec.2100-PQ) のデコードが可能か |
+| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "av1_hdr_pq" | AV1 の HDR (Rec.2100-PQ) のデコードが可能か |
+| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "vp9_hdr_pq" | VP9 の HDR (Rec.2100-PQ) のデコードが可能か |
