@@ -322,14 +322,14 @@ def make_media_file_name_without_ext(
         suffix: str | None,
         mdcv_primaries: str | None,
         mdcv_luminance: int | None,
-        clli_luminance: int):
+        clli_luminance: int,
+        dst_dir:str="./hdr_media"):
     def convert_none_str_if_none(x):
         return x if x is not None else "None"
     suffix_str = suffix if suffix is not None else ""
     mdcv_primaries_str = convert_none_str_if_none(mdcv_primaries)
     mdcv_luminance_str = convert_none_str_if_none(mdcv_luminance)
     clli_luminance_str = convert_none_str_if_none(clli_luminance)
-    dst_dir = "./hdr_media"
     file_name = f"{dst_dir}/{kind}_mdcv-p-{mdcv_primaries_str}_mdcv-l-{mdcv_luminance_str}_"
     file_name += f"clli-{clli_luminance_str}{suffix_str}"
 

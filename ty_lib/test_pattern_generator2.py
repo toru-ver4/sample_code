@@ -8,12 +8,13 @@
 
 import os
 import subprocess
+from pathlib import Path
 from colour.models.rgb.rgb_colourspace import RGB_to_RGB
 from colour.utilities import tstack
 import cv2
 import numpy as np
 from colour.colorimetry import CCS_ILLUMINANTS
-from colour.models import xy_to_XYZ, XYZ_to_RGB, XYZ_to_xyY
+from colour.models import xy_to_XYZ, XYZ_to_RGB, XYZ_to_xyY, XYZ_to_Lab
 from colour.models import xy_to_xyY, xyY_to_XYZ, Lab_to_XYZ, LCHab_to_Lab
 from colour.models import RGB_COLOURSPACE_BT709, RGB_COLOURSPACE_BT2020,\
     RGB_COLOURSPACE_ACES2065_1, RGB_COLOURSPACE_ACESCG
@@ -27,8 +28,14 @@ from colour import RGB_COLOURSPACES, CCS_COLOURCHECKERS
 from imagecodecs import JPEGXR, imread
 from colour.io import write_image
 import math
-from jzazbz import jzczhz_to_jzazbz
 
+from OpenImageIO import (
+    ImageSpec,
+    ImageOutput,
+    UINT16
+)
+
+from jzazbz import jzczhz_to_jzazbz
 import transfer_functions as tf
 import create_gamut_booundary_lut as cgbl
 import font_control as fc
@@ -307,9 +314,15 @@ def img_read(filename):
 
 
 def img_read_as_float(filename):
-    img_int = img_read(filename)
-    img_max_value = np.iinfo(img_int.dtype).max
-    img_float = img_int / img_max_value
+    if not os.path.exists(filename):
+        raise ValueError(f"Invalid file name. {filename} is not found.")
+    if Path(filename).suffix == ".jxr":
+        img_float = imread(filename) * 0.8
+        img_float = img_float[..., :3]  # remove alpha
+    else:
+        img_int = img_read(filename)
+        img_max_value = np.iinfo(img_int.dtype).max
+        img_float = img_int / img_max_value
 
     return img_float
 
@@ -1674,6 +1687,52 @@ def generate_color_checker_xyY_value():
     return xyY
 
 
+def get_color_checker_XYZ_value(cc_name="ColorChecker24 - After November 2014"):
+    """
+    Examples
+    --------
+    >>> generate_color_checker_XYZ_value()
+    [ 0.10646544  0.13353286  0.06955633]
+    [ 0.24715766  0.23191605  0.43236686]
+    [ 0.30279595  0.41643656  0.45447648]
+    [ 0.3852322   0.3049873   0.0693258 ]
+    [ 0.13094478  0.11396333  0.37813279]
+    [ 0.28067084  0.18515065  0.12910165]
+    [ 0.08520176  0.06365128  0.13724289]
+    [ 0.32176478  0.42759055  0.11179906]
+    [ 0.44919614  0.42030201  0.08142369]
+    [ 0.0773839   0.05989272  0.27315479]
+    [ 0.13392521  0.22199703  0.09688847]
+    [ 0.20456892  0.1241211   0.05166037]
+    [ 0.55234721  0.58797367  0.09641571]
+    [ 0.29612534  0.18874599  0.29193394]
+    [ 0.13365878  0.18538304  0.38357152]
+    [ 0.82965552  0.87994733  0.91603627]
+    [ 0.55826662  0.58992008  0.63749315]
+    [ 0.34469111  0.36492201  0.39785428]
+    [ 0.18090194  0.19061315  0.2068464 ]
+    [ 0.08337676  0.08821447  0.09757753]
+    [ 0.03002833  0.03152731  0.03507093]]
+    """
+    colour_checker_param = CCS_COLOURCHECKERS.get(cc_name)
+
+    data = colour_checker_param.data
+    whitepoint = colour_checker_param.illuminant
+    temp_xyY = []
+    for key in data.keys():
+        temp_xyY.append(data[key])
+    temp_xyY = np.array(temp_xyY)
+    large_xyz = xyY_to_XYZ(temp_xyY)
+    M_CAT = matrix_chromatic_adaptation_VonKries(
+        xyY_to_XYZ(xy_to_xyY(whitepoint)),
+        xyY_to_XYZ(xy_to_xyY(cs.D65)),
+        transform="CAT02",
+    )
+    large_xyz = vecmul(M_CAT, large_xyz)
+
+    return large_xyz
+
+
 def get_color_checker_xyY_value(cc_name="ColorChecker24 - After November 2014"):
     """
     Examples
@@ -1704,21 +1763,7 @@ def get_color_checker_xyY_value(cc_name="ColorChecker24 - After November 2014"):
      [ 0.30724016  0.32465011  0.0883915 ]
      [ 0.30767643  0.32357895  0.03113289]]
     """
-    colour_checker_param = CCS_COLOURCHECKERS.get(cc_name)
-
-    data = colour_checker_param.data
-    whitepoint = colour_checker_param.illuminant
-    temp_xyY = []
-    for key in data.keys():
-        temp_xyY.append(data[key])
-    temp_xyY = np.array(temp_xyY)
-    large_xyz = xyY_to_XYZ(temp_xyY)
-    M_CAT = matrix_chromatic_adaptation_VonKries(
-        xyY_to_XYZ(xy_to_xyY(whitepoint)),
-        xyY_to_XYZ(xy_to_xyY(cs.D65)),
-        transform="CAT02",
-    )
-    large_xyz = vecmul(M_CAT, large_xyz)
+    large_xyz = get_color_checker_XYZ_value(cc_name=cc_name)
     xyY = XYZ_to_xyY(large_xyz)
 
     return xyY
@@ -1794,6 +1839,13 @@ def generate_color_checker_rgb_value(
         XYZ=large_xyz, colourspace=color_space, illuminant=cs.D65)
 
     return rgb
+
+
+def get_colorchecker_ref_lab():
+    cc_large_xyz = get_color_checker_XYZ_value()
+    cc_lab = XYZ_to_Lab(cc_large_xyz)
+    
+    return cc_lab
 
 
 def make_color_checker_image(rgb, width=1920, padding_rate=0.01):
@@ -3190,6 +3242,26 @@ def jxr_to_exr(src_fname="./Windows_HDR_Capture/600.jxr"):
     image = image[..., :3]  # remove alpha
     print(image.dtype)
     write_image(image=image, path=dst_fname)
+
+
+def scrgb_jxr_to_rec2100_pq_png(src_fname="./Windows_HDR_Capture/600.jxr"):
+    if not JPEGXR.available:
+        print("JPEG XR is not supported")
+        return
+
+    dst_fname = src_fname.replace(".jxr", ".png")
+    image_scrgb = imread(src_fname) * 0.8  # normalize sdr white value from 1.25 to 1.0
+    image_scrgb = image_scrgb[..., :3]  # remove alpha
+    image_bt2020 = cs.rgb_to_rgb(rgb=image_scrgb, src_color_space_name=cs.BT709, dst_color_space_name=cs.BT2020)
+    image_bt2100_pq = tf.oetf_from_luminance(np.clip(image_bt2020, 0.0, 100.0) * 100, tf.ST2084)
+
+    output = ImageOutput.create(filename=dst_fname)
+    yres, xres, channels = image_bt2100_pq.shape
+    image_spec = ImageSpec(xres, yres, channels, UINT16)
+    image_spec.attribute("CICP", "int[4]", [9, 16, 0, 1])
+    output.open(filename=dst_fname, spec=image_spec)
+    output.write_image(image_bt2100_pq)
+    output.close()
 
 
 if __name__ == '__main__':

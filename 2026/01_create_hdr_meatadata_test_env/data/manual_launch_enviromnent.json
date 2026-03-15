@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-03-15T05:03:46.455Z",
+  "location": {
+    "href": "https://toru-ver4.github.io/pages_test/",
+    "origin": "https://toru-ver4.github.io",
+    "pathname": "/pages_test/"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0",
+  "mediaQueries": {
+    "dynamic-range: high": true,
+    "color-gamut: srgb": true,
+    "color-gamut: p3": true,
+    "color-gamut: rec2020": false,
+    "video-dynamic-range: high": false,
+    "video-color-gamut: srgb": false,
+    "video-color-gamut: p3": false,
+    "video-color-gamut: rec2020": false,
+    "prefers-color-scheme: light": false,
+    "prefers-color-scheme: dark": true,
+    "colorBitsPerComponent": 10
+  },
+  "mediaCapabilities": {
+    "supported": true,
+    "h264_sdr": true,
+    "hevc_hdr_pq": true,
+    "av1_hdr_pq": true,
+    "vp9_hdr_pq": true
+  },
+  "screen": {
+    "width": 1920,
+    "height": 1080,
+    "availWidth": 1920,
+    "availHeight": 1080,
+    "colorDepth": 30,
+    "pixelDepth": 30,
+    "devicePixelRatio": 1
+  },
+  "canvas2d": {
+    "supported": true,
+    "displayP3": true,
+    "float16": true,
+    "displayP3 + float16": true
+  },
+  "webgl": {
+    "supported": true,
+    "context": "webgl2",
+    "drawingBufferColorSpace": "srgb",
+    "unpackColorSpace": "srgb",
+    "drawingBufferFormat": "R8G8B8A8"
+  }
+}
