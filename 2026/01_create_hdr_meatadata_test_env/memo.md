@@ -408,6 +408,11 @@ line color は3刺激値に合わせてください。例えば Cyan - B の lin
 | [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "prefers-color-scheme: light" | ユーザーが light theme を希望しているか |
 | [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "prefers-color-scheme: dark" | ユーザーが dark theme を希望しているか |
 | [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | [color depth](https://www.w3.org/TR/mediaqueries-5/#color) | "color" と "min-color" を使って求めた bit深度情報 |
+| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "supported" |  Media Capabilities API が利用可能か |
+| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "h264_sdr" |  H.264 の SDR動画のデコードが可能か |
+| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "hevc_hdr_pq" | H.265 の HDR (Rec.2100-PQ) のデコードが可能か ((あくまでもデコード能力。HDRとして表示されるとは限らない)) |
+| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "av1_hdr_pq" | AV1 の HDR (Rec.2100-PQ) のデコードが可能か |
+| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "vp9_hdr_pq" | VP9 の HDR (Rec.2100-PQ) のデコードが可能か |
 | [Screen](https://www.w3.org/TR/cssom-view-1/) | "width" | [Web-exposed screen area](https://www.w3.org/TR/cssom-view-1/#web-exposed-screen-area) の width |
 | [Screen](https://www.w3.org/TR/cssom-view-1/) | "height" | [Web-exposed screen area](https://www.w3.org/TR/cssom-view-1/#web-exposed-screen-area) の height |
 | [Screen](https://www.w3.org/TR/cssom-view-1/) | "availWidth" | [Web-exposed available screen area](https://www.w3.org/TR/cssom-view-1/#web-exposed-available-screen-area) の width |
@@ -424,8 +429,3 @@ line color は3刺激値に合わせてください。例えば Cyan - B の lin
 | [WebGL](https://www.khronos.org/webgl/) | "drawingBufferColorSpace" | drawing buffer のカラースペース |
 | [WebGL](https://www.khronos.org/webgl/) | "unpackColorSpace" |TexImageSource をテクスチャに変換する時のカラースペース？|
 | [WebGL](https://www.khronos.org/webgl/) | "drawingBufferFormat"  | drawing buffer のフォーマット ((RGBA の bit深度から生成した文字列。WebGLの公式ページで定義している名称とは異なるので注意が必要)) |
-| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "supported" |  Media Capabilities API が利用可能か |
-| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "h264_sdr" |  H.264 の SDR動画のデコードが可能か |
-| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "hevc_hdr_pq" | H.265 の HDR (Rec.2100-PQ) のデコードが可能か |
-| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "av1_hdr_pq" | AV1 の HDR (Rec.2100-PQ) のデコードが可能か |
-| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "vp9_hdr_pq" | VP9 の HDR (Rec.2100-PQ) のデコードが可能か |
