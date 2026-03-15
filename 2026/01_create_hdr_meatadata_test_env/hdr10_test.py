@@ -492,9 +492,9 @@ def main() -> int:
             browser = launch_browser(playwright, left, top, width, height)
             context = browser.new_context(viewport={"width": width, "height": height})
             page_a = context.new_page()
-            dump_playwright_environment(page_a)
             page_a.goto(BASE_URL, wait_until="domcontentloaded", timeout=60000)
             enforce_window_on_display2(page_a, left, top, width, height)
+            dump_playwright_environment(page_a)
 
             for idx, href in enumerate(LINK_TEXT_LIST, start=1):
                 logging.info("[%d/%d] Start", idx, len(LINK_TEXT_LIST))

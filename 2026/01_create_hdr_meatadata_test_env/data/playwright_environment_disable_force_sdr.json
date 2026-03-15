@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-15T04:46:32.231Z",
+  "timestamp": "2026-03-15T05:01:48.257Z",
   "location": {
     "href": "about:blank",
     "origin": "null",
@@ -7,9 +7,9 @@
   },
   "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0",
   "mediaQueries": {
-    "dynamic-range: high": false,
+    "dynamic-range: high": true,
     "color-gamut: srgb": true,
-    "color-gamut: p3": false,
+    "color-gamut: p3": true,
     "color-gamut: rec2020": false,
     "video-dynamic-range: high": false,
     "video-color-gamut: srgb": false,
@@ -17,7 +17,7 @@
     "video-color-gamut: rec2020": false,
     "prefers-color-scheme: light": true,
     "prefers-color-scheme: dark": false,
-    "colorBitsPerComponent": 8
+    "colorBitsPerComponent": 10
   },
   "mediaCapabilities": {
     "supported": true,
