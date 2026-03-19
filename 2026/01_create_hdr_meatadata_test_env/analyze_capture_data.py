@@ -81,8 +81,8 @@ def plot_all_data(capture_file_name: str, output_graph_dir: str):
         linewidth=0.8
     )
     cc_ax.set_xlim(0.25, len(cc_de2000) + 0.75)
-    cc_ax.set_ylim(0.0, 10.0)
-    cc_ax.set_yticks([0, 2, 4, 6, 8, 10])
+    cc_ax.set_ylim(0.0, 30.0)
+    cc_ax.set_yticks([0, 5, 10, 15, 20, 25, 30])
     cc_ax.set_ylabel("CIE DE2000")
     cc_ax.set_xticks([])
     cc_ax.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
@@ -121,7 +121,7 @@ def plot_all_data(capture_file_name: str, output_graph_dir: str):
     plt.close(fig)
 
 
-def create_param_list():
+def plot_all_capture_data():
     mhc_profile_list = ["BT.709-100nits", "BT.2020-10000nits"]
     sdr_content_brightness_list = ["SDR-80nits", "SDR-204nits"]
     # mhc_profile_list = ["BT.2020-10000nits"]
@@ -171,7 +171,7 @@ def plot_colorchecker_and_step_ramp_7color(img_fname:str):
 
 
 def analyze_capture_data():
-    create_param_list()
+    plot_all_capture_data()
 
 
 if __name__ == '__main__':
