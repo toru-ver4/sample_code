@@ -21,63 +21,66 @@ from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_
 BASE_URL = "https://toru-ver4.github.io/pages_test/MDCV_CLLI_Test/index.html"
 LINK_TEXT_LIST = [
     "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.mp4",
-    # "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.mp4",
-    # "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.mp4",
-    # "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.mp4",
-    # "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.mp4",
-    # "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.mp4",
-    # "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.mp4",
-    # "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.mp4",
-    # "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.mp4",
-    # "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.mp4",
-    # "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.mp4",
-    # "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.mp4",
-    # "./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-100.mp4",
-    # "./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-10000.mp4",
-    # "./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-None.mp4",
-    # "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.mp4",
-    # "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.mp4",
-    # "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.mp4",
-    # "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.mp4",
-    # "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.mp4",
-    # "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.mp4",
-    # "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.mp4",
-    # "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.mp4",
-    # "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.mp4",
-    # "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.mp4",
-    # "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.mp4",
-    # "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.mp4",
-    # "./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-100.mp4",
-    # "./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-10000.mp4",
-    # "./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-None.mp4",
-    # "./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-100.avif",
-    # "./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-10000.avif",
-    # "./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-None.avif",
-    # "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.png",
-    # "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.png",
-    # "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.png",
-    # "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.png",
-    # "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.png",
-    # "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.png",
-    # "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.png",
-    # "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.png",
-    # "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.png",
-    # "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.png",
-    # "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.png",
-    # "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.png",
-    # "./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-100.png",
-    # "./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-10000.png",
-    # "./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-None.png",
+    "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.mp4",
+    "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.mp4",
+    "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.mp4",
+    "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.mp4",
+    "./metadata_img/av1_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.mp4",
+    "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.mp4",
+    "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.mp4",
+    "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.mp4",
+    "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.mp4",
+    "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.mp4",
+    "./metadata_img/av1_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.mp4",
+    "./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-100.mp4",
+    "./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-10000.mp4",
+    "./metadata_img/av1_mdcv-p-None_mdcv-l-None_clli-None.mp4",
+    "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.mp4",
+    "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.mp4",
+    "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.mp4",
+    "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.mp4",
+    "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.mp4",
+    "./metadata_img/hevc_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.mp4",
+    "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.mp4",
+    "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.mp4",
+    "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.mp4",
+    "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.mp4",
+    "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.mp4",
+    "./metadata_img/hevc_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.mp4",
+    "./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-100.mp4",
+    "./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-10000.mp4",
+    "./metadata_img/hevc_mdcv-p-None_mdcv-l-None_clli-None.mp4",
+    "./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-100.avif",
+    "./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-10000.avif",
+    "./metadata_img/avif_mdcv-p-None_mdcv-l-None_clli-None.avif",
+    "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-100.png",
+    "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-10000.png",
+    "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-100_clli-None.png",
+    "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-100.png",
+    "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-10000.png",
+    "./metadata_img/png_mdcv-p-ITU-R BT.709_mdcv-l-10000_clli-None.png",
+    "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-100.png",
+    "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-10000.png",
+    "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-100_clli-None.png",
+    "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-100.png",
+    "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-10000.png",
+    "./metadata_img/png_mdcv-p-ITU-R BT.2020_mdcv-l-10000_clli-None.png",
+    "./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-100.png",
+    "./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-10000.png",
+    "./metadata_img/png_mdcv-p-None_mdcv-l-None_clli-None.png",
 ]
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_DIR = SCRIPT_DIR / "data"
-PLAYWRIGHT_ENVIRONMENT_PATH = DATA_DIR / "playwright_environment.json"
 CAPTURE_EXE = SCRIPT_DIR / "capture_scRGB" / "build" / "my_capture_app.exe"
-CAPTURE_OUTPUT_DIR = SCRIPT_DIR / "capture_img"
+CAPTURE_OUTPUT_ROOT_DIR = SCRIPT_DIR / "capture_img"
 CAPTURE_TARGET_DISPLAY_NUMBER = 1
 DISPLAY_GEOMETRY = (-1920, 0, 1920, 1080)
 CAPTURE_WAIT_SECONDS = 2
+BROWSER_TARGETS = [
+    {"name": "Edge", "channel": "msedge"},
+    {"name": "Chrome", "channel": "chrome"},
+]
 # DISPLAY_GEOMETRY = (0, 0, 1920, 1080)
 # CAPTURE_WAIT_SECONDS = 2
 
@@ -334,39 +337,41 @@ def set_dpi_awareness() -> None:
         logging.warning("Failed to set DPI awareness")
 
 
-def launch_browser(playwright: Playwright, left: int, top: int, width: int, height: int) -> Browser:
+def make_playwright_environment_path(browser_name: str) -> Path:
+    return DATA_DIR / f"playwright_environment_{browser_name.lower()}.json"
+
+
+def launch_browser(
+    playwright: Playwright,
+    browser_name: str,
+    channel: str,
+    left: int,
+    top: int,
+    width: int,
+    height: int,
+) -> Browser:
     args = [
         "--start-fullscreen",
         "--start-maximized",
         f"--window-position={left},{top}",
         f"--window-size={width},{height}",
     ]
-    launch_trials: list[tuple[str | None, str]] = [
-        ("msedge", "Microsoft Edge"),
-        ("chrome", "Google Chrome"),
-        (None, "Bundled Chromium"),
-    ]
-    last_error: Exception | None = None
-    for channel, name in launch_trials:
-        try:
-            logging.info("Launching browser: %s", name)
-            kwargs: dict[str, Any] = {
-                "headless": False,
-                "args": args,
-                "ignore_default_args": ["--force-color-profile=srgb"],
-            }
-            if channel is not None:
-                kwargs["channel"] = channel
-            return playwright.chromium.launch(**kwargs)
-        except Exception as exc:
-            last_error = exc
-            logging.warning("Failed to launch %s: %s", name, exc)
-    raise RuntimeError(f"Failed to launch any Chromium browser: {last_error}")
+    try:
+        logging.info("Launching browser: %s", browser_name)
+        kwargs: dict[str, Any] = {
+            "headless": False,
+            "args": args,
+            "ignore_default_args": ["--force-color-profile=srgb"],
+            "channel": channel,
+        }
+        return playwright.chromium.launch(**kwargs)
+    except Exception as exc:
+        raise RuntimeError(f"Failed to launch {browser_name}: {exc}") from exc
 
 
-def make_capture_output_path(href: str) -> Path:
+def make_capture_output_path(browser_name: str, href: str) -> Path:
     out_name = f"{Path(Path(href).name).stem}.jxr"
-    return CAPTURE_OUTPUT_DIR / out_name
+    return CAPTURE_OUTPUT_ROOT_DIR / browser_name / out_name
 
 
 def run_capture_exe(output_path: Path) -> None:
@@ -423,18 +428,20 @@ def apply_cdp_fullscreen_on_display(page: Page, left: int, top: int, width: int,
     page.wait_for_timeout(500)
 
 
-def dump_playwright_environment(page: Page) -> None:
-    logging.info("Dumping Playwright browser environment: %s", PLAYWRIGHT_ENVIRONMENT_PATH)
+def dump_playwright_environment(page: Page, browser_name: str) -> None:
+    output_path = make_playwright_environment_path(browser_name)
+    logging.info("Dumping %s Playwright browser environment: %s", browser_name, output_path)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     page.goto("about:blank", wait_until="load", timeout=60000)
     result = page.evaluate(JS_DUMP)
-    PLAYWRIGHT_ENVIRONMENT_PATH.write_text(
+    output_path.write_text(
         json.dumps(result, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
 
 
 def process_one_link(
+    browser_name: str,
     context: BrowserContext,
     page_a: Page,
     href: str,
@@ -459,13 +466,57 @@ def process_one_link(
         apply_cdp_fullscreen_on_display(page_b, left, top, width, height)
         logging.info("Waiting %.1f seconds", CAPTURE_WAIT_SECONDS)
         page_b.wait_for_timeout(int(CAPTURE_WAIT_SECONDS * 1000))
-        output_path = make_capture_output_path(href)
+        output_path = make_capture_output_path(browser_name, href)
         logging.info("Capture output path: %s", output_path)
         run_capture_exe(output_path)
     finally:
         logging.info("Closing page B")
         page_b.close()
         page_a.bring_to_front()
+
+
+def run_browser_sequence(
+    playwright: Playwright,
+    browser_name: str,
+    channel: str,
+    left: int,
+    top: int,
+    width: int,
+    height: int,
+) -> None:
+    browser: Browser | None = None
+    context: BrowserContext | None = None
+    capture_output_dir = CAPTURE_OUTPUT_ROOT_DIR / browser_name
+    capture_output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        browser = launch_browser(playwright, browser_name, channel, left, top, width, height)
+        context = browser.new_context(viewport={"width": width, "height": height})
+        page_a = context.new_page()
+        page_a.goto(BASE_URL, wait_until="domcontentloaded", timeout=60000)
+        enforce_window_on_display2(page_a, left, top, width, height)
+        dump_playwright_environment(page_a, browser_name)
+
+        for idx, href in enumerate(LINK_TEXT_LIST, start=1):
+            logging.info("[%s %d/%d] Start", browser_name, idx, len(LINK_TEXT_LIST))
+            try:
+                process_one_link(browser_name, context, page_a, href, left, top, width, height)
+                logging.info("[%s %d/%d] Success", browser_name, idx, len(LINK_TEXT_LIST))
+            except Exception:
+                logging.exception(
+                    "[%s %d/%d] Failed for href=%s",
+                    browser_name,
+                    idx,
+                    len(LINK_TEXT_LIST),
+                    href,
+                )
+                continue
+
+        logging.info("%s: all links processed", browser_name)
+    finally:
+        if context is not None:
+            context.close()
+        if browser is not None:
+            browser.close()
 
 
 def main() -> int:
@@ -476,7 +527,7 @@ def main() -> int:
         logging.error("Capture EXE not found: %s", CAPTURE_EXE)
         return 1
 
-    CAPTURE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    CAPTURE_OUTPUT_ROOT_DIR.mkdir(parents=True, exist_ok=True)
 
     left, top, width, height = DISPLAY_GEOMETRY
     logging.info(
@@ -487,33 +538,19 @@ def main() -> int:
         height,
     )
     with sync_playwright() as playwright:
-        browser: Browser | None = None
         try:
-            browser = launch_browser(playwright, left, top, width, height)
-            context = browser.new_context(viewport={"width": width, "height": height})
-            page_a = context.new_page()
-            page_a.goto(BASE_URL, wait_until="domcontentloaded", timeout=60000)
-            enforce_window_on_display2(page_a, left, top, width, height)
-            dump_playwright_environment(page_a)
+            for browser_target in BROWSER_TARGETS:
+                browser_name = browser_target["name"]
+                channel = browser_target["channel"]
+                logging.info("Starting browser sequence: %s", browser_name)
+                run_browser_sequence(playwright, browser_name, channel, left, top, width, height)
+                logging.info("Finished browser sequence: %s", browser_name)
 
-            for idx, href in enumerate(LINK_TEXT_LIST, start=1):
-                logging.info("[%d/%d] Start", idx, len(LINK_TEXT_LIST))
-                try:
-                    process_one_link(context, page_a, href, left, top, width, height)
-                    logging.info("[%d/%d] Success", idx, len(LINK_TEXT_LIST))
-                except Exception:
-                    logging.exception("[%d/%d] Failed for href=%s", idx, len(LINK_TEXT_LIST), href)
-                    continue
-
-            logging.info("All links processed")
-            context.close()
+            logging.info("All browser sequences processed")
             return 0
         except Exception:
             logging.exception("Fatal error")
             return 1
-        finally:
-            if browser is not None:
-                browser.close()
 
 
 if __name__ == "__main__":
