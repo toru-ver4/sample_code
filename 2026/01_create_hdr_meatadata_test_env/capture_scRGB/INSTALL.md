@@ -21,5 +21,5 @@ cmake --build build
 ## Run
 
 ```powershell
-.\build\my_capture_app.exe output.jxr
+.\build\my_capture_app.exe 1 output.jxr
 ```
