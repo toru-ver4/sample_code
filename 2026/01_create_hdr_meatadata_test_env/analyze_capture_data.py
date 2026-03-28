@@ -166,15 +166,131 @@ def plot_all_capture_data():
         # break
 
 
-def plot_colorchecker_and_step_ramp_7color(img_fname:str):
-    graph_fname = f"./graph_img/{Path(img_fname).stem}"
-    print(graph_fname)
+def compare_result_between_chrome_and_edge():
+    browser_list = ["Edge", "Chrome"]
+    mhc_profile_list = ["BT.709-100nits", "BT.2020-10000nits"]
+    sdr_content_brightness_list = ["SDR-80nits", "SDR-204nits"]
+    # mhc_profile_list = ["BT.2020-10000nits"]
+    # sdr_content_brightness_list = ["SDR-204nits"]
+
+    for mhc_profile, sdr_content_brightness in product(mhc_profile_list, sdr_content_brightness_list):
+
+        mdcv_primaries_list = MDCV_PRIMARIES_LIST
+        mdcv_luminance_list = MDCV_LUMINANCE_LIST
+        clli_luminance_list = CLLI_LUMINANCE_LIST
+        kind_ext_list = [
+            # [KIND_AV1, ".mp4"],
+            # [KIND_HEVC, ".mp4"],
+            [KIND_AVIF, ".avif"],
+            # [KIND_PNG, ".png"]
+        ]
+        for mdcv_primaries, mdcv_luminance, clli_luminance, (kind, ext)\
+            in product(mdcv_primaries_list, mdcv_luminance_list, clli_luminance_list, kind_ext_list):
+            if (mdcv_primaries is None) and (mdcv_luminance is not None):
+                continue
+            if (mdcv_primaries is not None) and (mdcv_luminance is None):
+                continue
+            file_name_without_ext = make_media_file_name_without_ext(
+                kind=kind,
+                suffix=None,
+                mdcv_primaries=mdcv_primaries,
+                mdcv_luminance=mdcv_luminance,
+                clli_luminance=clli_luminance,
+                dst_dir="../../2025/12_AVIF_UltraHDR_PNG_Comparison/hdr_media"
+            )
+            src_hdr_file_name = file_name_without_ext + ext
+            if os.path.exists(src_hdr_file_name):
+                compare_two_data(src_hdr_file_name, mhc_profile, sdr_content_brightness)
+            else:
+                continue
+
+
+def compare_two_data(src_hdr_file_name, mhc_profile, sdr_content_brightness):
+    def get_file_name(browser, src_hdr_file_name, mhc_profile, sdr_content_brightness):
+        dir = f"{browser}/{mhc_profile}_{sdr_content_brightness}/"
+        file_name = "./capture_img/" + dir + Path(src_hdr_file_name).stem + ".jxr"
+
+        return file_name
+
+    chrome_file_name = get_file_name("Chrome", src_hdr_file_name, mhc_profile, sdr_content_brightness)
+    edge_file_name = get_file_name("Edge", src_hdr_file_name, mhc_profile, sdr_content_brightness)
+
+    print(f"compare\n  {chrome_file_name}\n  {edge_file_name}")
+
+    chrome_img = read_jxr_as_bt2020_linear(chrome_file_name)
+    edge_img = read_jxr_as_bt2020_linear(edge_file_name)
+
+    chrome_step_ramp_7colors_luminance = get_step_ramp_7colors(img=chrome_img, pos_list=STEP_RAMP_POS)
+    edge_step_ramp_7colors_luminance = get_step_ramp_7colors(img=edge_img, pos_list=STEP_RAMP_POS)
+        
+    chrome_colorchecker_colors = get_colorchecker_colors(img=chrome_img, pos_list=COLORCHECKER_POS)
+    edge_colorchecker_colors = get_colorchecker_colors(img=edge_img, pos_list=COLORCHECKER_POS)
+
+    try:
+        np.testing.assert_almost_equal(
+            chrome_step_ramp_7colors_luminance,
+            edge_step_ramp_7colors_luminance,
+            decimal=7
+        )
+    except AssertionError as e:
+        print(e)
+
+    try:
+        np.testing.assert_almost_equal(
+            chrome_colorchecker_colors,
+            edge_colorchecker_colors,
+            decimal=7
+        )
+    except AssertionError as e:
+        print(e)
+
+
+def debug_check_two_data():
+    chrome_fname = "./capture_img/Chrome/BT.2020-10000nits_SDR-204nits/avif_mdcv-p-None_mdcv-l-None_clli-100.jxr"
+    edge_fname = "./capture_img/Edge/BT.2020-10000nits_SDR-204nits/avif_mdcv-p-None_mdcv-l-None_clli-100.jxr"
+
+    # chrome_fname = "./capture_img/Chrome/BT.709-100nits_SDR-204nits/avif_mdcv-p-None_mdcv-l-None_clli-None.jxr"
+    # edge_fname = "./capture_img/Edge/BT.709-100nits_SDR-204nits/avif_mdcv-p-None_mdcv-l-None_clli-None.jxr"
+
+    chrome_img = read_jxr_as_bt2020_linear(chrome_fname)
+    edge_img = read_jxr_as_bt2020_linear(edge_fname)
+
+    chrome_step_ramp_7colors_luminance = get_step_ramp_7colors(img=chrome_img, pos_list=STEP_RAMP_POS)
+    edge_step_ramp_7colors_luminance = get_step_ramp_7colors(img=edge_img, pos_list=STEP_RAMP_POS)
+
+    chrome_colorchecker_colors = get_colorchecker_colors(img=chrome_img, pos_list=COLORCHECKER_POS)
+    edge_colorchecker_colors = get_colorchecker_colors(img=edge_img, pos_list=COLORCHECKER_POS)
+
+    diff = np.abs(chrome_step_ramp_7colors_luminance - edge_step_ramp_7colors_luminance)
+    print(diff.shape)
+    print(np.max(diff))
+    print(np.unravel_index(np.argmax(diff), diff.shape))
+
+    for idx in range(65):
+        chrome = chrome_step_ramp_7colors_luminance[0, idx, 0]
+        edge = edge_step_ramp_7colors_luminance[0, idx, 0]
+        print(f"{idx}, {chrome:.3f}, {edge:.3f}")
+
+    # np.testing.assert_almost_equal(
+    #     chrome_step_ramp_7colors_luminance,
+    #     edge_step_ramp_7colors_luminance,
+    #     decimal=7
+    # )
+
+    # np.testing.assert_almost_equal(
+    #     chrome_colorchecker_colors,
+    #     edge_colorchecker_colors,
+    #     decimal=7
+    # )
 
 
 def analyze_capture_data():
-    plot_all_capture_data()
+    pass
+    # plot_all_capture_data()
+    compare_result_between_chrome_and_edge()
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    analyze_capture_data()
+    # analyze_capture_data()
+    debug_check_two_data()

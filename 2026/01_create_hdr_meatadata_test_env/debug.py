@@ -71,7 +71,15 @@ def create_playwrite_wrong_hdr_image():
     tpg.scrgb_jxr_to_rec2100_pq_png("./capture_img/wrong_profile_png_mdcv-p-None_mdcv-l-None_clli-None.jxr")
 
 
+def debug_avif_difference():
+    tpg.scrgb_jxr_to_rec2100_pq_png("./debug/chrome_avif_mdcv-p-None_mdcv-l-None_clli-100.jxr")
+    tpg.scrgb_jxr_to_rec2100_pq_png("./debug/edge_avif_mdcv-p-None_mdcv-l-None_clli-100.jxr")
+    tpg.jxr_to_exr("./debug/chrome_avif_mdcv-p-None_mdcv-l-None_clli-100.jxr")
+    tpg.jxr_to_exr("./debug/edge_avif_mdcv-p-None_mdcv-l-None_clli-100.jxr")
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # debug_ffmpeg_defference()
-    create_playwrite_wrong_hdr_image()
+    debug_avif_difference()
+    # create_playwrite_wrong_hdr_image()

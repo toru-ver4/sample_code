@@ -444,3 +444,37 @@ line color は3刺激値に合わせてください。例えば Cyan - B の lin
 | [WebGL](https://www.khronos.org/webgl/) | "drawingBufferColorSpace" | drawing buffer のカラースペース |
 | [WebGL](https://www.khronos.org/webgl/) | "unpackColorSpace" |TexImageSource をテクスチャに変換する時のカラースペース？ |
 | [WebGL](https://www.khronos.org/webgl/) | "drawingBufferFormat"  | drawing buffer のフォーマット ((RGBA の bit深度から生成した文字列。WebGLの公式ページで定義している名称とは異なるので注意が必要)) |
+
+
+## 文言
+
+プロットした複数の画像を簡単しやすくするための簡単な HTMLページを作りたいです。
+
+プロットした画像は 384 種類あります。
+
+384 種類のファイルは添付の tree_info.txt のような構造になっています。
+まず、Webブラウザとして 2種類 (chrome/edge) があります。
+
+その次に 4つのフォルダがあります。
+アンダースコアの左側の文字列は Windows に接続したモニターの表示スペックを意味しています
+* BT.709-100nits は Primaries が BT.709、最大輝度が 100 nits であることを意味します
+* BT.2020-10000nits は Primaries が BT.2020、最大輝度が 10000 nits であることを意味します
+
+アンダースコアの右側の文字列は Windows に設定した SDR content brightness の値を意味します。
+* SDR-80nits は 80 nits を意味します。
+* SDR-204nits は 204 nits を意味します
+
+その下には 48 種類の動画・静止画ファイルに対する解析結果のプロット画像が並んでいます。
+拡張子を覗いたファイル名には MDCV と CLLI の情報が含まれています。
+対応関係は以下のURL または添付した create_hdr_media の make_media_file_name_without_ext を参照ください。
+https://toru-ver4.github.io/pages_test/MDCV_CLLI_Test/index.html
+
+まとめると、ブラウザ、モニター、動画・静止画のメタデータが可変パラメータであり、
+それに対するプロット結果が 384 種類存在している感じです。
+
+この結果の画像に対するリンクを添付の html_sample.png のような形で作りたいです。
+追加要求は以下の2点です。
+  * Edge と Chrome はテーブルを分けて作ること
+  * 大項目→中項目→小項目の並びは、Metadata (MDCV, CLLI)→File Format（AV1、HEVCなど）→モニターの表示スペック→SDR content brightness とすること
+
+ひとまず試作をお願いします。
