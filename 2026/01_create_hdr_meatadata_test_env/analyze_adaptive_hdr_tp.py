@@ -104,6 +104,19 @@ def calc_bt2020_colorchecker_de2000(rgb_linear):
     return de2000
 
 
+def calc_bt2020_colorchecker_delta_ab(rgb_linear):
+    ref_lab = get_colorchecker_ref_lab()
+    target_lab = conv_bt2020_rgb_to_lab(rgb_linear=rgb_linear)
+    for ref, target in zip(ref_lab, target_lab):
+        print(ref, target)
+    delta_a = target_lab[:, 1] - ref_lab[:, 1]
+    delta_b = target_lab[:, 2] - ref_lab[:, 2]
+
+    delta_ab = np.sqrt((delta_a ** 2) + (delta_b ** 2))
+
+    return delta_ab
+
+
 def debug_each_function():
     step_ramp_pos_list = get_step_ramp_pos_list(img_width=1920, img_height=1080)
     cc_pos_list = get_colorchecker_pos_list(img_width=1920, img_height=1080)

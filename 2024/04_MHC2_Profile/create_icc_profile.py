@@ -300,12 +300,15 @@ if __name__ == '__main__':
     # create_mhc2_profile_with_gain()
     # gain_list = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
     # gain_list = [100/80]
-    gain_list = [0.45]
+    gain_list = [0.1]
     # peak_full_luminance_pair_list = [
     #     [10000, 10000], [4000, 4000], [1000, 1000],
     #     [600, 600], [400, 400], [200, 200], [100, 100]
     # ]
-    peak_full_luminance_pair_list = [[10000, 10000]]
+    # peak_full_luminance_pair_list = [[10000, 10000]]
+    peak_full_luminance_pair_list = [
+        [700, 700]
+    ]
     # min_lumiannce_list = [0, 0.001, 0.01, 0.1, 1.0]
     min_lumiannce_list = [0]
     # color_space_list = [cs.BT2020, cs.P3_D65, cs.BT709]

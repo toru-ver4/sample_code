@@ -367,6 +367,21 @@ WebページBが表示されたら5秒待機
 コードは「そのまま実行可能」な完成形で出力すること。
 説明文は不要。コードのみ出力すること。
 
+### 仕様追加
+
+hdr10_test.py に対して以下の仕様追加を行います。
+コードを仕様に合わせて修正して下さい。
+
+■仕様追加内容
+
+- これまでは起動するブラウザを Edge としていたが、Edge と Chrome の両方に対して処理を行う
+  - 最初に Edge で 各種URLの表示およびスクリーンショットの取得を行い、その後で Edgeを終了し、Chromeを立ち上げて各種URLの表示およびスクリーンショットの取得を行う
+- dump_playwright_environment() は Edge と Chrome の両方に対して行う
+  - ファイルの保存場所は同じ "./data" で良いが、JSONファイルの名称は Edge と Chrome とで分けること
+- スクリーンショットの保存先はブラウザ毎に以下に変える
+  - Edge の場合: "./capture_img/Edge/"
+  - Chrome の場合: "./capture_img/Chrome/"
+
 ### プロット
 
 plot_all_data() で以下のプロットを行うコードを書いて下さい。
@@ -408,8 +423,8 @@ line color は3刺激値に合わせてください。例えば Cyan - B の lin
 | [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "prefers-color-scheme: light" | ユーザーが light theme を希望しているか |
 | [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | "prefers-color-scheme: dark" | ユーザーが dark theme を希望しているか |
 | [Media Features](https://www.w3.org/TR/mediaqueries-5/#mq-features) | [color depth](https://www.w3.org/TR/mediaqueries-5/#color) | "color" と "min-color" を使って求めた bit深度情報 |
-| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "supported" |  Media Capabilities API が利用可能か |
-| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "h264_sdr" |  H.264 の SDR動画のデコードが可能か |
+| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "supported" | Media Capabilities API が利用可能か |
+| [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "h264_sdr" | H.264 の SDR動画のデコードが可能か |
 | [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "hevc_hdr_pq" | H.265 の HDR (Rec.2100-PQ) のデコードが可能か ((あくまでもデコード能力。HDRとして表示されるとは限らない)) |
 | [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "av1_hdr_pq" | AV1 の HDR (Rec.2100-PQ) のデコードが可能か |
 | [Media Capabilities](https://w3c.github.io/media-capabilities/#media-capabilities-info) | "vp9_hdr_pq" | VP9 の HDR (Rec.2100-PQ) のデコードが可能か |
@@ -419,13 +434,47 @@ line color は3刺激値に合わせてください。例えば Cyan - B の lin
 | [Screen](https://www.w3.org/TR/cssom-view-1/) | "availHeight" | [Web-exposed available screen area](https://www.w3.org/TR/cssom-view-1/#web-exposed-available-screen-area) の height |
 | [Screen](https://www.w3.org/TR/cssom-view-1/) | "colorDepth" | 出力デバイスのピクセルに割り当てられた color depth |
 | [Screen](https://www.w3.org/TR/cssom-view-1/) | "pixelDepth" | "colorDepth" と同じ値 (IE系の値？) |
-| [Screen](https://www.w3.org/TR/cssom-view-1/) | "devicePixelRatio" | ピクセル拡大率 ((CSS の 1px が実際のデバイスでは何px で標示されているかを調べて比率を揉めたもの)) |
+| [Screen](https://www.w3.org/TR/cssom-view-1/) | "devicePixelRatio" | ピクセル拡大率 ((CSS の 1px が実際のデバイスでは何px で標示されているかを調べて比率を求めたもの)) |
 | [Canvas 2D](https://html.spec.whatwg.org/multipage/canvas.html) | "supported" | Canvas 2D API が存在するか |
-| [Canvas 2D](https://html.spec.whatwg.org/multipage/canvas.html) | "displayP3" | "display-p3" の color space に対応しているか(("srgb-linear" と "display-p3-linear" はほぼ使われないらしく確認しない)) |
+| [Canvas 2D](https://html.spec.whatwg.org/multipage/canvas.html) | "displayP3" | "display-p3" の color space をサポートしているか((color space には "srgb-linear" や "display-p3-linear" もあるが、これらは ほぼ使われないらしく確認しない)) |
 | [Canvas 2D](https://html.spec.whatwg.org/multipage/canvas.html) | "float16" | 16-bit の浮動小数点をサポートしているか |
 | [Canvas 2D](https://html.spec.whatwg.org/multipage/canvas.html) | "displayP3 + Float16" | "display-p3 + float16" の組み合わせをサポートしているか ((個人的には「組み合わせ」の検証は不要だと思ったのだが、ChatGPT先生が「組み合わせが時に成立すること仕様書で保証されていない」と強固に主張するので、一応確認することにした)) |
 | [WebGL](https://www.khronos.org/webgl/) | "supported" | WebGL をサポートしているか |
 | [WebGL](https://www.khronos.org/webgl/) | "context" | WebGL のバージョン |
 | [WebGL](https://www.khronos.org/webgl/) | "drawingBufferColorSpace" | drawing buffer のカラースペース |
-| [WebGL](https://www.khronos.org/webgl/) | "unpackColorSpace" |TexImageSource をテクスチャに変換する時のカラースペース？|
+| [WebGL](https://www.khronos.org/webgl/) | "unpackColorSpace" |TexImageSource をテクスチャに変換する時のカラースペース？ |
 | [WebGL](https://www.khronos.org/webgl/) | "drawingBufferFormat"  | drawing buffer のフォーマット ((RGBA の bit深度から生成した文字列。WebGLの公式ページで定義している名称とは異なるので注意が必要)) |
+
+
+## 文言
+
+プロットした複数の画像を簡単しやすくするための簡単な HTMLページを作りたいです。
+
+プロットした画像は 384 種類あります。
+
+384 種類のファイルは添付の tree_info.txt のような構造になっています。
+まず、Webブラウザとして 2種類 (chrome/edge) があります。
+
+その次に 4つのフォルダがあります。
+アンダースコアの左側の文字列は Windows に接続したモニターの表示スペックを意味しています
+* BT.709-100nits は Primaries が BT.709、最大輝度が 100 nits であることを意味します
+* BT.2020-10000nits は Primaries が BT.2020、最大輝度が 10000 nits であることを意味します
+
+アンダースコアの右側の文字列は Windows に設定した SDR content brightness の値を意味します。
+* SDR-80nits は 80 nits を意味します。
+* SDR-204nits は 204 nits を意味します
+
+その下には 48 種類の動画・静止画ファイルに対する解析結果のプロット画像が並んでいます。
+拡張子を覗いたファイル名には MDCV と CLLI の情報が含まれています。
+対応関係は以下のURL または添付した create_hdr_media の make_media_file_name_without_ext を参照ください。
+https://toru-ver4.github.io/pages_test/MDCV_CLLI_Test/index.html
+
+まとめると、ブラウザ、モニター、動画・静止画のメタデータが可変パラメータであり、
+それに対するプロット結果が 384 種類存在している感じです。
+
+この結果の画像に対するリンクを添付の html_sample.png のような形で作りたいです。
+追加要求は以下の2点です。
+  * Edge と Chrome はテーブルを分けて作ること
+  * 大項目→中項目→小項目の並びは、Metadata (MDCV, CLLI)→File Format（AV1、HEVCなど）→モニターの表示スペック→SDR content brightness とすること
+
+ひとまず試作をお願いします。
