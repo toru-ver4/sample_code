@@ -18,6 +18,7 @@ from analyze_adaptive_hdr_tp import (
     get_colorchecker_colors,
     calc_bt2020_colorchecker_de2000,
 )
+import plot_utility as pu
 
 TARGET_DIR = (Path(__file__).resolve().parent.parent.parent / "2025" / "12_AVIF_UltraHDR_PNG_Comparison").resolve()
 if str(TARGET_DIR) not in sys.path:
@@ -284,13 +285,195 @@ def debug_check_two_data():
     # )
 
 
-def analyze_capture_data():
+def plot_gray_ramp_only(
+        content_luminance, monitor_peak_luminance,
+        sdr_80_fname, sdr_204_fname, output_fname):
+    sdr_80_img = read_jxr_as_bt2020_linear(sdr_80_fname)
+    sdr_204_img = read_jxr_as_bt2020_linear(sdr_204_fname)
+
+    sdr_80_step_ramp = get_step_ramp_7colors(img=sdr_80_img, pos_list=STEP_RAMP_POS)[0, :, 1] * 100
+    sdr_204_step_ramp = get_step_ramp_7colors(img=sdr_204_img, pos_list=STEP_RAMP_POS)[0, :, 1] * 100
+
+    x_target = 10 ** np.linspace(0, 4, 65)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=18,
+        figsize=(10, 6),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=f"HDR Content: {content_luminance} nits, Monitor: {monitor_peak_luminance} nits",
+        graph_title_size=20,
+        xlabel="Target Luminance (nits)",
+        ylabel="Measured Luminance (nits)",
+        axis_label_size=None,
+        legend_size=18,
+        xlim=[0.8, 12000],
+        ylim=[0.8, 12000],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    pu.log_scale_settings(
+        ax1, grid_alpha=0.5, bg_color="#F0F0F0", grid_color="#808080", major_grid_color="#000000")
+    ax1.plot(x_target, sdr_204_step_ramp, label="SDR content brightness = 204 nits")
+    ax1.plot(x_target, sdr_80_step_ramp, label="SDR content brightness = 80 nits")
+    print(output_fname)
+    pu.show_and_save(fig=fig, legend_loc='upper left', save_fname=output_fname, show=False)
+
+
+def plot_gray_ramp_for_blog(
+        content_luminance, monitor_peak_luminance,
+        sdr_204_fname, output_fname):
+    sdr_204_img = read_jxr_as_bt2020_linear(sdr_204_fname)
+
+    sdr_204_step_ramp = get_step_ramp_7colors(img=sdr_204_img, pos_list=STEP_RAMP_POS)[0, :, 1] * 100
+
+    x_target = 10 ** np.linspace(0, 4, 65)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=18,
+        figsize=(10, 6),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title=f"HDR10 Metadata: {content_luminance} nits, Monitor: {monitor_peak_luminance} nits",
+        graph_title_size=22,
+        xlabel="Target Luminance (nits)",
+        ylabel="Measured Luminance (nits)",
+        axis_label_size=None,
+        legend_size=18,
+        xlim=[0.8, 12000],
+        ylim=[0.8, 12000],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=4,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    pu.log_scale_settings(
+        ax1, grid_alpha=0.5, bg_color="#F0F0F0", grid_color="#808080", major_grid_color="#000000")
+    ax1.plot(x_target, sdr_204_step_ramp, color=pu.RED, label="Browser Display")
+    # ax1.plot(x_target, sdr_80_step_ramp, label="SDR content brightness = 80 nits")
+    ax1.plot(x_target, x_target, '--k', lw=1.5, label="Original")
+    print(output_fname)
+    pu.show_and_save(fig=fig, legend_loc='upper left', save_fname=output_fname, show=False)
+
+
+def plot_specific_param_ramp_pattern():
+    browser_list = ["Edge"]
+    mhc_profile_list = ["BT.709-100nits", "BT.2020-10000nits"]
+
+    for browser, mhc_profile in product(browser_list, mhc_profile_list):
+        mdcv_primaries_list = [None]
+        mdcv_luminance_list = [None]
+        clli_luminance_list = CLLI_LUMINANCE_LIST
+        kind_ext_list = [
+            [KIND_PNG, ".png"]
+        ]
+        for mdcv_primaries, mdcv_luminance, clli_luminance, (kind, ext)\
+            in product(mdcv_primaries_list, mdcv_luminance_list, clli_luminance_list, kind_ext_list):
+            if (mdcv_primaries is None) and (mdcv_luminance is not None):
+                continue
+            if (mdcv_primaries is not None) and (mdcv_luminance is None):
+                continue
+            file_name_without_ext = make_media_file_name_without_ext(
+                kind=kind,
+                suffix=None,
+                mdcv_primaries=mdcv_primaries,
+                mdcv_luminance=mdcv_luminance,
+                clli_luminance=clli_luminance,
+                dst_dir="../../2025/12_AVIF_UltraHDR_PNG_Comparison/hdr_media"
+            )
+            src_hdr_file_name = file_name_without_ext + ext
+            if os.path.exists(src_hdr_file_name):
+                def make_capture_fname(sdr_content_brightness):
+                    os_settings_dir = f"{browser}/{mhc_profile}_{sdr_content_brightness}/"
+                    capture_file_name = "./capture_img/" + os_settings_dir + Path(src_hdr_file_name).stem + ".jxr"
+
+                    return capture_file_name
+
+                sdr_80nits_fname = make_capture_fname("SDR-80nits")
+                sdr_204nits_fname = make_capture_fname("SDR-204nits")
+                output_graph_name = f"./img/{Path(sdr_80nits_fname).stem}_{mhc_profile}.png"
+                output_graph_name_blog = f"./img/{Path(sdr_80nits_fname).stem}_{mhc_profile}_blog.png"
+                monitor_luminance = mhc_profile.split("-")[1].replace("nits", "")
+                # plot_gray_ramp_only(
+                #     content_luminance=clli_luminance, monitor_peak_luminance=monitor_luminance,
+                #     sdr_80_fname=sdr_80nits_fname, sdr_204_fname=sdr_204nits_fname, output_fname=output_graph_name
+                # )
+                plot_gray_ramp_for_blog(
+                    content_luminance=clli_luminance, monitor_peak_luminance=monitor_luminance,
+                    sdr_204_fname=sdr_204nits_fname, output_fname=output_graph_name_blog
+                )
+                # break
+            else:
+                continue
+        # break
+
+
+def analyze_auto_capture_data():
     pass
     # plot_all_capture_data()
-    compare_result_between_chrome_and_edge()
+    # compare_result_between_chrome_and_edge()
+    plot_specific_param_ramp_pattern()
+
+
+def read_ramp_data_from_jxr(jxr_file: str):
+    img = read_jxr_as_bt2020_linear(jxr_file)
+    step_ramp_7colors_luminance = get_step_ramp_7colors(img=img, pos_list=STEP_RAMP_POS) * 100    
+
+    return step_ramp_7colors_luminance[0, :, 1]
+
+
+def analyze_no_metadata_capture_data():
+    luminance_list = [
+        200, 400, 600, 700, 800, 900, 1000, 4000, 10000
+    ]
+    fname_list = [
+        f"./capture_img/No_Metadata/monitor-{luminance:05d}.jxr" for luminance in luminance_list
+    ]
+    data = np.zeros((len(luminance_list), 65))
+    for idx, fname in enumerate(fname_list):
+        ramp = read_ramp_data_from_jxr(jxr_file=fname)
+        data[idx] = ramp
+
+    x_target = 10 ** np.linspace(0, 4, 65)
+
+    fig, ax1 = pu.plot_1_graph(
+        fontsize=14,
+        figsize=(10, 6),
+        bg_color=(0.96, 0.96, 0.96),
+        graph_title="Tone Mapping for PNG File Without Metadata",
+        graph_title_size=22,
+        xlabel="Target Luminance (nits)",
+        ylabel="Measured Luminance (nits)",
+        axis_label_size=None,
+        legend_size=13,
+        xlim=[8, 12000],
+        ylim=[5, 12000],
+        xtick=None,
+        ytick=None,
+        xtick_size=None, ytick_size=None,
+        linewidth=3,
+        minor_xtick_num=None,
+        minor_ytick_num=None)
+    pu.log_scale_settings(
+        ax1, grid_alpha=0.5, bg_color="#F0F0F0", grid_color="#808080", major_grid_color="#000000")
+    for idx, luminance in enumerate(luminance_list):
+        ax1.plot(x_target, data[idx], label=f"Monitor: {luminance} nits")
+    ax1.plot(x_target, x_target, '--k', lw=1.5, label="Reference")
+    output_fname = "./img/no_metadata_comparison.png"
+    print(output_fname)
+    pu.show_and_save(fig=fig, legend_loc='upper left', save_fname=output_fname, show=True)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # analyze_capture_data()
-    debug_check_two_data()
+    # analyze_auto_capture_data()
+    analyze_no_metadata_capture_data()
+    # debug_check_two_data()
+
+    # plot_gray_ramp_for_blog(
+    #     content_luminance=10000, monitor_peak_luminance=100,
+    #     sdr_204_fname="./capture_img/No_Metadata/monitor_100-100.jxr",
+    #     output_fname="./img/100-100.png"
+    # )
