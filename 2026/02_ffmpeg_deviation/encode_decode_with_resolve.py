@@ -13,8 +13,6 @@ import ty_davinci_control_lib_2 as dcl
 # Logic
 #####################
 def make_encode_output_fname(src_image, encode_preset):
-    preset_path = str(Path(encode_preset).resolve())
-    dcl.import_render_preset(preset_path=preset_path)
     # output file settings
     encode_preset_stem = Path(encode_preset).stem
     dir_path = Path("./encode_data/Resolve") / "pre_resolve_test"
@@ -26,9 +24,6 @@ def make_encode_output_fname(src_image, encode_preset):
 
 
 def make_decode_output_fname(src_image, encode_preset):
-    preset_path = str(Path("./resolve_encode_preset/PNG_16bit.xml").resolve())
-    dcl.import_render_preset(preset_path=preset_path)
-
     # output file settings
     encode_preset_stem = Path(encode_preset).stem
     dir_path = Path("./decode_data/Resolve") / "pre_resolve_test"
@@ -112,6 +107,9 @@ def encode_range(
     # encode
     ###################
     for encode_preset in encode_preset_list:
+        preset_path = str(Path(encode_preset).resolve())
+        dcl.import_render_preset(preset_path=preset_path)
+
         output_fname = make_encode_output_fname(src_image=src_image, encode_preset=encode_preset)
         target_dir = str(Path(output_fname).resolve().parent)
         custom_name = str(Path(output_fname).resolve().name)
@@ -213,6 +211,9 @@ def decode_range(
     ###################
     # decode
     ###################
+    preset_path = str(Path("./resolve_encode_preset/PNG_16bit.xml").resolve())
+    dcl.import_render_preset(preset_path=preset_path)
+
     encoded_video = make_decode_output_fname(src_image=src_image, encode_preset=encode_preset)
     target_dir = str(Path(encoded_video).resolve().parent)
     custom_name = str(Path(encoded_video).resolve().name)
@@ -232,6 +233,14 @@ def encode_and_decode(width, height, framerate, gamut, gamma, src_image, encode_
         gamut=gamut, gamma=gamma, src_image=src_image, encode_preset_list=encode_preset_list
     )
 
+    for encode_preset in encode_preset_list:
+        decode_range(
+            width=width, height=height, framerate=framerate,
+            gamut=gamut, gamma=gamma, src_image=src_image, encode_preset=encode_preset
+        )
+
+
+def decode_ffmpeg_enc_data(width, height, framerate, gamut, gamma, src_image, encode_preset_list):
     for encode_preset in encode_preset_list:
         decode_range(
             width=width, height=height, framerate=framerate,
@@ -263,6 +272,11 @@ if __name__ == '__main__':
 
     for src_image in src_image_list:
         encode_and_decode(
+            width=width, height=height, framerate=framerate, gamut=gamut, gamma=gamma,
+            src_image=src_image,
+            encode_preset_list=win_encode_preset_list
+        )
+        decode_ffmpeg_enc_data(
             width=width, height=height, framerate=framerate, gamut=gamut, gamma=gamma,
             src_image=src_image,
             encode_preset_list=win_encode_preset_list
