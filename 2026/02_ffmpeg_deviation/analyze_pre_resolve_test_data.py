@@ -14,7 +14,12 @@ from colour import write_image, read_image
 # import my libraries
 import test_pattern_generator2 as tpg
 from create_src_test_pattern import get_10bit_ramp_from_img
-from encode_decode_with_resolve import make_decode_output_fname, make_encode_output_fname
+from ffmpeg_analyze_common import (
+    WIN_ENCODE_PRESET_LIST,
+    SRC_IMAGE_LIST,
+    make_decode_output_fname,
+    make_encode_output_fname
+)
 import plot_utility as pu
 
 
@@ -91,15 +96,8 @@ def check_davinci_resolve_encode_decode_data_core(decoded_img_fname, title, grap
 
 
 def check_davinci_resolve_encode_decode_data():
-    encode_preset_list = [
-        "./resolve_encode_preset/H.265_NVENC_Main10.xml",
-        "./resolve_encode_preset/AV1_NVENC_Main10.xml",
-    ]
-    src_image_list = [
-        "./img/src_img.dpx",
-        "./img/src_img.png",
-        "./img/src_img.tif"
-    ]
+    encode_preset_list = WIN_ENCODE_PRESET_LIST
+    src_image_list = SRC_IMAGE_LIST
 
     for encode_preset in encode_preset_list:
         for src_image in src_image_list:
@@ -138,15 +136,8 @@ def ffmpeg_decode_to_single_image_core(mp4_fname, decoded_fname):
 
 
 def decode_davinci_mp4_with_ffmpeg():
-    encode_preset_list = [
-        "./resolve_encode_preset/H.265_NVENC_Main10.xml",
-        "./resolve_encode_preset/AV1_NVENC_Main10.xml",
-    ]
-    src_image_list = [
-        "./img/src_img.dpx",
-        "./img/src_img.png",
-        "./img/src_img.tif"
-    ]
+    encode_preset_list = WIN_ENCODE_PRESET_LIST
+    src_image_list = SRC_IMAGE_LIST
     decode_dir = "./decode_data/FFmpeg/DaVinci_Enc/"
 
     for encode_preset in encode_preset_list:
@@ -164,15 +155,8 @@ def decode_davinci_mp4_with_ffmpeg():
 
 
 def check_enc_davinci_dec_ffmpeg_data():
-    encode_preset_list = [
-        "./resolve_encode_preset/H.265_NVENC_Main10.xml",
-        "./resolve_encode_preset/AV1_NVENC_Main10.xml",
-    ]
-    src_image_list = [
-        "./img/src_img.dpx",
-        "./img/src_img.png",
-        "./img/src_img.tif"
-    ]
+    encode_preset_list = WIN_ENCODE_PRESET_LIST
+    src_image_list = SRC_IMAGE_LIST
     decode_dir = "./decode_data/FFmpeg/DaVinci_Enc/"
 
     for encode_preset in encode_preset_list:
@@ -216,15 +200,8 @@ def encode_ffmpeg(src_image, encoder, output_fname):
 
 
 def encode_with_ffmpeg():
-    encode_preset_list = [
-        "./resolve_encode_preset/H.265_NVENC_Main10.xml",
-        "./resolve_encode_preset/AV1_NVENC_Main10.xml",
-    ]
-    src_image_list = [
-        "./img/src_img.dpx",
-        "./img/src_img.png",
-        "./img/src_img.tif"
-    ]
+    encode_preset_list = WIN_ENCODE_PRESET_LIST
+    src_image_list = SRC_IMAGE_LIST
 
     for encode_preset in encode_preset_list:
         for src_image in src_image_list:
@@ -244,15 +221,8 @@ def encode_with_ffmpeg():
 
 
 def decode_ffmpeg_mp4_with_ffmpeg():
-    encode_preset_list = [
-        "./resolve_encode_preset/H.265_NVENC_Main10.xml",
-        "./resolve_encode_preset/AV1_NVENC_Main10.xml",
-    ]
-    src_image_list = [
-        "./img/src_img.dpx",
-        "./img/src_img.png",
-        "./img/src_img.tif"
-    ]
+    encode_preset_list = WIN_ENCODE_PRESET_LIST
+    src_image_list = SRC_IMAGE_LIST
 
     decode_dir = "./decode_data/FFmpeg/FFmpeg_Enc/"
 
@@ -278,8 +248,8 @@ if __name__ == '__main__':
     # check_enc_davinci_dec_ffmpeg_data()
 
     # encode_with_ffmpeg()
-    # decode_ffmpeg_mp4_with_ffmpeg()
+    decode_ffmpeg_mp4_with_ffmpeg()
 
-    # DaVinci でデコードするやつ
+    # DaVinci でデコードするやつをコールすること
     # DaVinci でデコードしたやつを解析プロットするやつ
     # FFmpeg でデコードしたやつを解析プロットするやつ
