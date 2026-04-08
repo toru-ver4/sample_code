@@ -21,7 +21,7 @@ from ffmpeg_analyze_common import (
 #####################
 
 def encode_core_with_resolve(
-        width, height, framerate, gamut, gamma, src_image, encode_preset_list):
+        width, height, framerate, gamut, gamma, src_image, encode_preset_list, encode_app):
     
     ##################
     # Project Settings
@@ -96,7 +96,9 @@ def encode_core_with_resolve(
         preset_path = str(Path(encode_preset).resolve())
         dcl.import_render_preset(preset_path=preset_path)
 
-        output_fname = make_encode_output_fname(src_image=src_image, encode_preset=encode_preset)
+        output_fname = make_encode_output_fname(
+            src_image=src_image, encode_preset=encode_preset, encode_app=encode_app
+        )
         target_dir = str(Path(output_fname).resolve().parent)
         custom_name = str(Path(output_fname).resolve().name)
         render_settings = {
@@ -176,11 +178,13 @@ def decode_core(
 
     # add files to the media storage
     ext_str = ".mp4"
-    encoded_video = make_encode_output_fname(src_image=src_image, encode_preset=encode_preset)
-    encoded_video += ext_str
-    print(encoded_video)
+    decoded_image = make_encode_output_fname(
+        src_image=src_image, encode_preset=encode_preset, encode_app=encode_app
+    )
+    decoded_image += ext_str
+    print(decoded_image)
     relative_file_list = [
-        encoded_video,
+        decoded_image,
     ]
     file_path_list = [
         str(Path(x).resolve()) for x in relative_file_list
@@ -200,11 +204,12 @@ def decode_core(
     preset_path = str(Path("./resolve_encode_preset/PNG_16bit.xml").resolve())
     dcl.import_render_preset(preset_path=preset_path)
 
-    encoded_video = make_decode_output_fname(
-        src_image=src_image, encode_preset=encode_preset, encode_app=encode_app
+    decoded_image = make_decode_output_fname(
+        src_image=src_image, encode_preset=encode_preset,
+        encode_app=encode_app, decode_app='resolve'
     )
-    target_dir = str(Path(encoded_video).resolve().parent)
-    custom_name = str(Path(encoded_video).resolve().name)
+    target_dir = str(Path(decoded_image).resolve().parent)
+    custom_name = str(Path(decoded_image).resolve().name)
     render_settings = {
         "TargetDir": target_dir,
         "CustomName": custom_name,
@@ -219,7 +224,9 @@ def encode_and_decode_with_ffmpeg(
         width, height, framerate, gamut, gamma, src_image, encode_preset_list, encode_app):
     encode_core_with_resolve(
         width=width, height=height, framerate=framerate,
-        gamut=gamut, gamma=gamma, src_image=src_image, encode_preset_list=encode_preset_list
+        gamut=gamut, gamma=gamma, src_image=src_image,
+        encode_preset_list=encode_preset_list,
+        encode_app=encode_app
     )
 
     for encode_preset in encode_preset_list:

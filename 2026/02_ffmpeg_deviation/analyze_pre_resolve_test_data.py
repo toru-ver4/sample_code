@@ -18,19 +18,9 @@ from ffmpeg_analyze_common import (
     WIN_ENCODE_PRESET_LIST,
     SRC_IMAGE_LIST,
     make_decode_output_fname,
-    make_encode_output_fname
+    make_encode_output_fname,
 )
 import plot_utility as pu
-
-
-def make_encode_with_ffmpeg_output_fname(src_image, encode_preset):
-    encode_preset_stem = Path(encode_preset).stem
-    dir_path = Path("./encode_data/FFmpeg") / "pre_resolve_test"
-    dir_path.mkdir(parents=True, exist_ok=True)
-    basename = f"{(Path(src_image).suffix[1:]).upper()}_{encode_preset_stem}"
-    output_fname = str(dir_path / basename)
-
-    return output_fname
 
 
 def check_davinci_resolve_encode_decode_data_core(decoded_img_fname, title, graph_fname):
@@ -95,19 +85,23 @@ def check_davinci_resolve_encode_decode_data_core(decoded_img_fname, title, grap
     plt.close(fig)
 
 
-def check_davinci_resolve_encode_decode_data():
+def check_decode_data(encode_app, decode_app):
     encode_preset_list = WIN_ENCODE_PRESET_LIST
     src_image_list = SRC_IMAGE_LIST
 
     for encode_preset in encode_preset_list:
         for src_image in src_image_list:
             fname_base = make_decode_output_fname(
-                src_image=src_image, encode_preset=encode_preset
+                src_image=src_image,
+                encode_preset=encode_preset,
+                encode_app=encode_app,
+                decode_app=decode_app
             )
             fname = fname_base + "_00086400.png"
             print(fname)
-            title = str(Path(fname_base).stem)
-            graph_fname = f"./debug/enc-resolve_dec-resolve_{title}.png"
+            title = str(Path(fname).stem)
+            print(f"TITLE = {title}")
+            graph_fname = f"./debug/enc-{encode_app}_dec-{decode_app}_{title}.png"
             check_davinci_resolve_encode_decode_data_core(
                 decoded_img_fname=fname,
                 title=title,
@@ -133,25 +127,6 @@ def ffmpeg_decode_to_single_image_core(mp4_fname, decoded_fname):
         args = [cmd] + ops
         print(" ".join(args))
         subprocess.run(args)
-
-
-def decode_davinci_mp4_with_ffmpeg():
-    encode_preset_list = WIN_ENCODE_PRESET_LIST
-    src_image_list = SRC_IMAGE_LIST
-    decode_dir = "./decode_data/FFmpeg/DaVinci_Enc/"
-
-    for encode_preset in encode_preset_list:
-        for src_image in src_image_list:
-            fname_base = make_encode_output_fname(
-                src_image=src_image, encode_preset=encode_preset
-            )
-            mp4_fname = fname_base + ".mp4"
-            decoded_fname = decode_dir + str(Path(mp4_fname).stem) + ".png"
-            ffmpeg_decode_to_single_image_core(
-                mp4_fname=mp4_fname, decoded_fname=decoded_fname
-            )
-        #     break
-        # break
 
 
 def check_enc_davinci_dec_ffmpeg_data():
@@ -205,8 +180,8 @@ def encode_with_ffmpeg():
 
     for encode_preset in encode_preset_list:
         for src_image in src_image_list:
-            mp4_fname_base = make_encode_with_ffmpeg_output_fname(
-                src_image=src_image, encode_preset=encode_preset
+            mp4_fname_base = make_encode_output_fname(
+                src_image=src_image, encode_preset=encode_preset, encode_app='ffmpeg'
             )
             mp4_fname = mp4_fname_base + ".mp4"
             if "H.265" in encode_preset:
@@ -220,19 +195,24 @@ def encode_with_ffmpeg():
             )
 
 
-def decode_ffmpeg_mp4_with_ffmpeg():
+def decode_mp4_with_ffmpeg(encode_app):
     encode_preset_list = WIN_ENCODE_PRESET_LIST
     src_image_list = SRC_IMAGE_LIST
-
-    decode_dir = "./decode_data/FFmpeg/FFmpeg_Enc/"
+    if encode_app == 'resolve':
+        decode_dir = "./decode_data/FFmpeg/enc_resolve/"
+    elif encode_app == 'ffmpeg':
+        decode_dir = "./decode_data/FFmpeg/enc_ffmpeg/"
+    else:
+        raise ValueError("Invalid encode_app parameter")
+    Path(decode_dir).mkdir(parents=True, exist_ok=True)
 
     for encode_preset in encode_preset_list:
         for src_image in src_image_list:
-            mp4_fname_base = make_encode_with_ffmpeg_output_fname(
-                src_image=src_image, encode_preset=encode_preset
+            fname_base = make_encode_output_fname(
+                src_image=src_image, encode_preset=encode_preset, encode_app=encode_app
             )
-            mp4_fname = mp4_fname_base + ".mp4"
-            decoded_fname = decode_dir + str(Path(mp4_fname).stem) + ".png"
+            mp4_fname = fname_base + ".mp4"
+            decoded_fname = decode_dir + str(Path(mp4_fname).stem) + "_00086400.png"
             ffmpeg_decode_to_single_image_core(
                 mp4_fname=mp4_fname, decoded_fname=decoded_fname
             )
@@ -242,14 +222,12 @@ def decode_ffmpeg_mp4_with_ffmpeg():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # check_davinci_resolve_encode_decode_data()
-
-    # decode_davinci_mp4_with_ffmpeg()
-    # check_enc_davinci_dec_ffmpeg_data()
-
     # encode_with_ffmpeg()
-    decode_ffmpeg_mp4_with_ffmpeg()
 
-    # DaVinci でデコードするやつをコールすること
-    # DaVinci でデコードしたやつを解析プロットするやつ
-    # FFmpeg でデコードしたやつを解析プロットするやつ
+    # decode_mp4_with_ffmpeg(encode_app='resolve')
+    # decode_mp4_with_ffmpeg(encode_app='ffmpeg')
+
+    check_decode_data(encode_app='resolve', decode_app='resolve')
+    check_decode_data(encode_app='resolve', decode_app='ffmpeg')
+    check_decode_data(encode_app='ffmpeg', decode_app='resolve')
+    check_decode_data(encode_app='ffmpeg', decode_app='ffmpeg')

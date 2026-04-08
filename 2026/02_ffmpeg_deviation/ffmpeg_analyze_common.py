@@ -21,10 +21,15 @@ SRC_IMAGE_LIST = [
 ]
 
 
-def make_encode_output_fname(src_image, encode_preset):
+def make_encode_output_fname(src_image, encode_preset, encode_app):
     # output file settings
     encode_preset_stem = Path(encode_preset).stem
-    dir_path = Path("./encode_data/Resolve") / "pre_resolve_test"
+    if encode_app == 'resolve':
+        dir_path = Path("./encode_data/Resolve") / "pre_resolve_test"
+    elif encode_app == 'ffmpeg':
+        dir_path = Path("./encode_data/FFmpeg") / "pre_resolve_test"
+    else:
+        raise ValueError("Invalid encode_app parameter")
     dir_path.mkdir(parents=True, exist_ok=True)
     basename = f"{(Path(src_image).suffix[1:]).upper()}_{encode_preset_stem}"
     output_fname = str(dir_path / basename)
@@ -32,15 +37,15 @@ def make_encode_output_fname(src_image, encode_preset):
     return output_fname
 
 
-def make_decode_output_fname(src_image, encode_preset, encode_app):
+def make_decode_output_fname(src_image, encode_preset, encode_app, decode_app):
     # output file settings
     encode_preset_stem = Path(encode_preset).stem
-    if encode_app == "resolve":
-        dir_path = Path("./decode_data/Resolve") / "enc_resolve"
-    elif encode_app == 'ffmpeg':
-        dir_path = Path("./decode_data/Resolve") / "enc_ffmpeg"
+    if decode_app == 'resolve':
+        dir_path = Path("./decode_data/Resolve") / f"enc_{encode_app}"
+    elif decode_app == 'ffmpeg':
+        dir_path = Path("./decode_data/FFmpeg") / f"enc_{encode_app}"
     else:
-        raise ValueError("Invalid encode_app parameter")
+        raise ValueError("Invalid decode parameter.")
     dir_path.mkdir(parents=True, exist_ok=True)
     basename = f"{(Path(src_image).suffix[1:]).upper()}_{encode_preset_stem}"
     decoded_image = str(dir_path / basename)
