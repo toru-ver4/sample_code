@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from colour import write_image, read_image
 from colour.io.image import Image_Specification_Attribute
+from colour.algebra import vecmul
 
 # import my libraries
 import test_pattern_generator2 as tpg
@@ -87,6 +88,7 @@ def create_10bit_pattern():
     output_fname_png = "./img/src_img.png"
     output_fname_tif = "./img/src_img.tif"
     output_fname_dpx = "./img/src_img.dpx"
+    output_fname_exr = "./img/src_img.exr"
     width = IMAGE_WIDTH
     height = IMAGE_HEIGHT
     cv_max = 1023
@@ -139,6 +141,10 @@ def create_10bit_pattern():
     write_image(
         img/1023, output_fname_dpx, bit_depth='uint16', attributes=[bit_option]
     )
+    compression_option = Image_Specification_Attribute("compression", 'zip')
+    write_image(
+        img/1023, output_fname_exr, bit_depth='float32', attributes=[compression_option]
+    )
 
 
 def test_10bit_pattern():
@@ -150,13 +156,58 @@ def test_10bit_pattern():
     dpx_10bit = float_to_10bit(get_10bit_ramp_from_img(read_image("./img/src_img.dpx")))
     png_10bit = float_to_10bit(get_10bit_ramp_from_img(read_image("./img/src_img.png")))
     tif_10bit = float_to_10bit(get_10bit_ramp_from_img(read_image("./img/src_img.tif")))
+    exr_10bit = float_to_10bit(get_10bit_ramp_from_img(read_image("./img/src_img.exr")))
 
     np.testing.assert_array_equal(dpx_10bit, ref_data)
     np.testing.assert_array_equal(png_10bit, ref_data)
     np.testing.assert_array_equal(tif_10bit, ref_data)
+    np.testing.assert_array_equal(exr_10bit, ref_data)
+
+
+def calc_rgb_to_ycbcr_matrix(gamut="bt.709"):
+    if gamut == "bt.709":
+        coef_y = np.array([0.2126, 0.7152, 0.0722])
+    elif gamut == "bt.2020":
+        coef_y = np.array([0.2627, 0.6780, 0.0593])
+    else:
+        raise ValueError("Invalid `gamut` parameter")
+    div_cb = (coef_y[0] + coef_y[1]) * 2
+    div_cr = (coef_y[1] + coef_y[2]) * 2
+    coef_cb = (np.array([0.0, 0.0, 1.0]) - coef_y) / div_cb
+    coef_cr = (np.array([1.0, 0.0, 0.0]) - coef_y) / div_cr
+
+    mtx = np.vstack([coef_y, coef_cb, coef_cr])
+
+    return mtx
+
+
+def dpx10_bit_to_i010(gamut="bt.709"):
+    dpx_fname = "./img/src_img.dpx"
+    img_10bit = read_image(dpx_fname)
+    rgb_to_ycbcr_mtx = calc_rgb_to_ycbcr_matrix(gamut=gamut)
+    ycbcr = vecmul(rgb_to_ycbcr_mtx, img_10bit)
+    y = (ycbcr[:, :, 0].ravel() * 219 + 16) * 4
+    cb = (ycbcr[::2, ::2, 1].ravel() * 224 + 128) * 4
+    cr = (ycbcr[::2, ::2, 2].ravel() * 224 + 128) * 4
+
+    img_array = np.round(np.concatenate([y, cb, cr])).astype(np.uint16)
+
+    return img_array
+
+
+def create_10bit_pattern_i010_format(fps=24, length_sec=5):
+    yuv_fname = "./raw/src_1920x1080_I010.yuv"
+    img_array = dpx10_bit_to_i010(gamut='bt.709')
+    total_frames = int(fps * length_sec)
+
+    frame = np.ascontiguousarray(img_array.astype('<u2', copy=False))
+    with open(yuv_fname, 'wb') as f:
+        for _ in range(total_frames):
+            frame.tofile(f)
 
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_10bit_pattern()
-    test_10bit_pattern()
+    create_10bit_pattern_i010_format()
+    # test_10bit_pattern()

@@ -17,7 +17,8 @@ WIN_ENCODE_PRESET_LIST = [
 SRC_IMAGE_LIST = [
     "./img/src_img.dpx",
     "./img/src_img.png",
-    "./img/src_img.tif"
+    "./img/src_img.tif",
+    "./img/src_img.exr",
 ]
 
 

@@ -325,3 +325,6 @@ BenchmarkDotNet.Artifacts/
 2026/01_create_hdr_meatadata_test_env/debug/**
 2026/01_create_hdr_meatadata_test_env/graph_img/**
 2026/02_ffmpeg_deviation/debug/**
+2026/02_ffmpeg_deviation/raw/**
+2026/02_ffmpeg_deviation/encode_data/**
+2026/02_ffmpeg_deviation/decode_data/**
