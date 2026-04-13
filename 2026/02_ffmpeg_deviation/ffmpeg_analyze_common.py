@@ -54,5 +54,32 @@ def make_decode_output_fname(src_image, encode_preset, encode_app, decode_app):
     return decoded_image
 
 
+def make_raw_yuv_encoded_name(encoder):
+    if encoder == "x265":
+        target_dir = Path("./encode_data/x265")
+        target_dir.mkdir(parents=True, exist_ok=True)
+        fname = str(target_dir / "raw_1920x1080_I010_encoded.hevc")
+    else:
+        raise ValueError("Invalid encoder name.")
+
+    return fname
+
+
+def make_raw_yuv_name():
+    target_dir = Path("./raw")
+    target_dir.mkdir(parents=True, exist_ok=True)
+    fname = str(target_dir / "src_1920x1080_I010.yuv")
+
+    return fname
+
+
+def make_raw_yuv_mp4_fname():
+    return "./encode_data/x265/raw_I010_x265_hevc.mp4"
+
+
+def make_raw_yuv_mp4_resolve_decoded_fname():
+    return "./decode_data/Resolve/enc_x265/raw_I010_x265_hevc_"
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))

@@ -12,7 +12,9 @@ from ffmpeg_analyze_common import (
     WIN_ENCODE_PRESET_LIST,
     SRC_IMAGE_LIST,
     make_encode_output_fname,
-    make_decode_output_fname
+    make_decode_output_fname,
+    make_raw_yuv_mp4_fname,
+    make_raw_yuv_mp4_resolve_decoded_fname
 )
 
 
@@ -114,7 +116,8 @@ def encode_core_with_resolve(
 
 
 def decode_core(
-        width, height, framerate, gamut, gamma, src_image, encode_preset, encode_app):
+        width, height, framerate, gamut, gamma, src_image, encode_preset, encode_app,
+        encoded_image=None, decoded_image=None):
     
     ##################
     # Project Settings
@@ -177,14 +180,15 @@ def decode_core(
     # dcl.set_timeline_settings(timeline=timeline, params=project_settings_params)
 
     # add files to the media storage
-    ext_str = ".mp4"
-    decoded_image = make_encode_output_fname(
-        src_image=src_image, encode_preset=encode_preset, encode_app=encode_app
-    )
-    decoded_image += ext_str
-    print(decoded_image)
+    if encoded_image is None:
+        ext_str = ".mp4"
+        encoded_image = make_encode_output_fname(
+            src_image=src_image, encode_preset=encode_preset, encode_app=encode_app
+        )
+        encoded_image += ext_str
+    print(encoded_image)
     relative_file_list = [
-        decoded_image,
+        encoded_image,
     ]
     file_path_list = [
         str(Path(x).resolve()) for x in relative_file_list
@@ -204,10 +208,11 @@ def decode_core(
     preset_path = str(Path("./resolve_encode_preset/PNG_16bit.xml").resolve())
     dcl.import_render_preset(preset_path=preset_path)
 
-    decoded_image = make_decode_output_fname(
-        src_image=src_image, encode_preset=encode_preset,
-        encode_app=encode_app, decode_app='resolve'
-    )
+    if decoded_image is None:
+        decoded_image = make_decode_output_fname(
+            src_image=src_image, encode_preset=encode_preset,
+            encode_app=encode_app, decode_app='resolve'
+        )
     target_dir = str(Path(decoded_image).resolve().parent)
     custom_name = str(Path(decoded_image).resolve().name)
     render_settings = {
@@ -261,16 +266,26 @@ if __name__ == '__main__':
     win_encode_preset_list = WIN_ENCODE_PRESET_LIST
     src_image_list = SRC_IMAGE_LIST
 
-    for src_image in src_image_list:
-        # encode_and_decode_with_ffmpeg(
-        #     width=width, height=height, framerate=framerate, gamut=gamut, gamma=gamma,
-        #     src_image=src_image,
-        #     encode_preset_list=win_encode_preset_list,
-        #     encode_app="resolve"
-        # )
-        decode_ffmpeg_enc_data(
-            width=width, height=height, framerate=framerate, gamut=gamut, gamma=gamma,
-            src_image=src_image,
-            encode_preset_list=win_encode_preset_list,
-            encode_app="ffmpeg"
-        )
+    # for src_image in src_image_list:
+    #     encode_and_decode_with_ffmpeg(
+    #         width=width, height=height, framerate=framerate, gamut=gamut, gamma=gamma,
+    #         src_image=src_image,
+    #         encode_preset_list=win_encode_preset_list,
+    #         encode_app="resolve"
+    #     )
+    #     decode_ffmpeg_enc_data(
+    #         width=width, height=height, framerate=framerate, gamut=gamut, gamma=gamma,
+    #         src_image=src_image,
+    #         encode_preset_list=win_encode_preset_list,
+    #         encode_app="ffmpeg"
+    #     )
+
+    # -----------------------
+    # raw
+    # -----------------------
+    decode_core(
+        width=width, height=height, framerate=framerate, gamut=gamut, gamma=gamma,
+        src_image=None, encode_preset="", encode_app='x265',
+        encoded_image=make_raw_yuv_mp4_fname(),
+        decoded_image=make_raw_yuv_mp4_resolve_decoded_fname()
+    )

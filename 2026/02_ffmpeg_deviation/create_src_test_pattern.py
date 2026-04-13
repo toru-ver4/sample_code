@@ -14,6 +14,9 @@ from colour.algebra import vecmul
 
 # import my libraries
 import test_pattern_generator2 as tpg
+from ffmpeg_analyze_common import (
+    make_raw_yuv_name
+)
 
 GRAY_PATCH_SIZE = 32
 COLOR_PATCH_SIZE = 64
@@ -196,7 +199,7 @@ def dpx10_bit_to_i010(gamut="bt.709"):
 
 
 def create_10bit_pattern_i010_format(fps=24, length_sec=5):
-    yuv_fname = "./raw/src_1920x1080_I010.yuv"
+    yuv_fname = make_raw_yuv_name()
     img_array = dpx10_bit_to_i010(gamut='bt.709')
     total_frames = int(fps * length_sec)
 
@@ -209,5 +212,5 @@ def create_10bit_pattern_i010_format(fps=24, length_sec=5):
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # create_10bit_pattern()
-    create_10bit_pattern_i010_format()
     # test_10bit_pattern()
+    create_10bit_pattern_i010_format()
