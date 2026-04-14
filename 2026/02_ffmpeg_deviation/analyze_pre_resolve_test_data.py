@@ -28,6 +28,11 @@ from ffmpeg_analyze_common import (
 import plot_utility as pu
 
 
+def run_command(args):
+    print(" ".join(args))
+    subprocess.run(args, check=True)
+
+
 def check_davinci_resolve_encode_decode_data_core(decoded_img_fname, title, graph_fname):
     data = read_image(decoded_img_fname)
     rgb_10bit = np.round(get_10bit_ramp_from_img(img=data) * 1023).astype(np.int16)
@@ -130,8 +135,7 @@ def ffmpeg_decode_to_single_image_core(mp4_fname, decoded_fname):
             "-y"
         ]
         args = [cmd] + ops
-        print(" ".join(args))
-        subprocess.run(args)
+        run_command(args)
 
 
 def check_enc_davinci_dec_ffmpeg_data():
@@ -175,8 +179,7 @@ def encode_ffmpeg(src_image, encoder, output_fname):
         output_fname, '-y',
     ]
     args = [cmd] + ops
-    print(" ".join(args))
-    subprocess.run(args)
+    run_command(args)
 
 
 def encode_with_ffmpeg():
@@ -240,8 +243,7 @@ def encode_raw_yuv_to_hevc_with_x265():
         "--output", output_fname
     ]
     args = [cmd] + ops
-    print(" ".join(args))
-    subprocess.run(args)
+    run_command(args)
 
 
 def hevc_to_mp4(output_fname):
@@ -254,8 +256,7 @@ def hevc_to_mp4(output_fname):
         '-y'
     ]
     args = [cmd] + ops
-    print(" ".join(args))
-    subprocess.run(args)
+    run_command(args)
 
 
 def decode_hevc_with_resolve_to_raw_yuv():
@@ -274,8 +275,7 @@ def decode_hevc_with_resolve_to_raw_yuv():
         "--output", output_fname
     ]
     args = [cmd] + ops
-    print(" ".join(args))
-    subprocess.run(args)
+    run_command(args)
 
 
 def extract_hevc_bitstream(in_fname, out_fname):
@@ -291,8 +291,7 @@ def extract_hevc_bitstream(in_fname, out_fname):
         '-y'
     ]
     args = [cmd] + ops
-    print(" ".join(args))
-    subprocess.run(args)
+    run_command(args)
 
 
 def extract_ffmpeg_resolve_hevc_bitstream():
@@ -315,8 +314,7 @@ def decode_with_de265(in_fname, out_fname):
         "-v", in_fname
     ]
     args = [cmd] + ops
-    print(" ".join(args))
-    subprocess.run(args)
+    run_command(args)
 
 
 def decode_yuv420p10le_1frame(in_fname, out_fname, width=1920, height=1080):
