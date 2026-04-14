@@ -280,12 +280,12 @@ if __name__ == '__main__':
     #         encode_app="ffmpeg"
     #     )
 
-    # -----------------------
-    # raw
-    # -----------------------
-    decode_core(
-        width=width, height=height, framerate=framerate, gamut=gamut, gamma=gamma,
-        src_image=None, encode_preset="", encode_app='x265',
-        encoded_image=make_raw_yuv_mp4_fname(),
-        decoded_image=make_raw_yuv_mp4_resolve_decoded_fname()
-    )
+    # # -----------------------
+    # # raw
+    # # -----------------------
+    # decode_core(
+    #     width=width, height=height, framerate=framerate, gamut=gamut, gamma=gamma,
+    #     src_image=None, encode_preset="", encode_app='x265',
+    #     encoded_image=make_raw_yuv_mp4_fname(),
+    #     decoded_image=make_raw_yuv_mp4_resolve_decoded_fname()
+    # )

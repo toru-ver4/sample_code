@@ -350,15 +350,20 @@ def decode_yuv420p10le_1frame(in_fname, out_fname, width=1920, height=1080):
     write_image(rgb, out_fname, bit_depth='uint16')
 
 
-def decode_x265_ffmpeg_encoded_data_with_de265():
+def decode_x265_ffmpeg_resolve_encoded_data_with_de265():
     # ffmpeg
     input_fname = "./encode_data/FFmpeg/bitstream/DPX_H.265_NVENC_Main10.hevc"
     output_fname = "./decode_data/de265/enc_ffmpeg/dst_1920x1080_I010.yuv"
     decode_with_de265(in_fname=input_fname, out_fname=output_fname)
 
     # x265
-    input_fname = "./encode_data/FFmpeg/bitstream/DPX_H.265_NVENC_Main10.hevc"
+    input_fname = make_raw_yuv_encoded_name(encoder='x265')
     output_fname = "./decode_data/de265/enc_x265/dst_1920x1080_I010.yuv"
+    decode_with_de265(in_fname=input_fname, out_fname=output_fname)
+
+    # resolve
+    input_fname = "./encode_data/Resolve/bitstream/DPX_H.265_NVENC_Main10.hevc"
+    output_fname = "./decode_data/de265/enc_resolve/dst_1920x1080_I010.yuv"
     decode_with_de265(in_fname=input_fname, out_fname=output_fname)
 
 
@@ -372,6 +377,20 @@ def yuv_to_png_x265_ffmpeg_encoded_data_with_de265():
     input_fname = "./decode_data/de265/enc_x265/dst_1920x1080_I010.yuv"
     output_fname = "./decode_data/de265/enc_x265/dst_1920x1080_I010.png"
     decode_yuv420p10le_1frame(in_fname=input_fname, out_fname=output_fname)
+
+    # resolve
+    input_fname = "./decode_data/de265/enc_resolve/dst_1920x1080_I010.yuv"
+    output_fname = "./decode_data/de265/enc_resolve/dst_1920x1080_I010.png"
+    decode_yuv420p10le_1frame(in_fname=input_fname, out_fname=output_fname)
+
+
+def plot_de265_decoded_image():
+    pass
+    # resolve
+
+    # ffmpeg
+
+    # x265
 
 
 def check_raw_yuv_10bit_data():
@@ -392,7 +411,7 @@ def check_raw_yuv_10bit_data():
     # # --------------------------
     # # decode x265 and FFmpeg encoded data with de265
     # # --------------------------
-    # decode_x265_ffmpeg_encoded_data_with_de265()
+    # decode_x265_ffmpeg_resolve_encoded_data_with_de265()
 
     # # ----------------------------------
     # # yuv to png
@@ -402,13 +421,7 @@ def check_raw_yuv_10bit_data():
     # --------------------------
     # plot decoded image data
     # --------------------------
-    # resolve
-    resolve_decoded_fname = make_raw_yuv_mp4_resolve_decoded_fname()
-
-    # ffmpeg
-
-    # x265
-
+    plot_de265_decoded_image()
 
     # title = str(Path(ffmpeg_decoded_fname).stem)
     # graph_fname = f"./debug/enc-x265_dec-ffmpeg_{title}.png"
