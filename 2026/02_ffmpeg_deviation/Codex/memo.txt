@@ -1,0 +1,12 @@
+
+# build docker image
+
+```bash
+docker build --no-cache -f ./docker/Dockerfile -t takuver4/ffmpeg_investigation:rev01 .
+```
+
+# run docker container
+
+```bash
+docker run -it -P --name ffmpeg_investigation -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src --rm takuver4/ffmpeg_investigation:rev01 bash
+```

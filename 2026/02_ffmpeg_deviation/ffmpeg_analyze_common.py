@@ -59,6 +59,14 @@ def make_raw_yuv_encoded_name(encoder):
         target_dir = Path("./encode_data/x265")
         target_dir.mkdir(parents=True, exist_ok=True)
         fname = str(target_dir / "raw_1920x1080_I010_encoded.hevc")
+    elif encoder == 'ffmpeg':
+        target_dir = Path("./encode_data/FFmpeg")
+        target_dir.mkdir(parents=True, exist_ok=True)
+        fname = str(target_dir / "raw_1920x1080_I010_encoded.hevc")
+    elif encoder == 'resolve':
+        target_dir = Path("./encode_data/Resolve")
+        target_dir.mkdir(parents=True, exist_ok=True)
+        fname = str(target_dir / "raw_1920x1080_I010_encoded.hevc")
     else:
         raise ValueError("Invalid encoder name.")
 
