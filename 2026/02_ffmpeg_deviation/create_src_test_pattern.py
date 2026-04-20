@@ -7,7 +7,6 @@ from pathlib import Path
 
 # import third-party libraries
 import numpy as np
-import matplotlib.pyplot as plt
 from colour import write_image, read_image
 from colour.io.image import Image_Specification_Attribute
 from colour.algebra import vecmul

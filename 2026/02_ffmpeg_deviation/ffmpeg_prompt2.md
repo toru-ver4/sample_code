@@ -11,10 +11,15 @@
 
 ## お願いしたいこと
 
-次のステップとしてソースコード解析を行いたい。
-調べて欲しいのは、以下である。
+次のステップとしてソースコード解析の修正により、この問題を解決できるか確認したい。
+生成AI に確認させるための環境として以下を準備した。
 
-* 16-bit PNG などの静止画ファイルを x265 や stv-av1 などのエンコーダーに食わせるための yuv420p10le に変換するまでの経路の概要提示
-* 上記経路の変換処理を行っている箇所のソースコードのファイル名、行番号の提示
-
-変換式の妥当性の評価は私が行う。（なお、何か注意事項があれば事前に教えてほしい）
+* FFmpeg のソースコード
+  * /mnt/c/Users/toruv/OneDrive/work/sample_code/2026/02_ffmpeg_deviation/ffmpeg_8.1_src
+* FFmpeg のビルドと yuv420p10le ファイルの生成
+  * まず `docker run -it -P --name ffmpeg_investigation -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src --rm takuver4/ffmpeg_investigation:rev02 bash` をコールして docker コンテナ起動
+  * docker コンテナ内で `cd /work/src/2026/02_ffmpeg_deviation/ && ./scripts/build_ffmpeg.sh` を実行して ffmpeg をビルド
+  * docker コンテナ内で `cd /work/src/2026/02_ffmpeg_deviation/ && ./scripts/encode.sh` を実行してカスタムした ffmpeg で yuv420p10le のファイルを生成
+* 生成した yuv420p10le ファイルの精度確認
+  * docker コンテナ内で `exit` をしてコンテナから離れる
+  * `cd /mnt/c/Users/toruv/OneDrive/work/sample_code/2026/02_ffmpeg_deviation && python3 ./scripts/check_10bit_diff.py` を実行して "OK" となれば成功。"NG" ならば失敗。

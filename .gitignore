@@ -329,3 +329,4 @@ BenchmarkDotNet.Artifacts/
 2026/02_ffmpeg_deviation/encode_data/**
 2026/02_ffmpeg_deviation/decode_data/**
 *.yuv
+2026/02_ffmpeg_deviation/ffmpeg_8.1_src/
