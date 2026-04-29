@@ -10,6 +10,7 @@ import numpy as np
 from colour import write_image, read_image
 from colour.io.image import Image_Specification_Attribute
 from colour.algebra import vecmul
+from scipy import linalg
 
 # import my libraries
 import test_pattern_generator2 as tpg
@@ -155,6 +156,12 @@ def make_n_bit_test_pattern_fname(bit_depth):
     return fname
 
 
+def make_decoded_n_bit_test_pattern_fname(bit_depth, gamut):
+    fname = f"./img/dst_img_v2_{bit_depth:02d}-bit_{gamut}.dpx"
+
+    return fname
+
+
 def create_n_bit_rgb444_test_patten(bit_depth=8) -> np.ndarray:
     width = IMAGE_WIDTH
     height = IMAGE_HEIGHT
@@ -180,6 +187,7 @@ def create_n_bit_rgb444_test_patten(bit_depth=8) -> np.ndarray:
     output_fname = make_n_bit_test_pattern_fname(bit_depth=bit_depth)
     bit_depth_str = "uint8" if bit_depth == 8 else 'uint16'
     bit_option = Image_Specification_Attribute("oiio:BitsPerSample", bit_depth)
+    print(f"Output {output_fname}")
     write_image(
         img/max_cv, output_fname, bit_depth=bit_depth_str, attributes=[bit_option]
     )
@@ -206,7 +214,7 @@ def get_10bit_ramp_from_img(img: np.ndarray, bit_depth: int) -> np.ndarray:
     return ramp
 
 
-def test_n_bit_pattern(bit_depth: int):
+def test_n_bit_rgb444_test_pattern(bit_depth: int):
     img_fname = make_n_bit_test_pattern_fname(bit_depth=bit_depth)
     num_of_patch = 2 ** bit_depth
     max_cv = (2 ** bit_depth) - 1
@@ -239,22 +247,89 @@ def rgb444_to_yuv420_n_bit(rgb_float: np.ndarray, gamut: str, bit_depth: int):
     cb = (ycbcr[::2, ::2, 1].ravel() * 224 + 128) * to_int_coef
     cr = (ycbcr[::2, ::2, 2].ravel() * 224 + 128) * to_int_coef
 
-    img_array = np.round(np.concatenate([y, cb, cr])).astype(np.uint16)
+    after_dtype = np.uint8 if bit_depth == 8 else np.uint16
+    img_array = np.round(np.concatenate([y, cb, cr])).astype(after_dtype)
 
     return img_array
+
+
+def read_yuv420_n_bit_data_as_yuv444(fname: str, bit_depth: int, width: int, height: int) -> np.ndarray:
+    y_size = width * height
+    uv_width = width // 2
+    uv_height = height // 2
+    uv_size = uv_width * uv_height
+    total_samples = y_size + uv_size * 2
+    dtype_str = '<u1' if bit_depth == 8 else '<u2'
+
+    frame = np.fromfile(fname, dtype=dtype_str, count=total_samples)
+    if frame.size != total_samples:
+        raise ValueError(
+            f"Invalid frame size. expected={total_samples} samples, "
+            f"actual={frame.size} samples."
+        )
+    
+    y = frame[:y_size].reshape((height, width))
+    u_420 = frame[y_size:y_size + uv_size].reshape((uv_height, uv_width))
+    v_420 = frame[y_size + uv_size:].reshape((uv_height, uv_width))
+
+    # 4:2:0 chroma planes are expanded back to luma resolution with NN.
+    u = np.repeat(np.repeat(u_420, 2, axis=0), 2, axis=1)
+    v = np.repeat(np.repeat(v_420, 2, axis=0), 2, axis=1)
+
+    yuv420 = np.dstack([y, u, v])
+    
+    return yuv420
 
 
 def create_n_bit_yuv420_pattern(fps=24, bit_depth=None, gamut="bt.709", length_sec=2):
     rgb_fname = make_n_bit_test_pattern_fname(bit_depth=bit_depth)
     rgb_float = read_image(rgb_fname)
-    yuv_fname = make_n_bit_yuv420_name(bit_depth=bit_depth)
+    yuv_fname = make_n_bit_yuv420_name(bit_depth=bit_depth, gamut=gamut)
     img_array = rgb444_to_yuv420_n_bit(rgb_float=rgb_float, gamut=gamut, bit_depth=bit_depth)
     total_frames = int(fps * length_sec)
 
-    frame = np.ascontiguousarray(img_array.astype('<u2', copy=False))
+    print(f"{rgb_fname} -> {yuv_fname}")
+
+    dtype_str = '<u1' if bit_depth == 8 else '<u2'
+    frame = np.ascontiguousarray(img_array.astype(dtype_str, copy=False))
     with open(yuv_fname, 'wb') as f:
         for _ in range(total_frames):
             frame.tofile(f)
+
+
+def yuv444_to_rgb444_float(yuv444_int: np.ndarray, gamut: str, bit_depth: int) -> np.ndarray:
+
+    y_int = yuv444_int[:, :, 0]
+    u_int = yuv444_int[:, :, 1]
+    v_int = yuv444_int[:, :, 2]
+
+    ratio = 2 ** (bit_depth - 8)
+
+    y_float = (y_int.astype(np.int16) - 16 * ratio) / (219 * ratio)
+    u_float = (u_int.astype(np.int16) - 128 * ratio) / (224 * ratio)
+    v_float = (v_int.astype(np.int16) - 128 * ratio) / (224 * ratio)
+
+    mtx = linalg.inv(calc_rgb_to_ycbcr_matrix(gamut=gamut))
+    yuv = np.dstack([y_float, u_float, v_float])
+    print(yuv.shape)
+    rgb_float = vecmul(mtx, yuv)
+
+    rgb_float
+
+    return rgb_float
+
+
+def decode_n_bit_yuv420_to_rgb444(bit_depth, gamut):
+    yuv420_fnmae = make_n_bit_yuv420_name(bit_depth=bit_depth, gamut=gamut)
+    yuv444_int = read_yuv420_n_bit_data_as_yuv444(
+        fname=yuv420_fnmae, bit_depth=bit_depth, width=IMAGE_WIDTH, height=IMAGE_HEIGHT
+    )
+    rgb_int = yuv444_to_rgb444_float(yuv444_int=yuv444_int, gamut=gamut, bit_depth=bit_depth)
+
+    out_fname = make_decoded_n_bit_test_pattern_fname(bit_depth=bit_depth, gamut=gamut)
+
+    output_bit_depth = 'uint8' if bit_depth == 8 else 'uint16'
+    write_image(rgb_int, out_fname, bit_depth=output_bit_depth)
 
 
 def create_test_pattern_all():
@@ -270,9 +345,9 @@ def test_test_pattern_all():
     bit_depth_list = [8, 10, 12]
     gamut_list = ["bt.709", 'bt.2020']
     for bit_depth in bit_depth_list:
-        test_n_bit_pattern(bit_depth=bit_depth)
+        test_n_bit_rgb444_test_pattern(bit_depth=bit_depth)
         for gamut in gamut_list:
-            pass
+            decode_n_bit_yuv420_to_rgb444(bit_depth=bit_depth, gamut=gamut)
 
 
 if __name__ == '__main__':
@@ -281,5 +356,5 @@ if __name__ == '__main__':
     # test_10bit_pattern()
     # create_10bit_pattern_i010_format()
 
-    create_test_pattern_all()
+    # create_test_pattern_all()
     test_test_pattern_all()
