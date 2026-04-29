@@ -238,6 +238,34 @@ def test_n_bit_rgb444_test_pattern(bit_depth: int):
     np.testing.assert_array_equal(read_data, ref_data)
 
 
+def test_n_bit_decoded_rgb444_test_pattern(bit_depth: int, gamut: str):
+    img_fname = make_decoded_n_bit_test_pattern_fname(bit_depth=bit_depth, gamut=gamut)
+    num_of_patch = 2 ** bit_depth
+    max_cv = (2 ** bit_depth) - 1
+    color_list = COLOR_LIST
+    def float_to_n_bit(xx, max_cv):
+        return np.round(xx * max_cv).astype(np.uint16)
+
+    def mask_color(xx, color_list):
+        for ii, color in enumerate(color_list):
+            for jj in range(len(color)):
+                xx[ii, :, jj] = xx[ii, :, jj] * color[jj]
+
+    x = np.arange(num_of_patch, dtype=np.uint16)
+    ref_data = np.repeat(x[..., np.newaxis], 3, axis=-1)
+    ref_data = np.repeat(ref_data[np.newaxis, ...], 7, axis=0)
+    mask_color(ref_data, color_list)
+
+    read_data_float = get_10bit_ramp_from_img(read_image(img_fname), bit_depth)
+    read_data = float_to_n_bit(read_data_float, max_cv)
+
+    # gray ramp test (tolerance is 1)
+    np.testing.assert_allclose(read_data[0], ref_data[0], atol=1, rtol=0)
+
+    # color ramp test (tolerance is 2)
+    np.testing.assert_allclose(read_data[1:], ref_data[1:], atol=2, rtol=0)
+
+
 def rgb444_to_yuv420_n_bit(rgb_float: np.ndarray, gamut: str, bit_depth: int):
     rgb_to_ycbcr_mtx = calc_rgb_to_ycbcr_matrix(gamut=gamut)
     ycbcr = vecmul(rgb_to_ycbcr_mtx, rgb_float)
@@ -311,7 +339,6 @@ def yuv444_to_rgb444_float(yuv444_int: np.ndarray, gamut: str, bit_depth: int) -
 
     mtx = linalg.inv(calc_rgb_to_ycbcr_matrix(gamut=gamut))
     yuv = np.dstack([y_float, u_float, v_float])
-    print(yuv.shape)
     rgb_float = vecmul(mtx, yuv)
 
     rgb_float
@@ -348,6 +375,7 @@ def test_test_pattern_all():
         test_n_bit_rgb444_test_pattern(bit_depth=bit_depth)
         for gamut in gamut_list:
             decode_n_bit_yuv420_to_rgb444(bit_depth=bit_depth, gamut=gamut)
+            test_n_bit_decoded_rgb444_test_pattern(bit_depth=bit_depth, gamut=gamut)
 
 
 if __name__ == '__main__':
