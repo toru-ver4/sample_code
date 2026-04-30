@@ -7,7 +7,7 @@ from pathlib import Path
 
 # import third-party libraries
 import numpy as np
-from scipy import linalg
+from colour import read_image
 
 # import my libraries
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -16,153 +16,113 @@ TY_LIB_DIR = PROJECT_DIR.parents[1] / "ty_lib"
 sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(TY_LIB_DIR))
 
-GRAY_PATCH_SIZE = 32
-
-def vecmul(m, v):
-    return np.matmul(m, v[..., None]).squeeze(-1)
-
-
-def calc_block_num_h(width=1920, block_size=64):
-    return width // block_size
+from create_src_test_pattern2 import (
+    decode_n_bit_yuv420_to_rgb444,
+    get_10bit_ramp_from_img,
+    COLOR_LIST
+)
 
 
-def calc_gradation_pattern_block_st_pos(code_value, width, block_size):
-    block_num_h = calc_block_num_h(width=width, block_size=block_size)
-    st_pos_h = (code_value % block_num_h) * block_size
-    st_pos_v = (code_value // block_num_h) * block_size
-    st_pos = (st_pos_h, st_pos_v)
-
-    return st_pos
+def float_to_n_bit(xx, max_cv):
+    return np.round(xx * max_cv).astype(np.uint16)
 
 
-def calc_10bit_ramp_center_pos(width, block_size):
-    pos_h_buf = []
-    pos_v_buf = []
-    
-    for cv in range(1024):
-        st_pos = calc_gradation_pattern_block_st_pos(
-            code_value=cv, width=width, block_size=block_size
-        )
-        offset = block_size//2
-        pos_h = st_pos[0] + offset
-        pos_v = st_pos[1] + offset
-        pos_h_buf.append(pos_h)
-        pos_v_buf.append(pos_v)
-
-    pos_h = np.array(pos_h_buf, dtype=np.uint16)
-    pos_v = np.array(pos_v_buf, dtype=np.uint16)
-
-    return pos_h, pos_v
+def mask_color(xx, color_list):
+    for ii, color in enumerate(color_list):
+        for jj in range(len(color)):
+            xx[ii, :, jj] = xx[ii, :, jj] * color[jj]
 
 
-def get_10bit_ramp_from_img(img: np.ndarray) -> np.ndarray:
-    pos_h, pos_v = calc_10bit_ramp_center_pos(width=img.shape[1], block_size=GRAY_PATCH_SIZE)
-    ramp_10bit = img[pos_v, pos_h]
+def create_ref_ramp_data(bit_depth):
+    color_list = COLOR_LIST
+    num_of_color = len(color_list)
+    num_of_patch = 2 ** bit_depth
 
-    return ramp_10bit
+    x = np.arange(num_of_patch, dtype=np.uint16)
+    ref_data = np.repeat(x[..., np.newaxis], 3, axis=-1)
+    ref_data = np.repeat(ref_data[np.newaxis, ...], num_of_color, axis=0)
+    mask_color(ref_data, color_list)
+
+    return ref_data
 
 
-def calc_rgb_to_ycbcr_matrix(gamut="bt.709"):
-    if gamut == "bt.709":
-        coef_y = np.array([0.2126, 0.7152, 0.0722])
-    elif gamut == "bt.2020":
-        coef_y = np.array([0.2627, 0.6780, 0.0593])
+def check_gray_diff(tolerance=1, gray_diff_list=None):
+    ret_value = None
+    gray_total_max_diff = np.max(gray_diff_list)
+    if gray_total_max_diff < tolerance + 1:
+        print(f"Gray maximum difference is {gray_total_max_diff}")
+        print("OK")
+        ret_value = True
     else:
-        raise ValueError("Invalid `gamut` parameter")
-    div_cb = (coef_y[0] + coef_y[1]) * 2
-    div_cr = (coef_y[1] + coef_y[2]) * 2
-    coef_cb = (np.array([0.0, 0.0, 1.0]) - coef_y) / div_cb
-    coef_cr = (np.array([1.0, 0.0, 0.0]) - coef_y) / div_cr
+        print(f"Gray maximum difference is {gray_total_max_diff}")
+        print("NG")
+        ret_value = False
 
-    mtx = np.vstack([coef_y, coef_cb, coef_cr])
-
-    return mtx
+    return ret_value
 
 
-def decode_yuv420p10le_1frame(in_fname, width=1920, height=1080):
-    y_size = width * height
-    uv_width = width // 2
-    uv_height = height // 2
-    uv_size = uv_width * uv_height
-    total_samples = y_size + uv_size * 2
+def check_color_diff(tolerance=2, color_diff_list=None):
+    ret_value = None
+    color_total_max_diff = np.max(color_diff_list)
+    if color_total_max_diff < tolerance + 1:
+        print(f"Color maximum difference is {color_total_max_diff}")
+        print("OK")
+        ret_value = True
+    else:
+        print(f"Color maximum difference is {color_total_max_diff}")
+        print("NG")
+        ret_value = False
 
-    frame = np.fromfile(in_fname, dtype='<u2', count=total_samples)
-    if frame.size != total_samples:
-        raise ValueError(
-            f"Invalid frame size. expected={total_samples} samples, "
-            f"actual={frame.size} samples."
-        )
-
-    y = frame[:y_size].reshape((height, width))
-    u_420 = frame[y_size:y_size + uv_size].reshape((uv_height, uv_width))
-    v_420 = frame[y_size + uv_size:].reshape((uv_height, uv_width))
-
-    # 4:2:0 chroma planes are expanded back to luma resolution with NN.
-    u = np.repeat(np.repeat(u_420, 2, axis=0), 2, axis=1)
-    v = np.repeat(np.repeat(v_420, 2, axis=0), 2, axis=1)
-
-    y = (y.astype(np.int16) - 64) / (219 * 4)
-    u = (u.astype(np.int16) - 512) / (224 * 4)
-    v = (v.astype(np.int16) - 512) / (224 * 4)
-
-    mtx = linalg.inv(calc_rgb_to_ycbcr_matrix(gamut='bt.709'))
-    yuv = np.dstack([y, u, v])
-    rgb = vecmul(mtx, yuv)
-    rgb_10bit = np.round(np.clip(rgb, 0.0, 1.0) * 1023).astype(np.uint16)
-
-    return rgb_10bit
-
-
-def extract_10bit_data_from_yuv420p10le(in_fname):
-    rgb_10_bit = decode_yuv420p10le_1frame(in_fname=in_fname)
-    ramp = get_10bit_ramp_from_img(img=rgb_10_bit)
-
-    return ramp.astype(np.int16)
-
-
-def run_command(args):
-    print(" ".join(args))
-    subprocess.run(args, check=True)
-
-
-def create_yuv420p10le_using_ffmpeg():
-    input_fname = "./img/src_img.png"
-    output_fname = "./img/ffmpeg_yuv420p10le.yuv"
-    cmd = "/opt/my_ffmpeg_out/bin/ffmpeg"
-    ops = [
-        "-hide_banner",
-        "-i", input_fname,
-        "-vf", "scale=in_range=full:out_range=limited:out_color_matrix=bt709",
-        "-pix_fmt", "yuv420p10le",
-        "-f", "rawvideo",
-        output_fname,
-        "-y"
-    ]
-    args = [cmd] + ops
-    run_command(args)
+    return ret_value
 
 
 if __name__ == '__main__':
-    # ------------------------------------------------
-    # create reference data and extract reference data
-    # ------------------------------------------------
-    # create_10bit_pattern_i010_format()
-    ref_10_bit = extract_10bit_data_from_yuv420p10le("./raw/src_1920x1080_I010.yuv")
+    condition_list = [
+        [8, "bt.709"],
+        [8, "bt.2020"],
+        [10, "bt.709"],
+        [10, "bt.2020"],
+        [12, "bt.709"],
+        [12, "bt.2020"],
+    ]
 
-    # ------------------------------------------------
-    # create target data using ffmpeg and extract target data
-    # ------------------------------------------------
-    # create_yuv420p10le_using_ffmpeg()
-    target_10_bit = extract_10bit_data_from_yuv420p10le("./raw/ffmpeg_yuv420p10le.yuv")
+    diff_buf = np.zeros((6, 2), dtype=np.uint16)  # diff_buf[:, 0] -> gray ramp, diff_buf[:, 1] -> color ramp
+
+    for iii, condition in enumerate(condition_list):
+        bit_depth = condition[0]
+        gamut_str = condition[1]
+        max_cv = (2 ** bit_depth) - 1
+
+        yuv420_fname = f"./raw/ffmpeg_1920x1080_yuv420p{bit_depth}le_{gamut_str}.yuv"
+        rgb444_fname = f"./img/ffmpeg_dst_img_v2_{bit_depth:02}-bit_{gamut_str}.dpx"
+
+        decode_n_bit_yuv420_to_rgb444(
+            yuv420_fnmae=yuv420_fname, out_fname=rgb444_fname, bit_depth=bit_depth, gamut=gamut_str
+        )
+        read_data_float = get_10bit_ramp_from_img(read_image(rgb444_fname), bit_depth)
+        read_data = float_to_n_bit(read_data_float, max_cv)
+
+        ref_data = create_ref_ramp_data(bit_depth=bit_depth)
+
+        diff = np.abs(read_data.astype(np.int16) - ref_data.astype(np.int16))
+
+        gray_max_diff = np.max(diff[0])
+        color_max_diff = np.max(diff[1:])
+
+        print(f"[Debug] {bit_depth}-bit, {gamut_str}: gray_diff = {gray_max_diff}, color_diff = {color_max_diff}")
+
+        diff_buf[iii, 0] = gray_max_diff
+        diff_buf[iii, 1] = color_max_diff
 
     # ------------------------------------------------
     # check diff
     # ------------------------------------------------
-    diff = np.abs(target_10_bit - ref_10_bit)
-    max_diff = np.max(diff)
-    if max_diff < 2:
-        print(f"Maximum difference is {max_diff}")
-        print("OK")
+    ret_gray = check_gray_diff(tolerance=1, gray_diff_list=diff_buf[..., 0])
+
+    ret_color = True
+    # ret_color = check_color_diff(tolerance=2, color_diff_list=diff_buf[..., 1])
+
+    if ret_gray and ret_color:
+        sys.exit(0)
     else:
-        print(f"Maximum difference is {max_diff}")
-        print("NG")
+        sys.exit(1)

@@ -157,7 +157,7 @@ def make_n_bit_test_pattern_fname(bit_depth):
 
 
 def make_decoded_n_bit_test_pattern_fname(bit_depth, gamut):
-    fname = f"./img/dst_img_v2_{bit_depth:02d}-bit_{gamut}.dpx"
+    fname = f"./img/ref_dst_img_v2_{bit_depth:02d}-bit_{gamut}.dpx"
 
     return fname
 
@@ -341,19 +341,23 @@ def yuv444_to_rgb444_float(yuv444_int: np.ndarray, gamut: str, bit_depth: int) -
     yuv = np.dstack([y_float, u_float, v_float])
     rgb_float = vecmul(mtx, yuv)
 
-    rgb_float
-
     return rgb_float
 
 
-def decode_n_bit_yuv420_to_rgb444(bit_depth, gamut):
+def decode_n_bit_yuv420_to_rgb444_with_default_fname(bit_depth, gamut):
     yuv420_fnmae = make_n_bit_yuv420_name(bit_depth=bit_depth, gamut=gamut)
+    out_fname = make_decoded_n_bit_test_pattern_fname(bit_depth=bit_depth, gamut=gamut)
+
+    decode_n_bit_yuv420_to_rgb444(
+        yuv420_fnmae=yuv420_fnmae, out_fname=out_fname, bit_depth=bit_depth, gamut=gamut
+    )
+
+
+def decode_n_bit_yuv420_to_rgb444(yuv420_fnmae, out_fname, bit_depth, gamut):
     yuv444_int = read_yuv420_n_bit_data_as_yuv444(
         fname=yuv420_fnmae, bit_depth=bit_depth, width=IMAGE_WIDTH, height=IMAGE_HEIGHT
     )
     rgb_int = yuv444_to_rgb444_float(yuv444_int=yuv444_int, gamut=gamut, bit_depth=bit_depth)
-
-    out_fname = make_decoded_n_bit_test_pattern_fname(bit_depth=bit_depth, gamut=gamut)
 
     output_bit_depth = 'uint8' if bit_depth == 8 else 'uint16'
     write_image(rgb_int, out_fname, bit_depth=output_bit_depth)
@@ -374,7 +378,7 @@ def test_test_pattern_all():
     for bit_depth in bit_depth_list:
         test_n_bit_rgb444_test_pattern(bit_depth=bit_depth)
         for gamut in gamut_list:
-            decode_n_bit_yuv420_to_rgb444(bit_depth=bit_depth, gamut=gamut)
+            decode_n_bit_yuv420_to_rgb444_with_default_fname(bit_depth=bit_depth, gamut=gamut)
             test_n_bit_decoded_rgb444_test_pattern(bit_depth=bit_depth, gamut=gamut)
 
 
@@ -384,5 +388,5 @@ if __name__ == '__main__':
     # test_10bit_pattern()
     # create_10bit_pattern_i010_format()
 
-    # create_test_pattern_all()
+    create_test_pattern_all()
     test_test_pattern_all()

@@ -84,7 +84,7 @@ def make_raw_yuv_name():
 def make_n_bit_yuv420_name(bit_depth, gamut):
     target_dir = Path("./raw")
     target_dir.mkdir(parents=True, exist_ok=True)
-    fname = str(target_dir / f"src_1920x1080_yuv420p{bit_depth}le_{gamut}.yuv")
+    fname = str(target_dir / f"ref_1920x1080_yuv420p{bit_depth}le_{gamut}.yuv")
 
     return fname
 

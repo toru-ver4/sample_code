@@ -1,6 +1,8 @@
 #!/bin/sh
 
-cd /work/src/2026/02_ffmpeg_deviation/ffmpeg_8.1_src
+set -eu
+
+cd /work/src/2026/02_ffmpeg_deviation/ffmpeg_8.1_src || exit 1
 PATH="/opt/my_ffmpeg/bin:$PATH" PKG_CONFIG_PATH="/opt/my_ffmpeg/lib/pkgconfig" ./configure \
     --prefix="/opt/my_ffmpeg_out" \
     --pkg-config-flags="--static" \

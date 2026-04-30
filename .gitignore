@@ -331,3 +331,4 @@ BenchmarkDotNet.Artifacts/
 *.yuv
 2026/02_ffmpeg_deviation/ffmpeg_8.1_src/
 2026/02_ffmpeg_deviation/img/*.dpx
+.venv_wsl
