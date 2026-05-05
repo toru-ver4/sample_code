@@ -44,7 +44,6 @@
 
 * Step 2 の docker コンテナ内で `exit` をしてコンテナを抜ける
 * `source /mnt/c/Users/toruv/OneDrive/work/sample_code/.venv_wsl/bin/activate && cd /mnt/c/Users/toruv/OneDrive/work/sample_code/2026/02_ffmpeg_deviation && python3 ./scripts/check_10bit_diff.py` を実行して "OK" となれば成功。"NG" ならば失敗。
-* なお、./scripts/check_10bit_diff.py では `check_gray_diff` と `check_color_diff` の2つの評価関数を用意しているが、まずは grey だけ確認する。color は第二弾の調査で確認する。
 
 ### Step 4: 上記の Step 1～3 の繰り返し
 

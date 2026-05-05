@@ -93,7 +93,7 @@ if __name__ == '__main__':
         gamut_str = condition[1]
         max_cv = (2 ** bit_depth) - 1
 
-        yuv420_fname = f"./raw/ffmpeg_1920x1080_yuv420p{bit_depth}le_{gamut_str}.yuv"
+        yuv420_fname = f"./raw/ffmpeg_3840x2160_yuv420p{bit_depth}le_{gamut_str}.yuv"
         rgb444_fname = f"./img/ffmpeg_dst_img_v2_{bit_depth:02}-bit_{gamut_str}.dpx"
 
         decode_n_bit_yuv420_to_rgb444(
@@ -119,8 +119,8 @@ if __name__ == '__main__':
     # ------------------------------------------------
     ret_gray = check_gray_diff(tolerance=1, gray_diff_list=diff_buf[..., 0])
 
-    ret_color = True
-    # ret_color = check_color_diff(tolerance=2, color_diff_list=diff_buf[..., 1])
+    # ret_color = True
+    ret_color = check_color_diff(tolerance=2, color_diff_list=diff_buf[..., 1])
 
     if ret_gray and ret_color:
         sys.exit(0)

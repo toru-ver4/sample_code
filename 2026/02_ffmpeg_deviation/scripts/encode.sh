@@ -12,12 +12,12 @@ src_fname_list=(
 )
 
 dst_fname_list=(
-    "./raw/ffmpeg_1920x1080_yuv420p8le_bt.709.yuv"
-    "./raw/ffmpeg_1920x1080_yuv420p8le_bt.2020.yuv"
-    "./raw/ffmpeg_1920x1080_yuv420p10le_bt.709.yuv"
-    "./raw/ffmpeg_1920x1080_yuv420p10le_bt.2020.yuv"
-    "./raw/ffmpeg_1920x1080_yuv420p12le_bt.709.yuv"
-    "./raw/ffmpeg_1920x1080_yuv420p12le_bt.2020.yuv"
+    "./raw/ffmpeg_3840x2160_yuv420p8le_bt.709.yuv"
+    "./raw/ffmpeg_3840x2160_yuv420p8le_bt.2020.yuv"
+    "./raw/ffmpeg_3840x2160_yuv420p10le_bt.709.yuv"
+    "./raw/ffmpeg_3840x2160_yuv420p10le_bt.2020.yuv"
+    "./raw/ffmpeg_3840x2160_yuv420p12le_bt.709.yuv"
+    "./raw/ffmpeg_3840x2160_yuv420p12le_bt.2020.yuv"
 )
 
 mtx_str_list=(

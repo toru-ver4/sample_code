@@ -19,16 +19,16 @@ from ffmpeg_analyze_common import (
     make_n_bit_yuv420_name
 )
 
-GRAY_PATCH_SIZE = 8
+GRAY_PATCH_SIZE = 16
 
-IMAGE_WIDTH = 1920
-IMAGE_HEIGHT = 1080
+IMAGE_WIDTH = 3840
+IMAGE_HEIGHT = 2160
 
 COLOR_LIST = [[1, 1, 1], [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1], [1, 1, 0], [0, 1, 1]]
 
 
 def calc_color_checker_pattern_block_st_pos(
-        color_idx=1, width=1920, grey_block_size=32, color_block_size=64):
+        color_idx=1, width=None, grey_block_size=32, color_block_size=64):
     color_checker_h_num = 6
     block_num_h = calc_block_num_h(width=width, block_size=grey_block_size)
     st_pos_v_offset = ((1023 // block_num_h) + 8) * grey_block_size
@@ -41,7 +41,7 @@ def calc_color_checker_pattern_block_st_pos(
 
 
 def calc_rgbmyc_pattern_block_st_pos(
-        color_idx=1, width=1920, grey_block_size=32, color_block_size=64):
+        color_idx=1, width=None, grey_block_size=32, color_block_size=64):
     block_num_h = calc_block_num_h(width=width, block_size=grey_block_size)
     st_pos_v = ((1023 // block_num_h) + 4) * grey_block_size
     st_pos_h = (color_idx % block_num_h) * color_block_size
