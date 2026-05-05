@@ -16,7 +16,9 @@ from scipy import linalg
 import test_pattern_generator2 as tpg
 from ffmpeg_analyze_common import (
     make_raw_yuv_name,
-    make_n_bit_yuv420_name
+    make_n_bit_yuv420_name,
+    make_n_bit_yuv422_name,
+    make_n_bit_yuv444_name
 )
 
 GRAY_PATCH_SIZE = 16
@@ -156,8 +158,20 @@ def make_n_bit_test_pattern_fname(bit_depth):
     return fname
 
 
-def make_decoded_n_bit_test_pattern_fname(bit_depth, gamut):
-    fname = f"./img/ref_dst_img_v2_{bit_depth:02d}-bit_{gamut}.dpx"
+def make_decoded_n_bit_yuv420_test_pattern_fname(bit_depth, gamut):
+    fname = f"./img/ref_dst_img_v2_420-to-444_{bit_depth:02d}-bit_{gamut}.dpx"
+
+    return fname
+
+
+def make_decoded_n_bit_yuv422_test_pattern_fname(bit_depth, gamut):
+    fname = f"./img/ref_dst_img_v2_422-to-444_{bit_depth:02d}-bit_{gamut}.dpx"
+
+    return fname
+
+
+def make_decoded_n_bit_yuv444_test_pattern_fname(bit_depth, gamut):
+    fname = f"./img/ref_dst_img_v2_444-to-444_{bit_depth:02d}-bit_{gamut}.dpx"
 
     return fname
 
@@ -238,11 +252,11 @@ def test_n_bit_rgb444_test_pattern(bit_depth: int):
     np.testing.assert_array_equal(read_data, ref_data)
 
 
-def test_n_bit_decoded_rgb444_test_pattern(bit_depth: int, gamut: str):
-    img_fname = make_decoded_n_bit_test_pattern_fname(bit_depth=bit_depth, gamut=gamut)
+def _test_n_bit_decoded_rgb444_test_pattern(img_fname: str, bit_depth: int):
     num_of_patch = 2 ** bit_depth
     max_cv = (2 ** bit_depth) - 1
     color_list = COLOR_LIST
+
     def float_to_n_bit(xx, max_cv):
         return np.round(xx * max_cv).astype(np.uint16)
 
@@ -266,28 +280,76 @@ def test_n_bit_decoded_rgb444_test_pattern(bit_depth: int, gamut: str):
     np.testing.assert_allclose(read_data[1:], ref_data[1:], atol=2, rtol=0)
 
 
-def rgb444_to_yuv420_n_bit(rgb_float: np.ndarray, gamut: str, bit_depth: int):
+def test_n_bit_decoded_yuv420_to_rgb444_test_pattern(bit_depth: int, gamut: str):
+    img_fname = make_decoded_n_bit_yuv420_test_pattern_fname(bit_depth=bit_depth, gamut=gamut)
+    _test_n_bit_decoded_rgb444_test_pattern(img_fname=img_fname, bit_depth=bit_depth)
+
+
+def test_n_bit_decoded_yuv422_to_rgb444_test_pattern(bit_depth: int, gamut: str):
+    img_fname = make_decoded_n_bit_yuv422_test_pattern_fname(bit_depth=bit_depth, gamut=gamut)
+    _test_n_bit_decoded_rgb444_test_pattern(img_fname=img_fname, bit_depth=bit_depth)
+
+
+def test_n_bit_decoded_yuv444_to_rgb444_test_pattern(bit_depth: int, gamut: str):
+    img_fname = make_decoded_n_bit_yuv444_test_pattern_fname(bit_depth=bit_depth, gamut=gamut)
+    _test_n_bit_decoded_rgb444_test_pattern(img_fname=img_fname, bit_depth=bit_depth)
+
+
+def _n_bit_yuv_dtype(bit_depth: int):
+    return np.uint8 if bit_depth == 8 else np.uint16
+
+
+def _n_bit_yuv_dtype_str(bit_depth: int):
+    return '<u1' if bit_depth == 8 else '<u2'
+
+
+def _rgb444_to_yuv_n_bit(
+        rgb_float: np.ndarray, gamut: str, bit_depth: int,
+        chroma_v_step: int, chroma_h_step: int):
     rgb_to_ycbcr_mtx = calc_rgb_to_ycbcr_matrix(gamut=gamut)
     ycbcr = vecmul(rgb_to_ycbcr_mtx, rgb_float)
     to_int_coef = 2 ** (bit_depth - 8)
 
     y = (ycbcr[:, :, 0].ravel() * 219 + 16) * to_int_coef
-    cb = (ycbcr[::2, ::2, 1].ravel() * 224 + 128) * to_int_coef
-    cr = (ycbcr[::2, ::2, 2].ravel() * 224 + 128) * to_int_coef
+    cb = (ycbcr[::chroma_v_step, ::chroma_h_step, 1].ravel() * 224 + 128) * to_int_coef
+    cr = (ycbcr[::chroma_v_step, ::chroma_h_step, 2].ravel() * 224 + 128) * to_int_coef
 
-    after_dtype = np.uint8 if bit_depth == 8 else np.uint16
+    after_dtype = _n_bit_yuv_dtype(bit_depth=bit_depth)
     img_array = np.round(np.concatenate([y, cb, cr])).astype(after_dtype)
 
     return img_array
 
 
-def read_yuv420_n_bit_data_as_yuv444(fname: str, bit_depth: int, width: int, height: int) -> np.ndarray:
+def rgb444_to_yuv420_n_bit(rgb_float: np.ndarray, gamut: str, bit_depth: int):
+    return _rgb444_to_yuv_n_bit(
+        rgb_float=rgb_float, gamut=gamut, bit_depth=bit_depth,
+        chroma_v_step=2, chroma_h_step=2
+    )
+
+
+def rgb444_to_yuv422_n_bit(rgb_float: np.ndarray, gamut: str, bit_depth: int):
+    return _rgb444_to_yuv_n_bit(
+        rgb_float=rgb_float, gamut=gamut, bit_depth=bit_depth,
+        chroma_v_step=1, chroma_h_step=2
+    )
+
+
+def rgb444_to_yuv444_n_bit(rgb_float: np.ndarray, gamut: str, bit_depth: int):
+    return _rgb444_to_yuv_n_bit(
+        rgb_float=rgb_float, gamut=gamut, bit_depth=bit_depth,
+        chroma_v_step=1, chroma_h_step=1
+    )
+
+
+def _read_yuv_n_bit_data_as_yuv444(
+        fname: str, bit_depth: int, width: int, height: int,
+        chroma_v_step: int, chroma_h_step: int) -> np.ndarray:
     y_size = width * height
-    uv_width = width // 2
-    uv_height = height // 2
+    uv_width = width // chroma_h_step
+    uv_height = height // chroma_v_step
     uv_size = uv_width * uv_height
     total_samples = y_size + uv_size * 2
-    dtype_str = '<u1' if bit_depth == 8 else '<u2'
+    dtype_str = _n_bit_yuv_dtype_str(bit_depth=bit_depth)
 
     frame = np.fromfile(fname, dtype=dtype_str, count=total_samples)
     if frame.size != total_samples:
@@ -297,32 +359,78 @@ def read_yuv420_n_bit_data_as_yuv444(fname: str, bit_depth: int, width: int, hei
         )
     
     y = frame[:y_size].reshape((height, width))
-    u_420 = frame[y_size:y_size + uv_size].reshape((uv_height, uv_width))
-    v_420 = frame[y_size + uv_size:].reshape((uv_height, uv_width))
+    u_src = frame[y_size:y_size + uv_size].reshape((uv_height, uv_width))
+    v_src = frame[y_size + uv_size:].reshape((uv_height, uv_width))
 
-    # 4:2:0 chroma planes are expanded back to luma resolution with NN.
-    u = np.repeat(np.repeat(u_420, 2, axis=0), 2, axis=1)
-    v = np.repeat(np.repeat(v_420, 2, axis=0), 2, axis=1)
+    u = np.repeat(np.repeat(u_src, chroma_v_step, axis=0), chroma_h_step, axis=1)
+    v = np.repeat(np.repeat(v_src, chroma_v_step, axis=0), chroma_h_step, axis=1)
 
-    yuv420 = np.dstack([y, u, v])
+    yuv444 = np.dstack([y, u, v])
     
-    return yuv420
+    return yuv444
 
 
-def create_n_bit_yuv420_pattern(fps=24, bit_depth=None, gamut="bt.709", length_sec=2):
+def read_yuv420_n_bit_data_as_yuv444(fname: str, bit_depth: int, width: int, height: int) -> np.ndarray:
+    return _read_yuv_n_bit_data_as_yuv444(
+        fname=fname, bit_depth=bit_depth, width=width, height=height,
+        chroma_v_step=2, chroma_h_step=2
+    )
+
+
+def read_yuv422_n_bit_data_as_yuv444(fname: str, bit_depth: int, width: int, height: int) -> np.ndarray:
+    return _read_yuv_n_bit_data_as_yuv444(
+        fname=fname, bit_depth=bit_depth, width=width, height=height,
+        chroma_v_step=1, chroma_h_step=2
+    )
+
+
+def read_yuv444_n_bit_data_as_yuv444(fname: str, bit_depth: int, width: int, height: int) -> np.ndarray:
+    return _read_yuv_n_bit_data_as_yuv444(
+        fname=fname, bit_depth=bit_depth, width=width, height=height,
+        chroma_v_step=1, chroma_h_step=1
+    )
+
+
+def _create_n_bit_yuv_pattern(
+        fps, bit_depth, gamut, length_sec, make_yuv_fname_func,
+        rgb444_to_yuv_func):
     rgb_fname = make_n_bit_test_pattern_fname(bit_depth=bit_depth)
     rgb_float = read_image(rgb_fname)
-    yuv_fname = make_n_bit_yuv420_name(bit_depth=bit_depth, gamut=gamut)
-    img_array = rgb444_to_yuv420_n_bit(rgb_float=rgb_float, gamut=gamut, bit_depth=bit_depth)
+    yuv_fname = make_yuv_fname_func(bit_depth=bit_depth, gamut=gamut)
+    img_array = rgb444_to_yuv_func(rgb_float=rgb_float, gamut=gamut, bit_depth=bit_depth)
     total_frames = int(fps * length_sec)
 
     print(f"{rgb_fname} -> {yuv_fname}")
 
-    dtype_str = '<u1' if bit_depth == 8 else '<u2'
+    dtype_str = _n_bit_yuv_dtype_str(bit_depth=bit_depth)
     frame = np.ascontiguousarray(img_array.astype(dtype_str, copy=False))
     with open(yuv_fname, 'wb') as f:
         for _ in range(total_frames):
             frame.tofile(f)
+
+
+def create_n_bit_yuv420_pattern(fps=24, bit_depth=None, gamut="bt.709", length_sec=2):
+    _create_n_bit_yuv_pattern(
+        fps=fps, bit_depth=bit_depth, gamut=gamut, length_sec=length_sec,
+        make_yuv_fname_func=make_n_bit_yuv420_name,
+        rgb444_to_yuv_func=rgb444_to_yuv420_n_bit
+    )
+
+
+def create_n_bit_yuv422_pattern(fps=24, bit_depth=None, gamut="bt.709", length_sec=2):
+    _create_n_bit_yuv_pattern(
+        fps=fps, bit_depth=bit_depth, gamut=gamut, length_sec=length_sec,
+        make_yuv_fname_func=make_n_bit_yuv422_name,
+        rgb444_to_yuv_func=rgb444_to_yuv422_n_bit
+    )
+
+
+def create_n_bit_yuv444_pattern(fps=24, bit_depth=None, gamut="bt.709", length_sec=2):
+    _create_n_bit_yuv_pattern(
+        fps=fps, bit_depth=bit_depth, gamut=gamut, length_sec=length_sec,
+        make_yuv_fname_func=make_n_bit_yuv444_name,
+        rgb444_to_yuv_func=rgb444_to_yuv444_n_bit
+    )
 
 
 def yuv444_to_rgb444_float(yuv444_int: np.ndarray, gamut: str, bit_depth: int) -> np.ndarray:
@@ -346,21 +454,60 @@ def yuv444_to_rgb444_float(yuv444_int: np.ndarray, gamut: str, bit_depth: int) -
 
 def decode_n_bit_yuv420_to_rgb444_with_default_fname(bit_depth, gamut):
     yuv420_fnmae = make_n_bit_yuv420_name(bit_depth=bit_depth, gamut=gamut)
-    out_fname = make_decoded_n_bit_test_pattern_fname(bit_depth=bit_depth, gamut=gamut)
+    out_fname = make_decoded_n_bit_yuv420_test_pattern_fname(bit_depth=bit_depth, gamut=gamut)
 
     decode_n_bit_yuv420_to_rgb444(
         yuv420_fnmae=yuv420_fnmae, out_fname=out_fname, bit_depth=bit_depth, gamut=gamut
     )
 
 
-def decode_n_bit_yuv420_to_rgb444(yuv420_fnmae, out_fname, bit_depth, gamut):
-    yuv444_int = read_yuv420_n_bit_data_as_yuv444(
-        fname=yuv420_fnmae, bit_depth=bit_depth, width=IMAGE_WIDTH, height=IMAGE_HEIGHT
+def decode_n_bit_yuv422_to_rgb444_with_default_fname(bit_depth, gamut):
+    yuv422_fnmae = make_n_bit_yuv422_name(bit_depth=bit_depth, gamut=gamut)
+    out_fname = make_decoded_n_bit_yuv422_test_pattern_fname(bit_depth=bit_depth, gamut=gamut)
+
+    decode_n_bit_yuv422_to_rgb444(
+        yuv422_fnmae=yuv422_fnmae, out_fname=out_fname, bit_depth=bit_depth, gamut=gamut
+    )
+
+
+def decode_n_bit_yuv444_to_rgb444_with_default_fname(bit_depth, gamut):
+    yuv444_fnmae = make_n_bit_yuv444_name(bit_depth=bit_depth, gamut=gamut)
+    out_fname = make_decoded_n_bit_yuv444_test_pattern_fname(bit_depth=bit_depth, gamut=gamut)
+
+    decode_n_bit_yuv444_to_rgb444(
+        yuv444_fnmae=yuv444_fnmae, out_fname=out_fname, bit_depth=bit_depth, gamut=gamut
+    )
+
+
+def _decode_n_bit_yuv_to_rgb444(yuv_fname, out_fname, bit_depth, gamut, read_yuv_func):
+    yuv444_int = read_yuv_func(
+        fname=yuv_fname, bit_depth=bit_depth, width=IMAGE_WIDTH, height=IMAGE_HEIGHT
     )
     rgb_int = yuv444_to_rgb444_float(yuv444_int=yuv444_int, gamut=gamut, bit_depth=bit_depth)
 
     output_bit_depth = 'uint8' if bit_depth == 8 else 'uint16'
     write_image(rgb_int, out_fname, bit_depth=output_bit_depth)
+
+
+def decode_n_bit_yuv420_to_rgb444(yuv420_fnmae, out_fname, bit_depth, gamut):
+    _decode_n_bit_yuv_to_rgb444(
+        yuv_fname=yuv420_fnmae, out_fname=out_fname, bit_depth=bit_depth, gamut=gamut,
+        read_yuv_func=read_yuv420_n_bit_data_as_yuv444
+    )
+
+
+def decode_n_bit_yuv422_to_rgb444(yuv422_fnmae, out_fname, bit_depth, gamut):
+    _decode_n_bit_yuv_to_rgb444(
+        yuv_fname=yuv422_fnmae, out_fname=out_fname, bit_depth=bit_depth, gamut=gamut,
+        read_yuv_func=read_yuv422_n_bit_data_as_yuv444
+    )
+
+
+def decode_n_bit_yuv444_to_rgb444(yuv444_fnmae, out_fname, bit_depth, gamut):
+    _decode_n_bit_yuv_to_rgb444(
+        yuv_fname=yuv444_fnmae, out_fname=out_fname, bit_depth=bit_depth, gamut=gamut,
+        read_yuv_func=read_yuv444_n_bit_data_as_yuv444
+    )
 
 
 def create_test_pattern_all():
@@ -370,6 +517,8 @@ def create_test_pattern_all():
         create_n_bit_rgb444_test_patten(bit_depth=bit_depth)
         for gamut in gamut_list:
             create_n_bit_yuv420_pattern(bit_depth=bit_depth, gamut=gamut)
+            create_n_bit_yuv422_pattern(bit_depth=bit_depth, gamut=gamut)
+            create_n_bit_yuv444_pattern(bit_depth=bit_depth, gamut=gamut)
 
 
 def test_test_pattern_all():
@@ -379,7 +528,13 @@ def test_test_pattern_all():
         test_n_bit_rgb444_test_pattern(bit_depth=bit_depth)
         for gamut in gamut_list:
             decode_n_bit_yuv420_to_rgb444_with_default_fname(bit_depth=bit_depth, gamut=gamut)
-            test_n_bit_decoded_rgb444_test_pattern(bit_depth=bit_depth, gamut=gamut)
+            test_n_bit_decoded_yuv420_to_rgb444_test_pattern(bit_depth=bit_depth, gamut=gamut)
+
+            decode_n_bit_yuv422_to_rgb444_with_default_fname(bit_depth=bit_depth, gamut=gamut)
+            test_n_bit_decoded_yuv422_to_rgb444_test_pattern(bit_depth=bit_depth, gamut=gamut)
+
+            decode_n_bit_yuv444_to_rgb444_with_default_fname(bit_depth=bit_depth, gamut=gamut)
+            test_n_bit_decoded_yuv444_to_rgb444_test_pattern(bit_depth=bit_depth, gamut=gamut)
 
 
 if __name__ == '__main__':
