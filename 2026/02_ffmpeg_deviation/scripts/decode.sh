@@ -91,6 +91,7 @@ for bit_depth in "${bit_depth_list[@]}"; do
                 -frames:v 1 \
                 -vf "scale=in_range=limited:out_range=full:in_color_matrix=$mtx_str" \
                 -pix_fmt "$rgb_pix_fmt" \
+                -update 1 \
                 "$dst_fname"
             printf '\n'
 
@@ -105,6 +106,7 @@ for bit_depth in "${bit_depth_list[@]}"; do
                 -frames:v 1 \
                 -vf scale=in_range=limited:out_range=full:in_color_matrix="$mtx_str" \
                 -pix_fmt "$rgb_pix_fmt" \
+                -update 1 \
                 "$dst_fname"
         done
     done
