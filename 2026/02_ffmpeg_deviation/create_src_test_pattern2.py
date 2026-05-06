@@ -3,6 +3,8 @@
 # import standard libraries
 import sys
 import os
+import shlex
+import subprocess
 from pathlib import Path
 
 # import third-party libraries
@@ -510,15 +512,97 @@ def decode_n_bit_yuv444_to_rgb444(yuv444_fnmae, out_fname, bit_depth, gamut):
     )
 
 
+def _run_subprocess(args):
+    print(shlex.join(args))
+    subprocess.run(args, check=True)
+
+
+def _make_ffmpeg_debug_mp4_fname(pix_fmt, bit_depth, gamut):
+    target_dir = Path("./debug")
+    target_dir.mkdir(parents=True, exist_ok=True)
+    fname = target_dir / f"ref_3840x2160_{pix_fmt}{bit_depth}le_{gamut}_ffmpeg_check.mp4"
+
+    return str(fname)
+
+
+def _get_ffmpeg_color_options(gamut):
+    if gamut == "bt.709":
+        return {
+            "primaries": "bt709",
+            "trc": "bt709",
+            "colorspace": "bt709",
+        }
+    elif gamut == "bt.2020":
+        return {
+            "primaries": "bt2020",
+            "trc": "bt709",
+            "colorspace": "bt2020nc",
+        }
+    else:
+        raise ValueError("Invalid `gamut` parameter")
+
+
+def _debug_yuv_using_ffmpeg(yuv_fname, mp4_fname, pix_fmt, bit_depth, gamut, fps, ffmpeg_bin):
+    if not Path(yuv_fname).exists():
+        raise FileNotFoundError(yuv_fname)
+
+    color_options = _get_ffmpeg_color_options(gamut=gamut)
+    pix_fmt = f"{pix_fmt}{bit_depth}le" if bit_depth != 8 else f"{pix_fmt}"
+    cmd = [
+        ffmpeg_bin,
+        "-hide_banner",
+        "-y",
+        "-f", "rawvideo",
+        "-pix_fmt", pix_fmt,
+        "-video_size", f"{IMAGE_WIDTH}x{IMAGE_HEIGHT}",
+        "-framerate", str(fps),
+        "-color_primaries", color_options["primaries"],
+        "-color_trc", color_options["trc"],
+        "-colorspace", color_options["colorspace"],
+        "-color_range", "limited",
+        "-i", yuv_fname,
+        "-c:v", "libx265",
+        "-x265-params", "lossless=1",
+        "-pix_fmt", pix_fmt,
+        "-color_primaries", color_options["primaries"],
+        "-color_trc", color_options["trc"],
+        "-colorspace", color_options["colorspace"],
+        "-color_range", "limited",
+        mp4_fname,
+    ]
+    _run_subprocess(cmd)
+
+
+def debug_yuv422_yuv444_using_ffmpeg(
+        bit_depth=10, gamut="bt.709", fps=24, ffmpeg_bin="ffmpeg"):
+    yuv422_fname = make_n_bit_yuv422_name(bit_depth=bit_depth, gamut=gamut)
+    yuv444_fname = make_n_bit_yuv444_name(bit_depth=bit_depth, gamut=gamut)
+    mp4_422_fname = _make_ffmpeg_debug_mp4_fname(
+        pix_fmt="yuv422p", bit_depth=bit_depth, gamut=gamut
+    )
+    mp4_444_fname = _make_ffmpeg_debug_mp4_fname(
+        pix_fmt="yuv444p", bit_depth=bit_depth, gamut=gamut
+    )
+
+    _debug_yuv_using_ffmpeg(
+        yuv_fname=yuv422_fname, mp4_fname=mp4_422_fname, pix_fmt="yuv422p",
+        bit_depth=bit_depth, gamut=gamut, fps=fps, ffmpeg_bin=ffmpeg_bin
+    )
+    _debug_yuv_using_ffmpeg(
+        yuv_fname=yuv444_fname, mp4_fname=mp4_444_fname, pix_fmt="yuv444p",
+        bit_depth=bit_depth, gamut=gamut, fps=fps, ffmpeg_bin=ffmpeg_bin
+    )
+
+
 def create_test_pattern_all():
     bit_depth_list = [8, 10, 12]
     gamut_list = ["bt.709", 'bt.2020']
     for bit_depth in bit_depth_list:
         create_n_bit_rgb444_test_patten(bit_depth=bit_depth)
         for gamut in gamut_list:
-            create_n_bit_yuv420_pattern(bit_depth=bit_depth, gamut=gamut)
-            create_n_bit_yuv422_pattern(bit_depth=bit_depth, gamut=gamut)
-            create_n_bit_yuv444_pattern(bit_depth=bit_depth, gamut=gamut)
+            create_n_bit_yuv420_pattern(bit_depth=bit_depth, gamut=gamut, length_sec=0.5)
+            create_n_bit_yuv422_pattern(bit_depth=bit_depth, gamut=gamut, length_sec=0.5)
+            create_n_bit_yuv444_pattern(bit_depth=bit_depth, gamut=gamut, length_sec=0.5)
 
 
 def test_test_pattern_all():
@@ -543,5 +627,9 @@ if __name__ == '__main__':
     # test_10bit_pattern()
     # create_10bit_pattern_i010_format()
 
-    create_test_pattern_all()
-    test_test_pattern_all()
+    # create_test_pattern_all()
+    # test_test_pattern_all()
+
+    debug_yuv422_yuv444_using_ffmpeg(bit_depth=8)
+    debug_yuv422_yuv444_using_ffmpeg(bit_depth=10)
+    debug_yuv422_yuv444_using_ffmpeg(bit_depth=12)
