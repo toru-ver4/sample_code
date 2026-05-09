@@ -155,7 +155,7 @@ RUN cd ~/ffmpeg_sources \
     && cd ~/ && rm -rf ./ffmpeg_sources/opus
 
 RUN cd ~/ffmpeg_sources \
-    && git clone https://github.com/toru-ver4/FFmpeg_png_mdcv.git ffmpeg \
+    && git clone https://github.com/toru-ver4/FFmpeg_precise_10bit.git ffmpeg \
     && cd ffmpeg \
     && PATH="/opt/my_ffmpeg/bin:$PATH" PKG_CONFIG_PATH="/opt/my_ffmpeg/lib/pkgconfig" ./configure \
         --prefix="/opt/my_ffmpeg_out" \
@@ -206,7 +206,7 @@ RUN pip install --upgrade pip \
         && pip install --no-cache-dir -r /root/local/requirements.txt
 
 # Install libheif
-RUN git clone https://github.com/strukturag/libheif.git -b v1.21.1 \
+RUN git clone https://github.com/strukturag/libheif.git -b v1.21.2   \
     && cd libheif \
     && mkdir build \
     && cd build \
@@ -218,23 +218,23 @@ RUN git clone https://github.com/strukturag/libheif.git -b v1.21.1 \
 
 # Install OpencolorIO
 RUN mkdir /tmp/ociobuild \
-        && cd /tmp/ociobuild \
-        && git clone https://github.com/AcademySoftwareFoundation/OpenColorIO.git /root/local/OpenColorIO -b v2.5.0 \
-        && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOCIO_INSTALL_EXT_PACKAGES=MISSING -DOCIO_BUILD_PYTHON=0 -DOCIO_VERBOSE=1 /root/local/OpenColorIO \
-        && make -j16 \
-        && make install \
-        && cd /root/local \
-        && rm -rf /root/local/OpenColorIO /tmp/ociobuild
+    && cd /tmp/ociobuild \
+    && git clone https://github.com/AcademySoftwareFoundation/OpenColorIO.git /root/local/OpenColorIO -b v2.5.1 \
+    && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOCIO_INSTALL_EXT_PACKAGES=MISSING -DOCIO_BUILD_PYTHON=0 -DOCIO_VERBOSE=1 /root/local/OpenColorIO \
+    && make -j16 \
+    && make install \
+    && cd /root/local \
+    && rm -rf /root/local/OpenColorIO /tmp/ociobuild
 
 # Install OpenImageIO
-RUN git clone https://github.com/OpenImageIO/oiio.git -b v3.1.8.0 \
-        && cd oiio \
-        && mkdir build \
-        && cd build \
-        && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DPYTHON_VERSION=${PYTHON_VERSION} -DUSE_PYTHON=1 -DVERBOSE=1 -DSTOP_ON_WARNING=0 .. \
-        && make install -j16 \
-        && cd /root/local \
-        && rm -rf /root/local/oiio
+RUN git clone https://github.com/OpenImageIO/oiio.git -b v3.1.13.1 \
+    && cd oiio \
+    && mkdir build \
+    && cd build \
+    && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DPYTHON_VERSION=${PYTHON_VERSION} -DUSE_PYTHON=1 -DVERBOSE=1 -DSTOP_ON_WARNING=0 .. \
+    && make install -j16 \
+    && cd /root/local \
+    && rm -rf /root/local/oiio
     
 # Install CTL
 RUN git clone https://github.com/ampas/CTL.git \
@@ -283,7 +283,7 @@ RUN echo "export CC=clang" >> /etc/profile \
     && rm -rf /root/local/libjxl
 
 # Install libavif
-RUN git clone https://github.com/AOMediaCodec/libavif.git -b v1.3.0 libavif_aom \
+RUN git clone https://github.com/AOMediaCodec/libavif.git -b v1.4.1 libavif_aom \
     && cd libavif_aom/ext \
     && $SHELL ./libyuv.cmd \
     && $SHELL ./aom.cmd \
