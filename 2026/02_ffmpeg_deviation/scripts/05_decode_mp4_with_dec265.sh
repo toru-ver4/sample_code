@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ffmpeg_bin="/opt/my_ffmpeg_out/bin/ffmpeg"
-dec265_bin="dec265"
+dec265_bin="libde265-dec265"
 video_size="3840x2160"
 
 bit_depth_list=(8 10 12)
@@ -102,6 +102,7 @@ for bit_depth in "${bit_depth_list[@]}"; do
 
             run_cmd \
                 "$dec265_bin" \
+                -q \
                 -o "$yuv_fname" \
                 -f 1 \
                 -v "$hevc_fname"

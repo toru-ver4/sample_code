@@ -29,6 +29,8 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         libdav1d-dev \
         libx264-dev \
         libde265-dev \
+        libde265-0 \
+        libde265-examples \
         libexpat1-dev \
         libfreetype-dev \
         libfreetype6-dev \
@@ -90,6 +92,7 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         sudo \
         unzip \
         wget \
+        x265 \
         yasm \
         zlib1g-dev \
     && apt-get clean \
