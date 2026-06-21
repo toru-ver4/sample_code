@@ -3264,52 +3264,105 @@ def scrgb_jxr_to_rec2100_pq_png(src_fname="./Windows_HDR_Capture/600.jxr"):
     output.close()
 
 
+def get_ffmpeg_color_primaries_str(color_gamut: str = cs.BT709):
+    if color_gamut == cs.BT709:
+        color_primaries_str = "bt709"
+    elif color_gamut == cs.P3_D65:
+        color_primaries_str = "smpte432"
+    elif color_gamut == cs.BT2020:
+        color_primaries_str = "bt2020"
+    else:
+        raise ValueError("unsupported color_gamut")
+
+    return color_primaries_str
+
+
+def get_ffmpeg_color_space_str(color_gamut: str = cs.BT709):
+    if color_gamut == cs.BT709:
+        color_space_str = "bt709"
+    elif color_gamut == cs.P3_D65:
+        color_space_str = "bt709"
+    elif color_gamut == cs.BT2020:
+        color_space_str = "bt2020nc"
+    else:
+        raise ValueError("unsupported color_gamut")
+
+    return color_space_str
+
+
+def get_ffmpeg_color_trc_str(transfer_characteristics: str = tf.GAMMA24):
+    if transfer_characteristics in [tf.BT709, tf.GAMMA24]:
+        color_trc_str = 'bt709'
+    elif transfer_characteristics == tf.HLG:
+        color_trc_str = 'arib-std-b67'
+    elif transfer_characteristics == tf.ST2084:
+        color_trc_str = 'smpte2084'
+    else:
+        raise ValueError("unsupported color_gamut")
+
+    return color_trc_str
+
+
+def add_clli_chunk_to_png(
+    src_png_name,
+    dst_png_name,
+    color_gamut=cs.BT2020,
+    transfer_characteristics=tf.ST2084,
+    max_fall=10000,
+    max_cll=10000,
+    framerate=24,
+    
+):
+    def add_x265_params(param):
+        return f"{param}" if param is not None else ""
+
+    cmd = "ffmpeg"
+    dst_bitstream_name = str(Path(dst_png_name).with_name(f"{Path(dst_png_name).stem}.h265"))
+
+    max_fall_str = f"max-cll={max_cll},{max_fall}" if max_fall is not None else "no-cll=1"
+    x265_params = add_x265_params(max_fall_str)
+
+    color_primaries_str = get_ffmpeg_color_primaries_str(color_gamut)
+    color_space_str = get_ffmpeg_color_space_str(color_gamut)
+    color_trc_str = get_ffmpeg_color_trc_str(transfer_characteristics)
+
+    ops = [
+        '-hide_banner',
+        '-y',
+        '-loop', '1',
+        '-color_primaries', color_primaries_str,
+        '-color_trc', color_trc_str,
+        '-colorspace', color_space_str,
+        '-framerate', f'{framerate}',
+        '-i', src_png_name,
+        '-frames:v', "1",
+        '-c:v', 'libx265',
+        '-x265-params', x265_params,
+        '-color_primaries', color_primaries_str,
+        '-color_trc', color_trc_str,
+        '-colorspace', color_space_str,
+        '-pix_fmt', 'yuv444p12le',
+        '-qp', '0',
+        '-f', 'hevc',
+        str(dst_bitstream_name)
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+    # convert to PNG
+    ops = [
+        '-hide_banner',
+        '-f', 'hevc',
+        '-i', dst_bitstream_name,
+        '-frames:v', '1',
+        '-update', '1',
+        dst_png_name, '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
-    # _plot_same_lstar_radial_color_patch_data(
-    #     lstar=58, chroma=32.5, outmost_num=7,
-    #     color_space=RGB_COLOURSPACE_BT709,
-    #     transfer_function=tf.GAMMA24)
-    # calc_rad_patch_idx2(outmost_num=9, current_num=7)
-    # print(convert_luminance_to_color_value(100, tf.ST2084))
-    # print(generate_color_checker_rgb_value(target_white=[0.3127, 0.3290]))
-    # print(calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480)))
-    # print(convert_luminance_to_code_value(100, tf.ST2084))
-    # make_hue_chroma_pattern(
-    #     inner_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
-    #     outer_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
-    #     width=2048, height=1180, hue_num=32)
-
-    # line = np.linspace(0, 1, 5)
-    # line_color = tstack([line, line, line])
-    # print(line)
-    # img = v_mono_line_to_img(line, 4)
-    # print(img)
-
-    # line_r = np.linspace(0, 4, 5)
-    # line_g = np.linspace(0, 4, 5) * 2
-    # line_b = np.linspace(0, 4, 5) * 3
-    # line_color = tstack([line_r, line_g, line_b])
-    # print(line_color)
-    # img = v_color_line_to_img(line_color, 4)
-    # print(img)
-
-    # bg_img = np.ones((1080, 1920, 3)) * 0.5
-    # fg_img = np.zeros((540, 960, 3), dtype=np.uint8)
-    # fg_img = cv2.circle(
-    #     fg_img, (200, 100), 40,
-    #     color=[0, 192, 192], thickness=-1, lineType=cv2.LINE_AA)
-    #     # rmo_list[idx].calc_next_pos()  # マルチスレッド化にともない事前に計算
-    # # alpha channel は正規化する。そうしないと中間調合成時に透けてしまう
-    # alpha = np.max(fg_img, axis=-1)
-    # alpha = alpha / np.max(alpha)
-    # fg_img = np.dstack((fg_img / 0xFF, alpha))
-    # merge_with_alpha2(bg_img=bg_img, fg_img=fg_img, pos=(200, 100))
-    # img_wirte_float_as_16bit_int("fg.png", fg_img)
-    # img_wirte_float_as_16bit_int("after_merge.png", bg_img)
-
-    # line = np.linspace(0, 1, 9)
-    # print(line)
-    # img = h_mono_line_to_img(line, 6)
-    # print(img)
