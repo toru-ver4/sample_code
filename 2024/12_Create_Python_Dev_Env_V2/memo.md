@@ -52,14 +52,14 @@ docker run -it -P --name png_cicp_editor -v C:\Users\toruv\OneDrive\work\sample_
 #### build
 
 ```powershell
-docker build --no-cache -f ./docker_files/Dockerfile -t takuver4/ty_env_v2:rev10 .
-docker build -f ./docker_files/Dockerfile -t takuver4/ty_env_v2:rev10 .
+docker build --no-cache -f ./docker_files/Dockerfile -t takuver4/ty_env_v2:rev11 .
+docker build -f ./docker_files/Dockerfile -t takuver4/ty_env_v2:rev11 .
 ```
 
 ## Push
 
 ```powershell
-docker push takuver4/ty_env_v2:rev10
+docker push takuver4/ty_env_v2:rev11
 ```
 
 ## run
@@ -67,6 +67,6 @@ docker push takuver4/ty_env_v2:rev10
 ```powershell
 docker compose up -d
   or
-docker run -it -P --name ty_env_v2_rev10 -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src --rm takuver4/ty_env_v2:rev10 bash
-docker run -itd -P --platform linux/amd64 --name ty_env_v2_rev10 -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src -e PYTHONPATH=/work/src/ty_lib --rm takuver4/ty_env_v2:rev10
+docker run -it -P --name ty_env_v2_rev11 -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src --rm takuver4/ty_env_v2:rev11 bash
+docker run -itd -P --platform linux/amd64 --name ty_env_v2_rev11 -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src -e PYTHONPATH=/work/src/ty_lib --rm takuver4/ty_env_v2:rev11
 ```

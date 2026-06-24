@@ -20,6 +20,7 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         cmake \
         dasel \
         doxygen \
+        ffmpeg \
         git \
         git-core \
         imagemagick \
@@ -58,6 +59,8 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         libvorbis-dev \
         libvpx-dev \
         libwebp-dev \
+        libwxgtk-media3.2-dev \
+        libwxgtk-webview3.2-dev \
         libxcb1-dev \
         libx265-dev \
         libxcb-cursor0 \
@@ -82,6 +85,7 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         meson \
         nasm \
         ninja-build \
+        nlohmann-json3-dev \
         pkg-config \
         pybind11-dev \
         python3-tk \
@@ -90,100 +94,102 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         sudo \
         unzip \
         wget \
+        wx-common \
+        wx3.2-headers \
         yasm \
         zlib1g-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 
-# Install FFmpeg
-RUN mkdir -p ~/ffmpeg_sources /opt/my_ffmpeg /opt/my_ffmpeg_out
+# # Install FFmpeg
+# RUN mkdir -p ~/ffmpeg_sources /opt/my_ffmpeg /opt/my_ffmpeg_out
 
-# Insatll libfdk-aac for FFmpeg
-RUN cd ~/ffmpeg_sources \
-    && git -C fdk-aac pull 2> /dev/null || git clone --depth 1 https://github.com/mstorsjo/fdk-aac \
-    && cd fdk-aac \
-    && autoreconf -fiv \
-    && ./configure --prefix="/opt/my_ffmpeg/" --disable-shared \
-    && make -j 16 \
-    && make install \
-    && cd ~/ && rm -rf ./ffmpeg_sources/fdk-aac
+# # Insatll libfdk-aac for FFmpeg
+# RUN cd ~/ffmpeg_sources \
+#     && git -C fdk-aac pull 2> /dev/null || git clone --depth 1 https://github.com/mstorsjo/fdk-aac \
+#     && cd fdk-aac \
+#     && autoreconf -fiv \
+#     && ./configure --prefix="/opt/my_ffmpeg/" --disable-shared \
+#     && make -j 16 \
+#     && make install \
+#     && cd ~/ && rm -rf ./ffmpeg_sources/fdk-aac
 
-RUN cd ~/ffmpeg_sources \
-    && git -C aom pull 2> /dev/null || git clone --depth 1 https://aomedia.googlesource.com/aom \
-    && mkdir -p aom_build \
-    && cd aom_build \
-    && PATH="/opt/my_ffmpeg/bin:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="/opt/my_ffmpeg/" -DENABLE_TESTS=OFF -DENABLE_NASM=on ../aom \
-    && PATH="/opt/my_ffmpeg/bin:$PATH" make -j 16 \
-    && make install \
-    && cd ~/ && rm -rf ./ffmpeg_sources/aom
+# RUN cd ~/ffmpeg_sources \
+#     && git -C aom pull 2> /dev/null || git clone --depth 1 https://aomedia.googlesource.com/aom \
+#     && mkdir -p aom_build \
+#     && cd aom_build \
+#     && PATH="/opt/my_ffmpeg/bin:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="/opt/my_ffmpeg/" -DENABLE_TESTS=OFF -DENABLE_NASM=on ../aom \
+#     && PATH="/opt/my_ffmpeg/bin:$PATH" make -j 16 \
+#     && make install \
+#     && cd ~/ && rm -rf ./ffmpeg_sources/aom
 
-RUN cd ~/ffmpeg_sources \
-    && git -C SVT-AV1 pull 2> /dev/null || git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git \
-    && mkdir -p SVT-AV1/build \
-    && cd SVT-AV1/build \
-    && PATH="/opt/my_ffmpeg/bin:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="/opt/my_ffmpeg/" -DCMAKE_BUILD_TYPE=Release -DBUILD_DEC=OFF -DBUILD_SHARED_LIBS=OFF .. \
-    && PATH="/opt/my_ffmpeg/bin:$PATH" make -j16 \
-    && make install \
-    && cd ~/ && rm -rf ./ffmpeg_sources/SVT-AV1
+# RUN cd ~/ffmpeg_sources \
+#     && git -C SVT-AV1 pull 2> /dev/null || git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git \
+#     && mkdir -p SVT-AV1/build \
+#     && cd SVT-AV1/build \
+#     && PATH="/opt/my_ffmpeg/bin:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="/opt/my_ffmpeg/" -DCMAKE_BUILD_TYPE=Release -DBUILD_DEC=OFF -DBUILD_SHARED_LIBS=OFF .. \
+#     && PATH="/opt/my_ffmpeg/bin:$PATH" make -j16 \
+#     && make install \
+#     && cd ~/ && rm -rf ./ffmpeg_sources/SVT-AV1
 
-RUN cd ~/ffmpeg_sources \
-    && git -C dav1d pull 2> /dev/null || git clone --depth 1 https://code.videolan.org/videolan/dav1d.git \
-    && mkdir -p dav1d/build \
-    && cd dav1d/build \
-    && meson setup -Denable_tools=false -Denable_tests=false --default-library=static .. --prefix "/opt/my_ffmpeg" --libdir="/opt/my_ffmpeg/lib" \
-    && ninja -j16 \
-    && ninja install \
-    && cd ~/ && rm -rf ./ffmpeg_sources/dav1d
+# RUN cd ~/ffmpeg_sources \
+#     && git -C dav1d pull 2> /dev/null || git clone --depth 1 https://code.videolan.org/videolan/dav1d.git \
+#     && mkdir -p dav1d/build \
+#     && cd dav1d/build \
+#     && meson setup -Denable_tools=false -Denable_tests=false --default-library=static .. --prefix "/opt/my_ffmpeg" --libdir="/opt/my_ffmpeg/lib" \
+#     && ninja -j16 \
+#     && ninja install \
+#     && cd ~/ && rm -rf ./ffmpeg_sources/dav1d
 
-RUN cd ~/'ffmpeg_sources' \
-    && git -C vmaf pull 2> /dev/null || git clone --depth 1 https://github.com/Netflix/vmaf.git \
-    && mkdir -p 'vmaf/libvmaf/build' \
-    && cd 'vmaf/libvmaf/build' \
-    && meson setup -Denable_tests=false -Denable_docs=false --buildtype=release --default-library=static '../' --prefix "/opt/my_ffmpeg/" --bindir="/opt/my_ffmpeg/bin" --libdir="/opt/my_ffmpeg/lib" \
-    && ninja -j16 \
-    && ninja install \
-    && cd ~/ && rm -rf ./ffmpeg_sources/vmaf
+# RUN cd ~/'ffmpeg_sources' \
+#     && git -C vmaf pull 2> /dev/null || git clone --depth 1 https://github.com/Netflix/vmaf.git \
+#     && mkdir -p 'vmaf/libvmaf/build' \
+#     && cd 'vmaf/libvmaf/build' \
+#     && meson setup -Denable_tests=false -Denable_docs=false --buildtype=release --default-library=static '../' --prefix "/opt/my_ffmpeg/" --bindir="/opt/my_ffmpeg/bin" --libdir="/opt/my_ffmpeg/lib" \
+#     && ninja -j16 \
+#     && ninja install \
+#     && cd ~/ && rm -rf ./ffmpeg_sources/vmaf
 
-RUN cd ~/ffmpeg_sources \
-    && git -C opus pull 2> /dev/null || git clone --depth 1 https://github.com/xiph/opus.git \
-    && cd opus \
-    && ./autogen.sh \
-    && ./configure --prefix="/opt/my_ffmpeg" --disable-shared \
-    && make -j16 \
-    && make install \
-    && cd ~/ && rm -rf ./ffmpeg_sources/opus
+# RUN cd ~/ffmpeg_sources \
+#     && git -C opus pull 2> /dev/null || git clone --depth 1 https://github.com/xiph/opus.git \
+#     && cd opus \
+#     && ./autogen.sh \
+#     && ./configure --prefix="/opt/my_ffmpeg" --disable-shared \
+#     && make -j16 \
+#     && make install \
+#     && cd ~/ && rm -rf ./ffmpeg_sources/opus
 
-RUN cd ~/ffmpeg_sources \
-    && git clone https://github.com/toru-ver4/FFmpeg_precise_10bit.git ffmpeg \
-    && cd ffmpeg \
-    && PATH="/opt/my_ffmpeg/bin:$PATH" PKG_CONFIG_PATH="/opt/my_ffmpeg/lib/pkgconfig" ./configure \
-        --prefix="/opt/my_ffmpeg_out" \
-        --pkg-config-flags="--static" \
-        --extra-cflags="-I/opt/my_ffmpeg/include" \
-        --extra-ldflags="-L/opt/my_ffmpeg/lib" \
-        --extra-libs="-lpthread -lm" \
-        --ld="g++" \
-        --bindir="/opt/my_ffmpeg_out/bin" \
-        --enable-gpl \
-        --enable-gnutls \
-        --enable-libaom \
-        --enable-libass \
-        --enable-libfdk-aac \
-        --enable-libfreetype \
-        --enable-libmp3lame \
-        --enable-libopus \
-        --enable-libsvtav1 \
-        --enable-libdav1d \
-        --enable-libvorbis \
-        --enable-libvpx \
-        --enable-libx264 \
-        --enable-libx265 \
-        --enable-nonfree \
-    && PATH="/opt/my_ffmpeg_out/bin:$PATH" make -j16 \
-    && make install \
-    && hash -r \
-    && cd ~/ && rm -rf ./ffmpeg_sources/ffmpeg
+# RUN cd ~/ffmpeg_sources \
+#     && git clone https://github.com/toru-ver4/FFmpeg_precise_10bit.git ffmpeg \
+#     && cd ffmpeg \
+#     && PATH="/opt/my_ffmpeg/bin:$PATH" PKG_CONFIG_PATH="/opt/my_ffmpeg/lib/pkgconfig" ./configure \
+#         --prefix="/opt/my_ffmpeg_out" \
+#         --pkg-config-flags="--static" \
+#         --extra-cflags="-I/opt/my_ffmpeg/include" \
+#         --extra-ldflags="-L/opt/my_ffmpeg/lib" \
+#         --extra-libs="-lpthread -lm" \
+#         --ld="g++" \
+#         --bindir="/opt/my_ffmpeg_out/bin" \
+#         --enable-gpl \
+#         --enable-gnutls \
+#         --enable-libaom \
+#         --enable-libass \
+#         --enable-libfdk-aac \
+#         --enable-libfreetype \
+#         --enable-libmp3lame \
+#         --enable-libopus \
+#         --enable-libsvtav1 \
+#         --enable-libdav1d \
+#         --enable-libvorbis \
+#         --enable-libvpx \
+#         --enable-libx264 \
+#         --enable-libx265 \
+#         --enable-nonfree \
+#     && PATH="/opt/my_ffmpeg_out/bin:$PATH" make -j16 \
+#     && make install \
+#     && hash -r \
+#     && cd ~/ && rm -rf ./ffmpeg_sources/ffmpeg
 
 # Install lubultrahdr
 ########################################
@@ -206,7 +212,7 @@ RUN pip install --upgrade pip \
         && pip install --no-cache-dir -r /root/local/requirements.txt
 
 # Install libheif
-RUN git clone https://github.com/strukturag/libheif.git -b v1.21.2   \
+RUN git clone https://github.com/strukturag/libheif.git -b v1.23.0   \
     && cd libheif \
     && mkdir build \
     && cd build \
@@ -219,7 +225,7 @@ RUN git clone https://github.com/strukturag/libheif.git -b v1.21.2   \
 # Install OpencolorIO
 RUN mkdir /tmp/ociobuild \
     && cd /tmp/ociobuild \
-    && git clone https://github.com/AcademySoftwareFoundation/OpenColorIO.git /root/local/OpenColorIO -b v2.5.1 \
+    && git clone https://github.com/AcademySoftwareFoundation/OpenColorIO.git /root/local/OpenColorIO -b v2.5.2 \
     && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DOCIO_INSTALL_EXT_PACKAGES=MISSING -DOCIO_BUILD_PYTHON=0 -DOCIO_VERBOSE=1 /root/local/OpenColorIO \
     && make -j16 \
     && make install \
@@ -227,7 +233,7 @@ RUN mkdir /tmp/ociobuild \
     && rm -rf /root/local/OpenColorIO /tmp/ociobuild
 
 # Install OpenImageIO
-RUN git clone https://github.com/OpenImageIO/oiio.git -b v3.1.13.1 \
+RUN git clone https://github.com/OpenImageIO/oiio.git -b v3.1.14.0 \
     && cd oiio \
     && mkdir build \
     && cd build \
@@ -247,27 +253,20 @@ RUN git clone https://github.com/ampas/CTL.git \
         && cd /root/local \
         && rm -rf /root/local/CTL
     
-# Install Sample ICC
-RUN wget https://sourceforge.net/projects/sampleicc/files/sampleicc%20tar/SampleIcc-1.6.8/SampleICC-1.6.8.tar.gz \
-        && tar xvzf SampleICC-1.6.8.tar.gz \
-        && cd SampleICC-1.6.8 \
-        && ./configure \
-        && make -j16 \
-        && make install \
-        && cd /root/local \
-        && rm -rf /root/local/SampleICC-1.6.8.tar.gz \
-        && rm -rf /root/local/SampleICC-1.6.8
-    
 # Install ICC XML
-RUN wget https://sourceforge.net/projects/iccxml/files/IccXML-Src/IccXML-0.9.8/IccXML-0.9.8.tar.gz \
-        && tar -xzf IccXML-0.9.8.tar.gz \
-        && cd IccXML-0.9.8 \
-        && ./configure \
-        && make -j16 \
-        && make install \
-        && cd /root/local \
-        && rm -rf /root/local/IccXML-0.9.8.tar.gz \
-        && rm -rf /root/local/IccXML-0.9.8
+RUN mkdir -p /opt \
+        && cd /opt \
+        && git clone https://github.com/InternationalColorConsortium/iccDEV.git -b v2.3.2.1 \
+        && cd iccDEV \
+        && cmake --preset linux-clang -S Build/Cmake -B out/linux-clang -DENABLE_TOOLS=ON \
+        && cmake --build out/linux-clang -j"$(nproc)" \
+        && cmake --install out/linux-clang --prefix /opt/iccdev-install \
+        && cd /opt && rm -rf iccDEV
+
+RUN printf '%s\n' \
+        /opt/iccdev-install/lib \
+        > /etc/ld.so.conf.d/iccdev.conf \
+    && ldconfig
 
 # Install libjxl (JPEG XL)
 RUN echo "export CC=clang" >> /etc/profile \
@@ -283,7 +282,7 @@ RUN echo "export CC=clang" >> /etc/profile \
     && rm -rf /root/local/libjxl
 
 # Install libavif
-RUN git clone https://github.com/AOMediaCodec/libavif.git -b v1.4.1 libavif_aom \
+RUN git clone https://github.com/AOMediaCodec/libavif.git -b v1.4.2 libavif_aom \
     && cd libavif_aom/ext \
     && $SHELL ./libyuv.cmd \
     && $SHELL ./aom.cmd \
@@ -370,7 +369,8 @@ RUN groupadd -g ${GID} ${USER_NAME} \
 
 WORKDIR /work/src
 USER ${USER_NAME}
-ENV PATH="/opt/my_ffmpeg_out/bin:${PATH}"
+ENV PATH="/opt/iccdev-install/bin:${PATH}"
+# ENV PATH="/opt/my_ffmpeg_out/bin:${PATH}"
 
 ENV LANG=ja_JP.UTF-8
 ENV LC_ALL=ja_JP.UTF-8
