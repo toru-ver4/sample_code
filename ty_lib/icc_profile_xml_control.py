@@ -38,8 +38,97 @@ RENDERING_INTENT_SATURATION = "Saturation"
 _MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 ICC_PROFILE_SAMPLE_DIR = os.path.join(_MODULE_DIR, "icc_profile_sample")
 ICC_PROFILE_SAMPLE_P3_2_XML = os.path.join(ICC_PROFILE_SAMPLE_DIR, "p3-2.xml")
-ICC_PROFILE_SAMPLE_BASE_PROFILE_V4_XML = os.path.join(
-    ICC_PROFILE_SAMPLE_DIR, "base_profile_v4.xml")
+
+
+def _add_text_element(parent, tag, text="", attrib=None):
+    """Add an element whose text may intentionally be empty."""
+    element = ET.SubElement(parent, tag, attrib or {})
+    element.text = text
+    return element
+
+
+def create_profile_xml(include_mhc2=False):
+    """Create the ICC XML skeleton without reading a template file.
+
+    Parameters
+    ----------
+    include_mhc2 : bool
+        Use the tag set and header defaults required by an MHC2 profile.
+
+    Returns
+    -------
+    xml.etree.ElementTree.ElementTree
+        A complete, mutable ICC profile XML tree.
+    """
+    root = ET.Element("IccProfile")
+    header = ET.SubElement(root, "Header")
+    _add_text_element(header, "PreferredCMMType", "ADBE")
+    _add_text_element(header, "ProfileVersion", "4.30")
+    _add_text_element(header, "ProfileDeviceClass", "mntr")
+    _add_text_element(header, "DataColourSpace", "RGB ")
+    _add_text_element(header, "PCS", "XYZ ")
+    _add_text_element(header, "CreationDateTime", create_current_date_str())
+    _add_text_element(header, "PrimaryPlatform", "MSFT")
+    ET.SubElement(header, "ProfileFlags", {
+        "EmbeddedInFile": "false", "UseWithEmbeddedDataOnly": "false"})
+    _add_text_element(header, "DeviceManufacturer")
+    _add_text_element(header, "DeviceModel")
+    ET.SubElement(header, "DeviceAttributes", {
+        "ReflectiveOrTransparency": (
+            "transparency" if include_mhc2 else "reflective"),
+        "GlossyOrMatte": "glossy", "MediaPolarity": "positive",
+        "MediaColour": "colour"})
+    _add_text_element(
+        header, "RenderingIntent",
+        RENDERING_INTENT_RELATIVE if include_mhc2
+        else RENDERING_INTENT_PERCEPTUAL)
+    illuminant = ET.SubElement(header, "PCSIlluminant")
+    ET.SubElement(illuminant, "XYZNumber", {
+        "X": "0.96420288", "Y": "1.00000000", "Z": "0.82490540"})
+    _add_text_element(header, "ProfileCreator")
+    _add_text_element(header, "ProfileID")
+
+    tags = ET.SubElement(root, "Tags")
+    for signature in ("desc", "cprt"):
+        tag = ET.SubElement(tags, "multiLocalizedUnicodeType")
+        _add_text_element(tag, "TagSignature", signature)
+        _add_text_element(tag, "LocalizedText", attrib={
+            "LanguageCountry": "enUS"})
+
+    def add_xyz_tag(signature):
+        tag = ET.SubElement(tags, "XYZType")
+        _add_text_element(tag, "TagSignature", signature)
+        return ET.SubElement(tag, "XYZNumber", {
+            "X": "0.00000000", "Y": "0.00000000", "Z": "0.00000000"})
+
+    add_xyz_tag("wtpt")
+
+    def add_chad_tag():
+        tag = ET.SubElement(tags, "s15Fixed16ArrayType")
+        _add_text_element(tag, "TagSignature", "chad")
+        return _add_text_element(tag, "Array")
+
+    if not include_mhc2:
+        add_chad_tag()
+    add_xyz_tag("lumi")
+
+    trc = ET.SubElement(tags, "parametricCurveType")
+    for signature in ("rTRC", "gTRC", "bTRC"):
+        _add_text_element(trc, "TagSignature", signature)
+    _add_text_element(
+        trc, "ParametricCurve", attrib={"FunctionType": "0"})
+
+    for signature in ("rXYZ", "gXYZ", "bXYZ"):
+        add_xyz_tag(signature)
+
+    if include_mhc2:
+        add_chad_tag()
+        private = ET.SubElement(tags, "PrivateType", {"type": "MHC2"})
+        _add_text_element(private, "TagSignature", "MHC2")
+        _add_text_element(private, "UnknownData")
+
+    ET.indent(root, space="  ")
+    return ET.ElementTree(root)
 
 
 def get_value_from_specific_header_tag(root, header_name):
@@ -802,7 +891,7 @@ def create_simple_power_gamma_profile(
     create simple profile.
     gamma function must be "y = x ** gamma" format.
     """
-    tree = ET.parse(ICC_PROFILE_SAMPLE_BASE_PROFILE_V4_XML)
+    tree = create_profile_xml()
     root = tree.getroot()
 
     # Profile header
@@ -855,7 +944,7 @@ def create_simple_sRGB_like_profile(
     create simple profile.
     gamma function must be "y = x ** gamma" format.
     """
-    tree = ET.parse(ICC_PROFILE_SAMPLE_BASE_PROFILE_V4_XML)
+    tree = create_profile_xml()
     root = tree.getroot()
 
     # Profile header
@@ -898,7 +987,7 @@ def create_simple_sRGB_like_profile(
 
 
 def create_sample_profile():
-    tree = ET.parse(ICC_PROFILE_SAMPLE_BASE_PROFILE_V4_XML)
+    tree = create_profile_xml()
     root = tree.getroot()
 
     # Profile header

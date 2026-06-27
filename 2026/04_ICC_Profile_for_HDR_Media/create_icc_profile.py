@@ -8,7 +8,6 @@ debug code
 # import standard libraries
 import os
 import sys
-import xml.etree.ElementTree as ET
 import subprocess
 from pathlib import Path
 from itertools import product
@@ -52,11 +51,10 @@ def create_bt709_gamma24_curve_1024_profile():
     """
     Create BT.709/D65 ICC profile XML with Gamma 2.4 curveType TRC.
     """
-    template_fname = TY_LIB_ROOT / "icc_profile_sample" / "base_profile_v4.xml"
     xml_fname = Path("./xml/bt709_gamma24_curve_1024.xml")
     icc_fname = Path("./icc/bt709_gamma24_curve_1024.icc")
 
-    tree = ET.parse(template_fname)
+    tree = ipxc.create_profile_xml()
     root = tree.getroot()
 
     ipxc.create_profle_header(root)
@@ -122,8 +120,7 @@ def create_mhc_icc_profile(
     create simple profile.
     gamma function must be "y = x ** gamma" format.
     """
-    template_fname = TY_LIB_ROOT / "icc_profile_sample" / "base_profile_v4_mhc.xml"
-    tree = ET.parse(template_fname)
+    tree = ipxc.create_profile_xml(include_mhc2=True)
     root = tree.getroot()
 
     # Profile header
@@ -222,11 +219,11 @@ def create_gamma24_bt2020():
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     create_bt709_gamma24_curve_1024_profile()
-    # create_gamma24_bt2020()
-    # create_mhc2_profile_with_gain(
-    #     gain=0.5,
-    #     min_luminance=0.1,
-    #     peak_luminance=700,
-    #     max_full_frame_luminance=700,
-    #     cs_name=cs.BT2020
-    # )
+    create_gamma24_bt2020()
+    create_mhc2_profile_with_gain(
+        gain=0.5,
+        min_luminance=0.1,
+        peak_luminance=700,
+        max_full_frame_luminance=700,
+        cs_name=cs.BT2020
+    )
