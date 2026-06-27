@@ -201,7 +201,7 @@ RUN git clone https://github.com/google/libultrahdr.git -b v1.4.0 \
     && mkdir build_directory \
     && cd build_directory \
     && cmake -G "Unix Makefiles" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DUHDR_BUILD_TESTS=1 ../ \
-    && make -j16 \
+    && make -j"$(nproc)" \
     && cp ultrahdr_app /usr/local/bin/ \
     && cd / \
     && rm -rf /root/local/libultrahdr
@@ -363,9 +363,10 @@ ARG GID=1001
 ARG USER_NAME="devuser"
 
 RUN groupadd -g ${GID} ${USER_NAME} \
-    && useradd -m -s /bin/bash -u ${UID} -g ${GID} -p '$1$jQHQ4kCa$qx6X2s6ee1GqpGszqZNtV0' ${USER_NAME} \
+    && useradd -m -s /bin/bash -u ${UID} -g ${GID} ${USER_NAME} \
     && usermod -aG sudo ${USER_NAME} \
-    && chage -d 0 ${USER_NAME}
+    && printf '%s\n' "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USER_NAME} \
+    && chmod 0440 /etc/sudoers.d/${USER_NAME}
 
 WORKDIR /work/src
 USER ${USER_NAME}

@@ -3,7 +3,8 @@
 ## ICC XML のマニュアル作成
 
 ### 背景
-私は temporary/2026/DaVinci_Photo_page/IccXML-0.9.8 をビルドして使える `iccFromXml` を使って .xml から .icc を作ってきました。
+
+私は `temporary\2026\DaVinci_Photo_page\iccDEV` をビルドして使える `iccFromXml` を使って .xml から .icc を作ってきました。
 
 メインとなるライブラリは以下です。
 
@@ -21,7 +22,7 @@
 docker run --rm \
   -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src \
   -w /work/src \
-  takuver4/ty_env_v2:rev10 \
+  takuver4/ty_env_v2:rev11 \
   iccFromXml input.xml output.icc
 ```
 
@@ -31,23 +32,23 @@ docker run --rm \
 docker run --rm \
   -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src \
   -w /work/src \
-  takuver4/ty_env_v2:rev10 \
+  takuver4/ty_env_v2:rev11 \
   iccToXml input.icc output.xml
 ```
 
 ### 依頼内容
 
-これから、以下のライブラリの改修を Codex を使って進めようと考えています。
+これから、以下のライブラリの改修・増築を Codex を使って進めようと考えています。
 
 * ty_lib/icc_profile_calc_param.py
 * ty_lib/icc_profile_xml_control.py
 
-ライブラリの改修には既に存在しているタグの生成を方法を洗練させるだけでなく、
-「今後に新しく追加される ICC Profile のタグ生成を行う」ことも含まれます。
-そのため、現状の `icc_profile_xml_control.py` の内容に引っ張られすぎずに、
-`iccFromXml` コマンドの仕様を余すことなく書き記すつもりでドキュメントを作成して下さい。
-
-それにあたり、事前に IccXML-0.9.8 の `iccFromXml` の仕様をまとめて欲しいです。
+それにあたり、事前に `temporary\2026\DaVinci_Photo_page\iccDEV` の `iccFromXml` の仕様をまとめて欲しいです。
 その仕様を元に Codex が `icc_profile_calc_param.py` と `icc_profile_xml_control.py` の変更作業を行います。
+
+なお、ライブラリの改修・増築には既に存在しているタグの生成を方法を洗練させるだけでなく、
+「今後に新しく追加される ICC Profile のタグ生成を行う」ことも含まれます。
+そのため、現状の `icc_profile_xml_control.py` の内容に引っ張られ過ぎすに、
+`iccFromXml` コマンドの仕様を余すことなく書き記すつもりでドキュメントを作成して下さい。
 
 作成した仕様書は 2026/04_ICC_Profile_for_HDR_Media/IccXML-0.9.8_spec.md に吐き出して下さい。

@@ -35,6 +35,13 @@ RENDERING_INTENT_PERCEPTUAL = "Perceptual"
 RENDERING_INTENT_SATURATION = "Saturation"
 
 
+_MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
+ICC_PROFILE_SAMPLE_DIR = os.path.join(_MODULE_DIR, "icc_profile_sample")
+ICC_PROFILE_SAMPLE_P3_2_XML = os.path.join(ICC_PROFILE_SAMPLE_DIR, "p3-2.xml")
+ICC_PROFILE_SAMPLE_BASE_PROFILE_V4_XML = os.path.join(
+    ICC_PROFILE_SAMPLE_DIR, "base_profile_v4.xml")
+
+
 def get_value_from_specific_header_tag(root, header_name):
     """
     Example
@@ -700,7 +707,7 @@ def set_mhc2_params_to_element(
 
 
 def xml_parse_test():
-    tree = ET.parse("./icc_profile_sample/p3-2.xml")
+    tree = ET.parse(ICC_PROFILE_SAMPLE_P3_2_XML)
     root = tree.getroot()
     chad_mtx_element = get_chad_mtx_element(root)
     print(chad_mtx_element.text)
@@ -795,7 +802,7 @@ def create_simple_power_gamma_profile(
     create simple profile.
     gamma function must be "y = x ** gamma" format.
     """
-    tree = ET.parse("./icc_profile_sample/base_profile_v4.xml")
+    tree = ET.parse(ICC_PROFILE_SAMPLE_BASE_PROFILE_V4_XML)
     root = tree.getroot()
 
     # Profile header
@@ -848,7 +855,7 @@ def create_simple_sRGB_like_profile(
     create simple profile.
     gamma function must be "y = x ** gamma" format.
     """
-    tree = ET.parse("./icc_profile_sample/base_profile_v4.xml")
+    tree = ET.parse(ICC_PROFILE_SAMPLE_BASE_PROFILE_V4_XML)
     root = tree.getroot()
 
     # Profile header
@@ -891,7 +898,7 @@ def create_simple_sRGB_like_profile(
 
 
 def create_sample_profile():
-    tree = ET.parse("./icc_profile_sample/base_profile_v4.xml")
+    tree = ET.parse(ICC_PROFILE_SAMPLE_BASE_PROFILE_V4_XML)
     root = tree.getroot()
 
     # Profile header

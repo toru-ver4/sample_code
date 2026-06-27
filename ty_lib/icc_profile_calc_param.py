@@ -11,9 +11,12 @@ import os
 # import third-party libraries
 from colour.adaptation import matrix_chromatic_adaptation_VonKries
 from colour import xy_to_XYZ, XYZ_to_xy
+from colour.utilities import tstack
+import numpy as np
 
 # import my libraries
 import color_space as cs
+import transfer_functions as tf
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -102,6 +105,16 @@ def calc_rgb_to_xyz_mtx_included_chad_mtx(
     output_mtx = chad_mtx.dot(rgb_to_xyz_mtx)
 
     return output_mtx
+
+
+def create_gain_1dlut_for_st2084(num_of_sample, gain=0.5):
+    x = np.linspace(0, 1, num_of_sample)
+    linear = tf.eotf_to_luminance(x, tf.ST2084) * gain
+    y = tf.oetf_from_luminance(linear, tf.ST2084)
+
+    lut = tstack([y, y, y])
+
+    return lut
 
 
 def main_func():
