@@ -25,7 +25,7 @@ Docker 実行例:
 docker run --rm \
   -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src \
   -w /work/src \
-  takuver4/ty_env_v2:rev11 \
+  takuver4/ty_env_v2:rev12 \
   iccFromXml input.xml output.icc
 ```
 

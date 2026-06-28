@@ -10,8 +10,12 @@ ARG PYTHON_VERSION
 
 WORKDIR /root/local
 
-RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/apt/sources.list \
-    && echo "deb http://security.debian.org/ ${DEBIAN_VERSION}-security main" >> /etc/apt/sources.list \
+RUN rm -f /etc/apt/sources.list.d/debian.sources \
+    && printf '%s\n' \
+        "deb http://deb.debian.org/debian ${DEBIAN_VERSION} main" \
+        "deb http://deb.debian.org/debian ${DEBIAN_VERSION}-updates main" \
+        "deb http://security.debian.org/debian-security ${DEBIAN_VERSION}-security main" \
+        > /etc/apt/sources.list \
     && apt-get update && apt-get install -y --no-install-recommends \
         autoconf \
         automake \
@@ -38,6 +42,7 @@ RUN echo "deb http://ftp.jp.debian.org/debian/ ${DEBIAN_VERSION} main" > /etc/ap
         libglu1-mesa-dev \
         libgnutls28-dev \
         libheif-dev \
+        libimage-exiftool-perl \
         libimath-dev \
         libjpeg-dev \
         liblcms2-dev \

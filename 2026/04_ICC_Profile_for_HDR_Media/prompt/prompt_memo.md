@@ -22,7 +22,7 @@
 docker run --rm \
   -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src \
   -w /work/src \
-  takuver4/ty_env_v2:rev11 \
+  takuver4/ty_env_v2:rev12 \
   iccFromXml input.xml output.icc
 ```
 
@@ -32,7 +32,7 @@ docker run --rm \
 docker run --rm \
   -v /mnt/c/Users/toruv/OneDrive/work/sample_code:/work/src \
   -w /work/src \
-  takuver4/ty_env_v2:rev11 \
+  takuver4/ty_env_v2:rev12 \
   iccToXml input.icc output.xml
 ```
 

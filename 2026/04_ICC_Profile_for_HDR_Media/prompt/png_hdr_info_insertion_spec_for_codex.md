@@ -25,6 +25,8 @@ If `cicp` is `None`, the `cICP` chunk must not be added.
 
 If both `clli` and `cicp` are `None`, the function should simply copy `src_png` to `dst_png` without modifying the PNG structure.
 
+Please add this function to `ty_lib\test_pattern_generator2.py`
+
 ---
 
 ## Reference specifications

@@ -47,6 +47,14 @@ def make_gamma_lut(gamma=2.4, num_of_entries=1024):
     return lut
 
 
+def make_pq_lut(num_of_entries=4096):
+    x = np.linspace(0, 1, num_of_entries)
+    y = tf.eotf(x, tf.ST2084)
+    lut = np.uint16(np.round(y * 0xFFFF))
+
+    return lut
+
+
 def create_bt709_gamma24_curve_1024_profile():
     """
     Create BT.709/D65 ICC profile XML with Gamma 2.4 curveType TRC.
@@ -100,6 +108,66 @@ def create_bt709_gamma24_curve_1024_profile():
     command = "iccFromXml"
     print(f"{command} {xml_fname} {icc_fname}")
     subprocess.run([command, xml_fname, icc_fname])
+
+    return xml_fname
+
+
+def create_bt2020_pq_curve_4096_with_cicp_profile(
+        cicp: list = [9, 16, 9, 1]):
+    """
+    Create a BT.2020/D65 ICC profile with a PQ curveType TRC and CICP tag.
+    """
+    xml_fname = Path("./xml/bt2020_PQ_with_CICP.xml")
+    icc_fname = Path("./icc/bt2020_PQ_with_CICP.icc")
+
+    tree = ipxc.create_profile_xml()
+    root = tree.getroot()
+
+    ipxc.create_profle_header(root)
+
+    desc_element = ipxc.get_desc_element(root)
+    desc_element.text = "BT.2020 PQ CurveType 4096 entries with CICP"
+
+    cprt_element = ipxc.get_cprt_element(root)
+    cprt_element.text = "Copyright 2026 Toru Yoshihara"
+
+    src_white = cs.D65
+    dst_white = ipcp.PCS_D50
+    src_primaries = cs.get_primaries(cs.BT2020)
+
+    chad_mtx = ipcp.calc_chromatic_adaptation_matrix(
+        src_white=src_white, dst_white=dst_white)
+    chad_mtx_element = ipxc.get_chad_mtx_element(root)
+    ipxc.set_chad_matrix_to_chad_mtx_element(
+        mtx=chad_mtx, chad_mtx_element=chad_mtx_element)
+
+    lumi_element = ipxc.get_lumi_element(root)
+    ipxc.set_lumi_params_to_element(
+        luminance=100.0, lumi_element=lumi_element)
+
+    wtpt_element = ipxc.get_wtpt_element(root)
+    ipxc.set_wtpt_params_to_element(
+        wtpt=ipcp.PCS_D50_XYZ, wtpt_element=wtpt_element)
+
+    rgbXYZ_element_list = ipxc.get_rgbXYZ_element_list(root)
+    src2pcs_mtx = ipcp.calc_rgb_to_xyz_mtx_included_chad_mtx(
+        rgb_primaries=src_primaries,
+        src_white=src_white, dst_white=dst_white)
+    ipxc.set_rgbXYZ_params_to_element(
+        src2pcs_mtx=src2pcs_mtx, rgb_XYZ_element_list=rgbXYZ_element_list)
+
+    curve_element = ipxc.create_curve_type_element(root)
+    gamma_lut = make_pq_lut(num_of_entries=4096)
+    ipxc.set_curve_type_params_to_element(
+        lut=gamma_lut, curve_element=curve_element)
+
+    ipxc.create_cicp_tag(root, cicp)
+
+    tree.write(xml_fname, short_empty_elements=False)
+
+    command = "iccFromXml"
+    print(f"{command} {xml_fname} {icc_fname}")
+    subprocess.run([command, xml_fname, icc_fname], check=True)
 
     return xml_fname
 
@@ -218,12 +286,12 @@ def create_gamma24_bt2020():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    create_bt709_gamma24_curve_1024_profile()
-    create_gamma24_bt2020()
-    create_mhc2_profile_with_gain(
-        gain=0.5,
-        min_luminance=0.1,
-        peak_luminance=700,
-        max_full_frame_luminance=700,
-        cs_name=cs.BT2020
-    )
+    # create_gamma24_bt2020()
+    # create_mhc2_profile_with_gain(
+    #     gain=0.5,
+    #     min_luminance=0.1,
+    #     peak_luminance=700,
+    #     max_full_frame_luminance=700,
+    #     cs_name=cs.BT2020
+    # )
+    create_bt2020_pq_curve_4096_with_cicp_profile(cicp=[9, 16, 9, 1])

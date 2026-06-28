@@ -281,6 +281,47 @@ def create_curve_type_element(root):
     return curve_element
 
 
+def create_cicp_tag(root, cicp):
+    """Add or replace a CICP tag and return its ``cicpFields`` element.
+
+    ``cicp`` contains ColorPrimaries, TransferCharacteristics,
+    MatrixCoefficients, and VideoFullRangeFlag in that order.
+    """
+    if len(cicp) != 4:
+        raise ValueError("cicp must contain exactly four values")
+
+    try:
+        color_primaries, transfer, matrix, full_range = (
+            int(value) for value in cicp)
+    except (TypeError, ValueError) as error:
+        raise ValueError("all cicp values must be integers") from error
+
+    if not all(0 <= value <= 255 for value in (
+            color_primaries, transfer, matrix, full_range)):
+        raise ValueError("cicp values must be in the range 0 to 255")
+    if full_range not in (0, 1):
+        raise ValueError("VideoFullRangeFlag must be 0 or 1")
+
+    tags_element = root.find("Tags")
+    if tags_element is None:
+        raise ValueError("IccProfile must contain a Tags element")
+
+    existing = tags_element.find("cicpTag")
+    if existing is not None:
+        tags_element.remove(existing)
+
+    cicp_tag = ET.SubElement(tags_element, "cicpTag")
+    cicp_type = ET.SubElement(cicp_tag, "cicpType")
+    fields = ET.SubElement(cicp_type, "cicpFields", {
+        "ColorPrimaries": str(color_primaries),
+        "TransferCharacteristics": str(transfer),
+        "MatrixCoefficients": str(matrix),
+        "VideoFullRangeFlag": str(full_range),
+    })
+    ET.indent(root, space="  ")
+    return fields
+
+
 def get_rgbXYZ_element_list(root):
     rgbXYZ_element_list = [None, None, None]
     parent_tag = 'XYZType'
