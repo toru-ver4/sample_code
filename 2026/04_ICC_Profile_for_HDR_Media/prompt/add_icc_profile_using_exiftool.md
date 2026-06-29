@@ -88,19 +88,23 @@ PNG ファイルの RGB値確認には `ty_lib/test_pattern_generator2.py` の `
 * 正解画像は `avifenc` を使って生成すること
   * その際に lossless として生成すること
 * AVIF の RGB値の確認には `avifdec` を使って lossless で PNG 形式に変換した後に比較すること
+* 生成後に `avifdec --info output.avif` のようにコマンドを実行し、エラー系のメッセージが表示されないのを確認すること
 
 ### PNG
 
 * bit深度は 16-bit とする
+* 生成後に `pngcheck output.png` のようにしてコマンドを実行し `ERROR` が表示されないのを確認すること
 
 ### JPEG XL
 
 * bit深度は 16-bit とする（元の PNG が 16-bitなので特に指定は不要のはず）
 * 正解画像は `cjxl` に `-q 100` オプションを付けて lossless で作ること
 * JPEG XL の RGB値の確認には `djxl` を使って 16-bit PNG に変換して比較すること
+* 生成後に `jxlinfo output.jxl` のようにコマンドを実行し、エラー系のメッセージが表示されないのを確認すること
 
 ### HEIF (.heif) / HEIC (.heic)
 
 * bit深度は 10-bit とする
 * 正解画像は `heif-enc` に `--lossless` オプションを付けて lossless で作ること
 * HEIF の RGB値の確認には `heif-dec` をつかって 16-bit PNG に変換して比較すること
+* 生成後に `heif-info output.heic` のようにコマンドを実行し、エラー系のメッセージが表示されないのを確認すること

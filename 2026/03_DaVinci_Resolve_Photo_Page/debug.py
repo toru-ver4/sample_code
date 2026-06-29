@@ -14,7 +14,7 @@ import color_space as cs
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    tpg.add_clli_chunk_to_png(
+    tpg.add_clli_chunk_to_png_using_ffmpeg(
         src_png_name="./debug/Photo_page_export_without_icc.png",
         dst_png_name="./debug/Photo_page_export_without_icc_with_clli.png",
         color_gamut=cs.BT2020,

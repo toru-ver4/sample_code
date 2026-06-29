@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>HDR metadata test</title>
+<style>body{font-family:system-ui,sans-serif;margin:24px;background:#181818;color:#eee}
+table{border-collapse:collapse;width:100%;margin-bottom:32px}th,td{border:1px solid #666;padding:8px}
+th{background:#333}a{color:#8cf}img{display:block;max-width:320px;max-height:180px;background:#222}</style>
+</head><body><h1>HDR metadata test images</h1><p>CICP target: 9-16-0-1; MaxCLL/MaxFALL: 203/203 nits.</p>
+<p><strong>JPEG XL limitation:</strong> cjxl 0.12.0 replaces the structured BT.2020/PQ
+color encoding when an ICC profile is supplied. Therefore the JXL CICP-on/ICC-on file
+contains CICP 9-16-0-1 in its ICC profile, but not as a second structured color encoding.</p>
+<h2>PNG</h2><table><thead><tr><th>CICP</th>
+<th>CLLI</th><th>ICC Profile</th><th>Open image</th><th>Inline preview</th></tr>
+</thead><tbody><tr><td>off</td><td>off</td>
+<td>off</td><td><a href="test_img/png_cicp-off_clli-off_icc-off.png" target="_blank" rel="noopener">CICP: off, CLLI: off, ICC: off</a></td>
+<td><img src="test_img/png_cicp-off_clli-off_icc-off.png" alt="CICP: off, CLLI: off, ICC: off" loading="lazy"></td></tr><tr><td>off</td><td>off</td>
+<td>on</td><td><a href="test_img/png_cicp-off_clli-off_icc-on.png" target="_blank" rel="noopener">CICP: off, CLLI: off, ICC: on</a></td>
+<td><img src="test_img/png_cicp-off_clli-off_icc-on.png" alt="CICP: off, CLLI: off, ICC: on" loading="lazy"></td></tr><tr><td>off</td><td>on</td>
+<td>off</td><td><a href="test_img/png_cicp-off_clli-on_icc-off.png" target="_blank" rel="noopener">CICP: off, CLLI: on, ICC: off</a></td>
+<td><img src="test_img/png_cicp-off_clli-on_icc-off.png" alt="CICP: off, CLLI: on, ICC: off" loading="lazy"></td></tr><tr><td>off</td><td>on</td>
+<td>on</td><td><a href="test_img/png_cicp-off_clli-on_icc-on.png" target="_blank" rel="noopener">CICP: off, CLLI: on, ICC: on</a></td>
+<td><img src="test_img/png_cicp-off_clli-on_icc-on.png" alt="CICP: off, CLLI: on, ICC: on" loading="lazy"></td></tr><tr><td>on</td><td>off</td>
+<td>off</td><td><a href="test_img/png_cicp-on_clli-off_icc-off.png" target="_blank" rel="noopener">CICP: on, CLLI: off, ICC: off</a></td>
+<td><img src="test_img/png_cicp-on_clli-off_icc-off.png" alt="CICP: on, CLLI: off, ICC: off" loading="lazy"></td></tr><tr><td>on</td><td>off</td>
+<td>on</td><td><a href="test_img/png_cicp-on_clli-off_icc-on.png" target="_blank" rel="noopener">CICP: on, CLLI: off, ICC: on</a></td>
+<td><img src="test_img/png_cicp-on_clli-off_icc-on.png" alt="CICP: on, CLLI: off, ICC: on" loading="lazy"></td></tr><tr><td>on</td><td>on</td>
+<td>off</td><td><a href="test_img/png_cicp-on_clli-on_icc-off.png" target="_blank" rel="noopener">CICP: on, CLLI: on, ICC: off</a></td>
+<td><img src="test_img/png_cicp-on_clli-on_icc-off.png" alt="CICP: on, CLLI: on, ICC: off" loading="lazy"></td></tr><tr><td>on</td><td>on</td>
+<td>on</td><td><a href="test_img/png_cicp-on_clli-on_icc-on.png" target="_blank" rel="noopener">CICP: on, CLLI: on, ICC: on</a></td>
+<td><img src="test_img/png_cicp-on_clli-on_icc-on.png" alt="CICP: on, CLLI: on, ICC: on" loading="lazy"></td></tr></tbody></table><h2>AVIF</h2><table><thead><tr><th>CICP</th>
+<th>CLLI</th><th>ICC Profile</th><th>Open image</th><th>Inline preview</th></tr>
+</thead><tbody><tr><td>off</td><td>off</td>
+<td>off</td><td><a href="test_img/avif_cicp-off_clli-off_icc-off.avif" target="_blank" rel="noopener">CICP: off, CLLI: off, ICC: off</a></td>
+<td><img src="test_img/avif_cicp-off_clli-off_icc-off.avif" alt="CICP: off, CLLI: off, ICC: off" loading="lazy"></td></tr><tr><td>off</td><td>off</td>
+<td>on</td><td><a href="test_img/avif_cicp-off_clli-off_icc-on.avif" target="_blank" rel="noopener">CICP: off, CLLI: off, ICC: on</a></td>
+<td><img src="test_img/avif_cicp-off_clli-off_icc-on.avif" alt="CICP: off, CLLI: off, ICC: on" loading="lazy"></td></tr><tr><td>off</td><td>on</td>
+<td>off</td><td><a href="test_img/avif_cicp-off_clli-on_icc-off.avif" target="_blank" rel="noopener">CICP: off, CLLI: on, ICC: off</a></td>
+<td><img src="test_img/avif_cicp-off_clli-on_icc-off.avif" alt="CICP: off, CLLI: on, ICC: off" loading="lazy"></td></tr><tr><td>off</td><td>on</td>
+<td>on</td><td><a href="test_img/avif_cicp-off_clli-on_icc-on.avif" target="_blank" rel="noopener">CICP: off, CLLI: on, ICC: on</a></td>
+<td><img src="test_img/avif_cicp-off_clli-on_icc-on.avif" alt="CICP: off, CLLI: on, ICC: on" loading="lazy"></td></tr><tr><td>on</td><td>off</td>
+<td>off</td><td><a href="test_img/avif_cicp-on_clli-off_icc-off.avif" target="_blank" rel="noopener">CICP: on, CLLI: off, ICC: off</a></td>
+<td><img src="test_img/avif_cicp-on_clli-off_icc-off.avif" alt="CICP: on, CLLI: off, ICC: off" loading="lazy"></td></tr><tr><td>on</td><td>off</td>
+<td>on</td><td><a href="test_img/avif_cicp-on_clli-off_icc-on.avif" target="_blank" rel="noopener">CICP: on, CLLI: off, ICC: on</a></td>
+<td><img src="test_img/avif_cicp-on_clli-off_icc-on.avif" alt="CICP: on, CLLI: off, ICC: on" loading="lazy"></td></tr><tr><td>on</td><td>on</td>
+<td>off</td><td><a href="test_img/avif_cicp-on_clli-on_icc-off.avif" target="_blank" rel="noopener">CICP: on, CLLI: on, ICC: off</a></td>
+<td><img src="test_img/avif_cicp-on_clli-on_icc-off.avif" alt="CICP: on, CLLI: on, ICC: off" loading="lazy"></td></tr><tr><td>on</td><td>on</td>
+<td>on</td><td><a href="test_img/avif_cicp-on_clli-on_icc-on.avif" target="_blank" rel="noopener">CICP: on, CLLI: on, ICC: on</a></td>
+<td><img src="test_img/avif_cicp-on_clli-on_icc-on.avif" alt="CICP: on, CLLI: on, ICC: on" loading="lazy"></td></tr></tbody></table><h2>HEIC</h2><table><thead><tr><th>CICP</th>
+<th>CLLI</th><th>ICC Profile</th><th>Open image</th><th>Inline preview</th></tr>
+</thead><tbody><tr><td>off</td><td>off</td>
+<td>off</td><td><a href="test_img/heic_cicp-off_clli-off_icc-off.heic" target="_blank" rel="noopener">CICP: off, CLLI: off, ICC: off</a></td>
+<td><img src="test_img/heic_cicp-off_clli-off_icc-off.heic" alt="CICP: off, CLLI: off, ICC: off" loading="lazy"></td></tr><tr><td>off</td><td>on</td>
+<td>off</td><td><a href="test_img/heic_cicp-off_clli-on_icc-off.heic" target="_blank" rel="noopener">CICP: off, CLLI: on, ICC: off</a></td>
+<td><img src="test_img/heic_cicp-off_clli-on_icc-off.heic" alt="CICP: off, CLLI: on, ICC: off" loading="lazy"></td></tr><tr><td>on</td><td>off</td>
+<td>off</td><td><a href="test_img/heic_cicp-on_clli-off_icc-off.heic" target="_blank" rel="noopener">CICP: on, CLLI: off, ICC: off</a></td>
+<td><img src="test_img/heic_cicp-on_clli-off_icc-off.heic" alt="CICP: on, CLLI: off, ICC: off" loading="lazy"></td></tr><tr><td>on</td><td>on</td>
+<td>off</td><td><a href="test_img/heic_cicp-on_clli-on_icc-off.heic" target="_blank" rel="noopener">CICP: on, CLLI: on, ICC: off</a></td>
+<td><img src="test_img/heic_cicp-on_clli-on_icc-off.heic" alt="CICP: on, CLLI: on, ICC: off" loading="lazy"></td></tr></tbody></table><h2>JXL</h2><table><thead><tr><th>CICP</th>
+<th>CLLI</th><th>ICC Profile</th><th>Open image</th><th>Inline preview</th></tr>
+</thead><tbody><tr><td>off</td><td>off</td>
+<td>off</td><td><a href="test_img/jxl_cicp-off_clli-off_icc-off.jxl" target="_blank" rel="noopener">CICP: off, CLLI: off, ICC: off</a></td>
+<td><img src="test_img/jxl_cicp-off_clli-off_icc-off.jxl" alt="CICP: off, CLLI: off, ICC: off" loading="lazy"></td></tr><tr><td>off</td><td>off</td>
+<td>on</td><td><a href="test_img/jxl_cicp-off_clli-off_icc-on.jxl" target="_blank" rel="noopener">CICP: off, CLLI: off, ICC: on</a></td>
+<td><img src="test_img/jxl_cicp-off_clli-off_icc-on.jxl" alt="CICP: off, CLLI: off, ICC: on" loading="lazy"></td></tr><tr><td>on</td><td>off</td>
+<td>off</td><td><a href="test_img/jxl_cicp-on_clli-off_icc-off.jxl" target="_blank" rel="noopener">CICP: on, CLLI: off, ICC: off</a></td>
+<td><img src="test_img/jxl_cicp-on_clli-off_icc-off.jxl" alt="CICP: on, CLLI: off, ICC: off" loading="lazy"></td></tr><tr><td>on</td><td>off</td>
+<td>on</td><td><a href="test_img/jxl_cicp-on_clli-off_icc-on.jxl" target="_blank" rel="noopener">CICP: on, CLLI: off, ICC: on</a></td>
+<td><img src="test_img/jxl_cicp-on_clli-off_icc-on.jxl" alt="CICP: on, CLLI: off, ICC: on" loading="lazy"></td></tr></tbody></table></body></html>

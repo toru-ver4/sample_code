@@ -92,7 +92,8 @@ def test_add_icc_profile_using_exiftool(input_files, tmp_path):
     assert result is None
     assert output_path.read_bytes() == b"image data with ICC"
     assert run.call_args.args[0][1] == "-o"
-    assert run.call_args.args[0][3] == f"-ICC_Profile<={profile_path}"
+    assert "-EXIF:All=" in run.call_args.args[0]
+    assert f"-ICC_Profile<={profile_path}" in run.call_args.args[0]
 
 
 @pytest.mark.parametrize(
@@ -182,8 +183,8 @@ def test_add_icc_profile_preserves_existing_output_on_failure(
 def test_add_icc_profile_preserves_pixel_values_for_supported_formats(
         tmp_path):
     required_commands = {
-        "exiftool", "avifenc", "avifdec", "cjxl", "djxl", "heif-enc",
-        "heif-dec"}
+        "exiftool", "avifenc", "avifdec", "pngcheck", "cjxl", "djxl",
+        "jxlinfo", "heif-enc", "heif-dec", "heif-info"}
     missing_commands = sorted(
         command for command in required_commands if shutil.which(command) is None)
     if missing_commands:
@@ -223,6 +224,18 @@ def test_add_icc_profile_preserves_pixel_values_for_supported_formats(
         output_path = tmp_path / f"output{extension}"
         tpg.add_icc_profile_using_exiftool(
             str(input_path), str(output_path), str(profile_path))
+
+        info_command = {
+            ".avif": ["avifdec", "--info", str(output_path)],
+            ".png": ["pngcheck", str(output_path)],
+            ".jxl": ["jxlinfo", str(output_path)],
+            ".heif": ["heif-info", str(output_path)],
+            ".heic": ["heif-info", str(output_path)],
+        }[extension]
+        info_result = subprocess.run(
+            info_command, check=True, capture_output=True, text=True)
+        info_text = f"{info_result.stdout}\n{info_result.stderr}"
+        assert "error" not in info_text.lower(), info_text
 
         if extension == ".png":
             before_png = input_path

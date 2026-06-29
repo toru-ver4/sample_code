@@ -113,7 +113,7 @@ def create_bt709_gamma24_curve_1024_profile():
 
 
 def create_bt2020_pq_curve_4096_with_cicp_profile(
-        cicp: list = [9, 16, 9, 1]):
+        cicp: list = [9, 16, 0, 1]):
     """
     Create a BT.2020/D65 ICC profile with a PQ curveType TRC and CICP tag.
     """
@@ -294,4 +294,4 @@ if __name__ == '__main__':
     #     max_full_frame_luminance=700,
     #     cs_name=cs.BT2020
     # )
-    create_bt2020_pq_curve_4096_with_cicp_profile(cicp=[9, 16, 9, 1])
+    create_bt2020_pq_curve_4096_with_cicp_profile(cicp=[9, 16, 0, 1])

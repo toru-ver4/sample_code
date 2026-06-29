@@ -333,3 +333,4 @@ BenchmarkDotNet.Artifacts/
 2026/02_ffmpeg_deviation/ffmpeg_precise_10bit/
 2026/02_ffmpeg_deviation/img/*.dpx
 .venv_wsl
+2026/04_ICC_Profile_for_HDR_Media/test_img

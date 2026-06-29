@@ -434,9 +434,13 @@ def add_icc_profile_using_exiftool(
         temp_path = Path(temp_name)
         temp_path.unlink()
 
+        command = [exiftool, "-o", str(temp_path)]
+        if input_extension == ".png":
+            command.append("-EXIF:All=")
+        command.extend(
+            [f"-ICC_Profile<={profile_path}", str(input_path)])
         result = subprocess.run(
-            [exiftool, "-o", str(temp_path),
-             f"-ICC_Profile<={profile_path}", str(input_path)],
+            command,
             capture_output=True, text=True)
         if result.returncode != 0:
             detail = result.stderr.strip() or result.stdout.strip()
@@ -3546,7 +3550,7 @@ def get_ffmpeg_color_trc_str(transfer_characteristics: str = tf.GAMMA24):
     return color_trc_str
 
 
-def add_clli_chunk_to_png(
+def add_clli_chunk_to_png_using_ffmpeg(
     src_png_name,
     dst_png_name,
     color_gamut=cs.BT2020,
