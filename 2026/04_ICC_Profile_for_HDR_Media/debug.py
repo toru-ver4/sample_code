@@ -13,10 +13,7 @@ import sys
 import numpy as np
 
 # import my libraries
-import icc_profile_xml_control as ipxc
-import icc_profile_calc_param as ipcp
-import color_space as cs
-import transfer_functions as tf
+from test_pattern_generator2 import add_icc_profile_using_exiftool
 
 # information
 __author__ = 'Toru Yoshihara'
