@@ -124,7 +124,7 @@ def create_sample_identity_1dlut(num_of_sample, gain=0.5):
     return lut
 
 
-def create_gain_1dlut(num_of_sample, gain=0.5):
+def create_gain_1dlut_for_st2084(num_of_sample, gain=0.5):
     x = np.linspace(0, 1, num_of_sample)
     linear = tf.eotf_to_luminance(x, tf.ST2084) * gain
     y = tf.oetf_from_luminance(linear, tf.ST2084)
@@ -221,7 +221,7 @@ def debug_func():
     calibration_matrix[2, 2] = 0.1
     print(calibration_matrix)
     luminance_str = f"{peak_luminance}-{max_full_frame_luminance}"
-    luts = create_gain_1dlut(num_of_sample=8, gain=gain)
+    luts = create_gain_1dlut_for_st2084(num_of_sample=8, gain=gain)
     xml_fname = "./xml/MHC2_sample.xml"
     icc_fname = f"./icc/MHC2_{luminance_str}-nits_green3.icm"
     create_mhc_icc_profile(
@@ -249,7 +249,7 @@ def create_mhc2_profile_with_gain(
     luminance_str = f"{min_luminance}-{peak_luminance}-"
     # luminance_str += f"{peak_luminance}-"
     luminance_str += f"{max_full_frame_luminance}"
-    luts = create_gain_1dlut(num_of_sample=1024, gain=gain)
+    luts = create_gain_1dlut_for_st2084(num_of_sample=1024, gain=gain)
     xml_fname = "./xml/MHC2_sample.xml"
     cs_name_file = cs_name.replace(" ", "_")
     icc_fname = f"./icc/MHC2_{luminance_str}-nits_gain-{gain:.3f}_"
@@ -273,7 +273,7 @@ def create_mhc2_profile_with_color_space(color_space=cs.BT2020):
     peak_luminance = 450
     max_full_frame_luminance = 250
     calibration_matrix = np.identity(3)
-    luts = create_gain_1dlut(num_of_sample=8, gain=gain)
+    luts = create_gain_1dlut_for_st2084(num_of_sample=8, gain=gain)
     xml_fname = "./xml/MHC2_sample.xml"
     icc_fname = f"./icc/MHC2_{color_space}_gain-0.54.icm"
     create_mhc_icc_profile(
@@ -300,7 +300,7 @@ if __name__ == '__main__':
     # create_mhc2_profile_with_gain()
     # gain_list = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
     # gain_list = [100/80]
-    gain_list = [0.1]
+    gain_list = [0.5]
     # peak_full_luminance_pair_list = [
     #     [10000, 10000], [4000, 4000], [1000, 1000],
     #     [600, 600], [400, 400], [200, 200], [100, 100]
@@ -310,7 +310,7 @@ if __name__ == '__main__':
         [700, 700]
     ]
     # min_lumiannce_list = [0, 0.001, 0.01, 0.1, 1.0]
-    min_lumiannce_list = [0]
+    min_lumiannce_list = [0.1]
     # color_space_list = [cs.BT2020, cs.P3_D65, cs.BT709]
     color_space_list = [cs.BT2020]
     for gain, peak_full_luminance_pair, min_luminance, color_space in product(

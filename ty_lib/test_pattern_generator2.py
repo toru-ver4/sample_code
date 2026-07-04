@@ -7,7 +7,11 @@
 """
 
 import os
+import shutil
 import subprocess
+import tempfile
+import zlib
+from numbers import Real
 from pathlib import Path
 from colour.models.rgb.rgb_colourspace import RGB_to_RGB
 from colour.utilities import tstack
@@ -357,6 +361,249 @@ def img_wirte_float_as_16bit_int_with_icc(
         'convert', temp_fname, '-profile', icc_profile_name, filename]
     subprocess.run(cmd)
     os.remove(temp_fname)
+
+
+def add_icc_profile_using_exiftool(
+        input_img_fname: str, output_img_fname: str,
+        icc_profile_fname: str) -> None:
+    """Embed an ICC profile in an image using ExifTool.
+
+    Parameters
+    ----------
+    input_img_fname : str
+        Path to the source image.
+    output_img_fname : str
+        Path to the destination image.
+    icc_profile_fname : str
+        Path to the ICC profile to embed.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    Supported extensions are AVIF, PNG, JPEG XL, HEIF, and HEIC. ExifTool
+    writes to a temporary file, which replaces the destination only after a
+    successful command.
+
+    Examples
+    --------
+    >>> add_icc_profile_using_exiftool(
+    ...     "source.png", "output.png", "profile.icc")
+    """
+    if not input_img_fname:
+        raise ValueError("input_img_fname must be specified")
+    if not output_img_fname:
+        raise ValueError("output_img_fname must be specified")
+    if not icc_profile_fname:
+        raise ValueError("icc_profile_fname must be specified")
+
+    input_path = Path(input_img_fname)
+    output_path = Path(output_img_fname)
+    profile_path = Path(icc_profile_fname)
+    supported_extensions = {".avif", ".png", ".jxl", ".heif", ".heic"}
+    input_extension = input_path.suffix.lower()
+    output_extension = output_path.suffix.lower()
+
+    if input_extension not in supported_extensions:
+        raise ValueError(
+            f"Unsupported input image extension: {input_path.suffix}")
+    if output_extension not in supported_extensions:
+        raise ValueError(
+            f"Unsupported output image extension: {output_path.suffix}")
+    if input_extension != output_extension:
+        raise ValueError("Input and output image extensions must be the same")
+    if input_path.resolve() == output_path.resolve():
+        raise ValueError("Input and output images must be different files")
+    if not input_path.is_file():
+        raise FileNotFoundError(f"Input image not found: {input_path}")
+    if not profile_path.is_file():
+        raise FileNotFoundError(f"ICC profile not found: {profile_path}")
+
+    exiftool = shutil.which("exiftool")
+    if exiftool is None:
+        raise FileNotFoundError("ExifTool 'exiftool' was not found in PATH")
+
+    temp_path = None
+    try:
+        fd, temp_name = tempfile.mkstemp(
+            prefix=f".{output_path.stem}_", suffix=output_path.suffix,
+            dir=output_path.parent)
+        os.close(fd)
+        temp_path = Path(temp_name)
+        temp_path.unlink()
+
+        command = [exiftool, "-o", str(temp_path)]
+        if input_extension == ".png":
+            command.append("-EXIF:All=")
+        command.extend(
+            [f"-ICC_Profile<={profile_path}", str(input_path)])
+        result = subprocess.run(
+            command,
+            capture_output=True, text=True)
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip()
+            message = "ExifTool failed to embed the ICC profile"
+            if detail:
+                message += f": {detail}"
+            raise RuntimeError(message)
+        if not temp_path.is_file():
+            raise RuntimeError("ExifTool did not create an output image")
+
+        os.replace(temp_path, output_path)
+        temp_path = None
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+
+
+def add_icc_profile_using_imagemagick(
+        icc_profile_fname: str, src_fname: str, dst_fname: str = None,
+        overwrite: bool = False):
+    """Embed an ICC profile in an image using ImageMagick.
+
+    Parameters
+    ----------
+    icc_profile_fname : str
+        Path to the ICC profile to embed.
+    src_fname : str
+        Path to the source image.
+    dst_fname : str or None, optional
+        Path to the output image. If omitted, ``overwrite`` must be ``True``.
+    overwrite : bool, optional
+        If ``True`` and ``dst_fname`` is omitted, replace the source image.
+        The default is ``False``.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    ImageMagick's ``magick`` command must be available on ``PATH``. When the
+    source image is replaced, the result is first written to a temporary file
+    and moved over the source only after ImageMagick succeeds. Unsupported
+    image formats and other ImageMagick failures raise ``RuntimeError``.
+
+    Examples
+    --------
+    Write the result to a different file:
+
+    >>> add_icc_profile_using_imagemagick(
+    ...     "profile.icc", "source.png", "output.png")
+
+    Replace the source image:
+
+    >>> add_icc_profile_using_imagemagick(
+    ...     "profile.icc", "source.png", overwrite=True)
+    """
+    if dst_fname is None and not overwrite:
+        raise ValueError(
+            "dst_fname must be specified unless overwrite is True.")
+
+    magick = shutil.which("magick")
+    if magick is None:
+        raise FileNotFoundError("ImageMagick 'magick' was not found in PATH.")
+
+    src_path = Path(src_fname)
+    profile_path = Path(icc_profile_fname)
+    if not src_path.is_file():
+        raise FileNotFoundError(f"Source image not found: {src_path}")
+    if not profile_path.is_file():
+        raise FileNotFoundError(f"ICC profile not found: {profile_path}")
+
+    final_path = Path(dst_fname) if dst_fname is not None else src_path
+    replace_source = final_path.resolve() == src_path.resolve()
+    temp_path = None
+
+    if replace_source:
+        fd, temp_name = tempfile.mkstemp(
+            prefix=f".{src_path.stem}_", suffix=src_path.suffix,
+            dir=src_path.parent)
+        os.close(fd)
+        temp_path = Path(temp_name)
+        output_path = temp_path
+    else:
+        output_path = final_path
+
+    try:
+        result = subprocess.run(
+            [magick, str(src_path), "-profile", str(profile_path),
+             str(output_path)],
+            capture_output=True, text=True)
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip()
+            message = "ImageMagick failed to embed the ICC profile"
+            if detail:
+                message += f": {detail}"
+            raise RuntimeError(message)
+
+        if replace_source:
+            os.replace(temp_path, final_path)
+            temp_path = None
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+
+
+def extract_icc_profile_using_imagemagick(img_fname: str, icc_fname: str):
+    """Extract an embedded ICC profile from an image using ImageMagick.
+
+    Parameters
+    ----------
+    img_fname : str
+        Path to the image containing an ICC profile.
+    icc_fname : str
+        Path where the extracted ICC profile is written.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    ImageMagick's ``magick`` command must be available on ``PATH``. The profile
+    is first extracted to a temporary file so an existing output file remains
+    unchanged if extraction fails. A missing ICC profile and other ImageMagick
+    failures raise ``RuntimeError``.
+
+    Examples
+    --------
+    >>> extract_icc_profile_using_imagemagick(
+    ...     "image_with_profile.png", "extracted_profile.icc")
+    """
+    magick = shutil.which("magick")
+    if magick is None:
+        raise FileNotFoundError("ImageMagick 'magick' was not found in PATH.")
+
+    img_path = Path(img_fname)
+    output_path = Path(icc_fname)
+    if not img_path.is_file():
+        raise FileNotFoundError(f"Source image not found: {img_path}")
+
+    fd, temp_name = tempfile.mkstemp(
+        prefix=f".{output_path.stem}_", suffix=".icc",
+        dir=output_path.parent)
+    os.close(fd)
+    temp_path = Path(temp_name)
+
+    try:
+        result = subprocess.run(
+            [magick, str(img_path), str(temp_path)],
+            capture_output=True, text=True)
+        if result.returncode != 0 or temp_path.stat().st_size == 0:
+            detail = result.stderr.strip() or result.stdout.strip()
+            message = "ImageMagick failed to extract an ICC profile"
+            if detail:
+                message += f": {detail}"
+            raise RuntimeError(message)
+
+        os.replace(temp_path, output_path)
+        temp_path = None
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
 
 
 def equal_devision(length, div_num):
@@ -3264,52 +3511,329 @@ def scrgb_jxr_to_rec2100_pq_png(src_fname="./Windows_HDR_Capture/600.jxr"):
     output.close()
 
 
+def get_ffmpeg_color_primaries_str(color_gamut: str = cs.BT709):
+    if color_gamut == cs.BT709:
+        color_primaries_str = "bt709"
+    elif color_gamut == cs.P3_D65:
+        color_primaries_str = "smpte432"
+    elif color_gamut == cs.BT2020:
+        color_primaries_str = "bt2020"
+    else:
+        raise ValueError("unsupported color_gamut")
+
+    return color_primaries_str
+
+
+def get_ffmpeg_color_space_str(color_gamut: str = cs.BT709):
+    if color_gamut == cs.BT709:
+        color_space_str = "bt709"
+    elif color_gamut == cs.P3_D65:
+        color_space_str = "bt709"
+    elif color_gamut == cs.BT2020:
+        color_space_str = "bt2020nc"
+    else:
+        raise ValueError("unsupported color_gamut")
+
+    return color_space_str
+
+
+def get_ffmpeg_color_trc_str(transfer_characteristics: str = tf.GAMMA24):
+    if transfer_characteristics in [tf.BT709, tf.GAMMA24]:
+        color_trc_str = 'bt709'
+    elif transfer_characteristics == tf.HLG:
+        color_trc_str = 'arib-std-b67'
+    elif transfer_characteristics == tf.ST2084:
+        color_trc_str = 'smpte2084'
+    else:
+        raise ValueError("unsupported color_gamut")
+
+    return color_trc_str
+
+
+def add_clli_chunk_to_png_using_ffmpeg(
+    src_png_name,
+    dst_png_name,
+    color_gamut=cs.BT2020,
+    transfer_characteristics=tf.ST2084,
+    max_fall=10000,
+    max_cll=10000,
+    framerate=24,
+    
+):
+    def add_x265_params(param):
+        return f"{param}" if param is not None else ""
+
+    cmd = "ffmpeg"
+    dst_bitstream_name = str(Path(dst_png_name).with_name(f"{Path(dst_png_name).stem}.h265"))
+
+    max_fall_str = f"max-cll={max_cll},{max_fall}" if max_fall is not None else "no-cll=1"
+    x265_params = add_x265_params(max_fall_str)
+
+    color_primaries_str = get_ffmpeg_color_primaries_str(color_gamut)
+    color_space_str = get_ffmpeg_color_space_str(color_gamut)
+    color_trc_str = get_ffmpeg_color_trc_str(transfer_characteristics)
+
+    ops = [
+        '-hide_banner',
+        '-y',
+        '-loop', '1',
+        '-color_primaries', color_primaries_str,
+        '-color_trc', color_trc_str,
+        '-colorspace', color_space_str,
+        '-framerate', f'{framerate}',
+        '-i', src_png_name,
+        '-frames:v', "1",
+        '-c:v', 'libx265',
+        '-x265-params', x265_params,
+        '-color_primaries', color_primaries_str,
+        '-color_trc', color_trc_str,
+        '-colorspace', color_space_str,
+        '-pix_fmt', 'yuv444p12le',
+        '-qp', '0',
+        '-f', 'hevc',
+        str(dst_bitstream_name)
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+    # convert to PNG
+    ops = [
+        '-hide_banner',
+        '-f', 'hevc',
+        '-i', dst_bitstream_name,
+        '-frames:v', '1',
+        '-update', '1',
+        dst_png_name, '-y'
+    ]
+    args = [cmd] + ops
+    print(" ".join(args))
+    subprocess.run(args)
+
+
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def _read_u32be(data: bytes, offset: int) -> int:
+    """Read an unsigned 32-bit big-endian integer.
+
+    Parameters
+    ----------
+    data : bytes
+        Byte sequence containing the integer.
+    offset : int
+        Byte offset at which the integer starts.
+
+    Returns
+    -------
+    int
+        Decoded unsigned integer.
+
+    Examples
+    --------
+    >>> _read_u32be(b"\x00\x00\x00\x04", 0)
+    4
+    """
+    return int.from_bytes(data[offset:offset + 4], "big")
+
+
+def _make_png_chunk(chunk_type: bytes, chunk_data: bytes) -> bytes:
+    """Create a PNG chunk including its length and CRC fields.
+
+    Parameters
+    ----------
+    chunk_type : bytes
+        Four-byte PNG chunk type.
+    chunk_data : bytes
+        Chunk payload.
+
+    Returns
+    -------
+    bytes
+        Complete encoded PNG chunk.
+
+    Examples
+    --------
+    >>> len(_make_png_chunk(b"cICP", b"\x09\x10\x09\x01"))
+    16
+    """
+    if len(chunk_type) != 4:
+        raise ValueError("PNG chunk type must contain exactly 4 bytes")
+    crc = zlib.crc32(chunk_type + chunk_data) & 0xFFFFFFFF
+    return (
+        len(chunk_data).to_bytes(4, "big")
+        + chunk_type
+        + chunk_data
+        + crc.to_bytes(4, "big")
+    )
+
+
+def _make_cicp_chunk(cicp: list[int]) -> bytes:
+    """Create a PNG cICP chunk.
+
+    Parameters
+    ----------
+    cicp : list of int
+        Four CICP code points in the range 0 through 255.
+
+    Returns
+    -------
+    bytes
+        Encoded cICP chunk.
+
+    Examples
+    --------
+    >>> _make_cicp_chunk([9, 16, 9, 1])[4:8]
+    b'cICP'
+    """
+    if not isinstance(cicp, list) or len(cicp) != 4:
+        raise ValueError("cicp must be a list of exactly 4 integers")
+    if any(type(value) is not int or not 0 <= value <= 255 for value in cicp):
+        raise ValueError("cicp values must be integers in the range 0..255")
+    return _make_png_chunk(b"cICP", bytes(cicp))
+
+
+def _make_clli_chunk(clli: tuple[float, float]) -> bytes:
+    """Create a PNG cLLI chunk from luminance values in nits.
+
+    Parameters
+    ----------
+    clli : tuple of float
+        MaxCLL and MaxFALL values in cd/m^2.
+
+    Returns
+    -------
+    bytes
+        Encoded cLLI chunk.
+
+    Examples
+    --------
+    >>> _make_clli_chunk((1000.0, 400.0))[4:8]
+    b'cLLI'
+    """
+    if not isinstance(clli, (tuple, list)) or len(clli) != 2:
+        raise ValueError("clli must contain exactly 2 numeric values")
+
+    encoded_values = []
+    for value in clli:
+        if isinstance(value, bool) or not isinstance(value, Real):
+            raise ValueError("clli values must be finite non-negative numbers")
+        numeric_value = float(value)
+        if not math.isfinite(numeric_value) or numeric_value < 0:
+            raise ValueError("clli values must be finite non-negative numbers")
+        png_value = round(numeric_value * 10000)
+        if png_value > 0xFFFFFFFF:
+            raise ValueError("converted clli values must fit in uint32")
+        encoded_values.append(png_value)
+
+    chunk_data = b"".join(value.to_bytes(4, "big") for value in encoded_values)
+    return _make_png_chunk(b"cLLI", chunk_data)
+
+
+def _iter_png_chunks(data: bytes):
+    """Iterate over validated chunks in a PNG byte sequence.
+
+    Parameters
+    ----------
+    data : bytes
+        Complete PNG file contents.
+
+    Returns
+    -------
+    iterator of tuple
+        Tuples containing the chunk type and complete raw chunk bytes.
+
+    Notes
+    -----
+    Iteration stops after IEND. Truncated chunks raise ``ValueError``.
+
+    Examples
+    --------
+    >>> list(_iter_png_chunks(_PNG_SIGNATURE + _make_png_chunk(b"IEND", b"")))
+    [(b'IEND', b'\\x00\\x00\\x00\\x00IEND\\xaeB`\\x82')]
+    """
+    offset = len(_PNG_SIGNATURE)
+    while offset < len(data):
+        if offset + 12 > len(data):
+            raise ValueError("PNG contains a truncated chunk")
+        length = _read_u32be(data, offset)
+        chunk_end = offset + length + 12
+        if chunk_end > len(data):
+            raise ValueError("PNG chunk length runs past the end of the file")
+        chunk_type = data[offset + 4:offset + 8]
+        yield chunk_type, data[offset:chunk_end]
+        offset = chunk_end
+        if chunk_type == b"IEND":
+            return
+
+
+def add_hdr_info_to_png(
+        src_png: str, dst_png: str,
+        clli: tuple[float, float] | None = None,
+        cicp: list[int] | None = None) -> None:
+    """Insert or replace HDR metadata chunks in a PNG file.
+
+    Parameters
+    ----------
+    src_png : str
+        Path to the source PNG file.
+    dst_png : str
+        Path to the destination PNG file.
+    clli : tuple of float or None, optional
+        MaxCLL and MaxFALL in cd/m^2. ``None`` preserves any existing cLLI.
+    cicp : list of int or None, optional
+        Four CICP byte values. ``None`` preserves any existing cICP.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    Requested chunks are written in cICP, cLLI order immediately before the
+    first PLTE or IDAT chunk. Image data and unrelated chunks remain unchanged.
+
+    Examples
+    --------
+    >>> add_hdr_info_to_png(
+    ...     "source.png", "hdr.png", (1000.0, 400.0), [9, 16, 9, 1])
+    """
+    data = Path(src_png).read_bytes()
+    if not data.startswith(_PNG_SIGNATURE):
+        raise ValueError("Input file does not have a valid PNG signature")
+
+    chunks = list(_iter_png_chunks(data))
+    if not chunks or chunks[0][0] != b"IHDR":
+        raise ValueError("The first PNG chunk must be IHDR")
+    if not any(chunk_type == b"IEND" for chunk_type, _ in chunks):
+        raise ValueError("PNG does not contain an IEND chunk")
+
+    if clli is None and cicp is None:
+        Path(dst_png).write_bytes(data)
+        return
+
+    new_chunks = []
+    if cicp is not None:
+        new_chunks.append(_make_cicp_chunk(cicp))
+    if clli is not None:
+        new_chunks.append(_make_clli_chunk(clli))
+
+    output = bytearray(_PNG_SIGNATURE)
+    inserted = False
+    for chunk_type, raw_chunk in chunks:
+        if cicp is not None and chunk_type == b"cICP":
+            continue
+        if clli is not None and chunk_type == b"cLLI":
+            continue
+        if not inserted and chunk_type in (b"PLTE", b"IDAT"):
+            output.extend(b"".join(new_chunks))
+            inserted = True
+        output.extend(raw_chunk)
+
+    if not inserted:
+        raise ValueError("Could not find PLTE or IDAT insertion point")
+    Path(dst_png).write_bytes(output)
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # print(calc_rad_patch_idx(outmost_num=9, current_num=1))
-    # _plot_same_lstar_radial_color_patch_data(
-    #     lstar=58, chroma=32.5, outmost_num=7,
-    #     color_space=RGB_COLOURSPACE_BT709,
-    #     transfer_function=tf.GAMMA24)
-    # calc_rad_patch_idx2(outmost_num=9, current_num=7)
-    # print(convert_luminance_to_color_value(100, tf.ST2084))
-    # print(generate_color_checker_rgb_value(target_white=[0.3127, 0.3290]))
-    # print(calc_st_pos_for_centering(bg_size=(1920, 1080), fg_size=(640, 480)))
-    # print(convert_luminance_to_code_value(100, tf.ST2084))
-    # make_hue_chroma_pattern(
-    #     inner_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.709.npy"),
-    #     outer_lut=np.load("/work/src/2021/09_gamut_boundary_lut/lut/lut_sample_1024_1024_32768_ITU-R BT.2020.npy"),
-    #     width=2048, height=1180, hue_num=32)
-
-    # line = np.linspace(0, 1, 5)
-    # line_color = tstack([line, line, line])
-    # print(line)
-    # img = v_mono_line_to_img(line, 4)
-    # print(img)
-
-    # line_r = np.linspace(0, 4, 5)
-    # line_g = np.linspace(0, 4, 5) * 2
-    # line_b = np.linspace(0, 4, 5) * 3
-    # line_color = tstack([line_r, line_g, line_b])
-    # print(line_color)
-    # img = v_color_line_to_img(line_color, 4)
-    # print(img)
-
-    # bg_img = np.ones((1080, 1920, 3)) * 0.5
-    # fg_img = np.zeros((540, 960, 3), dtype=np.uint8)
-    # fg_img = cv2.circle(
-    #     fg_img, (200, 100), 40,
-    #     color=[0, 192, 192], thickness=-1, lineType=cv2.LINE_AA)
-    #     # rmo_list[idx].calc_next_pos()  # マルチスレッド化にともない事前に計算
-    # # alpha channel は正規化する。そうしないと中間調合成時に透けてしまう
-    # alpha = np.max(fg_img, axis=-1)
-    # alpha = alpha / np.max(alpha)
-    # fg_img = np.dstack((fg_img / 0xFF, alpha))
-    # merge_with_alpha2(bg_img=bg_img, fg_img=fg_img, pos=(200, 100))
-    # img_wirte_float_as_16bit_int("fg.png", fg_img)
-    # img_wirte_float_as_16bit_int("after_merge.png", bg_img)
-
-    # line = np.linspace(0, 1, 9)
-    # print(line)
-    # img = h_mono_line_to_img(line, 6)
-    # print(img)
