@@ -1654,7 +1654,8 @@ def create_countdown_video_each_spec(
         if sys.platform == "darwin":  # macOS
             dir_path = Path("/Volumes/My Passport/Countdown/temp_seq")
         elif sys.platform == "win32":  # Windows
-            dir_path = Path(r"D:\abuse\Countdown\temp_seq")
+            # dir_path = Path(r"D:\abuse\Countdown\temp_seq")
+            dir_path = Path(r"F:\abuse\Countdown\temp_seq")
         else:
             pass
 
@@ -1672,7 +1673,7 @@ def create_countdown_video_each_spec(
             "CustomName": custom_name,
         }
 
-        shutil.rmtree(dir_path, ignore_errors=True)
+        # shutil.rmtree(dir_path, ignore_errors=True)
         dir_path.mkdir(parents=True, exist_ok=True)
     if preset_path is not None:
         dcl.import_render_preset(preset_path=preset_path)
@@ -1684,20 +1685,20 @@ def create_countdown_video_each_spec(
     dcl.run_rendering_and_wait_until_finish(project=project)
     measure_rap()
 
-    # encode with ffmpeg
-    if framerate.is_integer():
-        wav_fname = "./wav/countdown.wav"
-    else:
-        wav_fname = "./wav/countdown_ntsc.wav"
-    pix_fmt_list =[
-        "yuv420p10le", "yuv422p10le",
-        "yuv422p12le", "yuv444p12le"
-    ]
-    for pix_fmt in pix_fmt_list:
-        encode_hevc_using_ffmpeg(
-            png_fname=output_fname, seq_file_ext=format_extension, wav_fname=wav_fname,
-            fps=framerate, gamma=gamma, gamut=gamut, pix_fmt=pix_fmt, start_frame=start_frame
-        )
+    # # encode with ffmpeg
+    # if framerate.is_integer():
+    #     wav_fname = "./wav/countdown.wav"
+    # else:
+    #     wav_fname = "./wav/countdown_ntsc.wav"
+    # pix_fmt_list =[
+    #     "yuv420p10le", "yuv422p10le",
+    #     "yuv422p12le", "yuv444p12le"
+    # ]
+    # for pix_fmt in pix_fmt_list:
+    #     encode_hevc_using_ffmpeg(
+    #         png_fname=output_fname, seq_file_ext=format_extension, wav_fname=wav_fname,
+    #         fps=framerate, gamma=gamma, gamut=gamut, pix_fmt=pix_fmt, start_frame=start_frame
+    #     )
     measure_end()
 
 
@@ -1709,24 +1710,24 @@ if __name__ == '__main__':
     from itertools import product
     resolution_list = [
         "1280x720",
-        "1920x1080",
-        "2048x1080",
-        "2560x1440",
-        "3840x2160",
-        "4096x2160",
+        # "1920x1080",
+        # "2048x1080",
+        # "2560x1440",
+        # "3840x2160",
+        # "4096x2160",
     ]
     framerate_list = [
         23.976,
-        24,
-        25,
-        29.97,
-        30,
-        50,
-        59.94,
-        60
+        # 24,
+        # 25,
+        # 29.97,
+        # 30,
+        # 50,
+        # 59.94,
+        # 60
     ]
     gamut_list = [
-        drc.PRJ_COLOR_SPACE_REC709,
+        # drc.PRJ_COLOR_SPACE_REC709,
         drc.PRJ_COLOR_SPACE_P3D65,
         drc.PRJ_COLOR_SPACE_REC2020
     ]
@@ -1747,5 +1748,5 @@ if __name__ == '__main__':
             width=width, height=height, framerate=framerate,
             gamut=gamut, gamma=gamma
         )
-        dcl.reboot_resolve()
+        # dcl.reboot_resolve()
         # break
