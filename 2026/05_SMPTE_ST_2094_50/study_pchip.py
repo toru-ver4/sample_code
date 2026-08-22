@@ -4,11 +4,12 @@ import os
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.animation import FFMpegWriter, FuncAnimation, writers
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 # import third-party libraries
-from sympy import symbols
+from sympy import symbols, factor, Rational, together
 
 # import my libraries
 
@@ -32,6 +33,22 @@ def study_cubic_hermite_polynominal():
     coef_2 = -3 * y_i + 3 * y_ip1 - 2 * h * m_i - h * m_1p1
     coef_3 = 2 * y_i - 2 * y_ip1 + h * m_i + h * m_1p1
     print(f.subs({c_0: coef_0, c_1: coef_1, c_2: coef_2, c_3: coef_3}))
+
+
+def study_quadratic_function():
+    t = symbols('t')
+
+    eq1 = -6 * (t**2) + 6 * t
+    eq2 = 3 * (t**2) -4 * t + 1
+    eq3 = 3 * (t**2) - 2 * t
+    eq4 = 3 * (t**2) - 4 * t + 1
+    eq5 = 12 * (t**2) - 12 * t + 3
+
+    print(factor(eq1))
+    print(factor(eq2))
+    print(factor(eq3))
+    print(factor(eq4))
+    print(factor(eq5))
 
 
 def calc_harmonic_mean(x: np.ndarray, y: np.ndarray) -> np.ndarray:
@@ -220,13 +237,13 @@ def plot_cubi_hermite_spline_explanation():
         colors="0.55", linestyles="dashed", linewidth=1.0
     )
 
-    annotation_style = dict(
-        arrowprops=dict(arrowstyle="->", color="0.25", linewidth=1.0),
-        fontsize=14,
-        fontweight="bold",
-        fontfamily="serif",
-        math_fontfamily="cm",
-    )
+    annotation_style = {
+        'arrowprops': {'arrowstyle': "->", 'color': "0.25", 'linewidth': 1.0},
+        'fontsize': 14,
+        'fontweight': "bold",
+        'fontfamily': "serif",
+        'math_fontfamily': "cm",
+    }
     ax.annotate(
         r"$\boldsymbol{m_i=f^\prime(x_i)<0}$",
         xy=(x_i, y_i), xytext=(1.55, 0.72),
@@ -257,9 +274,185 @@ def plot_cubi_hermite_spline_explanation():
     plt.show()
 
 
+def calculate_alpha_beta_plane(
+        t: float,
+        alpha_grid: np.ndarray,
+        beta_grid: np.ndarray) -> np.ndarray:
+    """Calculate the alpha-beta plane height for one value of ``t``.
+
+    Parameters
+    ----------
+    t : float
+        Interpolation parameter in the range from 0.0 to 1.0.
+    alpha_grid : numpy.ndarray
+        Alpha-coordinate samples.
+    beta_grid : numpy.ndarray
+        Beta-coordinate samples with the same shape as ``alpha_grid``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Plane-height samples corresponding to the input coordinate grids.
+
+    Examples
+    --------
+    >>> aa = np.array([[1.0]])
+    >>> bb = np.array([[2.0]])
+    >>> calculate_alpha_beta_plane(0.0, aa, bb)
+    array([[1.]])
+    """
+    return (
+        -6 * t**2 + 6 * t
+        + (3 * t**2 - 4 * t + 1) * alpha_grid
+        + (3 * t**2 - 2 * t) * beta_grid
+    )
+
+
+def plot_alpha_beta_plane(t=0.1, elev=20, azim=-120, roll=0):
+    samples = 8
+    alpha_min = 0.0
+    alpha_max = 3.0
+    beta_min = 0.0
+    beta_max = 3.0
+    a = np.linspace(alpha_min, alpha_max, samples)
+    b = np.linspace(beta_min, beta_max, samples)
+    aa, bb = np.meshgrid(a, b)
+    ee = calculate_alpha_beta_plane(t, aa, bb)
+
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    # surface = ax.plot_surface(
+    #     aa, bb, ee, cmap="magma", edgecolor="none"
+    # )
+    ax.plot_wireframe(aa, bb, ee)
+    ax.view_init(elev=elev, azim=azim, roll=roll)
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("e'(t)")
+    ax.set_title("e'(t)")
+    fig.tight_layout()
+    plt.show()
+
+
+def plot_alpha_beta_plane_animation(
+        elev=25, azim=-120, roll=0,
+        output_path="alpha_beta_plane_animation.mp4", fps=15):
+    """Create an animation of the alpha-beta plane as ``t`` changes.
+
+    Parameters
+    ----------
+    elev : float, optional
+        Camera elevation angle in degrees.
+    azim : float, optional
+        Camera azimuth angle in degrees.
+    roll : float, optional
+        Camera roll angle in degrees.
+    output_path : str or os.PathLike, optional
+        Path of the MP4 file to create.
+    fps : int, optional
+        Number of frames per second in the output video.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    FFmpeg must be available on the command search path. The animation contains
+    31 equally spaced samples of ``t`` from 0.0 through 1.0, inclusive.
+
+    Examples
+    --------
+    >>> plot_alpha_beta_plane_animation(output_path="alpha_beta_plane.mp4")
+    """
+    if fps <= 0:
+        raise ValueError("fps must be greater than zero.")
+    if not writers.is_available("ffmpeg"):
+        raise RuntimeError(
+            "FFmpeg was not found. Add ffmpeg to PATH before running this "
+            "function."
+        )
+
+    num_of_frames = 61
+    samples = 8
+    t_values = np.linspace(0.0, 1.0, num_of_frames)
+    alpha = np.linspace(0.0, 3.0, samples)
+    beta = np.linspace(0.0, 3.0, samples)
+    aa, bb = np.meshgrid(alpha, beta)
+
+    planes = [
+        calculate_alpha_beta_plane(t, aa, bb)
+        for t in t_values
+    ]
+    z_min = min(np.min(plane) for plane in planes)
+    z_max = max(np.max(plane) for plane in planes)
+    z_margin = 0.05 * (z_max - z_min)
+
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    ax.set_xlim(alpha[0], alpha[-1])
+    ax.set_ylim(beta[0], beta[-1])
+    ax.set_zlim(z_min - z_margin, z_max + z_margin)
+    ax.view_init(elev=elev, azim=azim, roll=roll)
+    ax.set_xlabel(r"$\alpha$")
+    ax.set_ylabel(r"$\beta$")
+    ax.set_zlabel("e'(t)")
+
+    wireframe = [ax.plot_wireframe(aa, bb, planes[0])]
+    title = ax.set_title(f"e'(t), t = {t_values[0]:.2f}")
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.92))
+
+    def update(frame_index):
+        """Update the wireframe for one animation frame.
+
+        Parameters
+        ----------
+        frame_index : int
+            Index of the frame to draw.
+
+        Returns
+        -------
+        tuple
+            Updated Matplotlib artists.
+
+        Examples
+        --------
+        >>> len(update(0))
+        2
+        """
+        wireframe[0].remove()
+        wireframe[0] = ax.plot_wireframe(
+            aa, bb, planes[frame_index], color="tab:blue"
+        )
+        title.set_text(f"e'(t), t = {t_values[frame_index]:.2f}")
+        return wireframe[0], title
+
+    animation = FuncAnimation(
+        fig, update, frames=num_of_frames, interval=1000 / fps, blit=False
+    )
+    writer = FFMpegWriter(
+        fps=fps,
+        codec="hevc",
+        extra_args=["-pix_fmt", "yuv420p"],
+    )
+    animation.save(output_path, writer=writer, dpi=150)
+    plt.close(fig)
+
+
+def study_wighted_harmonic_mean():
+    S1, S2, a, h1, h2 = symbols(r'S_1, S_2, \alpha, h_1, h_2')
+    a = Rational(1, 3) * (1 + h2/(h1+h2))
+    g = S1*S2/(a*S2 + (1-a)*S1)
+
+    print(together(g))
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     # study_cubic_hermite_polynominal()
     # plot_harmonic_mean()
     # plot_marmonic_mean_diff()
-    plot_cubi_hermite_spline_explanation()
+    # plot_cubi_hermite_spline_explanation()
+
+    # study_quadratic_function()
+    # plot_alpha_beta_plane()
+    # plot_alpha_beta_plane_animation(output_path="./img/alpha_beta_3x3.mp4")
+    study_wighted_harmonic_mean()

@@ -336,3 +336,4 @@ BenchmarkDotNet.Artifacts/
 2026/04_ICC_Profile_for_HDR_Media/test_img
 2026/04_ICC_Profile_for_HDR_Media/lut
 2026/05_SMPTE_ST_2094_50/secret
+ty_lib/TY_DaVinci_Resolve_Control_Lib
