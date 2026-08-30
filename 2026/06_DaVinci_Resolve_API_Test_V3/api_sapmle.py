@@ -152,7 +152,7 @@ def timeline_settings_sample():
         tdr.ProjectSetting.HDR_MASTERING_ON: tdr.SettingToggle.ENABLED,
     }
 
-    project_settings_params3 = {
+    timeline_settings_param = {
         tdr.ProjectSetting.TIMELINE_RESOLUTION_WIDTH: "1920",
         tdr.ProjectSetting.TIMELINE_RESOLUTION_HEIGHT: "1080",
 
@@ -194,7 +194,158 @@ def timeline_settings_sample():
     )
     media_pool = tdr.get_media_pool(project=project)
     timeline = tdr.create_empty_timeline(media_pool=media_pool, name="Test3")
-    tdr.set_timeline_settings(timeline=timeline, settings=project_settings_params3)
+    tdr.set_timeline_settings(timeline=timeline, settings=timeline_settings_param)
+
+
+def encode_test():
+    project_name = "sample_encode"
+    session = tdr.ResolveSession.connect()
+    close_and_delete_project_if_exists(session, project_name)
+    project = tdr.create_project(session, name=project_name)
+
+    project_settings_params2 = {
+        tdr.ProjectSetting.TIMELINE_RESOLUTION_WIDTH: "3840",
+        tdr.ProjectSetting.TIMELINE_RESOLUTION_HEIGHT: "2160",
+        tdr.ProjectSetting.TIMELINE_FRAME_RATE: tdr.FrameRate.FPS_59_94,
+        tdr.ProjectSetting.VIDEO_MONITOR_FORMAT: tdr.make_video_monitor_format(3840, 2160, 59.94),
+        tdr.ProjectSetting.VIDEO_MONITOR_USE_444_SDI: tdr.SettingToggle.DISABLED,
+        tdr.ProjectSetting.VIDEO_MONITOR_SDI_CONFIGURATION: tdr.SDIConfiguration.SINGLE_LINK,
+        tdr.ProjectSetting.VIDEO_DATA_LEVELS: tdr.VideoDataLevel.FULL,
+        tdr.ProjectSetting.VIDEO_MONITOR_USE_HDR_OVER_HDMI: tdr.SettingToggle.ENABLED,
+
+        tdr.ProjectSetting.COLOR_SCIENCE_MODE: tdr.ColorScienceMode.DAVINCI_YRGB_COLOR_MANAGED,
+        tdr.ProjectSetting.AUTO_COLOR_MANAGEMENT: tdr.SettingToggle.DISABLED,
+        tdr.ProjectSetting.RCM_PRESET_MODE: tdr.ProjectPresetMode.CUSTOM,
+        tdr.ProjectSetting.SEPARATE_COLOR_SPACE_AND_GAMMA: tdr.SettingToggle.ENABLED,
+        tdr.ProjectSetting.COLOR_SPACE_INPUT: tdr.ColorSpace.REC_2020,
+        tdr.ProjectSetting.COLOR_SPACE_INPUT_GAMMA: tdr.Gamma.ST2084,
+        tdr.ProjectSetting.COLOR_SPACE_TIMELINE: tdr.ColorSpace.P3_D65,
+        tdr.ProjectSetting.COLOR_SPACE_TIMELINE_GAMMA: tdr.Gamma.ST2084,
+        tdr.ProjectSetting.COLOR_SPACE_OUTPUT: tdr.ColorSpace.P3_D65,
+        tdr.ProjectSetting.COLOR_SPACE_OUTPUT_GAMMA: tdr.Gamma.ST2084,
+        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.ProjectPresetMode.CUSTOM,
+        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE: "10000",
+        tdr.ProjectSetting.INPUT_DRT: tdr.DynamicRangeTransform.NONE,
+        tdr.ProjectSetting.OUTPUT_DRT: tdr.DynamicRangeTransform.NONE,
+        tdr.ProjectSetting.GRAPHICS_WHITE_LEVEL: "100",
+        tdr.ProjectSetting.HDR_MASTERING_LUMINANCE_MAX: "10000",
+        tdr.ProjectSetting.HDR_MASTERING_ON: tdr.SettingToggle.ENABLED,
+    }
+
+    timeline_settings_param = {
+        tdr.ProjectSetting.TIMELINE_RESOLUTION_WIDTH: "1920",
+        tdr.ProjectSetting.TIMELINE_RESOLUTION_HEIGHT: "1080",
+
+        ##########################################################################
+        # DO NOT SET TIMELINE FRAME RATE IN THE **TIMELINE SETTINGS**.
+        # INSTEAD, PLEASE SET THIS VALUE IN THE **PROJECT SETTINGS**.
+        # ------------------------------------------------------------------------
+        # tdr.ProjectSetting.TIMELINE_FRAME_RATE: tdr.FrameRate.FPS_59_94,
+        ##########################################################################
+
+        tdr.ProjectSetting.VIDEO_MONITOR_FORMAT: tdr.make_video_monitor_format(1920, 1080, 59.94),
+        tdr.ProjectSetting.VIDEO_MONITOR_USE_444_SDI: tdr.SettingToggle.ENABLED,
+        tdr.ProjectSetting.VIDEO_MONITOR_SDI_CONFIGURATION: tdr.SDIConfiguration.SINGLE_LINK,
+        tdr.ProjectSetting.VIDEO_DATA_LEVELS: tdr.VideoDataLevel.VIDEO,
+        tdr.ProjectSetting.VIDEO_MONITOR_USE_HDR_OVER_HDMI: tdr.SettingToggle.ENABLED,
+
+        tdr.ProjectSetting.COLOR_SCIENCE_MODE: tdr.ColorScienceMode.DAVINCI_YRGB_COLOR_MANAGED,
+        tdr.ProjectSetting.AUTO_COLOR_MANAGEMENT: tdr.SettingToggle.DISABLED,
+        tdr.ProjectSetting.RCM_PRESET_MODE: tdr.ProjectPresetMode.CUSTOM,
+        tdr.ProjectSetting.SEPARATE_COLOR_SPACE_AND_GAMMA: tdr.SettingToggle.ENABLED,
+        # tdr.ProjectSetting.COLOR_SPACE_INPUT: tdr.ColorSpace.REC_709,  # DO NOT SET
+        # tdr.ProjectSetting.COLOR_SPACE_INPUT_GAMMA: tdr.Gamma.GAMMA_2_4,  # DO NOT SET
+        tdr.ProjectSetting.COLOR_SPACE_TIMELINE: tdr.ColorSpace.DAVINCI_WG,
+        tdr.ProjectSetting.COLOR_SPACE_TIMELINE_GAMMA: tdr.Gamma.DAVINCI_INTERMEDIATE,
+        tdr.ProjectSetting.COLOR_SPACE_OUTPUT: tdr.ColorSpace.REC_709,
+        tdr.ProjectSetting.COLOR_SPACE_OUTPUT_GAMMA: tdr.Gamma.GAMMA_2_4,
+        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.ProjectPresetMode.CUSTOM,
+        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE: "10000",
+        tdr.ProjectSetting.INPUT_DRT: tdr.DynamicRangeTransform.NONE,
+        tdr.ProjectSetting.OUTPUT_DRT: tdr.DynamicRangeTransform.NONE,
+        tdr.ProjectSetting.GRAPHICS_WHITE_LEVEL: "100",
+        tdr.ProjectSetting.HDR_MASTERING_LUMINANCE_MAX: "10000",
+        tdr.ProjectSetting.HDR_MASTERING_ON: tdr.SettingToggle.ENABLED,
+    }
+
+    tdr.set_settings(
+        project=project,
+        settings=project_settings_params2
+    )
+    media_pool = tdr.get_media_pool(project=project)
+    timeline = tdr.create_empty_timeline(media_pool=media_pool, name="Test3")
+    tdr.set_timeline_settings(timeline=timeline, settings=timeline_settings_param)
+
+    fps_int = 60
+    fusion_frame_sec = 5
+    fusion_frames = fps_int * fusion_frame_sec
+    
+    fusion_item, comp = tdr.append_fusion_composition(
+        timeline=timeline,
+        duration_frames=fusion_frames,
+        record_frame=tdr.timecode_to_frames("01:00:00:00", fps_int),
+        media_pool=media_pool
+    )
+
+    rectangle_mask = tdr.add_tool(
+        comp=comp,
+        tool_type="RectangleMask",
+        position=(1, 1)
+    )
+    rectangle_bg = tdr.add_tool(
+        comp=comp,
+        tool_type="Background",
+        position=(2, 1)
+    )
+
+    rectangle_mask_inputs = {
+        "Center": {1: 0.5, 2: 0.5, 3: 0.0},
+        "Width": 0.0,
+        "Height": 0.5,
+    }
+    rectangle_bg_inputs = {
+        "TopLeftRed": 1.0,
+        "TopLeftGreen": 1.0,
+        "TopLeftBlue": 1.0,
+        "TopLeftAlpha": 1.0,
+        "EffectMask": rectangle_mask,
+    }
+
+    tdr.set_tool_inputs(
+        tool=rectangle_mask,
+        values=rectangle_mask_inputs
+    )
+    tdr.set_tool_inputs(
+        tool=rectangle_bg,
+        values=rectangle_bg_inputs
+    )
+
+    rectangle_mask.Width = comp.BezierSpline()
+    rectangle_mask.Width[0] = 0.0
+    rectangle_mask.Width[fusion_frames] = 1.0
+
+    media_out = tdr.get_tool(comp=comp, name="MediaOut1")
+    tdr.connect_default_output(source=rectangle_bg, target=media_out)
+
+    tdr.open_page(session=session, page=tdr.Page.DELIVER)
+
+    render_format = tdr.RenderFormat.QUICKTIME
+    codec = tdr.VideoCodec.PRORES_422_HQ
+    tdr.set_render_format_codec(
+        project=project,
+        render_format=render_format,
+        codec=codec
+    )
+    tdr.set_render_settings(
+        project=project,
+        settings={
+            tdr.RenderSetting.TARGET_DIR: str(Path.home() / "Downloads"),
+            tdr.RenderSetting.CUSTOM_NAME: "Encode_Test_ProRes422HQ.mov",
+            tdr.RenderSetting.EXPORT_AUDIO: False
+        }
+    )
+
+    tdr.render_current_settings(project=project)
 
 
 if __name__ == '__main__':
@@ -202,5 +353,6 @@ if __name__ == '__main__':
     # create_project_sample()
     # get_project_settings_sample()
     # project_settings_sample()
-    timeline_settings_sample()
+    # timeline_settings_sample()
     # get_current_timeline_settings_sample()
+    encode_test()
