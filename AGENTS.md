@@ -32,3 +32,8 @@ docker run --rm \
   takuver4/ty_env_v2:rev12 \
   iccFromXml input.xml output.icc
 ```
+
+### DaVinci Resolve を Python から制御する場合の例外事項
+
+DaVinci Resolve を Pythonスクリプトから制御する場合、サンドボックス環境だと制御に失敗する傾向があった。
+もし、1回試してダメだった場合は、サンドボックス外からの制御を許可する（危険性が高くなるが、その危険は許容する）。

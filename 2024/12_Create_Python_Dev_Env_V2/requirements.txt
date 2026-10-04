@@ -11,10 +11,8 @@ flake8
 pytest
 jupyter
 ipywidgets
-pysimplegui
 jupyterlab
-# wavio
-pyside2
+wavio
+pyside6
 conan
 imagecodecs
-coolpi

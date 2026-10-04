@@ -1,7 +1,12 @@
 #!/usr/bin/env python
+"""Resolve 21.1 examples using the updated ty_davinci_resolve library.
+
+Run from this directory with the library's .venv313/Scripts/python.exe.
+Examples recreate their named sample projects; use a different project_name
+to retain an existing sample. Resolve 21.0.4 has not been retested on Python 3.13.
+"""
 # import standard libraries
 import os
-import time
 from pathlib import Path
 import pprint
 from collections.abc import Sequence
@@ -17,6 +22,38 @@ __maintainer__ = 'Toru Yoshihara'
 __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
+
+
+def get_all_settings(target):
+    """Read a project or timeline settings snapshot.
+
+    Parameters
+    ----------
+    target
+        Resolve Project or Timeline remote object.
+
+    Returns
+    -------
+    dict
+        Complete settings dictionary.
+
+    Notes
+    -----
+    Use GetSettings on 21.1. The legacy call is used only if the new method
+    is absent; a failed new call raises an error without retrying the old call.
+    Snapshot values retain their native types, including numeric frame rates.
+
+    Examples
+    --------
+    >>> settings = get_all_settings(project)  # doctest: +SKIP
+    """
+    getter = getattr(target, "GetSettings", None)
+    if not callable(getter):
+        getter = target.GetSetting
+    settings = getter()
+    if not isinstance(settings, dict) or not settings:
+        raise RuntimeError(f"Failed to read settings: {settings!r}")
+    return settings
 
 
 def close_and_delete_project_if_exists(session, project_name):
@@ -51,36 +88,89 @@ def close_and_delete_project_if_exists(session, project_name):
         tdr.delete_project(session=session, name=project_name)
 
 
-def create_project_sample():
-    project_name = "sample_create_project"
+def create_project_sample(project_name="sample_create_project"):
+    """Create, save, and close a sample project.
+
+    Parameters
+    ----------
+    project_name : str
+        Sample project to recreate.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> create_project_sample()  # doctest: +SKIP
+    """
     session = tdr.ResolveSession.connect()
     close_and_delete_project_if_exists(session, project_name)
     project = tdr.create_project(session, name=project_name)
-    time.sleep(2)
-    tdr.close_project(session)
+    tdr.save_project(session)
+    tdr.close_project(session, project=project)
 
 
-def get_project_settings_sample():
-    project_name = "sample_get_project_settings"
+def get_project_settings_sample(project_name="sample_get_project_settings"):
+    """Print all settings of a new project.
+
+    Parameters
+    ----------
+    project_name : str
+        Sample project to recreate.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> get_project_settings_sample()  # doctest: +SKIP
+    """
     session = tdr.ResolveSession.connect()
     close_and_delete_project_if_exists(session, project_name)
     project = tdr.create_project(session, name=project_name)
-    pprint.pprint(project.GetSetting())
+    pprint.pprint(get_all_settings(project))
 
 
 def get_current_timeline_settings_sample():
+    """Print settings of the current timeline in the current project.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> get_current_timeline_settings_sample()  # doctest: +SKIP
+    """
     session = tdr.ResolveSession.connect()
     project = tdr.get_current_project(session=session)
-    timeline = tdr.get_timeline(project=project, index=1)
-    pprint.pprint(timeline.GetSetting())
+    timeline = tdr.get_current_timeline(project=project)
+    pprint.pprint(get_all_settings(timeline))
 
 
-def project_settings_sample():
-    project_name = "sample_create_project"
+def project_settings_sample(project_name="sample_create_project"):
+    """Apply explicit Custom RCM settings to a project.
+
+    Parameters
+    ----------
+    project_name : str
+        Sample project to recreate.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> project_settings_sample()  # doctest: +SKIP
+    """
     session = tdr.ResolveSession.connect()
     close_and_delete_project_if_exists(session, project_name)
     project = tdr.create_project(session, name=project_name)
 
+    # Explicit Custom values avoid the 21.1 preset/Automatic persistence limits.
     project_settings_params2 = {
         tdr.ProjectSetting.TIMELINE_RESOLUTION_WIDTH: "3840",
         tdr.ProjectSetting.TIMELINE_RESOLUTION_HEIGHT: "2160",
@@ -101,7 +191,7 @@ def project_settings_sample():
         tdr.ProjectSetting.COLOR_SPACE_TIMELINE_GAMMA: tdr.Gamma.ST2084,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT: tdr.ColorSpace.P3_D65,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT_GAMMA: tdr.Gamma.ST2084,
-        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.ProjectPresetMode.CUSTOM,
+        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.WorkingLuminanceMode.CUSTOM,
         tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE: "10000",
         tdr.ProjectSetting.INPUT_DRT: tdr.DynamicRangeTransform.NONE,
         tdr.ProjectSetting.OUTPUT_DRT: tdr.DynamicRangeTransform.NONE,
@@ -116,12 +206,27 @@ def project_settings_sample():
     )
 
 
-def timeline_settings_sample():
-    project_name = "sample_timeline_settings"
+def timeline_settings_sample(project_name="sample_timeline_settings"):
+    """Create a custom timeline inheriting the project fractional frame rate.
+
+    Parameters
+    ----------
+    project_name : str
+        Sample project to recreate.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> timeline_settings_sample()  # doctest: +SKIP
+    """
     session = tdr.ResolveSession.connect()
     close_and_delete_project_if_exists(session, project_name)
     project = tdr.create_project(session, name=project_name)
 
+    # Explicit Custom values avoid the 21.1 preset/Automatic persistence limits.
     project_settings_params2 = {
         tdr.ProjectSetting.TIMELINE_RESOLUTION_WIDTH: "3840",
         tdr.ProjectSetting.TIMELINE_RESOLUTION_HEIGHT: "2160",
@@ -142,7 +247,7 @@ def timeline_settings_sample():
         tdr.ProjectSetting.COLOR_SPACE_TIMELINE_GAMMA: tdr.Gamma.ST2084,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT: tdr.ColorSpace.P3_D65,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT_GAMMA: tdr.Gamma.ST2084,
-        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.ProjectPresetMode.CUSTOM,
+        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.WorkingLuminanceMode.CUSTOM,
         tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE: "10000",
         tdr.ProjectSetting.INPUT_DRT: tdr.DynamicRangeTransform.NONE,
         tdr.ProjectSetting.OUTPUT_DRT: tdr.DynamicRangeTransform.NONE,
@@ -151,15 +256,17 @@ def timeline_settings_sample():
         tdr.ProjectSetting.HDR_MASTERING_ON: tdr.SettingToggle.ENABLED,
     }
 
+    # Monitor/color keys shared with Project use ProjectSetting constants.
+    # Fractional frame rate is inherited; other settings are custom to this timeline.
     timeline_settings_param = {
-        tdr.ProjectSetting.TIMELINE_RESOLUTION_WIDTH: "1920",
-        tdr.ProjectSetting.TIMELINE_RESOLUTION_HEIGHT: "1080",
+        tdr.TimelineSetting.TIMELINE_RESOLUTION_WIDTH: "1920",
+        tdr.TimelineSetting.TIMELINE_RESOLUTION_HEIGHT: "1080",
 
         ##########################################################################
-        # DO NOT SET TIMELINE FRAME RATE IN THE **TIMELINE SETTINGS**.
-        # INSTEAD, PLEASE SET THIS VALUE IN THE **PROJECT SETTINGS**.
-        # ------------------------------------------------------------------------
-        # tdr.ProjectSetting.TIMELINE_FRAME_RATE: tdr.FrameRate.FPS_59_94,
+        # Resolve 21.1 rejects fractional rates on a custom timeline.
+        # Set 59.94 on the project BEFORE creating the timeline and inherit it.
+        # Integer rates can be set on an empty custom timeline before adding clips.
+        # tdr.TimelineSetting.TIMELINE_FRAME_RATE: tdr.FrameRate.FPS_59_94,
         ##########################################################################
 
         tdr.ProjectSetting.VIDEO_MONITOR_FORMAT: tdr.make_video_monitor_format(1920, 1080, 59.94),
@@ -178,7 +285,7 @@ def timeline_settings_sample():
         tdr.ProjectSetting.COLOR_SPACE_TIMELINE_GAMMA: tdr.Gamma.DAVINCI_INTERMEDIATE,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT: tdr.ColorSpace.REC_709,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT_GAMMA: tdr.Gamma.GAMMA_2_4,
-        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.ProjectPresetMode.CUSTOM,
+        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.WorkingLuminanceMode.CUSTOM,
         tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE: "10000",
         tdr.ProjectSetting.INPUT_DRT: tdr.DynamicRangeTransform.NONE,
         tdr.ProjectSetting.OUTPUT_DRT: tdr.DynamicRangeTransform.NONE,
@@ -196,12 +303,35 @@ def timeline_settings_sample():
     tdr.set_timeline_settings(timeline=timeline, settings=timeline_settings_param)
 
 
-def encode_test():
-    project_name = "sample_encode"
+def encode_test(project_name="sample_encode", output_dir=None):
+    """Render a 300-frame Fusion animation as QuickTime ProRes 422 HQ.
+
+    Parameters
+    ----------
+    project_name : str
+        Sample project to recreate.
+    output_dir : str or Path, optional
+        Existing output directory. Defaults to the user's Downloads directory.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    The library checks host codec availability and stops if ProRes is absent.
+    Custom RCM values are explicit because selecting a preset name alone does
+    not reliably persist its dependent settings in Resolve 21.1.
+
+    Examples
+    --------
+    >>> encode_test(output_dir=Path.home() / "Downloads")  # doctest: +SKIP
+    """
     session = tdr.ResolveSession.connect()
     close_and_delete_project_if_exists(session, project_name)
     project = tdr.create_project(session, name=project_name)
 
+    # Explicit Custom values avoid the 21.1 preset/Automatic persistence limits.
     project_settings_params2 = {
         tdr.ProjectSetting.TIMELINE_RESOLUTION_WIDTH: "3840",
         tdr.ProjectSetting.TIMELINE_RESOLUTION_HEIGHT: "2160",
@@ -222,7 +352,7 @@ def encode_test():
         tdr.ProjectSetting.COLOR_SPACE_TIMELINE_GAMMA: tdr.Gamma.ST2084,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT: tdr.ColorSpace.P3_D65,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT_GAMMA: tdr.Gamma.ST2084,
-        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.ProjectPresetMode.CUSTOM,
+        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.WorkingLuminanceMode.CUSTOM,
         tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE: "10000",
         tdr.ProjectSetting.INPUT_DRT: tdr.DynamicRangeTransform.NONE,
         tdr.ProjectSetting.OUTPUT_DRT: tdr.DynamicRangeTransform.NONE,
@@ -231,15 +361,17 @@ def encode_test():
         tdr.ProjectSetting.HDR_MASTERING_ON: tdr.SettingToggle.ENABLED,
     }
 
+    # Monitor/color keys shared with Project use ProjectSetting constants.
+    # Fractional frame rate is inherited; other settings are custom to this timeline.
     timeline_settings_param = {
-        tdr.ProjectSetting.TIMELINE_RESOLUTION_WIDTH: "1920",
-        tdr.ProjectSetting.TIMELINE_RESOLUTION_HEIGHT: "1080",
+        tdr.TimelineSetting.TIMELINE_RESOLUTION_WIDTH: "1920",
+        tdr.TimelineSetting.TIMELINE_RESOLUTION_HEIGHT: "1080",
 
         ##########################################################################
-        # DO NOT SET TIMELINE FRAME RATE IN THE **TIMELINE SETTINGS**.
-        # INSTEAD, PLEASE SET THIS VALUE IN THE **PROJECT SETTINGS**.
-        # ------------------------------------------------------------------------
-        # tdr.ProjectSetting.TIMELINE_FRAME_RATE: tdr.FrameRate.FPS_59_94,
+        # Resolve 21.1 rejects fractional rates on a custom timeline.
+        # Set 59.94 on the project BEFORE creating the timeline and inherit it.
+        # Integer rates can be set on an empty custom timeline before adding clips.
+        # tdr.TimelineSetting.TIMELINE_FRAME_RATE: tdr.FrameRate.FPS_59_94,
         ##########################################################################
 
         tdr.ProjectSetting.VIDEO_MONITOR_FORMAT: tdr.make_video_monitor_format(1920, 1080, 59.94),
@@ -258,7 +390,7 @@ def encode_test():
         tdr.ProjectSetting.COLOR_SPACE_TIMELINE_GAMMA: tdr.Gamma.DAVINCI_INTERMEDIATE,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT: tdr.ColorSpace.REC_709,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT_GAMMA: tdr.Gamma.GAMMA_2_4,
-        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.ProjectPresetMode.CUSTOM,
+        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.WorkingLuminanceMode.CUSTOM,
         tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE: "10000",
         tdr.ProjectSetting.INPUT_DRT: tdr.DynamicRangeTransform.NONE,
         tdr.ProjectSetting.OUTPUT_DRT: tdr.DynamicRangeTransform.NONE,
@@ -313,6 +445,8 @@ def encode_test():
     media_out = tdr.get_fusion_tool(comp=comp, name="MediaOut1")
     tdr.connect_default_output(source=rectangle_bg, target=media_out)
 
+    # Required for correct RCM Fusion rendering on Resolve 21.1.
+    tdr.refresh_fusion_color_management(session)
     tdr.open_page(session=session, page=tdr.Page.DELIVER)
 
     render_format = tdr.RenderFormat.QUICKTIME
@@ -325,7 +459,9 @@ def encode_test():
     tdr.set_render_settings(
         project=project,
         settings={
-            tdr.RenderSetting.TARGET_DIR: str(Path.home() / "Downloads"),
+            tdr.RenderSetting.TARGET_DIR: str(
+                Path.home() / "Downloads" if output_dir is None else output_dir
+            ),
             tdr.RenderSetting.CUSTOM_NAME: "Encode_Test_ProRes422HQ.mov",
             tdr.RenderSetting.EXPORT_AUDIO: False
         }
@@ -334,12 +470,27 @@ def encode_test():
     tdr.render_current_settings(project=project)
 
 
-def fusion_key_frame_test():
-    project_name = "fusion_key_frame"
+def fusion_key_frame_test(project_name="fusion_key_frame"):
+    """Build an animated Fusion composition in a Custom RCM timeline.
+
+    Parameters
+    ----------
+    project_name : str
+        Sample project to recreate.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> fusion_key_frame_test()  # doctest: +SKIP
+    """
     session = tdr.ResolveSession.connect()
     close_and_delete_project_if_exists(session, project_name)
     project = tdr.create_project(session, name=project_name)
 
+    # Explicit Custom values avoid the 21.1 preset/Automatic persistence limits.
     project_settings_params2 = {
         tdr.ProjectSetting.TIMELINE_RESOLUTION_WIDTH: "3840",
         tdr.ProjectSetting.TIMELINE_RESOLUTION_HEIGHT: "2160",
@@ -360,7 +511,7 @@ def fusion_key_frame_test():
         tdr.ProjectSetting.COLOR_SPACE_TIMELINE_GAMMA: tdr.Gamma.ST2084,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT: tdr.ColorSpace.P3_D65,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT_GAMMA: tdr.Gamma.ST2084,
-        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.ProjectPresetMode.CUSTOM,
+        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.WorkingLuminanceMode.CUSTOM,
         tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE: "10000",
         tdr.ProjectSetting.INPUT_DRT: tdr.DynamicRangeTransform.NONE,
         tdr.ProjectSetting.OUTPUT_DRT: tdr.DynamicRangeTransform.NONE,
@@ -369,15 +520,17 @@ def fusion_key_frame_test():
         tdr.ProjectSetting.HDR_MASTERING_ON: tdr.SettingToggle.ENABLED,
     }
 
+    # Monitor/color keys shared with Project use ProjectSetting constants.
+    # Fractional frame rate is inherited; other settings are custom to this timeline.
     timeline_settings_param = {
-        tdr.ProjectSetting.TIMELINE_RESOLUTION_WIDTH: "1920",
-        tdr.ProjectSetting.TIMELINE_RESOLUTION_HEIGHT: "1080",
+        tdr.TimelineSetting.TIMELINE_RESOLUTION_WIDTH: "1920",
+        tdr.TimelineSetting.TIMELINE_RESOLUTION_HEIGHT: "1080",
 
         ##########################################################################
-        # DO NOT SET TIMELINE FRAME RATE IN THE **TIMELINE SETTINGS**.
-        # INSTEAD, PLEASE SET THIS VALUE IN THE **PROJECT SETTINGS**.
-        # ------------------------------------------------------------------------
-        # tdr.ProjectSetting.TIMELINE_FRAME_RATE: tdr.FrameRate.FPS_59_94,
+        # Resolve 21.1 rejects fractional rates on a custom timeline.
+        # Set 59.94 on the project BEFORE creating the timeline and inherit it.
+        # Integer rates can be set on an empty custom timeline before adding clips.
+        # tdr.TimelineSetting.TIMELINE_FRAME_RATE: tdr.FrameRate.FPS_59_94,
         ##########################################################################
 
         tdr.ProjectSetting.VIDEO_MONITOR_FORMAT: tdr.make_video_monitor_format(1920, 1080, 59.94),
@@ -396,7 +549,7 @@ def fusion_key_frame_test():
         tdr.ProjectSetting.COLOR_SPACE_TIMELINE_GAMMA: tdr.Gamma.DAVINCI_INTERMEDIATE,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT: tdr.ColorSpace.REC_709,
         tdr.ProjectSetting.COLOR_SPACE_OUTPUT_GAMMA: tdr.Gamma.GAMMA_2_4,
-        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.ProjectPresetMode.CUSTOM,
+        tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE_MODE: tdr.WorkingLuminanceMode.CUSTOM,
         tdr.ProjectSetting.TIMELINE_WORKING_LUMINANCE: "10000",
         tdr.ProjectSetting.INPUT_DRT: tdr.DynamicRangeTransform.NONE,
         tdr.ProjectSetting.OUTPUT_DRT: tdr.DynamicRangeTransform.NONE,
@@ -545,13 +698,35 @@ def fusion_key_frame_test():
 
     media_out = tdr.get_fusion_tool(comp=comp, name="MediaOut1")
     tdr.connect_default_output(source=merge, target=media_out)
+    tdr.refresh_fusion_color_management(session)
+    tdr.save_project(session)
 
 
 def draw_sharp_edge_rectangle_using_fusion_sample(
         center: Sequence[float]=(0.65, 0.72),
-        size: Sequence[float]=(0.12, 0.096)
+        size: Sequence[float]=(0.12, 0.096),
+        *,
+        project_name: str="sharp_edge_rectangle_sample"
 ):
-    project_name = "sharp_edge_rectangle_sample"
+    """Draw a white rectangle aligned to pixel boundaries in an unmanaged timeline.
+
+    Parameters
+    ----------
+    center : sequence of float
+        Normalized Fusion center, with the origin at the bottom left.
+    size : sequence of float
+        Width and height relative to the timeline resolution.
+    project_name : str
+        Sample project to recreate.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> draw_sharp_edge_rectangle_using_fusion_sample()  # doctest: +SKIP
+    """
     session = tdr.ResolveSession.connect()
     close_and_delete_project_if_exists(session, project_name)
     project = tdr.create_project(session, name=project_name)
@@ -603,8 +778,8 @@ def draw_sharp_edge_rectangle_using_fusion_sample(
     v_offset = (int_base_int_size[1] % 2) * (0.5 / v_resolution)  # if odd number, add 0.5 pixel
 
     int_base_center = [
-        round(center[0] * h_resolution) / h_resolution + h_offset,
-        round(center[1] * v_resolution) / v_resolution + v_offset
+        round((center[0] - h_offset) * h_resolution) / h_resolution + h_offset,
+        round((center[1] - v_offset) * v_resolution) / v_resolution + v_offset
     ]
 
     rectangle_mask.Center = {1: int_base_center[0], 2: int_base_center[1], 3: 0.0}
@@ -633,7 +808,7 @@ if __name__ == '__main__':
     # project_settings_sample()
     # timeline_settings_sample()
     # get_current_timeline_settings_sample()
-    # encode_test()
+    encode_test()
     # fusion_key_frame_test()
 
     def int_absolute_coordinate_to_float_relative_coordinate(
@@ -679,15 +854,15 @@ if __name__ == '__main__':
         # ((101, 101), (9, 11)),  # 奇, 奇, 奇, 奇
     ]
 
-    for st_pos, size in test_cases:
-        center_float, size_float = (
-            int_absolute_coordinate_to_float_relative_coordinate(
-                st_pos=st_pos,
-                size=size,
-            )
-        )
+    # for st_pos, size in test_cases:
+    #     center_float, size_float = (
+    #         int_absolute_coordinate_to_float_relative_coordinate(
+    #             st_pos=st_pos,
+    #             size=size,
+    #         )
+    #     )
 
-        draw_sharp_edge_rectangle_using_fusion_sample(
-            center=center_float,
-            size=size_float,
-        )
+    #     draw_sharp_edge_rectangle_using_fusion_sample(
+    #         center=center_float,
+    #         size=size_float,
+    #     )
