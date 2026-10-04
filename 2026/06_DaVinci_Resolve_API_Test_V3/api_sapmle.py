@@ -4,6 +4,7 @@ import os
 import time
 from pathlib import Path
 import pprint
+from collections.abc import Sequence
 
 # import my libraries
 import ty_davinci_resolve as tdr
@@ -109,7 +110,7 @@ def project_settings_sample():
         tdr.ProjectSetting.HDR_MASTERING_ON: tdr.SettingToggle.ENABLED,
     }
 
-    tdr.set_settings(
+    tdr.set_project_settings(
         project,
         settings=project_settings_params2
     )
@@ -186,7 +187,7 @@ def timeline_settings_sample():
         tdr.ProjectSetting.HDR_MASTERING_ON: tdr.SettingToggle.ENABLED,
     }
 
-    tdr.set_settings(
+    tdr.set_project_settings(
         project=project,
         settings=project_settings_params2
     )
@@ -266,7 +267,7 @@ def encode_test():
         tdr.ProjectSetting.HDR_MASTERING_ON: tdr.SettingToggle.ENABLED,
     }
 
-    tdr.set_settings(
+    tdr.set_project_settings(
         project=project,
         settings=project_settings_params2
     )
@@ -278,14 +279,14 @@ def encode_test():
     fusion_frame_sec = 5
     fusion_frames = fps_int * fusion_frame_sec
     
-    fusion_item, comp = tdr.append_fusion_composition(
+    fusion_item, comp = tdr.add_fusion_composition_to_timeline(
         timeline=timeline,
         duration_frames=fusion_frames,
         record_frame=tdr.timecode_to_frames("01:00:00:00", fps_int),
         media_pool=media_pool
     )
 
-    rectangle_mask = tdr.add_tool(
+    rectangle_mask = tdr.add_fusion_tool(
         comp=comp,
         tool_type=tdr.FusionTool.RECTANGLE_MASK,
         position=(2, 0)
@@ -294,7 +295,7 @@ def encode_test():
     rectangle_mask.Width = 0.0
     rectangle_mask.Height = 0.5
 
-    rectangle_bg = tdr.add_tool(
+    rectangle_bg = tdr.add_fusion_tool(
         comp=comp,
         tool_type=tdr.FusionTool.BACKGROUND,
         position=(2, 1)
@@ -309,7 +310,7 @@ def encode_test():
     rectangle_mask.Width[0] = 0.0
     rectangle_mask.Width[fusion_frames] = 1.0
 
-    media_out = tdr.get_tool(comp=comp, name="MediaOut1")
+    media_out = tdr.get_fusion_tool(comp=comp, name="MediaOut1")
     tdr.connect_default_output(source=rectangle_bg, target=media_out)
 
     tdr.open_page(session=session, page=tdr.Page.DELIVER)
@@ -404,7 +405,7 @@ def fusion_key_frame_test():
         tdr.ProjectSetting.HDR_MASTERING_ON: tdr.SettingToggle.ENABLED,
     }
 
-    tdr.set_settings(
+    tdr.set_project_settings(
         project=project,
         settings=project_settings_params2
     )
@@ -416,7 +417,7 @@ def fusion_key_frame_test():
     fusion_frame_sec = 2
     fusion_frames = fps_int * fusion_frame_sec
     
-    fusion_item, comp = tdr.append_fusion_composition(
+    fusion_item, comp = tdr.add_fusion_composition_to_timeline(
         timeline=timeline,
         duration_frames=fusion_frames,
         record_frame=tdr.timecode_to_frames("01:00:00:00", fps_int),
@@ -425,7 +426,7 @@ def fusion_key_frame_test():
 
     tdr.open_page(session=session, page=tdr.Page.FUSION)
 
-    rectangle_mask = tdr.add_tool(
+    rectangle_mask = tdr.add_fusion_tool(
         comp=comp,
         tool_type=tdr.FusionTool.RECTANGLE_MASK,
         position=(2, 0)
@@ -434,7 +435,7 @@ def fusion_key_frame_test():
     rectangle_mask.Width = 0.0
     rectangle_mask.Height = 1.0
 
-    rectangle_bg = tdr.add_tool(
+    rectangle_bg = tdr.add_fusion_tool(
         comp=comp,
         tool_type=tdr.FusionTool.BACKGROUND,
         position=(2, 1)
@@ -453,13 +454,13 @@ def fusion_key_frame_test():
     bezier_spline.SetKeyFrames(key_frames)
     rectangle_mask.Width = bezier_spline
 
-    merge = tdr.add_tool(
+    merge = tdr.add_fusion_tool(
         comp=comp,
         tool_type=tdr.FusionTool.MERGE,
         position=(3, 1)
     )
 
-    circle_mask = tdr.add_tool(
+    circle_mask = tdr.add_fusion_tool(
         comp=comp,
         tool_type = tdr.FusionTool.ELLIPSE_MASK,
         position = (3, -1)
@@ -468,7 +469,7 @@ def fusion_key_frame_test():
     circle_mask.Width = 100/1920
     circle_mask.Height = 100/1920
 
-    circle_bg = tdr.add_tool(
+    circle_bg = tdr.add_fusion_tool(
         comp=comp,
         tool_type = tdr.FusionTool.BACKGROUND,
         position = (3, 0)
@@ -479,13 +480,13 @@ def fusion_key_frame_test():
     circle_bg.TopLeftAlpha = 1.0
     circle_bg.EffectMask = circle_mask
 
-    circle_xy_path = tdr.add_modifier(
+    circle_xy_path = tdr.add_fusion_modifier(
         comp=comp,
         modifier_type=tdr.FusionModifier.XY_PATH,
     )
 
-    x_spline = tdr.add_modifier(comp=comp, modifier_type=tdr.FusionModifier.BEZIER_SPLINE)
-    y_spline = tdr.add_modifier(comp=comp, modifier_type=tdr.FusionModifier.BEZIER_SPLINE)
+    x_spline = tdr.add_fusion_modifier(comp=comp, modifier_type=tdr.FusionModifier.BEZIER_SPLINE)
+    y_spline = tdr.add_fusion_modifier(comp=comp, modifier_type=tdr.FusionModifier.BEZIER_SPLINE)
 
     y_spline.SetKeyFrames({
         0: {
@@ -542,11 +543,14 @@ def fusion_key_frame_test():
         foreground=circle_bg
     )
 
-    media_out = tdr.get_tool(comp=comp, name="MediaOut1")
+    media_out = tdr.get_fusion_tool(comp=comp, name="MediaOut1")
     tdr.connect_default_output(source=merge, target=media_out)
 
 
-def draw_sharp_edge_rectangle_using_fusion_sample():
+def draw_sharp_edge_rectangle_using_fusion_sample(
+        center: Sequence[float]=(0.65, 0.72),
+        size: Sequence[float]=(0.12, 0.096)
+):
     project_name = "sharp_edge_rectangle_sample"
     session = tdr.ResolveSession.connect()
     close_and_delete_project_if_exists(session, project_name)
@@ -565,7 +569,61 @@ def draw_sharp_edge_rectangle_using_fusion_sample():
         tdr.ProjectSetting.COLOR_SCIENCE_MODE: tdr.ColorScienceMode.DAVINCI_YRGB,
     }
 
-    tdr.set_settings(project=project, settings=project_settings_params)
+    tdr.set_project_settings(project=project, settings=project_settings_params)
+
+    media_pool = tdr.get_media_pool(project=project)
+    timeline = tdr.create_empty_timeline(media_pool=media_pool, name="Test3")
+
+    fps = 24
+    fusion_frame_sec = 2
+    fusion_frames = fps * fusion_frame_sec
+    
+    fusion_item, comp = tdr.add_fusion_composition_to_timeline(
+        timeline=timeline,
+        duration_frames=fusion_frames,
+        record_frame=tdr.timecode_to_frames("01:00:00:00", fps),
+        media_pool=media_pool
+    )
+
+    tdr.open_page(session=session, page=tdr.Page.FUSION)
+
+    rectangle_mask = tdr.add_fusion_tool(
+        comp=comp,
+        tool_type=tdr.FusionTool.RECTANGLE_MASK,
+        position=(2, 0)
+    )
+
+    # `relative float coordinates` to `absolute int coordinates` to `relative float coordinates`
+    h_resolution = int(tdr.get_timeline_setting(timeline=timeline, name=tdr.TimelineSetting.TIMELINE_RESOLUTION_WIDTH))
+    v_resolution = int(tdr.get_timeline_setting(timeline=timeline, name=tdr.TimelineSetting.TIMELINE_RESOLUTION_HEIGHT))
+    int_base_int_size = [round(size[0] * h_resolution), round(size[1] * v_resolution)]
+    int_base_float_size = [int_base_int_size[0] / h_resolution, int_base_int_size[1] / v_resolution]
+
+    h_offset = (int_base_int_size[0] % 2) * (0.5 / h_resolution)  # if odd number, add 0.5 pixel
+    v_offset = (int_base_int_size[1] % 2) * (0.5 / v_resolution)  # if odd number, add 0.5 pixel
+
+    int_base_center = [
+        round(center[0] * h_resolution) / h_resolution + h_offset,
+        round(center[1] * v_resolution) / v_resolution + v_offset
+    ]
+
+    rectangle_mask.Center = {1: int_base_center[0], 2: int_base_center[1], 3: 0.0}
+    rectangle_mask.Width = int_base_float_size[0]
+    rectangle_mask.Height = int_base_float_size[1]
+
+    rectangle_bg = tdr.add_fusion_tool(
+        comp=comp,
+        tool_type=tdr.FusionTool.BACKGROUND,
+        position=(2, 1)
+    )
+    rectangle_bg.TopLeftRed = 1.0
+    rectangle_bg.TopLeftGreen = 1.0
+    rectangle_bg.TopLeftBlue = 1.0
+    rectangle_bg.TopLeftAlpha = 1.0
+    rectangle_bg.EffectMask = rectangle_mask
+
+    media_out = tdr.get_fusion_tool(comp=comp, name="MediaOut1")
+    tdr.connect_default_output(source=rectangle_bg, target=media_out)
 
 
 if __name__ == '__main__':
@@ -577,4 +635,59 @@ if __name__ == '__main__':
     # get_current_timeline_settings_sample()
     # encode_test()
     # fusion_key_frame_test()
-    draw_sharp_edge_rectangle_using_fusion_sample()
+
+    def int_absolute_coordinate_to_float_relative_coordinate(
+            st_pos: Sequence[int] = (101, 209),
+            size: Sequence[int] = (299, 301),
+            h_resolution: int = 1920,
+            v_resolution: int = 1080
+    ) -> tuple[list[float], list[float]]:
+        center_float = [
+            (st_pos[0] + (size[0] / 2.0)) / h_resolution,
+            1.0 - (st_pos[1] + (size[1] / 2.0)) / v_resolution
+        ]
+        size_float = [
+            size[0] / h_resolution,
+            size[1] / v_resolution,
+        ]
+
+        return center_float, size_float
+
+    test_cases = [
+        # st_pos: 偶数, 偶数
+        ((100, 100), (8, 10)),  # 偶, 偶, 偶, 偶
+        # ((100, 100), (9, 10)),  # 偶, 偶, 奇, 偶
+        # ((100, 100), (8, 11)),  # 偶, 偶, 偶, 奇
+        # ((100, 100), (9, 11)),  # 偶, 偶, 奇, 奇
+
+        # st_pos: 奇数, 偶数
+        # ((101, 100), (8, 10)),  # 奇, 偶, 偶, 偶
+        # ((101, 100), (9, 10)),  # 奇, 偶, 奇, 偶
+        # ((101, 100), (8, 11)),  # 奇, 偶, 偶, 奇
+        # ((101, 100), (9, 11)),  # 奇, 偶, 奇, 奇
+
+        # st_pos: 偶数, 奇数
+        # ((100, 101), (8, 10)),  # 偶, 奇, 偶, 偶
+        # ((100, 101), (9, 10)),  # 偶, 奇, 奇, 偶
+        # ((100, 101), (8, 11)),  # 偶, 奇, 偶, 奇
+        # ((100, 101), (9, 11)),  # 偶, 奇, 奇, 奇
+
+        # st_pos: 奇数, 奇数
+        # ((101, 101), (8, 10)),  # 奇, 奇, 偶, 偶
+        # ((101, 101), (9, 10)),  # 奇, 奇, 奇, 偶
+        # ((101, 101), (8, 11)),  # 奇, 奇, 偶, 奇
+        # ((101, 101), (9, 11)),  # 奇, 奇, 奇, 奇
+    ]
+
+    for st_pos, size in test_cases:
+        center_float, size_float = (
+            int_absolute_coordinate_to_float_relative_coordinate(
+                st_pos=st_pos,
+                size=size,
+            )
+        )
+
+        draw_sharp_edge_rectangle_using_fusion_sample(
+            center=center_float,
+            size=size_float,
+        )
