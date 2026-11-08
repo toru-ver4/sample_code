@@ -9,7 +9,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 # import third-party libraries
-from sympy import symbols, factor, Rational, together
+from sympy import Eq, collect, latex, solve, symbols, factor, Rational, together
 
 # import my libraries
 
@@ -21,6 +21,92 @@ __maintainer__ = 'Toru Yoshihara'
 __email__ = 'toru.ver.11 at-sign gmail.com'
 
 __all__ = []
+
+
+def study_cubic_hermite_polynominal_basic():
+    """Solve the Hermite coefficients and print Python and LaTeX expressions.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    The interval width is ``h = x_{i+1} - x_i``. The slopes ``m_i`` and
+    ``m_{i+1}`` are derivatives with respect to x, so they are scaled by h
+    in the equations for the normalized interpolation coordinate.
+    Python output uses the valid identifiers ``y_ip1`` and ``m_ip1``
+    for the endpoint values at i+1.
+
+    Examples
+    --------
+    >>> study_cubic_hermite_polynominal_basic()  # doctest: +ELLIPSIS
+    # Python
+    C_3 = ...
+    """
+    y_i, y_ip1, m_i, m_ip1, h = symbols('y_i y_{i+1} m_i m_{i+1} h')
+    c_3, c_2, c_1, c_0 = symbols('C_3 C_2 C_1 C_0')
+
+    equations = [
+        Eq(c_0, y_i),  # (13)
+        Eq(c_3 + c_2 + c_1 + c_0, y_ip1),  # (14)
+        Eq(c_1, m_i * h),  # (15)
+        Eq(3 * c_3 + 2 * c_2 + c_1, m_ip1 * h),  # (16)
+    ]
+    coefficients = (c_3, c_2, c_1, c_0)
+    solution = solve(equations, coefficients)
+
+    python_names = dict(zip((y_ip1, m_ip1), symbols('y_ip1 m_ip1')))
+    print('# Python')
+    for coefficient in coefficients:
+        print(f'{coefficient} = {solution[coefficient].xreplace(python_names)}')
+
+    print('\nLaTeX:')
+    for coefficient in coefficients:
+        print(f'{latex(coefficient)} = {latex(solution[coefficient])}')
+
+
+def study_cubic_hermite_polynominal_advance():
+    """Collect the Hermite endpoint terms and print Python and LaTeX expressions.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    The coefficients satisfy the same four equations as in
+    ``study_cubic_hermite_polynominal_basic``. The expanded polynomial is
+    collected with respect to ``y_i``, ``y_{i+1}``, ``h*m_i``, and
+    ``h*m_{i+1}``.
+    Python output assigns the expression to ``g`` and uses ``y_ip1``
+    and ``m_ip1`` as identifiers for the endpoint values at i+1.
+
+    Examples
+    --------
+    >>> study_cubic_hermite_polynominal_advance()  # doctest: +ELLIPSIS
+    # Python
+    g = ...
+    """
+    t, h = symbols('t h')
+    y_i, y_ip1, m_i, m_ip1 = symbols('y_i y_{i+1} m_i m_{i+1}')
+    c_3, c_2, c_1, c_0 = symbols('C_3 C_2 C_1 C_0')
+
+    equations = [
+        Eq(c_0, y_i),
+        Eq(c_3 + c_2 + c_1 + c_0, y_ip1),
+        Eq(c_1, m_i * h),
+        Eq(3 * c_3 + 2 * c_2 + c_1, m_ip1 * h),
+    ]
+    solution = solve(equations, (c_3, c_2, c_1, c_0))
+    g = c_3 * t**3 + c_2 * t**2 + c_1 * t + c_0
+    g = g.subs(solution).expand()
+    g = collect(g, [y_i, y_ip1, h * m_i, h * m_ip1])
+    python_names = dict(zip((y_ip1, m_ip1), symbols('y_ip1 m_ip1')))
+    print('# Python')
+    print(f'g = {g.xreplace(python_names)}')
+    print('\nLaTeX:')
+    print(f'g(t) = {latex(g)}')
 
 
 def study_cubic_hermite_polynominal():
@@ -445,8 +531,84 @@ def study_wighted_harmonic_mean():
     print(together(g))
 
 
+def quadratic_hermite_spline_core(t, x_i0, x_i1, y_i0, y_i1, m_i0, m_i1):
+    """Evaluate the cubic Hermite interpolant at normalized coordinates.
+
+    Parameters
+    ----------
+    t : float or numpy.ndarray
+        Normalized coordinate, with endpoints at zero and one.
+    x_i0, x_i1 : float
+        Endpoint coordinates in increasing order.
+    y_i0, y_i1 : float
+        Endpoint values.
+    m_i0, m_i1 : float
+        Endpoint derivatives with respect to x.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        Interpolated values.
+
+    Notes
+    -----
+    Despite the historical function name, this is a cubic interpolant.
+
+    Examples
+    --------
+    >>> quadratic_hermite_spline_core(0.0, 2, 5, 1, 6, 1.5, -0.8)
+    1.0
+    """
+    h = x_i1 - x_i0
+    g = h*m_i0*(t**3 - 2*t**2 + t) + h*m_i1*(t**3 - t**2) + y_i0*(2*t**3 - 3*t**2 + 1) + y_i1*(-2*t**3 + 3*t**2)
+    return g
+
+
+def my_plot_quadratic_hermite_spline(
+        x_i0=2, x_i1=5, y_i0=1, y_i1=6, m_i0=1.5, m_i1=-0.8,
+        ax=None, normalized=False, **plot_kwargs):
+    """Plot the Hermite interpolant between two endpoints.
+
+    Parameters
+    ----------
+    x_i0, x_i1 : float, optional
+        Endpoint coordinates in increasing order.
+    y_i0, y_i1 : float, optional
+        Endpoint values.
+    m_i0, m_i1 : float, optional
+        Endpoint derivatives with respect to x.
+    ax : matplotlib.axes.Axes, optional
+        Target axes. If omitted, create a figure and show it.
+    normalized : bool, optional
+        Plot against t instead of x.
+    **plot_kwargs : dict
+        Keyword arguments passed to the axes plot method.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> my_plot_quadratic_hermite_spline()
+    """
+    if x_i1 <= x_i0:
+        raise ValueError('x_i1 must be greater than x_i0.')
+    x = np.linspace(x_i0, x_i1, 1024)
+    t = (x - x_i0) / (x_i1 - x_i0)
+    y = quadratic_hermite_spline_core(t, x_i0, x_i1, y_i0, y_i1, m_i0, m_i1)
+    show = ax is None
+    if show:
+        _, ax = plt.subplots()
+    ax.plot(t if normalized else x, y, **plot_kwargs)
+    if show:
+        plt.show()
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # study_cubic_hermite_polynominal_basic()
+    # study_cubic_hermite_polynominal_advance()
     # study_cubic_hermite_polynominal()
     # plot_harmonic_mean()
     # plot_marmonic_mean_diff()
@@ -455,4 +617,6 @@ if __name__ == '__main__':
     # study_quadratic_function()
     # plot_alpha_beta_plane()
     # plot_alpha_beta_plane_animation(output_path="./img/alpha_beta_3x3.mp4")
-    study_wighted_harmonic_mean()
+    # study_wighted_harmonic_mean()
+
+    # my_plot_quadratic_hermite_spline()

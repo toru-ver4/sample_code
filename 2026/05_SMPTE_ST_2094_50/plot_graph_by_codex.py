@@ -12,6 +12,8 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 
+from study_pchip import my_plot_quadratic_hermite_spline
+
 
 def plot_hermite_endpoint_conditions():
     """Save the endpoint conditions of f(x) as a PNG.
@@ -53,13 +55,43 @@ def plot_normalized_hermite_endpoint_conditions():
     _plot_hermite_endpoint_conditions(normalized=True)
 
 
-def _plot_hermite_endpoint_conditions(normalized):
+def plot_hermite_endpoint_conditions_with_interpolation():
+    """Save f(x) with its Hermite interpolant between the endpoints.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> plot_hermite_endpoint_conditions_with_interpolation()
+    """
+    _plot_hermite_endpoint_conditions(normalized=False, interpolate=True)
+
+
+def plot_normalized_hermite_endpoint_conditions_with_interpolation():
+    """Save g(t) with its Hermite interpolant from t=0 to t=1.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> plot_normalized_hermite_endpoint_conditions_with_interpolation()
+    """
+    _plot_hermite_endpoint_conditions(normalized=True, interpolate=True)
+
+
+def _plot_hermite_endpoint_conditions(normalized, interpolate=False):
     """Draw endpoint conditions in the original or normalized coordinates.
 
     Parameters
     ----------
     normalized : bool
         Whether to use t = (x - x_i) / (x_{i+1} - x_i).
+    interpolate : bool, optional
+        Add the Hermite interpolant between the endpoints.
 
     Returns
     -------
@@ -73,6 +105,8 @@ def _plot_hermite_endpoint_conditions(normalized):
         "hermite_endpoint_conditions_normalized.png"
         if normalized else "hermite_endpoint_conditions.png"
     )
+    if interpolate:
+        filename = filename.replace('.png', '_interpolated.png')
     output_path = (
         Path(__file__).resolve().parent
         / "img_by_codex" / filename
@@ -116,6 +150,14 @@ def _plot_hermite_endpoint_conditions(normalized):
         ax.set_xlim((-0.34, 2.24) if normalized else (-0.85, 5.6))
         ax.set_ylim(-0.65, 3.25)
         ax.axis("off")
+
+        if interpolate:
+            # Normalized endpoints already have slopes scaled by h.
+            my_plot_quadratic_hermite_spline(
+                x_i0=x_i, x_i1=x_ip1, y_i0=y_i, y_i1=y_ip1,
+                m_i0=m_i, m_i1=m_ip1, ax=ax, normalized=normalized,
+                color="#55cfff", linewidth=2.5, zorder=2,
+            )
 
         # Arrow axes and symbolic ticks reproduce the reference sketch.
         arrow_style = {"arrowstyle": "->", "color": foreground,
@@ -187,3 +229,5 @@ def _plot_hermite_endpoint_conditions(normalized):
 if __name__ == "__main__":
     plot_hermite_endpoint_conditions()
     plot_normalized_hermite_endpoint_conditions()
+    plot_hermite_endpoint_conditions_with_interpolation()
+    plot_normalized_hermite_endpoint_conditions_with_interpolation()
