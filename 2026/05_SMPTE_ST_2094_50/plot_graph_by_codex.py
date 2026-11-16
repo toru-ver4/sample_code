@@ -11,6 +11,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from study_pchip import my_plot_quadratic_hermite_spline
 
@@ -226,8 +227,110 @@ def _plot_hermite_endpoint_conditions(normalized, interpolate=False):
     print(f"Saved: {output_path}")
 
 
+def plot_pchip_base_condition():
+    """Save a diagram of the values, derivatives, and secant slopes for PCHIP.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    Following Fritsch and Butland (1984), f_i denotes a nodal value,
+    d_i = p'(x_i) a nodal derivative, and Delta_i the secant slope
+    (f_{i+1} - f_i) / (x_{i+1} - x_i). The illustrative monotone curve
+    is quadratic, so its values and derivatives are mutually consistent.
+    Save the figure to ``img_by_codex/pchip_base_condition.png``.
+
+    Examples
+    --------
+    >>> plot_pchip_base_condition()
+    """
+    output_path = (
+        Path(__file__).resolve().parent
+        / "img_by_codex" / "pchip_base_condition.png"
+    )
+    background = "#20201f"
+    foreground = "#eeeeee"
+    tangent_color = "#ff354e"
+    secant_color = "#e5ed00"
+    x = np.array([1.0, 2.9, 4.3])
+    y = 3.15 - 0.2 * (4.3 - x)**2
+    derivatives = 0.4 * (4.3 - x)
+    curve_x = np.linspace(0.65, x[-1], 500)
+    curve_y = 3.15 - 0.2 * (4.3 - curve_x)**2
+
+    with plt.rc_context({"mathtext.fontset": "cm", "font.size": 28}):
+        fig, ax = plt.subplots(figsize=(11, 8.5), facecolor=background)
+        fig.subplots_adjust(left=0.04, right=0.98, bottom=0.04, top=0.98)
+        ax.set_facecolor(background)
+        ax.set_xlim(-0.85, 5.35)
+        ax.set_ylim(-0.55, 4.4)
+        ax.axis("off")
+
+        arrow_style = {"arrowstyle": "->", "color": foreground,
+                       "linewidth": 1.6, "mutation_scale": 22}
+        ax.annotate("", xy=(5.05, 0), xytext=(-0.22, 0),
+                    arrowprops=arrow_style)
+        ax.annotate("", xy=(0, 3.85), xytext=(0, -0.25),
+                    arrowprops=arrow_style)
+        ax.text(5.13, 0, r"$x$", color=foreground, va="center")
+        annotation_x = 1.75
+        annotation_y = 3.15 - 0.2 * (4.3 - annotation_x)**2
+        ax.annotate(
+            r"$p(x)$", xy=(annotation_x, annotation_y),
+            xytext=(0.7, 2.4), color=foreground, ha="center", va="center",
+            arrowprops={"arrowstyle": "->", "color": foreground,
+                        "linewidth": 1.6, "mutation_scale": 22,
+                        "connectionstyle": "arc3,rad=-0.15", "shrinkB": 7},
+        )
+
+        indices = ("i-1", "i", "i+1")
+        for xi, yi, index in zip(x, y, indices):
+            ax.plot([0, xi], [yi, yi], color=foreground,
+                    linewidth=1.1, linestyle=(0, (6, 7)), alpha=0.65)
+            ax.plot([xi, xi], [0, yi], color=foreground,
+                    linewidth=1.1, linestyle=(0, (6, 7)), alpha=0.65)
+            ax.plot([xi, xi], [-0.055, 0.055], color=foreground,
+                    linewidth=1.3)
+            ax.text(xi, -0.17, rf"$x_{{{index}}}$", color=foreground,
+                    ha="center", va="top")
+            ax.text(-0.16, yi, rf"$f_{{{index}}}$", color=foreground,
+                    ha="right", va="center")
+
+        ax.plot(curve_x, curve_y, color=foreground, linewidth=2.5, zorder=2)
+        ax.plot(x, y, color=secant_color, linewidth=1.8, zorder=3)
+        for xi, yi, slope, index in zip(x, y, derivatives, indices):
+            half_width = 0.23
+            ax.plot([xi - half_width, xi + half_width],
+                    [yi - slope * half_width, yi + slope * half_width],
+                    color=tangent_color, linewidth=2.4,
+                    solid_capstyle="round", zorder=4)
+            ax.plot(xi, yi, "o", markersize=5, color=foreground, zorder=5)
+
+        for xi, yi, label in (
+            (x[0] - 0.32, y[0] + 0.27, r"$d_{i-1}$"),
+            (x[1] - 0.11, y[1] + 0.26, r"$d_i$"),
+            (x[2] + 0.08, y[2] + 0.26, r"$d_{i+1}$"),
+        ):
+            ax.text(xi, yi, label, color=tangent_color,
+                    ha="center", va="center")
+        ax.text(1.95, 1.54, r"$\Delta_{i-1}$", color=secant_color,
+                ha="center", va="center")
+        ax.text(3.63, 2.69, r"$\Delta_i$", color=secant_color,
+                ha="center", va="center")
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_path, dpi=200, facecolor=background)
+        plt.close(fig)
+
+    print(f"Saved: {output_path}")
+
+
 if __name__ == "__main__":
-    plot_hermite_endpoint_conditions()
-    plot_normalized_hermite_endpoint_conditions()
-    plot_hermite_endpoint_conditions_with_interpolation()
-    plot_normalized_hermite_endpoint_conditions_with_interpolation()
+    # plot_hermite_endpoint_conditions()
+    # plot_normalized_hermite_endpoint_conditions()
+    # plot_hermite_endpoint_conditions_with_interpolation()
+    # plot_normalized_hermite_endpoint_conditions_with_interpolation()
+
+    plot_pchip_base_condition()

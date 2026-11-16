@@ -10,8 +10,7 @@ from matplotlib.patches import Patch
 
 # import third-party libraries
 from sympy import Eq, collect, latex, solve, symbols, factor, Rational, together
-
-# import my libraries
+from scipy.interpolate import PchipInterpolator
 
 # information
 __author__ = 'Toru Yoshihara'
@@ -605,8 +604,94 @@ def my_plot_quadratic_hermite_spline(
         plt.show()
 
 
-if __name__ == '__main__':
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+def plot_sample_cubic_hermite_tone_mapping():
+    """Plot and save three views of the sample tone-mapping data.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    Save PNG files in ``img_by_codex`` next to this script: the original
+    points, the bad-slopes curve, and both interpolation curves. All three
+    figures use the same full axis ranges.
+
+    Examples
+    --------
+    >>> plot_sample_cubic_hermite_tone_mapping()
+    """
+    x = [0, 0.5, 0.75, 1.0]
+    y = [0, 0.6, 0.775, 0.8]
+    m = np.zeros_like(x)
+    m[0] = (y[1]-y[0])/(x[1]-x[0])
+    m[1] = m[0]
+    m[3] = 0
+    m[2] = (m[3] + m[1]) / 2
+    print(m)
+
+    intp_sample = 256
+    t = np.linspace(0, 1, intp_sample)
+
+    intp_y = np.zeros(intp_sample * (len(x) - 1))
+    intp_x = np.zeros_like(intp_y)
+
+    for idx in range(len(x)-1):
+        intp_y_temp = quadratic_hermite_spline_core(t, x[idx], x[idx+1], y[idx], y[idx+1], m[idx], m[idx+1])
+        intp_y[intp_sample*idx:intp_sample*(idx+1)] = intp_y_temp
+        intp_x[intp_sample*idx:intp_sample*(idx+1)] = np.linspace(x[idx], x[idx+1], intp_sample)
+
+    # PCHIP
+    pchip = PchipInterpolator(x[1:], y[1:])
+    x_pchip = np.linspace(x[1], x[-1], 1024)
+    y_pchip = pchip(x_pchip)
+
+    output_dir = os.path.join(os.path.dirname(__file__), 'img_by_codex')
+    os.makedirs(output_dir, exist_ok=True)
+    views = [
+        ('01_tone_mapping_original_points.png', False, False),
+        ('02_tone_mapping_bad_slopes.png', True, False),
+        ('03_tone_mapping_bad_and_good_slopes.png', True, True),
+    ]
+    for filename, interpolate, show_good_slopes in views:
+        fig, ax = plt.subplots(figsize=(10, 8))
+        ax.set_facecolor((0.96, 0.96, 0.96))
+        if interpolate:
+            ax.plot(x[:2], y[:2], color='black', linewidth=3,
+                    label="Linear Interpolation")
+            ax.plot(intp_x[intp_sample:], intp_y[intp_sample:], linewidth=3,
+                    label="Cubic Hermite (bad slopes)")
+        if show_good_slopes:
+            ax.plot(x_pchip, y_pchip, linewidth=3,
+                    label="Cubic Hermite (good slopes)")
+        ax.plot(x, y, 'ko')
+        for i in range(len(x)):
+            ax.annotate(
+                rf"$P_{i}$", xy=(x[i], y[i]),
+                xytext=(0, 65 if i == 0 else -65),
+                textcoords='offset points', ha='center',
+                va='bottom' if i == 0 else 'top', fontsize=22,
+                arrowprops=dict(arrowstyle='->', color='0.4', shrinkB=5),
+            )
+        if interpolate:
+            ax.axhline(y=y[-1], color='0.5', linestyle='--', linewidth=0.75)
+        ax.set(xlabel="Input", ylabel="Output",
+               xlim=(-0.03, 1.03), ylim=(-0.03, 1.03),
+               xticks=np.linspace(0.0, 1.0, 6),
+               yticks=np.linspace(0.0, 1.0, 6))
+        ax.xaxis.label.set_size(22)
+        ax.yaxis.label.set_size(22)
+        ax.tick_params(axis='both', labelsize=18)
+        ax.grid(alpha=0.3)
+        if interpolate:
+            ax.legend(loc='lower right', fontsize=18)
+        fig.tight_layout()
+        fig.savefig(os.path.join(output_dir, filename), dpi=150)
+    plt.show()
+
+
+def study_cubic_hermite_interpolation_functions():
+    pass
     # study_cubic_hermite_polynominal_basic()
     # study_cubic_hermite_polynominal_advance()
     # study_cubic_hermite_polynominal()
@@ -620,3 +705,101 @@ if __name__ == '__main__':
     # study_wighted_harmonic_mean()
 
     # my_plot_quadratic_hermite_spline()
+
+
+def differentiate_cubic_hermite():
+    """Differentiate the cubic Hermite polynomial with respect to t.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    Treat h and the endpoint values and slopes as constants. Print the
+    derivative as Python and LaTeX expressions. In LaTeX, place variable
+    factors after parentheses and common integer factors before them.
+
+    Examples
+    --------
+    >>> differentiate_cubic_hermite()  # doctest: +ELLIPSIS
+    # Python
+    dg_dt = ...
+    """
+    t, h = symbols('t h')
+    f_i, f_ip1, d_i, d_ip1 = symbols('f_i f_{i+1} d_i d_{i+1}')
+    g = (
+        (2 * t**3 - 3 * t**2 + 1) * f_i
+        + (t**3 - 2 * t**2 + t) * h * d_i
+        + (-2 * t**3 + 3 * t**2) * f_ip1
+        + (t**3 - t**2) * h * d_ip1
+    )
+    dg_dt = g.diff(t)
+    python_names = dict(zip((f_ip1, d_ip1), symbols('f_ip1 d_ip1')))
+    print('# Python')
+    print(f'dg_dt = {dg_dt.xreplace(python_names)}')
+    print('\nLaTeX:')
+    latex_terms = []
+    for variable_factor in (f_i, h * d_i, f_ip1, h * d_ip1):
+        coefficient = dg_dt.coeff(variable_factor)
+        integer_factor, polynomial = coefficient.as_content_primitive()
+        prefix = latex(integer_factor) if integer_factor != 1 else ''
+        latex_terms.append(
+            rf'{prefix}\left({latex(polynomial)}\right)'
+            rf' {latex(variable_factor)}'
+        )
+    print("g'(t) = " + ' + '.join(latex_terms))
+
+
+def differentiate_cubic_hermite_part2():
+    """Collect the derivative by powers of t and (x - x_i) and print LaTeX.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    Substitute ``t = (x - x_i) / h``, treating nonzero h, Delta_i, and
+    the endpoint slopes as constants. Keep powers of (x - x_i) unexpanded.
+    Preserve the sign of the given
+    term ``-6*t*(1 - t)*Delta_i``.
+
+    Examples
+    --------
+    >>> differentiate_cubic_hermite_part2()  # doctest: +ELLIPSIS
+    LaTeX (t):
+    p'_i(x) = ...
+    """
+    t, x, x_i = symbols('t x x_i')
+    h = symbols('h', nonzero=True)
+    delta_i, d_i, d_ip1 = symbols('Delta_i d_i d_{i+1}')
+    derivative = (
+        6 * t * (1 - t) * delta_i
+        + (3 * t**2 - 4 * t + 1) * d_i
+        + (3 * t**2 - 2 * t) * d_ip1
+    )
+    derivative_t = collect(derivative.expand(), t)
+    print('LaTeX (t):')
+    print(
+        "p'_i(x) = "
+        + rf'\left({latex(derivative_t.coeff(t, 2))}\right)t^{{2}}'
+        + rf' + \left({latex(derivative_t.coeff(t, 1))}\right)t'
+        + rf' + {latex(derivative_t.coeff(t, 0))}'
+    )
+
+    derivative_x = derivative_t.subs(t, (x - x_i) / h)
+    print('\nLaTeX (x - x_i):')
+    print("p'_i(x) = " + latex(derivative_x))
+
+
+def study_pchip_functions():
+    # plot_sample_cubic_hermite_tone_mapping()
+    # differentiate_cubic_hermite()
+    differentiate_cubic_hermite_part2()
+
+
+if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # study_cubic_hermite_interpolation_functions()
+    study_pchip_functions()
